@@ -42,7 +42,7 @@
         "unit": {
           "$ref": "common.schema.json#/$defs/Slug",
           "x-cartograph-ref": "Unit",
-          "description": "What this is counted in. A reference since 2026-09-29, where it was free text and the same quantity was spelled three ways across two vaults."
+          "description": "What this is counted in. A reference since 2026-09-29, where it was free text and the same quantity was spelled several ways."
         },
         "direction": {
           "type": "string",

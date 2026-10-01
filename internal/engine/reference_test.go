@@ -62,7 +62,7 @@ func TestProjectReferenceForms(t *testing.T) {
 }
 
 // A dependency carries an edge, and the edge is the whole reason the type
-// exists: before it, every dependency in both vaults was a risk sentence
+// exists: before it, a row typed dependency was usually a risk sentence
 // filed under the wrong word.
 func TestProjectDependencyEdge(t *testing.T) {
 	e := seededEngine(t)

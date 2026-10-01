@@ -48,10 +48,9 @@ var standardUnits = []struct {
 // over a manifest that already exists, because the first guard reads a
 // listing, and a listing is empty for two different reasons: the vault
 // holds no units, or the vault's index has not been built yet. Opening
-// the Strategic Plan vault without its (generated, uncommitted) index
-// took the second for the first and rewrote all nine of its unit files,
-// reordering their keys and dropping their quoting, on a read-only visit
-// (2026-09-29).
+// a vault without its (generated, uncommitted) index once took the second
+// for the first and rewrote every one of its unit files, reordering their
+// keys and dropping their quoting, on a read-only visit.
 //
 // Writes through the ordinary commit path, so a seeded unit is a manifest
 // like any other and can be edited, renamed or deleted.

@@ -8,11 +8,11 @@ import (
 
 // The dependency graph across a whole vault.
 //
-// Every edge has the same shape wherever it is declared — a risk typed
-// dependency, carrying a direction and a reference to the far end — so one
+// Every edge has the same shape wherever it is declared (a risk typed
+// dependency, carrying a direction and a reference to the far end), so one
 // walk compiles the lot. Projects and programmes both hold them; a
-// programme's are the ones worth drawing, since the Strategic Plan states
-// linkages between its programmes twenty-six times.
+// programme's are the ones worth drawing, since a strategic plan states
+// many linkages between its programmes.
 //
 // What the edges make checkable is worth more than a picture of them. A
 // cycle and a schedule conflict are both facts a person cannot see by

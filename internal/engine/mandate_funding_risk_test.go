@@ -175,7 +175,7 @@ func TestOperationDataUsePersonalData(t *testing.T) {
 }
 
 // A beneficiary line names a group and nothing else: beneficiaries are
-// qualitative (Programme Lead, 2026-09-26), so the count fields the first
+// qualitative (DESIGN_RULES.md), so the count fields the first
 // draft of the kind carried are refused outright rather than ignored.
 func TestProjectBeneficiaries(t *testing.T) {
 	e := seededEngine(t)

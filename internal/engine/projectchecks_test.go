@@ -686,7 +686,7 @@ func TestProjectChecksDeliverableVerifiers(t *testing.T) {
 }
 
 // A project may answer more than one problem, each felt by its own
-// beneficiary groups (Programme Lead, 2026-09-27). The aim check counts
+// beneficiary groups. The aim check counts
 // the pairs that are whole, refuses a pair with only one half written,
 // and warns about a problem stated about nobody.
 func TestProjectChecksAimProblems(t *testing.T) {

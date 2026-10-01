@@ -118,7 +118,7 @@ func TestBeneficiaryGroupSchema(t *testing.T) {
 		{name: "name exceeds maxLength 80", kind: "BeneficiaryGroup", wantProblem: true, wantSubstr: "maxLength", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: " + strings.Repeat("x", 81) + "\n"},
 		{name: "description exceeds maxLength 240", kind: "BeneficiaryGroup", wantProblem: true, wantSubstr: "maxLength", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: Group Two\n  description: " + strings.Repeat("x", 241) + "\n"},
 		// No size on a group either: the register identifies who a group is,
-		// it does not count them (Programme Lead, 2026-09-26).
+		// it does not count them (DESIGN_RULES.md).
 		{name: "typicalSize is refused", kind: "BeneficiaryGroup", wantProblem: true, wantSubstr: "typicalSize", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: Group Two\n  typicalSize: 400\n"},
 		{name: "dangling source ref", kind: "BeneficiaryGroup", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: Group Two\n  source: does-not-exist\n"},
 	})

@@ -2,7 +2,7 @@
   "$id": "gap.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Gap",
-  "description": "An evidenced shortcoming in the system, declared once and cited by the problems that address it. A gap and a problem are different things: a gap is what is wrong and how we know, written as its source wrote it; a problem is what that does to a named group of people, here, on this piece of work. Pouring one into the other produced \"Depot supervisors Section 3.5 shows that faults appear early\", which is nonsense and left the problem's own cause with nothing to hold. Standalone, so a register of thirty cited findings is written once rather than restated by every project that addresses it.",
+  "description": "An evidenced shortcoming in the system, declared once and cited by the problems that address it. A gap and a problem are different things: a gap is what is wrong and how we know, written as its source wrote it; a problem is what that does to a named group of people, here, on this piece of work. Pouring one into the other produced \"Depot supervisors the audit shows that faults appear early\", which is nonsense and left the problem's own cause with nothing to hold. Standalone, so a register of thirty cited findings is written once rather than restated by every project that addresses it.",
   "type": "object",
   "additionalProperties": false,
   "required": [

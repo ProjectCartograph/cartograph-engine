@@ -14,7 +14,7 @@ func TestGapAndTheProblemsThatCiteIt(t *testing.T) {
 	if _, err := e.Commit(ctx, "Gap", "gaps-emerge-early", []byte(
 		"apiVersion: cartograph/v1\nkind: Gap\nmetadata:\n  id: gaps-emerge-early\n  name: Gaps emerge early\nspec:\n"+
 			"  statement: Learning gaps emerge early and widen over time.\n"+
-			"  source: \"Strategic Plan 2025-2030, Situational Analysis, Section 3.5\"\n"+
+			"  source: \"National reading assessment report, page 12\"\n"+
 			"  measuredBy: d1\n"), "local", "seed"); err != nil {
 		t.Fatal(err)
 	}

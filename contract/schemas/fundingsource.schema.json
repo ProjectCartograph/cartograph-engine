@@ -2,7 +2,7 @@
   "$id": "fundingsource.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FundingSource",
-  "description": "A budget, grant, fund or facility that work draws money from, declared once and referenced by every funding line that draws on it. Standalone for the reason every catalogue here is: the identifier belongs to the budget, not to one project's use of it, so it is written where it cannot be mistyped per project. Until 2026-09-29 a funding line carried two free-text boxes instead: which budget, and a reference whose placeholder read \"Head 26-02-001\", a code nobody could tell the purpose of and nothing could check. Not a Resource: a Resource is what a project draws on to do the work, and money is what it draws on to pay for it. See TAXONOMY.md D7.",
+  "description": "A budget, grant, fund or facility that work draws money from, declared once and referenced by every funding line that draws on it. Standalone for the reason every catalogue here is: the identifier belongs to the budget, not to one project's use of it, so it is written where it cannot be mistyped per project. Until 2026-09-29 a funding line carried two free-text boxes instead: which budget, and a reference whose placeholder was a bare ledger code, which nobody could tell the purpose of and nothing could check. Not a Resource: a Resource is what a project draws on to do the work, and money is what it draws on to pay for it. See TAXONOMY.md D7.",
   "type": "object",
   "additionalProperties": false,
   "required": [

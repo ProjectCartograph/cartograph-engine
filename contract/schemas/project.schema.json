@@ -675,7 +675,7 @@
                   "dependency",
                   "constraint"
                 ],
-                "description": "What kind of thing this row is. \"assumption\" left this list on 2026-09-29: an assumption is not a risk (a risk is mitigated, an assumption is tested, and a false assumption changes the theory rather than the plan), and it belongs on the link it conditions rather than in a flat list. Not one of the seventeen risks across both vaults had used the value. See the Assumption kind."
+                "description": "What kind of thing this row is. \"assumption\" left this list on 2026-09-29: an assumption is not a risk (a risk is mitigated, an assumption is tested, and a false assumption changes the theory rather than the plan), and it belongs on the link it conditions rather than in a flat list. Risk lists had not used the value. See the Assumption kind."
               },
               "impact": {
                 "type": "string",

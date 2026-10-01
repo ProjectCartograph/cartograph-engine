@@ -147,8 +147,8 @@ func (e *Engine) ProgrammeChecks(ctx context.Context, id string) ([]ProgrammeChe
 
 	out = append(out, programmeRiskChecks(spec)...)
 
-	// A loop between programmes is the fact the Strategic Plan's own
-	// linkages make likely and no single definition shows.
+	// A loop between programmes is the fact a plan's many linkages make
+	// likely and no single definition shows.
 	loop, err := e.programmeCycleCheck(ctx, id)
 	if err != nil {
 		return nil, err

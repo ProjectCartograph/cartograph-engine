@@ -115,7 +115,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "Free-form key and value pairs for grouping and filtering, the same shape and the same purpose Kubernetes gives them. Deliberately unvalidated: a label is for the cuts somebody wants to make later and nobody anticipated: which pillar, whose directorate, which reporting pack. A fact that belongs to what the thing *is* is a property with a name and a check, not a label; putting an anticipated fact here loses the check that would have caught it missing. The cost is that a typo makes a new group, which is the right way round for a cut nobody planned. See TAXONOMY.md D11."
+      "description": "Free-form key and value pairs for grouping and filtering, the same shape and the same purpose Kubernetes gives them. Deliberately unvalidated: a label is for the cuts somebody wants to make later and nobody anticipated: which region, which office, which reporting pack. A fact that belongs to what the thing *is* is a property with a name and a check, not a label; putting an anticipated fact here loses the check that would have caught it missing. The cost is that a typo makes a new group, which is the right way round for a cut nobody planned. See TAXONOMY.md D11."
     },
     "Metadata": {
       "type": "object",

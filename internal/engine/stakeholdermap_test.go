@@ -163,10 +163,10 @@ func TestSingleDocumentFileKeepsItsBytes(t *testing.T) {
 }
 
 // A programme holds risks too, and the dependencies between programmes are
-// the graph worth drawing: the Strategic Plan states them twenty-six times
-// and they had nowhere to go until 2026-09-28. The same shape a project's
-// risks have, minus the phase — a programme schedules nothing, so a
-// dependency on one lands by no phase of its own.
+// the graph worth drawing: a strategic plan states many linkages between
+// its programmes, and they need somewhere to go. The same shape a
+// project's risks have, minus the phase: a programme schedules nothing, so
+// a dependency on one lands by no phase of its own.
 func TestProgrammeRisks(t *testing.T) {
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: prog-risk\n  name: Prog\nspec:\n" +

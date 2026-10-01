@@ -778,8 +778,9 @@ func dropFreeTextDisaggregations(spec map[string]any) []string {
 // rewriteFreeTextUnit turns the words a KPI used for its unit into a
 // reference to one.
 //
-// The two vaults wrote the same quantity three ways — "percent" fifteen
-// times beside "USD", "rate" and "hours" — which is what free text does.
+// Free text let one quantity be spelled several ways ("percent", "%" and
+// "per cent", beside "USD", "rate" and "hours"), with nothing to say which
+// of them meant the same thing.
 // A unit is a manifest now, and the standard set uses the obvious slugs, so
 // "percent" and "Hours" both land on one without anybody deciding anything.
 // A word that slugs to no standard unit is reported rather than guessed at:

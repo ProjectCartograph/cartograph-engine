@@ -77,8 +77,7 @@ func TestSuccessCriterionLinksAreOptional(t *testing.T) {
 
 	// One criterion produced by a deliverable, one standing on its own.
 	// The second is the case the seven dimensions exist for: a compliance
-	// line at closing that no deliverable produces (Programme Lead,
-	// 2026-09-29).
+	// line at closing that no deliverable produces (DESIGN_RULES.md).
 	body := projectYAML("linked",
 		"  deliverables:\n    - {id: dl-tool, name: The tool}\n"+
 			"  successCriteria:\n"+

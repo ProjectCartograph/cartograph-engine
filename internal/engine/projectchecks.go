@@ -819,7 +819,7 @@ func addRiskChecks(c checkAdder, spec map[string]any) {
 // addDependencyChecks reports on the dependency rows specifically. A
 // dependency is the one risk type that carries an edge, and an edge is the
 // whole point of the type: without one the row is a sentence filed under
-// the wrong word, which is what every dependency in both vaults was before
+// the wrong word, which is what most rows typed dependency were before
 // the edge existed. Saying so is what keeps the category honest.
 //
 // Edges that leave Cartograph are counted, not faulted. A project really does
