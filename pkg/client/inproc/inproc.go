@@ -5,6 +5,8 @@
 // engine directly.
 package inproc
 
+//lint:file-ignore SA1019 the merge-based shared draft is deprecated in 1.1.0 and removed in 2.0.0 (docs/adr/0007); until then this file still carries it.
+
 import (
 	"context"
 	"encoding/json"

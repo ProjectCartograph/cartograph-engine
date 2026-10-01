@@ -22,6 +22,10 @@
 // key is kr-2, wherever it sits. Which lists are keyed, and by what, is
 // the schema's business (x-cartograph-list-key); this package only needs the
 // paths it is given to be stable, which keys are and indices are not.
+//
+// Deprecated: removed in 2.0.0. Automerge replaces these types in the
+// engine and in every interface; docs/adr/0007 says why, including the
+// defects found in this package.
 package merge
 
 import (

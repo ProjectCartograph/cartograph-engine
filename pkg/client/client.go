@@ -13,6 +13,8 @@
 // interface may reach for an HTTP path.
 package client
 
+//lint:file-ignore SA1019 the merge-based shared draft is deprecated in 1.1.0 and removed in 2.0.0 (docs/adr/0007); until then this file still carries it.
+
 import (
 	"context"
 	"errors"
@@ -97,23 +99,29 @@ type Settings struct {
 // Event is what Subscribe delivers: ops appended to a draft, a version
 // saved, state and presence changes. Seq is the position to resume from.
 type Event struct {
-	Type  string
-	Kind  string
-	ID    string
-	On    time.Time
-	Seq   int64
+	Type string
+	Kind string
+	ID   string
+	On   time.Time
+	Seq  int64
+	// Deprecated: Ops carries pkg/merge ops, which 2.0.0 removes; the
+	// shared draft syncs as an Automerge document (docs/adr/0007).
 	Ops   []merge.Op
 	Actor string
 	Field string
 }
 
 // EditResult is what Edit answers.
+//
+// Deprecated: removed in 2.0.0 with Edit (docs/adr/0007).
 type EditResult struct {
 	Seq       int64
 	Conflicts []merge.Conflict
 }
 
 // Op is a logged op with its position.
+//
+// Deprecated: removed in 2.0.0 with OpsSince (docs/adr/0007).
 type Op struct {
 	Seq int64
 	merge.Op
@@ -140,7 +148,12 @@ type Client interface {
 	Checks(ctx context.Context, kind, id string) ([]Check, error)
 
 	// The shared draft (multiplayer).
+	//
+	// Deprecated: Edit and OpsSince are removed in 2.0.0. The shared draft
+	// becomes one Automerge document per manifest, synced with the
+	// automerge-repo protocol (docs/adr/0007).
 	Edit(ctx context.Context, kind, id string, ops []merge.Op) (EditResult, error)
+	// Deprecated: see Edit.
 	OpsSince(ctx context.Context, kind, id string, after int64) ([]Op, error)
 	Subscribe(ctx context.Context, kind, id string) (<-chan Event, error)
 
