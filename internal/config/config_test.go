@@ -130,26 +130,27 @@ func TestStoreAndFanoutRefusals(t *testing.T) {
 }
 
 // The settings a replicated deployment tunes: where the fan-out listens,
-// the sync ping, the cache bound and the drain delay.
+// metrics, the sync ping, the cache bound and the drain delay.
 func TestScaleSettings(t *testing.T) {
 	c, err := FromEnv(env(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.SyncPing != 20*time.Second || c.DocCache != 1000 || c.DrainDelay != 0 || c.FanoutURL != "" {
-		t.Fatalf("defaults: ping %s cache %d drain %s fanout url %q", c.SyncPing, c.DocCache, c.DrainDelay, c.FanoutURL)
+	if c.SyncPing != 20*time.Second || c.DocCache != 1000 || c.DrainDelay != 0 || c.MetricsAddr != "" || c.FanoutURL != "" {
+		t.Fatalf("defaults: ping %s cache %d drain %s metrics %q fanout url %q", c.SyncPing, c.DocCache, c.DrainDelay, c.MetricsAddr, c.FanoutURL)
 	}
 	c, err = FromEnv(env(map[string]string{
-		"CARTOGRAPH_STORE":       "postgres://app@pgbouncer:6432/db",
-		"CARTOGRAPH_FANOUT_URL":  "postgres://app@postgres:5432/db",
-		"CARTOGRAPH_SYNC_PING":   "25s",
-		"CARTOGRAPH_DOC_CACHE":   "5000",
-		"CARTOGRAPH_DRAIN_DELAY": "10s",
+		"CARTOGRAPH_STORE":        "postgres://app@pgbouncer:6432/db",
+		"CARTOGRAPH_FANOUT_URL":   "postgres://app@postgres:5432/db",
+		"CARTOGRAPH_METRICS_ADDR": ":9090",
+		"CARTOGRAPH_SYNC_PING":    "25s",
+		"CARTOGRAPH_DOC_CACHE":    "5000",
+		"CARTOGRAPH_DRAIN_DELAY":  "10s",
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.FanoutURL != "postgres://app@postgres:5432/db" || c.SyncPing != 25*time.Second || c.DocCache != 5000 || c.DrainDelay != 10*time.Second {
+	if c.FanoutURL != "postgres://app@postgres:5432/db" || c.MetricsAddr != ":9090" || c.SyncPing != 25*time.Second || c.DocCache != 5000 || c.DrainDelay != 10*time.Second {
 		t.Fatalf("not applied: %+v", c)
 	}
 	for name, vars := range map[string]map[string]string{

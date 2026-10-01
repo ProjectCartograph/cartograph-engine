@@ -133,7 +133,14 @@ func runServe(args []string) error {
 	}
 
 	var ready atomic.Bool
+	var mtr *metrics
+	if cfg.MetricsAddr != "" {
+		mtr = newMetrics()
+	}
 	mux, syncSrv := routes(e, comp.Fanout, authn, authz, pdf, &ready, syncserver.WithPing(cfg.SyncPing))
+	mtr.watchShared(e.Shared())
+	mtr.watchSync(syncSrv)
+	mtr.watchFanout(comp.Counted)
 
 	// Requests run on a context of their own, cancelled only after the
 	// shutdown below has given them their grace period. Deriving it from
@@ -143,9 +150,19 @@ func runServe(args []string) error {
 	defer cancelBase()
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr(),
-		Handler:           requestLog(logger, mux),
+		Handler:           requestLog(logger, mtr, mux),
 		ReadHeaderTimeout: 10 * time.Second,
 		BaseContext:       func(net.Listener) context.Context { return baseCtx },
+	}
+	var metricsSrv *http.Server
+	if mtr != nil {
+		mln, err := net.Listen("tcp", cfg.MetricsAddr)
+		if err != nil {
+			return fmt.Errorf("metrics listener: %w", err)
+		}
+		metricsSrv = &http.Server{Handler: mtr.handler(), ReadHeaderTimeout: 10 * time.Second}
+		go func() { _ = metricsSrv.Serve(mln) }()
+		logger.Info("metrics listening", "addr", mln.Addr().String())
 	}
 
 	// A transport is a listener. TCP by default; a UNIX socket when the
@@ -192,7 +209,11 @@ func runServe(args []string) error {
 	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+	err = srv.Shutdown(shutdownCtx)
+	if metricsSrv != nil {
+		_ = metricsSrv.Shutdown(shutdownCtx)
+	}
+	if err != nil {
 		return fmt.Errorf("shutdown: %w", err)
 	}
 	return nil
@@ -221,7 +242,7 @@ func newLogger(cfg config.Config) *slog.Logger {
 
 // requestLog logs one line per request at debug, and at warn for a 5xx.
 // Health probes are not logged: they would be most of the log.
-func requestLog(logger *slog.Logger, next http.Handler) http.Handler {
+func requestLog(logger *slog.Logger, mtr *metrics, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
 			next.ServeHTTP(w, r)
@@ -230,7 +251,9 @@ func requestLog(logger *slog.Logger, next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		attrs := []any{"method", r.Method, "path", r.URL.Path, "status", rec.status, "ms", time.Since(start).Milliseconds()}
+		took := time.Since(start)
+		mtr.observe(r.URL.Path, r.Method, rec.status, took)
+		attrs := []any{"method", r.Method, "path", r.URL.Path, "status", rec.status, "ms", took.Milliseconds()}
 		if rec.status >= 500 {
 			logger.Warn("request", attrs...)
 		} else {

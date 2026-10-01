@@ -48,6 +48,11 @@ type Config struct {
 	// CARTOGRAPH_FANOUT_URL, default empty: the Store URL.
 	FanoutURL string
 
+	// MetricsAddr, when set, serves Prometheus metrics at /metrics on a
+	// listener of its own, kept off the address users reach.
+	// CARTOGRAPH_METRICS_ADDR, default empty: no metrics listener.
+	MetricsAddr string
+
 	// SyncPing is how often the sync socket pings an idle peer, so a load
 	// balancer or proxy does not close a quiet connection (nginx and AWS
 	// ALB close one after 60 s by default). CARTOGRAPH_SYNC_PING, default
@@ -159,6 +164,9 @@ func FromEnv(getenv Getenv) (Config, error) {
 	if v := getenv("CARTOGRAPH_FANOUT_URL"); v != "" {
 		c.FanoutURL = v
 	}
+	if v := getenv("CARTOGRAPH_METRICS_ADDR"); v != "" {
+		c.MetricsAddr = v
+	}
 	for _, d := range []struct {
 		key string
 		to  *time.Duration
@@ -234,6 +242,7 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.Store, "store", c.Store, "postgres:// URL of the database to serve instead of a vault (CARTOGRAPH_STORE)")
 	fs.StringVar(&c.Fanout, "fanout", c.Fanout, "memory or postgres; default postgres with a Postgres store, else memory (CARTOGRAPH_FANOUT)")
 	fs.StringVar(&c.FanoutURL, "fanout-url", c.FanoutURL, "direct postgres:// URL for the fan-out's LISTEN connection; default the store URL (CARTOGRAPH_FANOUT_URL)")
+	fs.StringVar(&c.MetricsAddr, "metrics-addr", c.MetricsAddr, "address to serve Prometheus /metrics on; empty for none (CARTOGRAPH_METRICS_ADDR)")
 	fs.DurationVar(&c.SyncPing, "sync-ping", c.SyncPing, "ping interval for idle sync sockets; 0 for none (CARTOGRAPH_SYNC_PING)")
 	fs.IntVar(&c.DocCache, "doc-cache", c.DocCache, "shared documents kept in memory per replica (CARTOGRAPH_DOC_CACHE)")
 	fs.DurationVar(&c.DrainDelay, "drain-delay", c.DrainDelay, "time to keep serving with /readyz at 503 after SIGTERM (CARTOGRAPH_DRAIN_DELAY)")

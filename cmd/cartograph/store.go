@@ -44,7 +44,9 @@ type composition struct {
 	Docs          store.DocStore
 	Fanout        fanout.Bus
 	FanoutAdapter string // "memory" or "postgres", for the log
-	Close         func() error
+	// Counted is Fanout with its publishes counted, for the metrics.
+	Counted *countedBus
+	Close   func() error
 }
 
 // storeOptions say what to open. Target is a vault directory, a SQLite
@@ -117,14 +119,15 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 			}
 		}
 		docs := postgres.NewDocStore(pool)
+		counted := &countedBus{Bus: bus}
 		e, err := engine.New(postgres.NewManifestStore(pool), postgres.NewOperationalStore(pool),
-			append(shared(docs, bus, o.DocCache), engine.WithCodec(c), engine.WithBundles(postgres.NewBundleStore(pool)))...)
+			append(shared(docs, counted, o.DocCache), engine.WithCodec(c), engine.WithBundles(postgres.NewBundleStore(pool)))...)
 		if err != nil {
 			bus.Close()
 			pool.Close()
 			return nil, fmt.Errorf("build engine: %w", err)
 		}
-		return &composition{Engine: e, Docs: docs, Fanout: bus, FanoutAdapter: fanoutName, Close: func() error {
+		return &composition{Engine: e, Docs: docs, Fanout: counted, Counted: counted, FanoutAdapter: fanoutName, Close: func() error {
 			err := bus.Close()
 			pool.Close()
 			return err
@@ -138,7 +141,8 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 			return nil, fmt.Errorf("open vault: %w", err)
 		}
 		bus := fanoutmemory.New()
-		e, err := engine.New(v, v.Index().Operational(), append(shared(v.Index().Docs(), bus, o.DocCache), engine.WithCodec(c))...)
+		counted := &countedBus{Bus: bus}
+		e, err := engine.New(v, v.Index().Operational(), append(shared(v.Index().Docs(), counted, o.DocCache), engine.WithCodec(c))...)
 		if err != nil {
 			bus.Close()
 			v.Close()
@@ -151,7 +155,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 			v.Close()
 			return nil, fmt.Errorf("reindex: %w", err)
 		}
-		return &composition{Engine: e, Docs: v.Index().Docs(), Fanout: bus, FanoutAdapter: fanoutName, Close: func() error {
+		return &composition{Engine: e, Docs: v.Index().Docs(), Fanout: counted, Counted: counted, FanoutAdapter: fanoutName, Close: func() error {
 			bus.Close()
 			return v.Close()
 		}}, nil
@@ -163,13 +167,14 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 	}
 	bus := fanoutmemory.New()
 	docs := sqlite.NewDocStore(db)
-	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(shared(docs, bus, o.DocCache), engine.WithCodec(c))...)
+	counted := &countedBus{Bus: bus}
+	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(shared(docs, counted, o.DocCache), engine.WithCodec(c))...)
 	if err != nil {
 		bus.Close()
 		db.Close()
 		return nil, fmt.Errorf("build engine: %w", err)
 	}
-	return &composition{Engine: e, Docs: docs, Fanout: bus, FanoutAdapter: fanoutName, Close: func() error {
+	return &composition{Engine: e, Docs: docs, Fanout: counted, Counted: counted, FanoutAdapter: fanoutName, Close: func() error {
 		bus.Close()
 		return db.Close()
 	}}, nil
