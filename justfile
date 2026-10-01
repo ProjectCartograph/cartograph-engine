@@ -30,7 +30,7 @@ test: embed
 # server from the flake: a fresh cluster in a temporary directory,
 # reached over a UNIX socket with trust authentication, stopped and
 # removed however the tests end. No Docker, no port.
-test-postgres: embed
+test-postgres *args="./...": embed
     #!{{toolchain}} bash
     set -euo pipefail
     dir=$(mktemp -d /tmp/cartograph-pg.XXXXXX)
@@ -40,7 +40,7 @@ test-postgres: embed
       -o "-k $dir -c listen_addresses= -c fsync=off -c synchronous_commit=off -c full_page_writes=off" \
       start >/dev/null || { cat "$dir/server.log"; exit 1; }
     export CARTOGRAPH_TEST_POSTGRES="postgres://cartograph@/postgres?host=$dir"
-    go test -count=1 ./...
+    go test -count=1 {{args}}
 
 # What CI runs, in this order; green here is green there
 ci: generate drift vet fmt-check lint arch test words clean-tree compat build
