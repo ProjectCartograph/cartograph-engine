@@ -440,11 +440,20 @@ func testReadersCannotWrite(t *testing.T, ports backend) {
 	if _, err := p.doc.Reconcile(j, replicaEngines[0].Shape("Team"), crdt.Change{}); err != nil {
 		t.Fatal(err)
 	}
+	// The reader's change may not ride its first message: until the two
+	// sync states agree on what each has, a message carries only heads.
+	// Keep answering the server's sync messages until it refuses.
 	p.offer()
 	for {
 		m := p.read()
 		if m.Type == "error" {
 			break
+		}
+		if m.Type == "sync" {
+			if err := p.doc.ReceiveSyncMessage(p.st, m.Data); err != nil {
+				t.Fatal(err)
+			}
+			p.offer()
 		}
 	}
 	text, _, _ := replicaEngines[0].GetWorking(ctx, "Team", "field-team")
