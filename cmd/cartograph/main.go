@@ -9,6 +9,10 @@ import (
 	"os"
 )
 
+// version is set at build time (-ldflags "-X main.version=..."): the
+// justfile and the flake both pass VERSION. A plain `go build` says dev.
+var version = "dev"
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -49,6 +53,9 @@ func main() {
 		err = runExcluded(os.Args[2:])
 	case "ready":
 		err = runReady(os.Args[2:])
+	case "-v", "--version", "version":
+		fmt.Println("cartograph", version)
+		return
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -87,5 +94,6 @@ Usage:
   cartograph recover <Kind/id> <vault-dir> --reason "..."
   cartograph unapplied <vault-dir>
   cartograph excluded <vault-dir>
+  cartograph version
 `)
 }

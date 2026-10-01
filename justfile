@@ -109,7 +109,7 @@ build: embed
 
 # The binary, for this machine, into bin/
 bin: embed
-    mkdir -p bin && go build -trimpath -ldflags="-s -w" -o bin/cartograph ./cmd/cartograph
+    mkdir -p bin && go build -trimpath -ldflags="-s -w -X main.version={{version}}" -o bin/cartograph ./cmd/cartograph
 
 # Release binaries for both architectures (pure Go, static)
 release: embed
