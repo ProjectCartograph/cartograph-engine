@@ -70,7 +70,7 @@ func runServe(args []string) error {
 	if cfg.Store != "" {
 		target = cfg.Store
 	}
-	comp, err := compose(ctx, storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout, FanoutURL: cfg.FanoutURL})
+	comp, err := compose(ctx, storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout, FanoutURL: cfg.FanoutURL, DocCache: cfg.DocCache})
 	if err != nil {
 		return err
 	}

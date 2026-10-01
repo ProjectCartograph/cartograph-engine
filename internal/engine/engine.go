@@ -31,6 +31,7 @@ type Engine struct {
 	docs      store.DocStore    // where shared drafts are kept
 	fan       fanout.Bus        // hints between replicas (docs/adr/0008)
 	shared    *Shared           // built when crdt, docs and fan are all set
+	docCache  int               // the shared-document cache bound; 0 means the default
 	schemas   *schemaSet
 	refRules  map[string][]refRule
 }

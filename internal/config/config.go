@@ -48,6 +48,12 @@ type Config struct {
 	// CARTOGRAPH_FANOUT_URL, default empty: the Store URL.
 	FanoutURL string
 
+	// DocCache bounds how many shared documents a replica keeps in
+	// memory; the least recently used are dropped first, and a dropped
+	// one is loaded again from the store when next needed.
+	// CARTOGRAPH_DOC_CACHE, default 1000.
+	DocCache int
+
 	// Watch reloads manifests when their files change on disk.
 	// CARTOGRAPH_WATCH, default true.
 	Watch bool
@@ -114,6 +120,7 @@ func Defaults() Config {
 		LogFormat:       "text",
 		LogLevel:        "info",
 		ShutdownTimeout: 10 * time.Second,
+		DocCache:        1000,
 		Auth:            "none",
 		AuthProxyHeader: "X-Forwarded-User",
 		Authz:           "allow",
@@ -139,6 +146,13 @@ func FromEnv(getenv Getenv) (Config, error) {
 	}
 	if v := getenv("CARTOGRAPH_FANOUT_URL"); v != "" {
 		c.FanoutURL = v
+	}
+	if v := getenv("CARTOGRAPH_DOC_CACHE"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return c, fmt.Errorf("CARTOGRAPH_DOC_CACHE: %w", err)
+		}
+		c.DocCache = n
 	}
 	if v := getenv("CARTOGRAPH_WATCH"); v != "" {
 		b, err := strconv.ParseBool(v)
@@ -196,6 +210,7 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.Store, "store", c.Store, "postgres:// URL of the database to serve instead of a vault (CARTOGRAPH_STORE)")
 	fs.StringVar(&c.Fanout, "fanout", c.Fanout, "memory or postgres; default postgres with a Postgres store, else memory (CARTOGRAPH_FANOUT)")
 	fs.StringVar(&c.FanoutURL, "fanout-url", c.FanoutURL, "direct postgres:// URL for the fan-out's LISTEN connection; default the store URL (CARTOGRAPH_FANOUT_URL)")
+	fs.IntVar(&c.DocCache, "doc-cache", c.DocCache, "shared documents kept in memory per replica (CARTOGRAPH_DOC_CACHE)")
 	fs.BoolVar(&c.Watch, "watch", c.Watch, "reload manifests when their files change (CARTOGRAPH_WATCH)")
 	fs.StringVar(&c.Chromium, "chromium", c.Chromium, "browser to print PDFs with (CARTOGRAPH_CHROMIUM)")
 	fs.StringVar(&c.LogFormat, "log-format", c.LogFormat, "text or json (CARTOGRAPH_LOG_FORMAT)")
@@ -265,6 +280,9 @@ func (c Config) Validate() error {
 	}
 	if c.ShutdownTimeout < 0 {
 		return fmt.Errorf("shutdown timeout must not be negative")
+	}
+	if c.DocCache < 1 {
+		return fmt.Errorf("doc cache %d: want at least 1", c.DocCache)
 	}
 	return nil
 }

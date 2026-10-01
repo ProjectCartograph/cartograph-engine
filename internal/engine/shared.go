@@ -76,6 +76,10 @@ type Shared struct {
 
 	mu   sync.Mutex
 	open map[string]*sharedDoc
+	// maxOpen bounds the cache; tick orders entries by last use, so the
+	// least recently used is dropped first.
+	maxOpen int
+	tick    uint64
 
 	stored, compactions, storeErrors atomic.Int64
 }
@@ -86,7 +90,16 @@ type sharedDoc struct {
 	doc      crdt.Doc
 	seq      int64 // the last chunk folded in
 	chunks   int   // chunks stored since the snapshot this replica last saw
+	used     uint64
 }
+
+// defaultDocCache is how many documents a replica keeps when not told.
+const defaultDocCache = 1000
+
+// WithDocCache bounds how many shared documents a replica keeps in
+// memory. A dropped document costs a load from the store when next
+// used, never an edit: the store holds every change.
+func WithDocCache(n int) Option { return func(e *Engine) { e.docCache = n } }
 
 // SharedStats are counters for monitoring.
 type SharedStats struct {
@@ -112,7 +125,11 @@ func (e *Engine) initShared() {
 	if e.crdt == nil || e.docs == nil || e.fan == nil {
 		return
 	}
-	e.shared = &Shared{e: e, crdt: e.crdt, docs: e.docs, fan: e.fan, replica: randomHex(8), open: map[string]*sharedDoc{}}
+	limit := e.docCache
+	if limit <= 0 {
+		limit = defaultDocCache
+	}
+	e.shared = &Shared{e: e, crdt: e.crdt, docs: e.docs, fan: e.fan, replica: randomHex(8), open: map[string]*sharedDoc{}, maxOpen: limit}
 }
 
 // Replica is this process's id on the fan-out, so it can tell its own
@@ -210,7 +227,10 @@ func (s *Shared) load(ctx context.Context, docID string) (*sharedDoc, error) {
 	if !ok {
 		sd = &sharedDoc{}
 		s.open[docID] = sd
+		s.evictLocked(sd)
 	}
+	s.tick++
+	sd.used = s.tick
 	s.mu.Unlock()
 	sd.mu.Lock()
 	if err := s.refresh(ctx, docID, sd); err != nil {
@@ -435,6 +455,31 @@ func (s *Shared) materialise(ctx context.Context, sd *sharedDoc) error {
 		return err
 	}
 	return s.e.PutWorking(ctx, sd.kind, sd.id, text)
+}
+
+// evictLocked drops least recently used documents while the cache is over
+// its bound, skipping any in use right now (and keep, just added). The
+// caller holds s.mu. A request already holding a dropped entry finds its
+// document gone and loads it again from the store.
+func (s *Shared) evictLocked(keep *sharedDoc) {
+	for len(s.open) > s.maxOpen {
+		var oldestID string
+		var oldest *sharedDoc
+		for id, sd := range s.open {
+			if sd == keep {
+				continue
+			}
+			if oldest == nil || sd.used < oldest.used {
+				oldestID, oldest = id, sd
+			}
+		}
+		if oldest == nil || !oldest.mu.TryLock() {
+			return // everything left is in use; the bound is a target, not a wall
+		}
+		s.discard(oldest)
+		oldest.mu.Unlock()
+		delete(s.open, oldestID)
+	}
 }
 
 // discard drops a cached document's state; the caller holds sd.mu.

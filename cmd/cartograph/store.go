@@ -58,6 +58,9 @@ type storeOptions struct {
 	// FanoutURL, when set, is where the Postgres fan-out listens: a
 	// direct connection when Target goes through a transaction pooler.
 	FanoutURL string
+	// DocCache bounds the shared documents kept in memory; 0 is the
+	// engine's default.
+	DocCache int
 }
 
 // openEngine composes an engine for a one-shot command, which needs no
@@ -115,7 +118,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		}
 		docs := postgres.NewDocStore(pool)
 		e, err := engine.New(postgres.NewManifestStore(pool), postgres.NewOperationalStore(pool),
-			append(shared(docs, bus), engine.WithCodec(c), engine.WithBundles(postgres.NewBundleStore(pool)))...)
+			append(shared(docs, bus, o.DocCache), engine.WithCodec(c), engine.WithBundles(postgres.NewBundleStore(pool)))...)
 		if err != nil {
 			bus.Close()
 			pool.Close()
@@ -135,7 +138,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 			return nil, fmt.Errorf("open vault: %w", err)
 		}
 		bus := fanoutmemory.New()
-		e, err := engine.New(v, v.Index().Operational(), append(shared(v.Index().Docs(), bus), engine.WithCodec(c))...)
+		e, err := engine.New(v, v.Index().Operational(), append(shared(v.Index().Docs(), bus, o.DocCache), engine.WithCodec(c))...)
 		if err != nil {
 			bus.Close()
 			v.Close()
@@ -160,7 +163,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 	}
 	bus := fanoutmemory.New()
 	docs := sqlite.NewDocStore(db)
-	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(shared(docs, bus), engine.WithCodec(c))...)
+	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(shared(docs, bus, o.DocCache), engine.WithCodec(c))...)
 	if err != nil {
 		bus.Close()
 		db.Close()
@@ -180,11 +183,11 @@ var crdtEngine = sync.OnceValues(func() (*automerge.Engine, error) { return auto
 // the Automerge adapter, the document store and the fan-out. A process
 // whose CRDT runtime cannot start serves everything but shared drafts,
 // and says why.
-func shared(docs store.DocStore, bus fanout.Bus) []engine.Option {
+func shared(docs store.DocStore, bus fanout.Bus, cache int) []engine.Option {
 	am, err := crdtEngine()
 	if err != nil {
 		slog.Warn("shared drafts are off: the CRDT runtime did not start", "err", err)
 		return nil
 	}
-	return []engine.Option{engine.WithCRDT(am), engine.WithDocStore(docs), engine.WithFanout(bus)}
+	return []engine.Option{engine.WithCRDT(am), engine.WithDocStore(docs), engine.WithFanout(bus), engine.WithDocCache(cache)}
 }
