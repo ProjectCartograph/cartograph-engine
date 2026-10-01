@@ -1,7 +1,7 @@
 // Package vault implements store.ManifestStore over a directory tree: files
 // are the source of truth. On open, it reads every <Kind>/*.yaml file,
 // compares each file's SHA-256 against the hash recorded in the index
-// (.cartograph/index.sqlite), and appends new versions for any file that is new
+// (a store.VaultIndex the caller opens under .cartograph/), and appends new versions for any file that is new
 // or changed, so ListVersions and diff keep working. An fsnotify watcher
 // (when enabled) debounces file changes 200 ms and reloads them into memory
 // and the index. Deleting .cartograph/ and reopening rebuilds an equivalent index
@@ -11,6 +11,7 @@ package vault
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,7 +22,6 @@ import (
 
 	"github.com/ProjectCartograph/cartograph-engine/internal/store"
 	"github.com/ProjectCartograph/cartograph-engine/internal/store/manifestmeta"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
 	"github.com/fsnotify/fsnotify"
 	"github.com/google/uuid"
 )
@@ -29,8 +29,8 @@ import (
 const timeLayout = time.RFC3339Nano
 
 // ManifestStore is a file-based vault adapter. Files in <vault>/<Kind>/<id>.yaml
-// are the source of truth. An embedded SQLite index (.cartograph/index.sqlite) reuses
-// sqlite.NewManifestStore for versions, references and summaries.
+// are the source of truth. The index beside them (a store.VaultIndex under
+// .cartograph/) keeps versions, references and summaries.
 type ManifestStore struct {
 	vaultDir           string
 	extension          string // the manifest files' extension, from the codec: ".yaml"
@@ -61,9 +61,13 @@ type Options struct {
 	// codec's; ".yaml" when empty. vault.yaml itself is always YAML: it
 	// is the adapter's own file, not a manifest.
 	Extension    string
-	Debounce     time.Duration    // Watcher debounce interval; 0 means use default 200ms
-	FailurePoint FailurePoint     // TEST ONLY: inject a failure at this point in applyUnit
-	Index        store.VaultIndex // nil opens .cartograph/index.sqlite with the SQLite adapter (default)
+	Debounce     time.Duration // Watcher debounce interval; 0 means use default 200ms
+	FailurePoint FailurePoint  // TEST ONLY: inject a failure at this point in applyUnit
+	// OpenIndex opens the index the vault keeps beside its files, given
+	// the directory set aside for it (.cartograph). Required: which index
+	// adapter a vault runs on is the composition root's choice, never
+	// the vault's.
+	OpenIndex func(ctx context.Context, dir string) (store.VaultIndex, error)
 }
 
 // SetFailurePoint sets the failure point for testing purposes. TEST ONLY.
@@ -71,12 +75,12 @@ func (m *ManifestStore) SetFailurePoint(fp FailurePoint) {
 	m.failurePoint = fp
 }
 
-// New opens a vault directory and initializes its SQLite index. On open,
+// New opens a vault directory and the index opts.OpenIndex opens. On open,
 // it scans every <Kind>/*.yaml file and records new or changed versions
 // in the index. If opts.Watch is true, a debounced watcher tracks
 // further file changes and reloads them into memory and the index (debounce
 // interval defaults to 200 ms, or opts.Debounce if set). Call
-// Close() to stop the watcher and close the database.
+// Close() to stop the watcher and close the index.
 func New(ctx context.Context, vaultDir string, opts Options) (*ManifestStore, error) {
 	if err := os.MkdirAll(vaultDir, 0755); err != nil {
 		return nil, fmt.Errorf("create vault directory: %w", err)
@@ -88,16 +92,14 @@ func New(ctx context.Context, vaultDir string, opts Options) (*ManifestStore, er
 		return nil, fmt.Errorf("create .cartograph directory: %w", err)
 	}
 
-	// The index is a port (store.VaultIndex): a caller may supply one
-	// (tests, or someday a non-SQLite adapter); nil means the default,
-	// .cartograph/index.sqlite opened and migrated by the SQLite adapter.
-	index := opts.Index
-	if index == nil {
-		idx, err := sqlite.OpenVaultIndex(ctx, filepath.Join(cartographDir, "index.sqlite"))
-		if err != nil {
-			return nil, fmt.Errorf("open index: %w", err)
-		}
-		index = idx
+	// The index is a port (store.VaultIndex); the caller says which
+	// adapter opens it.
+	if opts.OpenIndex == nil {
+		return nil, errors.New("vault: an index is required (Options.OpenIndex)")
+	}
+	index, err := opts.OpenIndex(ctx, cartographDir)
+	if err != nil {
+		return nil, fmt.Errorf("open index: %w", err)
 	}
 
 	ext := opts.Extension

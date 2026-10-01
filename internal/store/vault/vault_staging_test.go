@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
 	"github.com/ProjectCartograph/cartograph-engine/internal/store/vault"
 )
 
@@ -17,7 +18,7 @@ func stagedPath(dir, kind, id string) string {
 
 func openVault(t *testing.T, dir string) *vault.ManifestStore {
 	t.Helper()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +119,7 @@ func TestDraftSurvivesRestart(t *testing.T) {
 	ctx := context.Background()
 	draft := []byte("metadata:\n  id: g3\n  name: Unfinished\n")
 	{
-		v, err := vault.New(ctx, dir, vault.Options{Watch: false})
+		v, err := vault.New(ctx, dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -150,7 +151,7 @@ func TestDraftWinsOverTheSavedFileAfterRestart(t *testing.T) {
 	saved := []byte("metadata:\n  id: g4\n  name: Saved\n")
 	draft := []byte("metadata:\n  id: g4\n  name: Draft\n")
 	{
-		v, err := vault.New(ctx, dir, vault.Options{Watch: false})
+		v, err := vault.New(ctx, dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 		if err != nil {
 			t.Fatal(err)
 		}

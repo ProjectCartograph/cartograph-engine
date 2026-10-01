@@ -42,7 +42,7 @@ func openEngine(ctx context.Context, dbOrVaultPath string, watch bool, codecName
 	isDir := statErr == nil && info.IsDir()
 
 	if isDir {
-		v, err := vault.New(ctx, dbOrVaultPath, vault.Options{Watch: watch, Extension: c.Extension()})
+		v, err := vault.New(ctx, dbOrVaultPath, vault.Options{Watch: watch, Extension: c.Extension(), OpenIndex: sqlite.OpenVaultIndexIn})
 		if err != nil {
 			return nil, nil, fmt.Errorf("open vault: %w", err)
 		}
@@ -52,7 +52,8 @@ func openEngine(ctx context.Context, dbOrVaultPath string, watch bool, codecName
 			return nil, nil, fmt.Errorf("build engine: %w", err)
 		}
 		// The reference index is rebuilt whenever the state is loaded,
-		// not only on writes (ISSUES_LOG 30).
+		// not only on writes: files edited while nothing was running
+		// carry references the index has never seen.
 		if err := e.Reindex(ctx); err != nil {
 			v.Close()
 			return nil, nil, fmt.Errorf("reindex: %w", err)

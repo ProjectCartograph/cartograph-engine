@@ -10,13 +10,14 @@ import (
 
 	"github.com/ProjectCartograph/cartograph-engine/internal/store"
 	"github.com/ProjectCartograph/cartograph-engine/internal/store/conformance"
+	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
 	"github.com/ProjectCartograph/cartograph-engine/internal/store/vault"
 )
 
 func TestManifestStoreConformance(t *testing.T) {
 	conformance.RunManifestStore(t, func(t *testing.T) store.ManifestStore {
 		dir := t.TempDir()
-		v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+		v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -28,7 +29,7 @@ func TestManifestStoreConformance(t *testing.T) {
 // TestWatchReloads tests that files written externally are reloaded into the cache.
 func TestWatchReloads(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: true, Debounce: 20 * time.Millisecond})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: true, Debounce: 20 * time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +128,7 @@ func TestWatchReloads(t *testing.T) {
 // TestConflictError tests that PutVersion returns ConflictError when a file changes on disk.
 func TestConflictError(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +191,7 @@ func TestConflictError(t *testing.T) {
 // TestIndexRebuild tests that deleting .cartograph/ and reopening rebuilds the index.
 func TestIndexRebuild(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +227,7 @@ func TestIndexRebuild(t *testing.T) {
 	}
 
 	// Reopen the vault
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +263,7 @@ func TestIndexRebuild(t *testing.T) {
 // when a file is edited externally (Watch: false, external edit detection via hash).
 func TestTransactionalConflictWithoutWatch(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,7 +342,7 @@ func TestTransactionalConflictWithoutWatch(t *testing.T) {
 // a new transactional commit succeeds with the next version number.
 func TestTransactionalSuccessWithWatch(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: true, Debounce: 20 * time.Millisecond})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: true, Debounce: 20 * time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,7 +443,7 @@ func TestTransactionalSuccessWithWatch(t *testing.T) {
 // but are listed as unapplied.
 func TestStrayFilesExcludedFromLiveState(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -462,7 +463,7 @@ func TestStrayFilesExcludedFromLiveState(t *testing.T) {
 
 	// Reopen the vault (vault.yaml will be generated without the stray)
 	v.Close()
-	v, err = vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err = vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -505,7 +506,7 @@ func TestStrayFilesExcludedFromLiveState(t *testing.T) {
 // decision to include something.
 func TestDraftStaysOutOfTheVault(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -586,7 +587,7 @@ func TestDraftStaysOutOfTheVault(t *testing.T) {
 // definition.
 func TestWorkingSaveRestartStillLive(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -612,7 +613,7 @@ func TestWorkingSaveRestartStillLive(t *testing.T) {
 	v.Close()
 
 	// Reopen the vault
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -637,7 +638,7 @@ func TestWorkingSaveRestartStillLive(t *testing.T) {
 // TestWorkingSaveSnapshot tests that snapshots work correctly after a working save.
 func TestWorkingSaveSnapshot(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -723,7 +724,7 @@ func TestWorkingSaveSnapshot(t *testing.T) {
 // TestWorkingSaveOnExcluded tests that PutWorking rejects an excluded id with ConflictError (409).
 func TestWorkingSaveOnExcluded(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -771,7 +772,7 @@ func TestWorkingSaveOnExcluded(t *testing.T) {
 // TestVersionNumberFromLog tests that version numbers come from the version log, not the cache.
 func TestVersionNumberFromLog(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -809,7 +810,7 @@ func TestVersionNumberFromLog(t *testing.T) {
 
 	// Close and reopen to clear the cache
 	v.Close()
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -847,7 +848,7 @@ func TestVersionNumberFromLog(t *testing.T) {
 // TestStaleIndexVersionMismatch tests that a version-number mismatch is logged and returned.
 func TestStaleIndexVersionMismatch(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -870,7 +871,7 @@ func TestStaleIndexVersionMismatch(t *testing.T) {
 
 	// Close and reopen to clear the cache
 	v.Close()
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -903,7 +904,7 @@ func TestStaleIndexVersionMismatch(t *testing.T) {
 // TestRepeatedSnapshots tests that three snapshots in a row produce numbers 1, 2, 3.
 func TestRepeatedSnapshots(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -993,7 +994,7 @@ func TestRepeatedSnapshots(t *testing.T) {
 // TestWorkingSaveBetweenSnapshots tests that a working save between snapshots does not change numbering.
 func TestWorkingSaveBetweenSnapshots(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1105,7 +1106,7 @@ func TestWorkingSaveBetweenSnapshots(t *testing.T) {
 // transactional WithinTransaction is added to vault.yaml (the defect fix).
 func TestTransactionalCommitAppliedToVault(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1189,7 +1190,7 @@ func TestTransactionalCommitSurvivesRestart(t *testing.T) {
 
 	// First instance: create via transactional commit
 	{
-		v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+		v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1226,7 +1227,7 @@ func TestTransactionalCommitSurvivesRestart(t *testing.T) {
 
 	// Second instance: reopen and verify goal-one is still there
 	{
-		v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+		v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1250,7 +1251,7 @@ func TestTransactionalCommitSurvivesRestart(t *testing.T) {
 // and then a working save elsewhere doesn't cause the goal to disappear (the exact defect scenario).
 func TestTransactionalRenameNotLost(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1333,7 +1334,7 @@ func TestTransactionalRenameNotLost(t *testing.T) {
 // TestApplyJournalReplayBasic tests that unapplied units are replayed on open.
 func TestApplyJournalReplayBasic(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1360,7 +1361,7 @@ func TestApplyJournalReplayBasic(t *testing.T) {
 	v.Close()
 
 	// Reopen the vault - it should replay any unapplied units before rehydration
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1382,7 +1383,7 @@ func TestApplyJournalReplayBasic(t *testing.T) {
 // TestApplyJournalReplayIdempotent tests that replay skips files with matching sha256.
 func TestApplyJournalReplayIdempotent(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1410,7 +1411,7 @@ func TestApplyJournalReplayIdempotent(t *testing.T) {
 	v.Close()
 	time.Sleep(10 * time.Millisecond) // Ensure time passes
 
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1438,7 +1439,7 @@ func TestApplyJournalReplayIdempotent(t *testing.T) {
 // TestApplyJournalReplayWithMultipleUnits tests replay of multiple units.
 func TestApplyJournalReplayWithMultipleUnits(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1466,7 +1467,7 @@ func TestApplyJournalReplayWithMultipleUnits(t *testing.T) {
 	// Close and reopen
 	v.Close()
 
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1499,7 +1500,7 @@ func TestApplyJournalReplayWithMultipleUnits(t *testing.T) {
 // TestApplyJournalReplayConvergence tests that replay converges files and index after a crash.
 func TestApplyJournalReplayConvergence(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1526,7 +1527,7 @@ func TestApplyJournalReplayConvergence(t *testing.T) {
 	// Close and reopen
 	v.Close()
 
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1569,7 +1570,7 @@ func TestApplyJournalReplayConvergence(t *testing.T) {
 // TestApplyJournalExcludeAndRecover tests that exclude and recover use applyUnit.
 func TestApplyJournalExcludeAndRecover(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1617,7 +1618,7 @@ func TestApplyJournalExcludeAndRecover(t *testing.T) {
 	// Close and reopen
 	v.Close()
 
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1672,7 +1673,7 @@ func TestApplyJournalExcludeAndRecover(t *testing.T) {
 // TestApplyJournalFailureAfterJournal tests convergence when failure occurs after journal commit.
 func TestApplyJournalFailureAfterJournal(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false, FailurePoint: vault.FailurePointNone})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false, FailurePoint: vault.FailurePointNone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1698,7 +1699,7 @@ func TestApplyJournalFailureAfterJournal(t *testing.T) {
 	// Close and reopen without failure injection
 	v.Close()
 
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false, FailurePoint: vault.FailurePointNone})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false, FailurePoint: vault.FailurePointNone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1726,7 +1727,7 @@ func TestApplyJournalFailureAfterJournal(t *testing.T) {
 // TestApplyJournalFailureAfterFirstFile tests convergence when failure occurs after first file.
 func TestApplyJournalFailureAfterFirstFile(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false, FailurePoint: vault.FailurePointNone})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false, FailurePoint: vault.FailurePointNone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1764,7 +1765,7 @@ func TestApplyJournalFailureAfterFirstFile(t *testing.T) {
 	// Close and reopen
 	v.Close()
 
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false, FailurePoint: vault.FailurePointNone})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false, FailurePoint: vault.FailurePointNone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1792,7 +1793,7 @@ func TestApplyJournalFailureAfterFirstFile(t *testing.T) {
 // TestApplyJournalFailureAfterLastFile tests convergence when failure occurs after vault.yaml write.
 func TestApplyJournalFailureAfterLastFile(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false, FailurePoint: vault.FailurePointNone})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false, FailurePoint: vault.FailurePointNone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1819,7 +1820,7 @@ func TestApplyJournalFailureAfterLastFile(t *testing.T) {
 	// Close and reopen
 	v.Close()
 
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false, FailurePoint: vault.FailurePointNone})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false, FailurePoint: vault.FailurePointNone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1841,7 +1842,7 @@ func TestApplyJournalFailureAfterLastFile(t *testing.T) {
 // TestApplyJournalReplayIdempotentMtime tests that replayed files with matching sha256 keep mtime.
 func TestApplyJournalReplayIdempotentMtime(t *testing.T) {
 	dir := t.TempDir()
-	v, err := vault.New(context.Background(), dir, vault.Options{Watch: false, FailurePoint: vault.FailurePointNone})
+	v, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false, FailurePoint: vault.FailurePointNone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1869,7 +1870,7 @@ func TestApplyJournalReplayIdempotentMtime(t *testing.T) {
 	v.Close()
 	time.Sleep(20 * time.Millisecond) // Ensure time passes
 
-	v2, err := vault.New(context.Background(), dir, vault.Options{Watch: false, FailurePoint: vault.FailurePointNone})
+	v2, err := vault.New(context.Background(), dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false, FailurePoint: vault.FailurePointNone})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -88,7 +88,8 @@ The vault keeps versions, references, summaries, the journal, file
 hashes and a little metadata in a `store.VaultIndex`. SQLite implements
 it. To put that in Postgres, implement the interface in
 `store/postgres`, pass `conformance.RunVaultIndex`, and construct the
-vault with `vault.Options{Index: yourIndex}`. The files stay where they
+vault with `vault.Options{OpenIndex: yourOpener}` in
+`cmd/cartograph/store.go`. The files stay where they
 are; only the cache moves. This is the step that lets several replicas
 share one index.
 

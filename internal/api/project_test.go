@@ -12,6 +12,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/internal/api"
 	apigen "github.com/ProjectCartograph/cartograph-engine/internal/api/gen"
 	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
 	"github.com/ProjectCartograph/cartograph-engine/internal/store/vault"
 )
 
@@ -180,7 +181,7 @@ func newVaultTestServer(t *testing.T) (*httptest.Server, string) {
 	t.Cleanup(func() { os.RemoveAll(tmpDir) })
 
 	ctx := context.Background()
-	ms, err := vault.New(ctx, tmpDir, vault.Options{Watch: false})
+	ms, err := vault.New(ctx, tmpDir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatalf("create vault: %v", err)
 	}

@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"path/filepath"
 
 	"github.com/ProjectCartograph/cartograph-engine/internal/store"
 )
@@ -30,6 +31,14 @@ func NewVaultIndex(db *sql.DB) *VaultIndex {
 		journal:       NewApplyJournal(db),
 		ops:           NewOperationalStore(db),
 	}
+}
+
+// OpenVaultIndexIn opens the index a vault keeps in dir, as
+// dir/index.sqlite. Its type is vault.Options.OpenIndex, so the
+// composition root hands it to a vault without either adapter importing
+// the other.
+func OpenVaultIndexIn(ctx context.Context, dir string) (store.VaultIndex, error) {
+	return OpenVaultIndex(ctx, filepath.Join(dir, "index.sqlite"))
 }
 
 // OpenVaultIndex opens (creating if needed) a SQLite database at path,

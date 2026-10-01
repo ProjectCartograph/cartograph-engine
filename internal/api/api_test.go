@@ -20,6 +20,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/internal/store"
 	"github.com/ProjectCartograph/cartograph-engine/internal/store/memory"
+	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
 	"github.com/ProjectCartograph/cartograph-engine/internal/store/vault"
 )
 
@@ -28,7 +29,7 @@ func testContext() context.Context {
 }
 
 func openVault(ctx context.Context, dir string) (*vault.ManifestStore, error) {
-	return vault.New(ctx, dir, vault.Options{Watch: false})
+	return vault.New(ctx, dir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 }
 
 func newTestServer(t *testing.T) (*httptest.Server, string) {

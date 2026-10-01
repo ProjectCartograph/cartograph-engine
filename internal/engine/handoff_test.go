@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
 	"github.com/ProjectCartograph/cartograph-engine/internal/store/vault"
 )
 
@@ -311,7 +312,7 @@ func engineWithVault(t *testing.T, vaultDir string) (*engine.Engine, func()) {
 	t.Helper()
 
 	ctx := context.Background()
-	ms, err := vault.New(ctx, vaultDir, vault.Options{Watch: false})
+	ms, err := vault.New(ctx, vaultDir, vault.Options{OpenIndex: sqlite.OpenVaultIndexIn, Watch: false})
 	if err != nil {
 		t.Fatalf("create vault: %v", err)
 	}
