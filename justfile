@@ -161,7 +161,7 @@ release: embed
 
 # The container image, from the flake, for this machine's architecture;
 # loads into docker as cartograph:<version> and cartograph:local, the tag
-# compose.yaml runs, so it never names a stale version
+# compose.yaml and compose.ha.yaml run, so they never name a stale version
 image:
     #!{{toolchain}} bash
     set -euo pipefail
@@ -169,6 +169,16 @@ image:
     name=$(docker load < result-image | sed -n 's/^Loaded image: //p')
     docker tag "$name" cartograph:local
     echo "tagged $name as cartograph:local"
+
+# The highly available topology on this machine: Postgres, a one-shot
+# import of the example, two replicas, nginx on :8080 (compose.ha.yaml).
+# Needs `just image` first.
+ha-up:
+    docker compose -f compose.ha.yaml up -d --wait
+
+# Stop the rehearsal and drop its database
+ha-down:
+    docker compose -f compose.ha.yaml down -v
 
 
 # Serve a copy of the example on 127.0.0.1:8080

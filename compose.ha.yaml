@@ -1,0 +1,128 @@
+# A local rehearsal of the highly available topology (docs/DEPLOYMENT.md,
+# "Large-scale, highly available"): one Postgres database, a one-shot
+# import of the example, two stateless replicas with no volume, and nginx
+# in front, round robin, no sticky sessions, WebSocket upgrades passed.
+#
+#   just image   # builds the image from the flake and tags it cartograph:local
+#   just ha-up   # docker compose -f compose.ha.yaml up -d --wait
+#   just ha-down # docker compose -f compose.ha.yaml down -v
+#
+# Open http://localhost:8080. Every response carries X-Upstream, the
+# replica that served it. Stop one replica (docker compose -f
+# compose.ha.yaml stop replica-a) and the other keeps serving.
+#
+# The password is a local placeholder. A real deployment takes the URL
+# from a secret.
+
+x-replica: &replica
+  image: ${CARTOGRAPH_IMAGE:-cartograph:local}
+  environment:
+    CARTOGRAPH_STORE: postgres://cartograph:cartograph@postgres:5432/cartograph?sslmode=disable
+    CARTOGRAPH_LOG_FORMAT: json
+    CARTOGRAPH_METRICS_ADDR: ":9090"
+  depends_on:
+    seed:
+      condition: service_completed_successfully
+  healthcheck:
+    test: ["CMD", "/bin/cartograph", "ready"]
+    interval: 5s
+    timeout: 3s
+    retries: 3
+    start_period: 5s
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: cartograph
+      POSTGRES_PASSWORD: cartograph
+      POSTGRES_DB: cartograph
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cartograph -d cartograph"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Imports the example once, before any replica starts. Running it again
+  # on a seeded database records the same manifests again, with a new
+  # version where something changed.
+  seed:
+    image: ${CARTOGRAPH_IMAGE:-cartograph:local}
+    command:
+      - import
+      - -db
+      - postgres://cartograph:cartograph@postgres:5432/cartograph?sslmode=disable
+      - -reason
+      - seed
+      - /examples
+    volumes:
+      - ./examples/minimal:/examples:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  replica-a: *replica
+  replica-b: *replica
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:8080"
+    configs:
+      - source: nginx
+        target: /etc/nginx/conf.d/default.conf
+    depends_on:
+      replica-a:
+        condition: service_healthy
+      replica-b:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/readyz >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+configs:
+  nginx:
+    content: |
+      map $$http_upgrade $$connection_upgrade {
+        default upgrade;
+        ''      close;
+      }
+
+      # Round robin, the default. No ip_hash, no cookie: any replica
+      # serves any request. A replica that refuses a connection is taken
+      # out for fail_timeout and the request goes to the other. The zone
+      # shares the rotation between nginx's worker processes; without it
+      # each worker starts its own rotation at the first server.
+      upstream cartograph {
+        zone cartograph 64k;
+        server replica-a:8080 max_fails=1 fail_timeout=5s;
+        server replica-b:8080 max_fails=1 fail_timeout=5s;
+      }
+
+      server {
+        listen 8080;
+
+        location / {
+          proxy_pass http://cartograph;
+          proxy_http_version 1.1;
+          proxy_set_header Host $$host;
+          proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $$scheme;
+          # The sync socket: pass the upgrade, and keep an idle socket
+          # open for an hour. The server pings well inside that.
+          proxy_set_header Upgrade $$http_upgrade;
+          proxy_set_header Connection $$connection_upgrade;
+          proxy_read_timeout 1h;
+          proxy_send_timeout 1h;
+          add_header X-Upstream $$upstream_addr always;
+        }
+      }
+
+volumes:
+  postgres-data:

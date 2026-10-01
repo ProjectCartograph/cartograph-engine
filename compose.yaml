@@ -13,6 +13,8 @@
 #   docker run --rm -v cartograph-vault:/vault -v "$PWD/examples/minimal:/src:ro" \
 #       busybox sh -c 'cp -r /src/. /vault/ && chown -R 65532:65532 /vault'
 #   docker compose up -d
+#
+# For several replicas on one Postgres database, see compose.ha.yaml.
 
 services:
   cartograph:
