@@ -121,7 +121,17 @@ compat base="": embed
     scripts/check-compat {{base}}
     # gorelease is not packaged in nixpkgs; the Go toolchain fetches it.
     tag=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
-    if [ -n "$tag" ]; then go run golang.org/x/exp/cmd/gorelease@latest -base="$tag" 2>&1 | tail -n 20; fi
+    if [ -z "$tag" ]; then exit 0; fi
+    major=$(cut -d. -f1 VERSION)
+    base=${tag#v}
+    if [ "${base%%.*}" != "$major" ]; then
+      # A new major has a new module path (/v<major>), so there is no base
+      # for gorelease to compare with; check-compat above has already
+      # required the bump.
+      echo "VERSION $(cat VERSION) is a new major after $tag: no gorelease base"
+      exit 0
+    fi
+    go run golang.org/x/exp/cmd/gorelease@latest -base="$tag" 2>&1 | tail -n 20
 
 # --- build and run --------------------------------------------------------
 
