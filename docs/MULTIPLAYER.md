@@ -1,5 +1,11 @@
 # Multiplayer
 
+> **Superseded in 2.0.0.** This page describes the replicated types in
+> `pkg/merge`, which 1.1.0 deprecates. ADR 0007 replaces them with
+> Automerge in the engine and in every interface, and ADR 0008 makes the
+> engine stateless over Postgres. This page will be rewritten when that
+> ships.
+
 **Design of record: sentences merge character by
 character, transports are adapters. Built: `pkg/merge` (the field map
 and the text sequence, with convergence proofs), `store.OpLog` with the

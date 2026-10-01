@@ -16,6 +16,8 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0004](0004-the-root-chooses-the-vault-index.md) | The composition root chooses the vault's index | Accepted |
 | [0005](0005-render-decodes-through-the-codec.md) | Documents decode through the engine's codec | Accepted |
 | [0006](0006-interfaces-reach-the-engine-through-a-client-port.md) | The web interface reaches the engine through a client port | Accepted |
+| [0007](0007-automerge-is-the-one-crdt.md) | Automerge is the one CRDT | Accepted |
+| [0008](0008-postgres-and-a-fan-out-port.md) | Postgres holds the state; fan-out is a port | Accepted |
 
 ## Writing one
 
