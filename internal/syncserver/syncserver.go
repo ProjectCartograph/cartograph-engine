@@ -131,6 +131,44 @@ func (s *Server) Stats() Stats {
 	return Stats{Connections: len(s.conns), Documents: len(s.rooms), Received: s.received.Load(), Sent: s.sent.Load(), Refused: s.refused.Load()}
 }
 
+// Shutdown closes every connection with "going away", so each peer
+// reconnects at once (through the load balancer, to a replica that is
+// staying) instead of finding out from a dead socket. Nothing is lost:
+// a peer keeps its changes and offers them again on reconnecting.
+func (s *Server) Shutdown() {
+	s.mu.Lock()
+	conns := make([]*conn, 0, len(s.conns))
+	for c := range s.conns {
+		conns = append(conns, c)
+	}
+	s.mu.Unlock()
+	// Each close waits for the peer's half of the closing handshake, so
+	// they run together: a replica with many peers must not spend its
+	// whole grace period closing them one by one. A peer that does not
+	// answer in time is cut off; it reconnects all the same.
+	var wg sync.WaitGroup
+	for _, c := range conns {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = c.ws.Close(websocket.StatusGoingAway, "server restarting")
+		}()
+	}
+	// The close frames go out at once; waiting longer than this for
+	// every peer's reply would only delay the rest of the shutdown, and
+	// the closes finish in the background either way.
+	done := make(chan struct{})
+	go func() { wg.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(closeWait):
+	}
+}
+
+// closeWait bounds how long Shutdown waits for any one peer to finish the
+// closing handshake.
+const closeWait = time.Second
+
 // ServeHTTP upgrades the request and runs one peer until it leaves.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{

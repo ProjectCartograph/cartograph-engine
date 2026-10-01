@@ -60,6 +60,11 @@ type Config struct {
 	// CARTOGRAPH_DOC_CACHE, default 1000.
 	DocCache int
 
+	// DrainDelay is how long, after SIGTERM, the server keeps serving
+	// while /readyz answers 503, so load balancers stop sending it work
+	// before it stops accepting any. CARTOGRAPH_DRAIN_DELAY, default 0.
+	DrainDelay time.Duration
+
 	// Watch reloads manifests when their files change on disk.
 	// CARTOGRAPH_WATCH, default true.
 	Watch bool
@@ -154,12 +159,17 @@ func FromEnv(getenv Getenv) (Config, error) {
 	if v := getenv("CARTOGRAPH_FANOUT_URL"); v != "" {
 		c.FanoutURL = v
 	}
-	if v := getenv("CARTOGRAPH_SYNC_PING"); v != "" {
-		p, err := time.ParseDuration(v)
-		if err != nil {
-			return c, fmt.Errorf("CARTOGRAPH_SYNC_PING: %w", err)
+	for _, d := range []struct {
+		key string
+		to  *time.Duration
+	}{{"CARTOGRAPH_SYNC_PING", &c.SyncPing}, {"CARTOGRAPH_DRAIN_DELAY", &c.DrainDelay}} {
+		if v := getenv(d.key); v != "" {
+			p, err := time.ParseDuration(v)
+			if err != nil {
+				return c, fmt.Errorf("%s: %w", d.key, err)
+			}
+			*d.to = p
 		}
-		c.SyncPing = p
 	}
 	if v := getenv("CARTOGRAPH_DOC_CACHE"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -226,6 +236,7 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.FanoutURL, "fanout-url", c.FanoutURL, "direct postgres:// URL for the fan-out's LISTEN connection; default the store URL (CARTOGRAPH_FANOUT_URL)")
 	fs.DurationVar(&c.SyncPing, "sync-ping", c.SyncPing, "ping interval for idle sync sockets; 0 for none (CARTOGRAPH_SYNC_PING)")
 	fs.IntVar(&c.DocCache, "doc-cache", c.DocCache, "shared documents kept in memory per replica (CARTOGRAPH_DOC_CACHE)")
+	fs.DurationVar(&c.DrainDelay, "drain-delay", c.DrainDelay, "time to keep serving with /readyz at 503 after SIGTERM (CARTOGRAPH_DRAIN_DELAY)")
 	fs.BoolVar(&c.Watch, "watch", c.Watch, "reload manifests when their files change (CARTOGRAPH_WATCH)")
 	fs.StringVar(&c.Chromium, "chromium", c.Chromium, "browser to print PDFs with (CARTOGRAPH_CHROMIUM)")
 	fs.StringVar(&c.LogFormat, "log-format", c.LogFormat, "text or json (CARTOGRAPH_LOG_FORMAT)")
@@ -301,6 +312,9 @@ func (c Config) Validate() error {
 	}
 	if c.DocCache < 1 {
 		return fmt.Errorf("doc cache %d: want at least 1", c.DocCache)
+	}
+	if c.DrainDelay < 0 {
+		return fmt.Errorf("drain delay must not be negative")
 	}
 	return nil
 }

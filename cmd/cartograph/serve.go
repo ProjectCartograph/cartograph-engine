@@ -133,13 +133,19 @@ func runServe(args []string) error {
 	}
 
 	var ready atomic.Bool
-	mux := routes(e, comp.Fanout, authn, authz, pdf, &ready, syncserver.WithPing(cfg.SyncPing))
+	mux, syncSrv := routes(e, comp.Fanout, authn, authz, pdf, &ready, syncserver.WithPing(cfg.SyncPing))
 
+	// Requests run on a context of their own, cancelled only after the
+	// shutdown below has given them their grace period. Deriving it from
+	// the signal context would cancel every request, sync sockets
+	// included, the moment SIGTERM arrives.
+	baseCtx, cancelBase := context.WithCancel(context.Background())
+	defer cancelBase()
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr(),
 		Handler:           requestLog(logger, mux),
 		ReadHeaderTimeout: 10 * time.Second,
-		BaseContext:       func(net.Listener) context.Context { return ctx },
+		BaseContext:       func(net.Listener) context.Context { return baseCtx },
 	}
 
 	// A transport is a listener. TCP by default; a UNIX socket when the
@@ -174,9 +180,16 @@ func runServe(args []string) error {
 	}
 
 	// Stop taking new work, finish what is in flight, then close the
-	// stores. /readyz goes 503 first so a load balancer drains us.
+	// stores. /readyz goes 503 first, and keeps serving for the drain
+	// delay, so load balancers stop sending work before it is refused.
 	ready.Store(false)
-	logger.Info("shutting down", "grace", cfg.ShutdownTimeout.String())
+	logger.Info("shutting down", "drain", cfg.DrainDelay.String(), "grace", cfg.ShutdownTimeout.String())
+	time.Sleep(cfg.DrainDelay)
+	// Sync sockets are hijacked connections Shutdown does not track: tell
+	// each peer to reconnect, which takes it to a replica that is staying.
+	if syncSrv != nil {
+		syncSrv.Shutdown()
+	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
@@ -274,14 +287,16 @@ func withSync(next, sync http.Handler) http.Handler {
 // routes is every route the server answers, behind the same middleware
 // for the API and the sync socket. Split out so a test drives exactly the
 // stack serve runs.
-func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, ready *atomic.Bool, syncOpts ...syncserver.Option) *http.ServeMux {
+func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, ready *atomic.Bool, syncOpts ...syncserver.Option) (*http.ServeMux, *syncserver.Server) {
 	mux := http.NewServeMux()
 	var inner http.Handler = api.New(e, api.Deps{Printer: pdf, Authorizer: authz})
+	var syncSrv *syncserver.Server
 	if sh := e.Shared(); sh != nil {
 		// The sync socket sits inside the same authentication and
 		// authorization as every other request; a WebSocket upgrade on
 		// /sync goes to it, everything else to the API.
-		inner = withSync(inner, syncserver.New(sh, fan, authz, slog.Default(), syncOpts...))
+		syncSrv = syncserver.New(sh, fan, authz, slog.Default(), syncOpts...)
+		inner = withSync(inner, syncSrv)
 	}
 	apiHandler := auth.Middleware(authn, auth.Authorize(authz, inner))
 	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiHandler))
@@ -299,5 +314,5 @@ func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz au
 		fmt.Fprint(w, `{"status":"ready"}`)
 	})
 	mux.Handle("/", spa.Handler())
-	return mux
+	return mux, syncSrv
 }

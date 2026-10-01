@@ -36,7 +36,8 @@ func TestSyncSocketThroughTheServeStack(t *testing.T) {
 	var ready atomic.Bool
 	ready.Store(true)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := httptest.NewServer(requestLog(logger, routes(comp.Engine, comp.Fanout, auth.NoAuthentication{}, auth.AllowAll{}, printer.None{}, &ready)))
+	mux, _ := routes(comp.Engine, comp.Fanout, auth.NoAuthentication{}, auth.AllowAll{}, printer.None{}, &ready)
+	srv := httptest.NewServer(requestLog(logger, mux))
 	defer srv.Close()
 
 	dctx, cancel := context.WithTimeout(ctx, 5*time.Second)

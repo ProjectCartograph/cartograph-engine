@@ -537,3 +537,35 @@ func TestAQuietPeerThatAnswersStays(t *testing.T) {
 		t.Fatalf("a peer answering pings was dropped (%d connected)", got)
 	}
 }
+
+// On shutdown every peer is told "going away", so it reconnects at once,
+// through the load balancer, to a replica that is staying.
+func TestShutdownTellsPeersToGoElsewhere(t *testing.T) {
+	s, srv := syncServer(t)
+	ws := dialJoin(t, srv)
+	defer ws.CloseNow()
+	waitFor(t, "the peer connecting", func() bool { return s.Stats().Connections == 1 })
+	// A client reads all the time, which is how it answers the close.
+	closed := make(chan error, 1)
+	go func() {
+		for {
+			if _, _, err := ws.Read(context.Background()); err != nil {
+				closed <- err
+				return
+			}
+		}
+	}()
+	start := time.Now()
+	s.Shutdown()
+	if took := time.Since(start); took > 2*time.Second {
+		t.Errorf("shutdown took %s with one answering peer", took)
+	}
+	select {
+	case err := <-closed:
+		if got := websocket.CloseStatus(err); got != websocket.StatusGoingAway {
+			t.Fatalf("closed with %v (%v), want going away", got, err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the peer was never told")
+	}
+}
