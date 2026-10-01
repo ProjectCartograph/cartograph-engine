@@ -127,7 +127,9 @@ compat base="": embed
     set -euo pipefail
     scripts/check-compat {{base}}
     # gorelease is not packaged in nixpkgs; the Go toolchain fetches it.
-    tag=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+    # The base is the last release before this commit: a tag on HEAD is
+    # the release being checked.
+    tag=$(git tag --list 'v*' --sort=-v:refname --no-contains HEAD | head -n 1)
     if [ -z "$tag" ]; then exit 0; fi
     major=$(cut -d. -f1 VERSION)
     base=${tag#v}

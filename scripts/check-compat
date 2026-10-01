@@ -3,7 +3,7 @@
 deployed version, unless VERSION has a higher major than the last tag
 (VERSIONING.md).
 
-    scripts/check-compat [base-ref]     default: the latest v* tag
+    scripts/check-compat [base-ref]     default: the latest v* tag before HEAD
 
 Compares contract/openapi.yaml and contract/schemas/*.json at base-ref
 with the working tree. The rules are SemVer's applied to this shape of
@@ -121,7 +121,9 @@ def schema_breaks(old, new, where):
 def main():
     base = sys.argv[1] if len(sys.argv) > 1 else None
     if base is None:
-        tags = [t for t in git("tag", "--list", "v*", "--sort=-v:refname").split() if re.match(r"v\d+\.\d+\.\d+$", t)]
+        # Tags on this commit are the release being checked, not its base.
+        tags = [t for t in git("tag", "--list", "v*", "--sort=-v:refname", "--no-contains", "HEAD").split()
+                if re.match(r"v\d+\.\d+\.\d+$", t)]
         if not tags:
             print("no release tag yet; nothing to compare against")
             return 0
