@@ -99,7 +99,7 @@ paths:
         Which part of a gap each piece of work addresses, and which parts
         nobody does. Derived from the citations, never stored: work declares
         what it reaches and this reads it back, the same way a programme's
-        members are derived. Addressed, not closed — whether the shortfall
+        members are derived. Addressed, not closed: whether the shortfall
         narrowed is what the gap's measure reads.
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -685,7 +685,7 @@ paths:
         Validate and commit a new version of a manifest: the save that
         promotes a staged draft into the vault's own tree and its include
         list, in one atomic journalled write, then clears the draft. Only
-        this ref's draft — other drafts are left alone, because there may be
+        this ref's draft; other drafts are left alone, because there may be
         many and saving one is not a decision about the rest.
       parameters:
         - $ref: "#/components/parameters/KindParam"
@@ -1655,8 +1655,8 @@ components:
           type: string
           enum: [ok, warn]
           description: >-
-            No block state. A programme's checks read other manifests — the work
-            that names it, the graph it sits in — so one could otherwise refuse a
+            No block state. A programme's checks read other manifests (the work
+            that names it, the graph it sits in), so one could otherwise refuse a
             definition because a different file changed.
         message:
           type: string

@@ -186,8 +186,8 @@ levels); a definition only picks from it.
 **Where the register has a shape, the chips are grouped by it** (Programme Lead,
 same day, correcting the first attempt): a flat wrap of chips gives a person no
 place to put what they are looking at, which defeats the step. The branches are
-quiet headings — the pillar small and uppercase, the strategic area in plain
-weight under it, the chips under that behind a left rule — and the step reads
+quiet headings (the pillar small and uppercase, the strategic area in plain
+weight under it, the chips under that behind a left rule), and the step reads
 down the shape of the plan. The ancestry belongs to the heading, so a chip
 carries its own name and nothing else; repeating the area on every chip is the
 noise the grouping removes. Search matches a goal, its area or its pillar, and a
@@ -228,7 +228,7 @@ card or the commit, which of the surviving categories it falls into.
 SMART goals define what the project intends to achieve. Scope defines the
 boundaries of the work required to achieve them. Deliverables define the outputs
 the project must produce. **Success criteria define how stakeholders will
-determine whether those outputs actually produced the intended result** — the
+determine whether those outputs actually produced the intended result**: the
 measurable standards by which the project is judged, agreed before work begins,
 so that success is observable rather than argued. Without them a project can
 complete every task and deliverable and still create no value.
@@ -260,7 +260,7 @@ person scanning a column uses. Supersedes the per-level colour added 2026-09-20.
 ## A key result is a unit and an outcome, and one sentence (2026-09-26)
 
 The number's unit is chosen once. The metric field then asks only what happens to
-them — "deliveries" + "checked" — and the two are stored as one metric, so
+them ("deliveries" + "checked"), and the two are stored as one metric, so
 nothing says the unit twice. Where a kind carries no unit (a percent, a ratio) the
 field asks for the whole phrase. One builder writes the sentence and every
 surface reads from it: "Increase deliveries checked to 1200 by 2026-06, from 0 in
@@ -282,13 +282,13 @@ A role, unit, party, system or facility is a `Resource` manifest, declared once 
 used across many projects. Work attaches to one of two ways. **Directly referenced**
 when it is simply part of the cast: `Project.spec.resources[]` carries the position
 and the project's own title for it. **Bound** when the link itself carries data that
-belongs to neither end — how much power a stakeholder holds over *this* project varies
+belongs to neither end: how much power a stakeholder holds over *this* project varies
 per project, so it lives on `StakeholderMap`, a binding scoped to the work.
 
 The test for a new field: if the fact is about the *relationship* rather than about
 either end, it goes on a binding kind. Do not put it on the resource, where it would
 have to be the same for every project, and do not put it on the project, where it
-duplicates the party. A binding must never become the only way in — the project still
+duplicates the party. A binding must never become the only way in; the project still
 references its stakeholders directly; the map only scores them.
 
 ## One reference shape (2026-09-28)
@@ -303,8 +303,8 @@ sibling `kind` and the generic walker checks the target exists; the `local` and
 `external` forms carry no sibling kind and are skipped by it, which is correct, and a
 kind rule resolves the local form because resolving it means reading a sibling list.
 
-Three fields held a *copy* of a role's title until this landed — the contract's own
-descriptions said "exactly as spec.resources names it" — and renaming a role left
+Three fields held a *copy* of a role's title until this landed (the contract's own
+descriptions said "exactly as spec.resources names it"), and renaming a role left
 three stale copies with nothing to notice. The first run of the migration found one in
 the example vault that had already drifted.
 
@@ -354,7 +354,7 @@ decisions Cartograph has taken where it departs. Read it before adding a kind, a
 linking two kinds, or a rule that refuses a link.
 
 It exists because a blocking rule shipped that refused a project joining a programme
-it shared no goal with — and shared goals turns out to be the test for whether a
+it shared no goal with, and shared goals turns out to be the test for whether a
 grouping should be a programme *rather than a portfolio*, not the definition of
 membership in one.
 
@@ -363,7 +363,7 @@ membership in one.
 Autosave wrote straight to `<vault>/<Kind>/<id>.yaml` and added the ref to
 `vault.yaml`. So opening a wizard made a half-answered definition part of the vault,
 reformatted a hand-maintained file under its author, and left "discard draft" with
-nothing to go back to — the working copy *was* the file.
+nothing to go back to: the working copy *was* the file.
 
 A draft goes to `<vault>/.cartograph/staging/<Kind>/<id>.yaml` instead, inside the
 directory every scan in the vault package already skips, so it is invisible to the
@@ -374,15 +374,15 @@ draft is cleared.
 **Only the ref being saved.** There may be many drafts, and saving one is not a
 decision about the rest (Programme Lead, 2026-09-28).
 
-Two consequences worth stating. A kind whose only write was autosave — a programme, an
-operation — now needs an explicit save control, because the writing used to be
+Two consequences worth stating. A kind whose only write was autosave (a programme, an
+operation) now needs an explicit save control, because the writing used to be
 continuous and the deciding never happened. And a draft has to be a file rather than
 memory, or closing the browser would throw away unfinished work.
 
 ## The save is the atomic operation (2026-09-28)
 
 While autosave wrote the vault, autosave was the only caller of the journalled path,
-and a save was a bare `os.WriteFile` plus a separate `vault.yaml` write — either of
+and a save was a bare `os.WriteFile` plus a separate `vault.yaml` write, either of
 which could land without the other. Moving autosave out left the vault with no
 journalled write in normal use, which is the wrong half to keep.
 
@@ -399,7 +399,7 @@ one that holds this.
 ## Write files the way the vaults are written by hand (2026-09-28)
 
 `yaml.v3` indents four spaces. Every manifest in this repository is written two, so a
-save reindented the whole file and turned a one-line edit into a whole-file diff — the
+save reindented the whole file and turned a one-line edit into a whole-file diff: the
 same complaint that moved autosave into staging, arriving one step later at the save.
 One encoder (`internal/yamlfmt`), and everything that writes a manifest or a
 `vault.yaml` goes through it.
@@ -411,7 +411,7 @@ whole-file noise, but it is not yet nothing.
 ## Indexing what exists is not staging somebody's work (2026-09-28)
 
 `Reindex` walks every current manifest on open so `ListReferencing` can resolve
-references, and it did that by calling `PutWorking` — harmless while `PutWorking`
+references, and it did that by calling `PutWorking`, harmless while `PutWorking`
 wrote the file the manifest had just been read from. Once `PutWorking` staged a draft,
 opening the example vault created a draft of all sixty-five manifests in it, none of
 them anybody's work.
@@ -426,7 +426,7 @@ Writing a manifest from a plain object loses everything the object cannot
 carry. Keys come back in the alphabet's order rather than the author's, because
 the round trip goes through a Go map; `[a, b]` becomes a block list; a quoted
 scalar loses its quotes. None of that is an edit anybody made, and all of it
-lands in the diff — a one-line change arrived as a whole-file rewrite.
+lands in the diff: a one-line change arrived as a whole-file rewrite.
 
 So the interface **reads the file's own text** (a manifest read carries it
 beside the parsed object) and **writes over it key by key**, touching only what
@@ -442,15 +442,15 @@ reader, the order is already gone.**
 ## A check nobody can pass checks nothing (2026-09-29)
 
 `just words` forbade organisation-specific words and em dashes
-everywhere under `cartograph/`. It had been failing for a long time on 61 em dashes
-— all of them in source comments and contract descriptions, which are prose
+everywhere under `cartograph/`. It had been failing for a long time on 61 em dashes,
+all of them in source comments and contract descriptions, which are prose
 for whoever maintains this, not text anybody sees on screen. A gate that cannot
 go green is a gate nobody runs.
 
 The rule was right and its scope was wrong, so the scope changed: domain words
 are still forbidden everywhere, and em dashes only in `copy.ts` and the example
 instance, which are what a person reads. Both are now zero, and the recipe
-passes — which is the point of having it.
+passes, which is the point of having it.
 
 It also caught nothing real while failing, and found four genuine leaks the
 moment it could: a check message reading "Circular:" collided with the word
@@ -481,7 +481,7 @@ fixing them:
 - **Show the shape when it is unusual.** One before-and-after example is worth
   three sentences of principle, and it is what the reader copies.
 - **No internal vocabulary.** "The rest is the walk", "read back", "roll-up",
-  "slices", "cited whole", "this gap's two states" — every one of those is a
+  "slices", "cited whole", "this gap's two states": every one of those is a
   word from the design docs that escaped onto a screen.
 - **No archaism.** "which is not the same as nought" was on the readings step.
 - **Say it once.** A step's subtitle and its first field's hint saying the same
@@ -522,14 +522,14 @@ definition, and the check would have flagged every one.
 
 The general form: a success criterion **may** be the result of a deliverable,
 and may equally assess a dimension at closing or landing that no deliverable
-produces — which is what the seven metric dimensions are for. A criterion
+produces, which is what the seven metric dimensions are for. A criterion
 standing on its own is complete. So a link from a criterion to the outputs
 behind it is an optional enrichment, worth having so the arrow can be drawn
 where it exists, and **never** a completeness test.
 
 The lesson beyond this field: a framework borrowed from outside brings its own
 shape, and where that shape disagrees with a decision already recorded here, the
-recorded decision is the evidence — it was made against this work. Check
+recorded decision is the evidence: it was made against this work. Check
 `DESIGN_RULES.md` and `TAXONOMY.md` before proposing a rule, not only before
 writing code.
 
@@ -543,21 +543,21 @@ record assumptions; there was nowhere that fitted.
 The two are different things and take different answers. A risk **might** go
 wrong and is *mitigated*. An assumption is a condition a step of the reasoning
 **requires**, and the answer to a false one is a different theory, not a
-contingency — so the field that earns its keep is `ifFalse`, not `mitigation`.
+contingency, so the field that earns its keep is `ifFalse`, not `mitigation`.
 They also sit in different places: a risk belongs to the work, an assumption
 belongs to the **link between two levels** of it. That is why `assumes` sits on
 a pathway step and on a success criterion, and never on the manifest as a whole.
 
-So `Assumption` is a kind of its own — the same assumption conditions several
+So `Assumption` is a kind of its own (the same assumption conditions several
 steps across several programmes, and stating it once is the argument every other
-catalogue here has already had — and the enum value is retired, retyped to
+catalogue here has already had), and the enum value is retired, retyped to
 `constraint` on read with a note. Keeping both would have guaranteed half the
 assumptions in the risk list and half in the new kind.
 
 ## A pathway is not the goal tree (2026-09-29)
 
 `Goal.parent` makes a three-deep tree, and reading it as a Theory of Change is
-free and wrong. The tree is **alignment** — it says where a goal files, allows
+free and wrong. The tree is **alignment**: it says where a goal files, allows
 exactly one parent, and carries no reason. A Theory of Change says what produces
 what, routinely has several outcomes converging on one and one feeding several,
 and exists to make the reasoning examinable.
@@ -566,7 +566,7 @@ So `Programme.spec.pathway` is a separate edge set, on the programme rather than
 the goal, because a goal outlives any one programme's theory of how to reach it
 and two programmes may hold different theories about the same goal. Its
 `because` is the point: an arrow with nothing written on it is a picture and
-cannot be argued with. Advisory, never blocking — a programme without a pathway
+cannot be argued with. Advisory, never blocking: a programme without a pathway
 is one nobody has thought through yet, which is worth showing rather than
 refusing.
 
@@ -578,7 +578,7 @@ reasoning, and nobody can tell it is empty.
 
 `metadata.labels` is Kubernetes', and so is the reason to leave it
 unvalidated: a label is written to make a cut later that nobody anticipated
-— which pillar, whose reporting pack — and the cost of a typo making a new
+(which pillar, whose reporting pack), and the cost of a typo making a new
 group is the right way round for that (TAXONOMY.md D11). A fact worth
 checking is a property with a name and a check; putting an anticipated fact
 in a label loses the check that would have caught it missing.
@@ -608,7 +608,7 @@ could not: its baseline and target are objects where a sheet's cells hold
 values, so it is not a sheet kind, and the picker silently had no add.
 
 The answer is not to bend the measure into a sheet. It is that the picker
-asks *what kind is this* and opens that kind's own dialog — the sheet form
+asks *what kind is this* and opens that kind's own dialog: the sheet form
 for a sheet kind, the measure's own for a measure. The dialog asks for
 exactly what the schema requires plus the cycle, because the cycle decides
 which periods exist; the baseline, the target and the readings stay on the
@@ -656,7 +656,7 @@ properly defined, the logframe is a generated artifact; if it cannot be
 generated, the fault is in the flows.
 
 Running it over both vaults found exactly that. The matrix's Level column is
-read from `KPI.spec.resultLevel` and its indicator rows from `KPI.spec.goals` —
+read from `KPI.spec.resultLevel` and its indicator rows from `KPI.spec.goals`,
 and **neither field was editable anywhere in the interface**. They were set in
 the example vault only because they had been written there by hand, which is
 the definition of a bolted-on artifact: correct in the demonstration and
@@ -674,8 +674,8 @@ asserts every column is filled from the manifests alone.
 ## Store the parts; the sentence is an output (2026-09-29)
 
 The interface builds a problem, a change and a programme's aim from parts
-under their own headings. Until now it stored what the joiner made of them —
-one sentence — and every reader that wanted to edit it split the text back
+under their own headings. Until now it stored what the joiner made of them
+(one sentence), and every reader that wanted to edit it split the text back
 into parts.
 
 That is a derived value stored as an input, and it cost what derived values
@@ -694,7 +694,7 @@ stored as inputs always cost:
   different things about what a problem is.
 
 So the manifest holds `problem: {situation, cause}`, `change: {what, gain}`
-and `aim: {change, gain}`, and the sentence is composed on the way out —
+and `aim: {change, gain}`, and the sentence is composed on the way out:
 by the interface, by the Go renderer that writes charters, and by anything
 the CLI grows (`cartograph-ui's src/sentence.ts`, `server/internal/sentence`). Splitting
 survives in exactly one place: the legacy rewrite that reads a file still

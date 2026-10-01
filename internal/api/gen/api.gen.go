@@ -420,11 +420,11 @@ type ProgrammeCheck struct {
 	// Section The step of the programme walk this is about, so the panel can send the reader there.
 	Section string `json:"section"`
 
-	// State No block state. A programme's checks read other manifests — the work that names it, the graph it sits in — so one could otherwise refuse a definition because a different file changed.
+	// State No block state. A programme's checks read other manifests (the work that names it, the graph it sits in), so one could otherwise refuse a definition because a different file changed.
 	State ProgrammeCheckState `json:"state"`
 }
 
-// ProgrammeCheckState No block state. A programme's checks read other manifests — the work that names it, the graph it sits in — so one could otherwise refuse a definition because a different file changed.
+// ProgrammeCheckState No block state. A programme's checks read other manifests (the work that names it, the graph it sits in), so one could otherwise refuse a definition because a different file changed.
 type ProgrammeCheckState string
 
 // ProjectCheckFix defines model for ProjectCheckFix.
@@ -827,7 +827,7 @@ type ServerInterface interface {
 	// GetGapChecks Whether a gap can be used for what a gap register is for. Advisory only, like a programme's: every one of these reads a manifest other than the gap.
 	// (GET /manifests/Gap/{id}/checks)
 	GetGapChecks(w http.ResponseWriter, r *http.Request, id IdParam)
-	// GetGapCoverage Which part of a gap each piece of work addresses, and which parts nobody does. Derived from the citations, never stored: work declares what it reaches and this reads it back, the same way a programme's members are derived. Addressed, not closed — whether the shortfall narrowed is what the gap's measure reads.
+	// GetGapCoverage Which part of a gap each piece of work addresses, and which parts nobody does. Derived from the citations, never stored: work declares what it reaches and this reads it back, the same way a programme's members are derived. Addressed, not closed: whether the shortfall narrowed is what the gap's measure reads.
 	// (GET /manifests/Gap/{id}/coverage)
 	GetGapCoverage(w http.ResponseWriter, r *http.Request, id IdParam)
 	// DeleteGoal Delete a goal (I3.2: goals are easily mutable). Allowed only when nothing currently references it; every committed version of every manifest remains in the immutable manifest store regardless (a tombstone, not a destructive delete), so this never disturbs history or audit -- it only stops the goal from being listed, picked or resolved as a reference going forward.
@@ -869,7 +869,7 @@ type ServerInterface interface {
 	// GetManifest The current version of one manifest
 	// (GET /manifests/{kind}/{id})
 	GetManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
-	// PutManifest Validate and commit a new version of a manifest: the save that promotes a staged draft into the vault's own tree and its include list, in one atomic journalled write, then clears the draft. Only this ref's draft — other drafts are left alone, because there may be many and saving one is not a decision about the rest.
+	// PutManifest Validate and commit a new version of a manifest: the save that promotes a staged draft into the vault's own tree and its include list, in one atomic journalled write, then clears the draft. Only this ref's draft; other drafts are left alone, because there may be many and saving one is not a decision about the rest.
 	// (PUT /manifests/{kind}/{id})
 	PutManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
 	// GetCharterPdf The charter of a project, programme or operation as a PDF, printed from the same HTML the charter page shows. Needs a chromium: the vault's spec.chromium, the CHROMIUM environment variable, or one on the PATH.
@@ -4902,7 +4902,7 @@ type StrictServerInterface interface {
 	// GetGapChecks Whether a gap can be used for what a gap register is for. Advisory only, like a programme's: every one of these reads a manifest other than the gap.
 	// (GET /manifests/Gap/{id}/checks)
 	GetGapChecks(ctx context.Context, request GetGapChecksRequestObject) (GetGapChecksResponseObject, error)
-	// GetGapCoverage Which part of a gap each piece of work addresses, and which parts nobody does. Derived from the citations, never stored: work declares what it reaches and this reads it back, the same way a programme's members are derived. Addressed, not closed — whether the shortfall narrowed is what the gap's measure reads.
+	// GetGapCoverage Which part of a gap each piece of work addresses, and which parts nobody does. Derived from the citations, never stored: work declares what it reaches and this reads it back, the same way a programme's members are derived. Addressed, not closed: whether the shortfall narrowed is what the gap's measure reads.
 	// (GET /manifests/Gap/{id}/coverage)
 	GetGapCoverage(ctx context.Context, request GetGapCoverageRequestObject) (GetGapCoverageResponseObject, error)
 	// DeleteGoal Delete a goal (I3.2: goals are easily mutable). Allowed only when nothing currently references it; every committed version of every manifest remains in the immutable manifest store regardless (a tombstone, not a destructive delete), so this never disturbs history or audit -- it only stops the goal from being listed, picked or resolved as a reference going forward.
@@ -4944,7 +4944,7 @@ type StrictServerInterface interface {
 	// GetManifest The current version of one manifest
 	// (GET /manifests/{kind}/{id})
 	GetManifest(ctx context.Context, request GetManifestRequestObject) (GetManifestResponseObject, error)
-	// PutManifest Validate and commit a new version of a manifest: the save that promotes a staged draft into the vault's own tree and its include list, in one atomic journalled write, then clears the draft. Only this ref's draft — other drafts are left alone, because there may be many and saving one is not a decision about the rest.
+	// PutManifest Validate and commit a new version of a manifest: the save that promotes a staged draft into the vault's own tree and its include list, in one atomic journalled write, then clears the draft. Only this ref's draft; other drafts are left alone, because there may be many and saving one is not a decision about the rest.
 	// (PUT /manifests/{kind}/{id})
 	PutManifest(ctx context.Context, request PutManifestRequestObject) (PutManifestResponseObject, error)
 	// GetCharterPdf The charter of a project, programme or operation as a PDF, printed from the same HTML the charter page shows. Needs a chromium: the vault's spec.chromium, the CHROMIUM environment variable, or one on the PATH.

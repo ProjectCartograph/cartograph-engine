@@ -10,8 +10,8 @@ This file is the reference for any decision about **what a kind is**.
 where the definitions come from, so an argument about a kind's shape can be
 settled against the discipline rather than against taste.
 
-Where Cartograph departs from the standard definition that is allowed — it is a
-capture tool for one ministry, not an implementation of MSP — but the
+Where Cartograph departs from the standard definition that is allowed (it is a
+capture tool for one ministry, not an implementation of MSP), but the
 departure should be **deliberate and written down here**, not accidental.
 
 ---
@@ -25,7 +25,7 @@ outputs; they do not, by themselves, produce benefits.
 business-as-usual activities to achieve beneficial change"; a programme is "a
 unique and transient strategic endeavour" incorporating related projects and
 routine operations. PMI: programmes exist to turn project outputs into
-outcomes, coordinating the projects — and sometimes operations — to deliver
+outcomes, coordinating the projects (and sometimes operations) to deliver
 benefits and governance no single project could.
 
 The load-bearing part: **a programme coordinates the work inside it.** That is
@@ -81,10 +81,10 @@ holds what is *its own* and nothing that belongs to what it coordinates:
 
 | Because a programme is… | it carries |
 |---|---|
-| a vehicle for beneficial change | `aim` — the change sought |
+| a vehicle for beneficial change | `aim`: the change sought |
 | answering something wrong | `problems[]`, citing `Gap` |
 | judged on benefits realised | `goals[]`, `kpis[]` |
-| a coordinating structure | its **components** — derived from the work that names it |
+| a coordinating structure | its **components**, derived from the work that names it |
 | governed | `leadTeam`, `supportingTeams` |
 | exposed at programme level | `risks[]`, including dependencies on other programmes |
 | something people have a stake in | a `StakeholderMap` scoped to it |
@@ -92,11 +92,11 @@ holds what is *its own* and nothing that belongs to what it coordinates:
 Nothing else. Two fields were added on 2026-09-28 by reading the Strategic
 Plan's headings rather than this definition, and removed the same day:
 
-- **`description`** — the plan states an Objective *and* a Description for
+- **`description`**: the plan states an Objective *and* a Description for
   every programme, so a field was added for the second. But "what the work
   does" is the aim plus the components inside it; a Description is that
   document's convention, not a programme's property.
-- **`partners`** — a list of collaborating bodies, which is a stakeholder
+- **`partners`**: a list of collaborating bodies, which is a stakeholder
   list under another name. `StakeholderMap` already scopes to a programme
   and accepts any `Resource`, external bodies included. Two places to name
   one party.
@@ -104,7 +104,7 @@ Plan's headings rather than this definition, and removed the same day:
 **The lesson, and it is the general one:** a source document's section
 headings are not a schema. The plan is content. Where it states something
 Cartograph has no field for, the first question is whether the concept belongs to
-a programme at all — not where to put the text. Outputs belong to the
+a programme at all, not where to put the text. Outputs belong to the
 components; phases are delivery; a Rationale is evidence and belongs in the
 Gap register.
 
@@ -120,7 +120,7 @@ relation; a component is the thing.*
 
 A project names the programmes it belongs to (`Project.spec.alignment.programmes[]`);
 the programme side is read back from that index. One end declares, the other
-derives — the same rule dependencies follow.
+derives: the same rule dependencies follow.
 
 Sharing a goal **corroborates** membership and a check says so when it is
 missing, but it does not constitute it. Until 2026-09-28 that check *blocked*,
@@ -128,8 +128,8 @@ on the reading that membership is "proven, not asserted". Three things were
 wrong with that:
 
 - A programme's work includes **enabling components** that serve no
-  programme-level goal of their own — a shared migration, a procurement
-  vehicle. Refusing those refuses a normal part of a programme.
+  programme-level goal of their own (a shared migration, a procurement
+  vehicle). Refusing those refuses a normal part of a programme.
 - It applied the **portfolio criterion** (common goals) as a membership gate
   one level down.
 - It **broke a manifest from outside itself**: editing a programme's goals
@@ -151,8 +151,8 @@ programme?" with only its projects.
 
 The Strategic Plan's three pillars do portfolio duty, and they are `Goal`s at
 pillar level, not containers. That is coherent: the goal tree carries the
-strategic grouping, and the investment decision a portfolio exists to make —
-what to fund, what to stop — is a Cabinet and delivery-tool concern, outside
+strategic grouping, and the investment decision a portfolio exists to make
+(what to fund, what to stop) is a Cabinet and delivery-tool concern, outside
 the capture boundary.
 
 **Do not add a Portfolio kind** without revisiting this. If a fourth tier is
@@ -165,7 +165,7 @@ Cartograph holds each part: `Goal` and `KeyResult` say what improvement, `KPI` s
 how it is measured over time, `BeneficiaryGroup` says who perceives it, and
 `Project.spec.successCriteria` says what counts as enough.
 
-**Do not add a Benefit kind** — it would duplicate `KPI` and re-open the
+**Do not add a Benefit kind**: it would duplicate `KPI` and re-open the
 question `relatesTo` already settled. If benefits realisation is ever wanted,
 it is readings against existing KPIs, not a new noun.
 
@@ -174,19 +174,19 @@ it is readings against existing KPIs, not a new noun.
 PMI lists subsidiary programmes as components. The Strategic Plan is pillar →
 programme → project and does not nest, so this is not biting. If it ever does:
 `Programme.spec.programmes[]`, declared on the child, derived on the parent,
-same as D1 — plus a cycle check, which the dependency work already needs.
+same as D1, plus a cycle check, which the dependency work already needs.
 
 ### D6. A programme's checks advise; none of them can block. *(resolved 2026-09-28)*
 
-`Programme` has a `Rules` func — the risk list a project and a programme
+`Programme` has a `Rules` func: the risk list a project and a programme
 share, validated without phases, because a programme schedules nothing and a
 dependency on one lands by no phase of its own.
 
 It now also has `/manifests/Programme/{id}/checks`, and the contract gives it
 **no block state at all**. That is the decision, not an omission. Every
 question worth asking about a programme is answered by reading a *different*
-manifest — the work that names it, the goals it aligns to, the graph it sits
-in — which is exactly the case D1 demoted: a definition that saved yesterday
+manifest (the work that names it, the goals it aligns to, the graph it sits
+in), which is exactly the case D1 demoted: a definition that saved yesterday
 must not be refused today because somebody edited another file. A project's
 checks can block because most of them read only the project.
 
@@ -194,7 +194,7 @@ What it asks follows from the definition rather than from the field list:
 whether it coordinates anything (derived from the work), whether there is a
 change to judge (problems, and whether each names who it lands on and cites
 its evidence), whether the benefit can be measured (goals, KPIs), and whether
-it sits in a dependency loop. Required fields are not checked — the schema
+it sits in a dependency loop. Required fields are not checked: the schema
 already refuses a programme without them, and repeating a refusal as advice
 says nothing.
 
@@ -212,12 +212,12 @@ subhead, a fund).
 
 Cartograph had no kind for it, so `Project.spec.funding[].source` was free text
 and, in the example instance, somebody had already filed a budget in the
-`Resource` catalogue under category `other` — which is what `other` filling
+`Resource` catalogue under category `other`, which is what `other` filling
 up always means.
 
 **It is not a Resource.** Resource is what a project draws on to do the work:
 a role, unit, party, system or facility. Money is what it draws on to pay for
-the work, and it carries things none of those do — a code in somebody else's
+the work, and it carries things none of those do: a code in somebody else's
 ledger, the body that holds it, the period it covers. A `budget` category on
 Resource would have meant a `code` field that is meaningless for a
 person-role.
@@ -264,7 +264,7 @@ to change the cycle.
 A gap is the distance between a current state and a desired state, and
 Kaufman's test is the one worth keeping: a need is a gap in **results**, not in
 resources or methods, and it is a noun, not a verb. Cartograph's Gap today is a
-sentence and its provenance — no current state, no desired state, no scope, and
+sentence and its provenance: no current state, no desired state, no scope, and
 a citation that can only claim the whole of it.
 
 The design, the research behind it and what changed in the building are in
@@ -285,7 +285,7 @@ carry, and would break the rule that a goal references nothing below it.
 
 `KPI.spec.unit` was free text, and the two vaults show what that costs:
 `percent` fifteen times, plus `score`, `index`, `count`, `USD`, `rate` and
-`hours` — no two of them checkable against each other, and nothing able to
+`hours`: no two of them checkable against each other, and nothing able to
 say that two KPIs are measured in the same thing.
 
 A **`Unit` kind**, and the KPI references it. Kubernetes' own shape: the
@@ -295,7 +295,7 @@ them with the picker's own add. There is no second code path for a custom
 unit, which is the whole point of doing it this way.
 
 A unit carries the **dimension** it belongs to, from the closed set
-`KeyResult.kind` already uses — percent, count, money, ratio, duration — so
+`KeyResult.kind` already uses (percent, count, money, ratio, duration), so
 the two places Cartograph talks about measurement agree. What a unit is *called*
 and what it *is* are then separate: "Hours" and "Days" are both durations,
 and a roll-up that has to add two measures can tell whether it may.
@@ -311,8 +311,8 @@ change; noted rather than done.
 
 ### D11. Labels are already in the contract, and they are Kubernetes'. *(resolved 2026-09-29)*
 
-`metadata.labels` has been on **every** kind since the envelope was written —
-a string map, exactly Kubernetes' shape — and nothing has ever read or written
+`metadata.labels` has been on **every** kind since the envelope was written
+(a string map, exactly Kubernetes' shape), and nothing has ever read or written
 one. It was asked for on KPIs, where nineteen chips in a row is the problem
 that makes grouping worth having, but it belongs where it already is: on the
 envelope, for every kind, because the reason to group KPIs is the reason to
@@ -320,7 +320,7 @@ group anything.
 
 **A label is not a field.** The rule Kubernetes settles and Cartograph keeps: if a
 fact belongs to what the thing *is*, it is a property with a name and a check.
-A label is for the cuts somebody wants to make *later* and nobody anticipated —
+A label is for the cuts somebody wants to make *later* and nobody anticipated:
 which pillar, whose directorate, which reporting pack. Putting an anticipated
 fact in a label loses the check that would have caught it missing; putting an
 unanticipated one in a property means editing the contract every time somebody
@@ -330,7 +330,7 @@ So labels stay free-form on purpose, and nothing validates their keys. What
 they buy is filtering, and what they cost is that a typo is a new group. That
 trade is the right way round for a cut nobody planned.
 
-### D12. The goal tree is alignment, not a Theory of Change. *(open — assessed 2026-09-29)*
+### D12. The goal tree is alignment, not a Theory of Change. *(open, assessed 2026-09-29)*
 
 `Goal.level` and `Goal.parent` make a three-deep tree, and it is tempting to
 read it as a causal pathway: functional leads to strategic leads to pillar. It
@@ -383,7 +383,7 @@ change happens, and a programme is working to one of them. Recording both
 would mean recording which is being pursued, which is a decision the delivery
 tool makes and revisits, not a fact about the change. Where two routes are
 genuinely live, they are two steps with the same outcome, each with its own
-reasoning and its own assumptions — which reads as what it is, and costs
+reasoning and its own assumptions, which reads as what it is, and costs
 nothing to add.
 
 The practical consequence, which is the reason to state this at all: a
