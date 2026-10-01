@@ -8,12 +8,10 @@ import (
 	"strings"
 	"unicode"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
 )
 
-// One charter, three kinds (TAXONOMY.md D21, LSS_REVIEW.md).
+// One charter, three kinds (TAXONOMY.md D21).
 //
 // Every founding document the standards describe has the same five parts:
 // the problem and the end state, what is in and out, why it is being done,
@@ -550,9 +548,9 @@ func obj(v any) map[string]any {
 	return m
 }
 
-// number prints a YAML number, which yaml.v3 decodes as int or float64.
-// The old charter asserted float64 only, which is why every phase's
-// duration printed blank.
+// number prints a decoded number, which a codec hands back as an int, an
+// int64 or a float64 depending on its syntax. Asserting one type only is
+// how a duration prints blank.
 func number(v any) string {
 	switch t := v.(type) {
 	case int:
@@ -578,10 +576,12 @@ func capital(s string) string {
 	return string(r)
 }
 
-// manifestOf reads a version's YAML into its name and spec.
-func manifestOf(vers engine.Version, id string) (name string, spec map[string]any, err error) {
-	var manifest map[string]any
-	if err := yaml.Unmarshal(vers.YAML, &manifest); err != nil {
+// manifestOf reads a version's text into its name and spec, through the
+// engine's codec: render reads what the store holds and never parses a
+// syntax itself.
+func manifestOf(e *engine.Engine, vers engine.Version, id string) (name string, spec map[string]any, err error) {
+	manifest, err := e.Codec().Decode(vers.YAML)
+	if err != nil {
 		return "", nil, fmt.Errorf("unmarshal manifest: %w", err)
 	}
 	name = id
@@ -603,7 +603,7 @@ func each(ctx context.Context, e *engine.Engine, kind string, fn func(id, name s
 		if err != nil {
 			continue
 		}
-		_, spec, err := manifestOf(v, s.ID)
+		_, spec, err := manifestOf(e, v, s.ID)
 		if err != nil {
 			continue
 		}
@@ -630,7 +630,7 @@ func (d *doc) heldElsewhere() {
 // Iconography first, and built for a black-and-white printer: the meaning
 // is carried by the shape and by how much of it is filled, never by colour
 // alone. A level is three bars, filled to its height; a status is a tick,
-// a clock or a cross; a type has its own mark (Programme Lead, 2026-09-29).
+// a clock or a cross; a type has its own mark.
 
 // personal leaves "none" out: a chip for the absence of personal data is
 // noise in a column that exists to flag its presence.

@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
 )
 
@@ -26,9 +24,9 @@ func Charter(ctx context.Context, e *engine.Engine, projectID string, snapshot i
 		return nil, nil, fmt.Errorf("get project: %w", err)
 	}
 
-	var manifest map[string]any
-	if err := yaml.Unmarshal(vers.YAML, &manifest); err != nil {
-		return nil, nil, fmt.Errorf("unmarshal manifest: %w", err)
+	manifest, err := e.Codec().Decode(vers.YAML)
+	if err != nil {
+		return nil, nil, fmt.Errorf("decode manifest: %w", err)
 	}
 
 	projectChecks, err := e.ProjectChecks(ctx, projectID, false)
@@ -68,7 +66,7 @@ func Charter(ctx context.Context, e *engine.Engine, projectID string, snapshot i
 // the problem, what it will achieve and produce, why it is being done, who
 // is involved, and how anyone will know it worked. Then the working detail.
 func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engine.Version) ([]byte, error) {
-	name, spec, err := manifestOf(vers, id)
+	name, spec, err := manifestOf(e, vers, id)
 	if err != nil {
 		return nil, err
 	}

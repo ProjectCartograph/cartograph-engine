@@ -21,7 +21,7 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 	if err != nil {
 		return nil, fmt.Errorf("get programme: %w", err)
 	}
-	name, spec, err := manifestOf(vers, id)
+	name, spec, err := manifestOf(e, vers, id)
 	if err != nil {
 		return nil, err
 	}
