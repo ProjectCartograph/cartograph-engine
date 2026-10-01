@@ -20,9 +20,12 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/proxy"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/roles"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/config"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer/chromium"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/spa"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/syncserver"
 )
 
 // runServe is the composition root: it reads the configuration, picks an
@@ -129,23 +132,7 @@ func runServe(args []string) error {
 	}
 
 	var ready atomic.Bool
-	mux := http.NewServeMux()
-	apiHandler := auth.Middleware(authn, auth.Authorize(authz, api.New(e, api.Deps{Printer: pdf})))
-	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiHandler))
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"status":"ok"}`)
-	})
-	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if !ready.Load() {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprint(w, `{"status":"stopping"}`)
-			return
-		}
-		fmt.Fprint(w, `{"status":"ready"}`)
-	})
-	mux.Handle("/", spa.Handler())
+	mux := routes(e, comp.Fanout, authn, authz, pdf, &ready)
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr(),
@@ -256,4 +243,46 @@ func listen(addr string) (net.Listener, error) {
 		return net.Listen("unix", path)
 	}
 	return net.Listen("tcp", addr)
+}
+
+// withSync routes a WebSocket upgrade on /sync to the sync server.
+func withSync(next, sync http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/sync" && strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			sync.ServeHTTP(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// routes is every route the server answers, behind the same middleware
+// for the API and the sync socket. Split out so a test drives exactly the
+// stack serve runs.
+func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, ready *atomic.Bool) *http.ServeMux {
+	mux := http.NewServeMux()
+	var inner http.Handler = api.New(e, api.Deps{Printer: pdf, Authorizer: authz})
+	if sh := e.Shared(); sh != nil {
+		// The sync socket sits inside the same authentication and
+		// authorization as every other request; a WebSocket upgrade on
+		// /sync goes to it, everything else to the API.
+		inner = withSync(inner, syncserver.New(sh, fan, authz, slog.Default()))
+	}
+	apiHandler := auth.Middleware(authn, auth.Authorize(authz, inner))
+	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiHandler))
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"status":"ok"}`)
+	})
+	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if !ready.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprint(w, `{"status":"stopping"}`)
+			return
+		}
+		fmt.Fprint(w, `{"status":"ready"}`)
+	})
+	mux.Handle("/", spa.Handler())
+	return mux
 }

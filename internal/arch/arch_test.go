@@ -145,9 +145,12 @@ var rules = map[string][]string{
 
 	// Driving adapters: the engine and the ports, never a driven adapter
 	// (the root chooses those), never each other, never the root.
-	"internal/api":     join([]string{"internal/spa", "internal/config", "cmd"}, adapters, without(drivers, "net/http")),
-	"internal/api/gen": join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
-	"internal/spa":     join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
+	// The sync socket is a driving adapter like the API: the engine and
+	// the ports, never a driven adapter, the API, or the root.
+	"internal/syncserver": join([]string{"internal/api", "internal/spa", "internal/render", "internal/config", "cmd"}, adapters, without(drivers, "net/http")),
+	"internal/api":        join([]string{"internal/spa", "internal/config", "cmd"}, adapters, without(drivers, "net/http")),
+	"internal/api/gen":    join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
+	"internal/spa":        join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
 	// render reads through the engine and decodes through its codec; it
 	// parses no syntax and touches no store.
 	"internal/render": join([]string{"internal/api", "internal/spa", "internal/config", "cmd"}, adapters, drivers),
