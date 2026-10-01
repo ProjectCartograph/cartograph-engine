@@ -240,19 +240,19 @@ func newLogger(cfg config.Config) *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stdout, opts))
 }
 
-// requestLog logs one line per request at debug, and at warn for a 5xx.
-// Health probes are not logged: they would be most of the log.
+// requestLog logs one line per request at debug, and at warn for a 5xx,
+// and counts every request for the metrics. Health probes are counted
+// but not logged: they would be most of the log.
 func requestLog(logger *slog.Logger, mtr *metrics, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
-			next.ServeHTTP(w, r)
-			return
-		}
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 		took := time.Since(start)
 		mtr.observe(r.URL.Path, r.Method, rec.status, took)
+		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
+			return
+		}
 		attrs := []any{"method", r.Method, "path", r.URL.Path, "status", rec.status, "ms", took.Milliseconds()}
 		if rec.status >= 500 {
 			logger.Warn("request", attrs...)
