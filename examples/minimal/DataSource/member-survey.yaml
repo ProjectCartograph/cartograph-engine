@@ -1,0 +1,13 @@
+apiVersion: cartograph/v1
+kind: DataSource
+metadata:
+  id: member-survey
+  name: Member Survey
+spec:
+  name: Member Survey
+  category: formOrSurvey
+  team: member-services-team
+  access: Run once a season by the member services team.
+  refresh: annual
+  classification: internal
+  qualityIssues: Answered by roughly half the membership, weighted towards larger holdings.

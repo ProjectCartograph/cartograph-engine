@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: Operation
+metadata:
+  id: member-register-service
+  name: Member Register Service
+spec:
+  name: Member Register Service
+  purpose: Keep one record per member, current enough to pay, count and contact them from.
+  team: data-and-reporting-team
+  serviceWindow: Continuous, with a full reconciliation each season.
+  kpis: []
+  data:
+    produces:
+      - output: recordsInExistingSource
+        sink: member-register
+        purpose: Maintain the record each other service reads a member from.
+        refresh: monthly
+        personalData: personal

@@ -1,0 +1,319 @@
+{
+  "$id": "programme.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Programme",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Programme"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "aim",
+        "leadTeam"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aim": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "change"
+          ],
+          "description": "The change this programme exists to bring about. Not what it does: a programme coordinates work to deliver beneficial change, so the change is its own and the doing belongs to the components inside it. Said the other way round on 2026-09-28 \u2014 \"where it comes from a published plan, the plan's own objective, verbatim\" \u2014 which describes one organisation's paperwork rather than what the field holds, and Cartograph has no concept of a plan (Programme Lead, 2026-09-29). Where a definition is set out somewhere, spec.source says where. Held in the parts the interface builds it from and composed as `<change>, so that <gain>`, so the thing stored is what somebody typed rather than what the joiner made of it. Where the aim is somebody else's words, `change` carries them whole and `spec.source` says where they came from.",
+          "properties": {
+            "change": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600,
+              "description": "How things stand once this has worked, rather than what the programme runs: \"every depot checks produce against one published standard\"."
+            },
+            "gain": {
+              "type": "string",
+              "maxLength": 600,
+              "description": "Who is better off, and how: \"buyers get one quality from the cooperative whichever depot filled the order\". Optional, and a programme quoting a published objective usually has none."
+            }
+          }
+        },
+        "problems": {
+          "type": "array",
+          "description": "The problems this programme answers, each with the change that answers it and the beneficiary groups that feel it. A programme's name says what it is; this says what it is for, at the level the name sits (Programme Lead, 2026-09-27). Same shape as Project.spec.summary.problems.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "problem",
+              "change"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "description": "Stable identity for this problem."
+              },
+              "problem": {
+                "$ref": "common.schema.json#/$defs/ProblemStatement"
+              },
+              "change": {
+                "$ref": "common.schema.json#/$defs/ChangeStatement"
+              },
+              "groups": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Slug",
+                  "x-cartograph-ref": "BeneficiaryGroup"
+                }
+              },
+              "gaps": {
+                "type": "array",
+                "description": "The gaps this problem answers, and how much of each. A citation, not a restatement: a gap is what is wrong and how we know, written once in the register; the problem says what that does to these groups, here. Naming segments is what keeps the claim honest \u2014 a gap observed in four slices, answered by work that reaches one of them, is a quarter of a claim, and until 2026-09-29 a bare list of ids made it look like the whole (Programme Lead, 2026-09-29). Optional, because a problem nobody has traced to evidence is still a problem.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "gap"
+                  ],
+                  "properties": {
+                    "gap": {
+                      "$ref": "common.schema.json#/$defs/Slug",
+                      "x-cartograph-ref": "Gap",
+                      "description": "The entry in the gap register this answers."
+                    },
+                    "segments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "common.schema.json#/$defs/Slug",
+                        "x-cartograph-ref": "Segment"
+                      },
+                      "description": "Which of the gap's own segments this work reaches. Absent means all of them, so a gap that names no segments needs no ceremony. A kind rule refuses a segment the gap does not have: claiming to address a gap somewhere it was never observed is a different claim, not a narrower one."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "description",
+              "type"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "risk",
+                  "issue",
+                  "dependency",
+                  "constraint"
+                ]
+              },
+              "impact": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "likelihood": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "mitigation": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "escalate": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "flag"
+                ],
+                "properties": {
+                  "flag": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "to": {
+                    "$ref": "common.schema.json#/$defs/Ref",
+                    "description": "Whose decision is needed, as on a project's risk."
+                  }
+                },
+                "description": "reason is required when flag is true (a kind rule)."
+              },
+              "depends": {
+                "description": "The edge itself, and the reason the dependency type is worth having: a shape a risk sentence cannot be poured into. Only when type is dependency (a kind rule). Direction is declared at one end only; the other end is derived, so nobody has to write both halves.",
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "direction",
+                  "on"
+                ],
+                "properties": {
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "needs",
+                      "neededBy"
+                    ]
+                  },
+                  "on": {
+                    "$ref": "common.schema.json#/$defs/Ref"
+                  },
+                  "needBy": {
+                    "$ref": "common.schema.json#/$defs/Slug",
+                    "description": "The id of the phase in this project's timeline the dependency must land by."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Where this programme is set out, precisely enough to find again."
+        },
+        "sponsor": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Resource",
+          "description": "Who is accountable for the programme and its benefits: MSP's senior responsible owner, PMI's programme sponsor. A role from the Resource catalogue, never a person."
+        },
+        "manager": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Resource",
+          "description": "Who runs the programme day to day and coordinates its projects: MSP's programme manager, PMI's program manager. A role, never a person."
+        },
+        "businessChangeManager": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Resource",
+          "description": "Who makes the change stick in the business and realises the benefits once projects hand over: MSP's business change manager. Separate from the programme manager because delivering outputs and realising benefits are separate accountabilities. A role, never a person."
+        },
+        "leadTeam": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Team"
+        },
+        "supportingTeams": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "Team"
+          }
+        },
+        "goals": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "Goal"
+          },
+          "description": "Alignment to outcomes only (a kind rule)."
+        },
+        "pathway": {
+          "type": "array",
+          "description": "How this programme believes the change happens: one step per intermediate outcome, each naming what must hold before it and why that produces it. Backwards mapping written forwards \u2014 the method is to start from the aim and ask what preconditions it needs, then what those need, until the answer is something the components actually do. Every outcome except the last is also a precondition for the next.\n\nDeliberately a separate edge set from the goal tree. Goal.parent is alignment \u2014 it says where a goal files, allows one parent, and carries no reason \u2014 where a pathway says what produces what, routinely has several inputs converging and one outcome feeding several, and exists to make the reasoning examinable (TAXONOMY.md D12). It lives on the programme rather than the goal because a goal outlives any one programme's theory of how to reach it, and two programmes may hold different theories about the same goal.\n\nAdvisory: a programme without one is a programme nobody has thought through yet, which is worth showing rather than refusing. See RESULTS_LOGIC.md.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "outcome"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "description": "Stable identity for this step. Generated on write."
+              },
+              "outcome": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "Goal",
+                "description": "The precondition reached at this step, as a goal. A goal rather than free prose so an intermediate outcome is the same thing a KPI can measure and a project can align to, rather than a third vocabulary for the same idea."
+              },
+              "from": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Slug",
+                  "x-cartograph-ref": "Goal"
+                },
+                "description": "The outcomes that must hold before this one. Empty means this step rests on the components' own work rather than on an earlier outcome, which is where a pathway starts."
+              },
+              "because": {
+                "type": "string",
+                "maxLength": 400,
+                "description": "Why those produce this. The whole reason a pathway is worth writing: an arrow with no reasoning on it is a picture, and cannot be argued with or found wrong."
+              },
+              "assumes": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Slug",
+                  "x-cartograph-ref": "Assumption"
+                },
+                "description": "What has to be true for this step to hold."
+              }
+            }
+          }
+        },
+        "kpis": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "KPI"
+          }
+        },
+        "mandate": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Mandate"
+          }
+        },
+        "notes": {
+          "type": "object",
+          "description": "A note per step of the walk, keyed by the step's own name. One map rather than a property per step, because a note is the same thing wherever it is written and a schema that names every step has to be edited whenever the walk changes. What belongs here is what the fields above cannot hold and nobody should have to hold in their head \u2014 a caveat, a reason a choice was made, something to come back to. Not a substitute for a field: anything Cartograph can hold in a shape belongs in that shape, where it can be checked, rolled up and read back.",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/Slug"
+          }
+        }
+      }
+    }
+  }
+}

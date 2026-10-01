@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: field-officer
+  name: Field officer
+spec:
+  name: Field officer
+  category: personRole
+  description: Visits members between deliveries and carries questions back to the cooperative.

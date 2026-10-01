@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: seasonal-training-budget
+  name: Seasonal training budget
+spec:
+  name: Seasonal training budget
+  category: other
+  description: The per-season allocation for training depot staff.

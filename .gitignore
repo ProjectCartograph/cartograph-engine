@@ -1,0 +1,25 @@
+# Build outputs
+bin/
+dist/
+/result
+/result-*
+/.direnv/
+
+# Vault index and scratch state
+.cartograph/
+*.db
+*.db-wal
+*.db-shm
+*.log
+
+# Agent and editor working files never go upstream (scripts/check-clean-tree)
+.claude/
+.cursor/
+.codex/
+.aider*
+.idea/
+.vscode/
+HANDOFF*.md
+SESSION_LOG.md
+NOTES.md
+.DS_Store

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="t">
+  <title id="t">Cartograph</title>
+  <defs>
+    <clipPath id="tile"><rect x="16" y="16" width="224" height="224" rx="44"/></clipPath>
+  </defs>
+  <!-- the tile: paper with a faint survey grid -->
+  <rect x="16" y="16" width="224" height="224" rx="44" fill="#f3f5f7"/>
+  <g clip-path="url(#tile)" stroke="#cfd8e0" stroke-width="2">
+    <path d="M72 16V240M128 16V240M184 16V240M16 72H240M16 128H240M16 184H240"/>
+  </g>
+  <!-- the route: three defined places joined in order -->
+  <path d="M60 184 C 96 184, 100 112, 128 112 S 164 72, 196 72" fill="none" stroke="#0f6e63" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="60" cy="184" r="19" fill="#0f6e63"/>
+  <circle cx="60" cy="184" r="8" fill="#f3f5f7"/>
+  <circle cx="128" cy="112" r="19" fill="#0f6e63"/>
+  <circle cx="128" cy="112" r="8" fill="#f3f5f7"/>
+  <circle cx="196" cy="72" r="19" fill="#a85d14"/>
+  <circle cx="196" cy="72" r="8" fill="#f3f5f7"/>
+  <!-- north -->
+  <path d="M208 190 l10 26 l-10 -8 l-10 8 z" fill="#1b2430"/>
+</svg>

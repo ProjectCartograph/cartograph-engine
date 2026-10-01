@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: produce-reaches-a-depot-the-same-day
+  name: Produce reaches a depot the day it is picked
+spec:
+  level: outcome
+  parent: less-harvest-lost-after-picking
+  objective: Produce spends its first day in a depot, not in a field or on a truck.
+  keyResults:
+    - id: kr-picking-to-intake
+      metric: hours between picking and intake
+      direction: decrease
+      kind: duration
+      unit: hours
+      baseline: {value: 31, date: "2025-09"}
+      target: {value: 12, date: "2026-06"}
+  evidence: Collection round logs against intake timestamps.

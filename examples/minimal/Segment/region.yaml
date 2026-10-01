@@ -1,0 +1,8 @@
+apiVersion: cartograph/v1
+kind: Segment
+metadata:
+  id: region
+  name: Region
+spec:
+  name: Region
+  description: Which growing region a member holds land in, as the cooperative's own membership register defines them.

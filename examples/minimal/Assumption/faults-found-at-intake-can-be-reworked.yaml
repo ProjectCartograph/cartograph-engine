@@ -1,0 +1,10 @@
+apiVersion: cartograph/v1
+kind: Assumption
+metadata:
+  id: faults-found-at-intake-can-be-reworked
+  name: A fault found at intake can still be put right
+spec:
+  statement: Produce failing a check at intake can be sorted, repacked or cooled on the same day rather than written off.
+  confidence: high
+  ifFalse: Checking earlier finds the same faults sooner and loses the same produce, so the programme moves the paperwork and not the outcome.
+  testedBy: {kind: DataSource, id: quality-check-tool}

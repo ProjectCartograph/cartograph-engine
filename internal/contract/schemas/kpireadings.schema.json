@@ -1,0 +1,70 @@
+{
+  "$id": "kpireadings.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KPIReadings",
+  "description": "What one KPI actually read, period by period. Its own file beside the KPI rather than a list inside it, because the two have different lifetimes: a definition is written once and rarely changes, and a reading arrives every cycle forever. Keeping them together would make every quarterly number a new version of the definition, and every diff would read as though the definition had changed when only the world had. Scoped to one KPI the way a StakeholderMap is scoped to one piece of work. See TAXONOMY.md D8.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "KPIReadings"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kpi"
+      ],
+      "properties": {
+        "kpi": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "KPI",
+          "description": "The KPI these are readings of. What is measured, in what unit, which way is good and how often is read from there and never restated here \u2014 a reading that disagreed with its own definition about the unit would be unanswerable."
+        },
+        "readings": {
+          "type": "array",
+          "description": "One entry per period that has been read. Which periods exist is derived from the KPI's ReportingCycle, so a period with no entry is simply one nobody has read yet, which is a state worth seeing rather than a zero.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "period",
+              "value"
+            ],
+            "properties": {
+              "period": {
+                "$ref": "common.schema.json#/$defs/YearMonth",
+                "description": "The period this reading is for, as the month it ends. One reading per period (a kind rule): two numbers for the same period is a disagreement, not data."
+              },
+              "value": {
+                "type": "number",
+                "description": "The number, in the unit the KPI names. No unit here: one place to change it."
+              },
+              "provisional": {
+                "type": "boolean",
+                "description": "Whether this number may still be restated. A mark rather than the word \"provisional\" written into the note, so a chart can show it and a roll-up can decide whether to count it."
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 400,
+                "description": "Why this number is what it is, when it needs saying \u2014 a strike, a change of method, a period nobody could collect."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

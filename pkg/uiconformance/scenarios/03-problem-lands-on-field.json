@@ -1,0 +1,13 @@
+{
+  "key": "problem-lands-on-field",
+  "name": "A refused version shows the problem at the field",
+  "rule": "A check says where to fix it: problems land on the field by path, with the server's message",
+  "steps": [
+    { "open": { "Kind": "DataSource", "ID": "" } },
+    { "set": { "Field": "/metadata/name", "Value": "Member register" } },
+    { "set": { "Field": "/spec/name", "Value": "Member register" } },
+    { "set": { "Field": "/spec/team", "Value": "no-such-team" } },
+    { "act": { "Action": "saveVersion", "Reason": "try" } },
+    { "expect": { "problem": { "field": "/spec/team", "contains": "no-such-team" } } }
+  ]
+}

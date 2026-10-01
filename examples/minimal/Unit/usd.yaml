@@ -1,0 +1,10 @@
+apiVersion: cartograph/v1
+kind: Unit
+metadata:
+  id: usd
+  name: US dollars
+spec:
+  name: US dollars
+  symbol: "USD"
+  dimension: money
+  description: United States dollars, which is what the cooperative settles member payments in.

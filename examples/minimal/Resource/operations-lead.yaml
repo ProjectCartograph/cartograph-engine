@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: operations-lead
+  name: Operations lead
+spec:
+  name: Operations lead
+  category: personRole
+  description: Runs collection and depot operations across the network, and accepts what the depots are asked to do differently.

@@ -1,0 +1,79 @@
+name: release
+
+# A release is a tag v<VERSION> on main (VERSIONING.md). The binaries for
+# both architectures, the images, and the notes come from the same flake
+# that CI ran.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  binaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - run: test "v$(cat VERSION)" = "${GITHUB_REF_NAME}" || (echo "tag ${GITHUB_REF_NAME} does not match VERSION $(cat VERSION)" && exit 1)
+      - run: nix develop --command just release
+      - run: cd dist && sha256sum cartograph-linux-* > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/cartograph-linux-amd64
+            dist/cartograph-linux-arm64
+            dist/SHA256SUMS
+          generate_release_notes: true
+
+  images:
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: build and push the image for this architecture
+        run: |
+          version=$(cat VERSION)
+          repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cartograph
+          for target in image image-chromium; do
+            nix build .#$target --out-link result-$target
+            name=$(docker load < result-$target | sed -n 's/^Loaded image: //p')
+            suffix=""; [ "$target" = "image-chromium" ] && suffix="-chromium"
+            docker tag "$name" "$repo:$version$suffix-${{ matrix.arch }}"
+            docker push "$repo:$version$suffix-${{ matrix.arch }}"
+          done
+
+  manifest:
+    needs: images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: one tag for both architectures
+        run: |
+          version=$(cat VERSION)
+          repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cartograph
+          for suffix in "" "-chromium"; do
+            docker buildx imagetools create -t "$repo:$version$suffix" -t "$repo:latest$suffix" \
+              "$repo:$version$suffix-amd64" "$repo:$version$suffix-arm64"
+          done

@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: transport-contractor
+  name: Transport contractor
+spec:
+  name: Transport contractor
+  category: externalParty
+  description: Contracted haulier moving produce between depots and retail partners.

@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Unit
+metadata:
+  id: score
+  name: Score
+spec:
+  name: Score
+  dimension: ratio
+  description: A number on a scale somebody defined. The KPI's definition says what the scale is.

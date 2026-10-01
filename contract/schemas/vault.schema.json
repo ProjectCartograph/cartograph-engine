@@ -1,0 +1,30 @@
+{
+  "$id": "vault.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vault",
+  "description": "The vault state manifest at <vault>/vault.yaml. Lists the manifests currently live in the state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": { "const": "cartograph/v1" },
+    "kind": { "const": "Vault" },
+    "metadata": { "$ref": "common.schema.json#/$defs/Metadata" },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9]*\\/[A-Za-z0-9_-]+$",
+            "description": "Reference form: Kind/id"
+          },
+          "uniqueItems": true,
+          "description": "Manifests in the live state: each is Kind/id, one per line"
+        }
+      }
+    }
+  }
+}

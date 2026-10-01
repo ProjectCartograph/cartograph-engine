@@ -1,0 +1,23 @@
+{
+  "$id": "beneficiarygroup.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BeneficiaryGroup",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": { "const": "cartograph/v1" },
+    "kind": { "const": "BeneficiaryGroup" },
+    "metadata": { "$ref": "common.schema.json#/$defs/Metadata" },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 240 },
+        "source": { "$ref": "common.schema.json#/$defs/Slug", "x-cartograph-ref": "DataSource" }
+      }
+    }
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "$id": "settings.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Settings",
+  "description": "The one singleton configuration manifest, metadata.id always \"default\". An optional settings.yaml at an import directory's root; defaults apply when none is imported.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Settings"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "goalLevels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "default": [
+            "Goal",
+            "Objective",
+            "Outcome"
+          ],
+          "description": "Display names for the three levels, in order: goal, objective, then outcome. A vault may use its own plan's words (for example Pillar for goal)."
+        },
+        "projectLevelName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operator": {
+          "type": "string",
+          "minLength": 1,
+          "default": "local",
+          "description": "Author name recorded in snapshot versions"
+        },
+        "examples": {
+          "type": "object",
+          "description": "Examples this vault shows behind the \"?\" on a field, in its own words, keyed by field: problem.situation, problem.cause, change.what, change.gain, aim.change, aim.gain, objective, success.statement, gap.current, gap.desired. The product ships generic examples and names no organisation; a vault that is about one supplies examples its own people recognise. A field with no entry here shows the product's own. See TAXONOMY.md D20.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "maxItems": 5
+          }
+        },
+        "chromium": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path to the chromium or chromium-like executable for PDF rendering. Omit it and the renderer takes the CHROMIUM environment variable, or the first chromium on PATH."
+        },
+        "purpose": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "vision": {
+              "type": "string",
+              "maxLength": 600,
+              "description": "The future the organisation is working towards."
+            },
+            "mission": {
+              "type": "string",
+              "maxLength": 600,
+              "description": "What the organisation does to get there."
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 160,
+              "description": "Where the vision and mission are published."
+            }
+          },
+          "description": "Why everything below exists, stated once at the top: the vision and mission every goal serves (Kaufman's ideal vision, the Balanced Scorecard's mission and vision). See TAXONOMY.md D24."
+        }
+      }
+    }
+  }
+}

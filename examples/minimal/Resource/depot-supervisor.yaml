@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: depot-supervisor
+  name: Depot supervisor
+spec:
+  name: Depot supervisor
+  category: personRole
+  description: Runs one depot day to day, including intake and the quality check.

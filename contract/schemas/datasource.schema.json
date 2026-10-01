@@ -1,0 +1,95 @@
+{
+  "$id": "datasource.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DataSource",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "DataSource"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "team"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "database",
+            "spreadsheet",
+            "paperRecord",
+            "formOrSurvey",
+            "operationalSystem",
+            "apiOrFeed",
+            "documentStore"
+          ],
+          "description": "What form the source takes. Who runs it is provenance, a separate question (DCAT keeps the dataset, its distribution and its publisher apart)."
+        },
+        "provenance": {
+          "type": "string",
+          "enum": [
+            "internal",
+            "external"
+          ],
+          "description": "Whether the organisation runs this source or a third party does. Older files that used the category externalThirdParty are rewritten on read to provenance external."
+        },
+        "team": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Team"
+        },
+        "access": {
+          "type": "string"
+        },
+        "refresh": {
+          "$ref": "common.schema.json#/$defs/Refresh",
+          "x-cartograph-enum": [
+            "daily",
+            "weekly",
+            "monthly",
+            "quarterly",
+            "annual",
+            "irregular"
+          ]
+        },
+        "capture": {
+          "type": "string",
+          "enum": ["byHand", "scannedForms", "onlineForm", "systemFeed", "notDecided"],
+          "description": "How each record gets into this source. A source filled from paper has to say how the paper becomes data, because that decides how soon anything read from it can be known: an assessment printed for hand marking cannot report in weeks. notDecided is an honest answer and is advised wherever a time-bound target reads from here. See TAXONOMY.md D18."
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "restricted"
+          ],
+          "description": "Information classification from a fixed scheme (ISO/IEC 27002:2022, 5.12 and 5.13: classify by a labelled scheme). Older free-text values that match a level are rewritten on read; any other value is dropped with a note, since guessing a classification is worse than leaving it unset."
+        },
+        "qualityIssues": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

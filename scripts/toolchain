@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Run a command inside the toolchain flake.nix pins.
+#
+# The justfile uses this as its shell, so every recipe runs with the
+# pinned Go, staticcheck, just and Chromium whether or not the caller
+# entered `nix develop` first. Already inside the shell (nix develop, or
+# direnv via .envrc): run directly. Otherwise: re-enter it.
+#
+# Nix is required. One environment is the point; a recipe that ran with
+# whatever Go was on the PATH would be a different build. To run with
+# your own tools anyway, set CARTOGRAPH_TOOLCHAIN=1 and own the result.
+set -euo pipefail
+
+if [ -n "${CARTOGRAPH_TOOLCHAIN:-}" ] || [ -n "${IN_NIX_SHELL:-}" ]; then
+    exec "$@"
+fi
+
+if ! command -v nix >/dev/null 2>&1; then
+    echo "cartograph: nix is required to run recipes (https://nixos.org/download); set CARTOGRAPH_TOOLCHAIN=1 to use your own toolchain" >&2
+    exit 1
+fi
+
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+export CARTOGRAPH_TOOLCHAIN=1
+exec nix --extra-experimental-features "nix-command flakes" \
+    develop --quiet --no-warn-dirty "path:$root" --command "$@"

@@ -1,0 +1,240 @@
+apiVersion: cartograph/v1
+kind: Project
+metadata:
+  id: quality-check-rollout
+  name: Quality Check Rollout
+  alias: qc-rollout
+spec:
+  team: quality-team
+  mandate:
+    - kind: decision
+      title: Approval to pilot delivery quality checks
+      reference: DEC-2025-014
+      date: "2025-08"
+      issuedBy: Cooperative Board
+    - kind: policy
+      title: Produce quality standard
+      reference: POL-QUALITY-02
+      date: "2024-11"
+  funding:
+    - amount: 42000
+      currency: USD
+      source: operating-budget
+      status: approved
+  summary:
+    problems:
+      - id: problem-1
+        problem:
+          situation: learn of a failed delivery a season late
+          cause: checks happen after dispatch and the produce has already left the depot
+        change:
+          what: Every delivery is checked at intake against one published standard
+          gain: learn of a failure the same day and can rework it
+        groups:
+          - delivering-members
+          - retail-partners
+        gaps:
+          - faults-found-after-dispatch
+      - id: problem-2
+        problem:
+          situation: are told a different answer each time they ask what a passing delivery looks like
+          cause: each depot keeps its own checklist and none of them agree
+        change:
+          what: One published standard is what a check is run against
+          gain: give the same answer whoever asks
+        groups:
+          - depot-staff
+        gaps:
+          - no-single-quality-standard
+    scopeIn:
+      - Checking every delivery at intake
+      - Training depot staff to run the quality check tool
+    scopeOut:
+      - Checking produce already sold to retailers
+      - Building a new digital quality check tool
+    beneficiaries:
+      - group: delivering-members
+      - group: retail-partners
+      - group: depot-staff
+  alignment:
+    goals: [faults-found-before-dispatch]
+    programmes: [quality-improvement-programme]
+  objectives:
+    # A project objective is an outcome with the means named in the same
+    # breath, and its key results measure the outcome, not the effort: how
+    # many checks happened is activity, how much the checks caught is not.
+    - id: objective-1
+      objective: Catch faults at intake by checking every delivery against one standard
+      keyResults:
+        - id: kr-caught-at-intake
+          metric: the share of faults found at intake rather than by a buyer
+          direction: increase
+          kind: percent
+          baseline: {value: 20, date: "2025-09"}
+          target: {value: 85, date: "2026-06"}
+          source: quality-check-tool
+        - id: kr-checked-same-day
+          metric: hours between a failed check and the depot knowing
+          direction: decrease
+          kind: duration
+          unit: hours
+          baseline: {value: 72, date: "2025-09"}
+          target: {value: 8, date: "2026-06"}
+          source: quality-check-tool
+  kpis:
+    - kpi: quality-pass-rate
+      reason: The published standard is what the pass rate counts.
+  deliverables:
+    - id: dv-training-pack
+      name: Depot staff training pack
+      description: Slides, a facilitator guide and practice materials for running the quality check tool.
+      acceptance:
+        - by: {local: resources, id: delivery-lead}
+          outcome: signs off the pack as ready to run
+        - by: {local: resources, id: quality-reviewer}
+          outcome: confirms the practice materials match the published standard
+    - id: dv-reporting-view
+      name: Quality results view
+      description: A shared view of quality check results by depot, refreshed each season.
+      acceptance:
+        - by: {local: resources, id: operations}
+          outcome: confirms the view matches the underlying spreadsheet
+  successCriteria:
+    # The floor this project has to clear, not the stretch its key results
+    # reach for. Each line says what must be true, the dimension it
+    # measures and the bar it clears, where that is read from and how
+    # often, and the roles that track and confirm it.
+    - id: sc-data-protection
+      statement: The data protection review of member delivery records is complete with no open actions.
+      metric: compliance
+      owner: {local: resources, id: delivery-lead}
+      confirmedBy: {local: resources, id: sponsor}
+      when: atClosing
+    - id: sc-caught-at-intake
+      statement: Faults are found at intake rather than by a buyer.
+      # This one is produced by something the project builds, so it says
+      # so, and names what the step rests on. The three criteria around it
+      # are not, and say nothing: a criterion needs no deliverable behind
+      # it (DESIGN_RULES.md, 2026-09-29).
+      from:
+        - {local: deliverables, id: dv-training-pack}
+        - {local: deliverables, id: dv-reporting-view}
+      assumes: [faults-found-at-intake-can-be-reworked]
+      metric: business
+      standard: at least 85 percent
+      source: quality-check-tool
+      cycle: seasonal-cycle
+      owner: {local: resources, id: quality-reviewer}
+      confirmedBy: {local: resources, id: sponsor}
+      when: atLanding
+    - id: sc-staff-confidence
+      statement: Depot staff say the check is easier than the paper round it replaced.
+      metric: customer
+      standard: with nine in ten agreeing
+      source: member-survey
+      cycle: seasonal-cycle
+      owner: {local: resources, id: delivery-lead}
+      confirmedBy: {local: resources, id: operational-owner}
+      when: atLanding
+    - id: sc-staff-readiness
+      statement: Every depot runs the check unaided.
+      from:
+        - {local: deliverables, id: dv-training-pack}
+      assumes: [depots-release-staff-for-training]
+      metric: adoption
+      standard: every depot, every season
+      source: quality-check-tool
+      cycle: seasonal-cycle
+      owner: {local: resources, id: quality-reviewer}
+      confirmedBy: {local: resources, id: operational-owner}
+      when: postClosingCycle
+  operation: quality-check-service
+  data:
+    consumes:
+      - source: member-register
+        purpose: Identify members with deliveries due for a check this season.
+        handoff: apiOrFeed
+    produces:
+      - output: recordsInExistingSource
+        sink: quality-check-tool
+        purpose: Showing which depots are catching faults at intake rather than after dispatch.
+        refresh: quarterly
+        personalData: sensitive
+      - output: documentsOrFiles
+        sink: quality-evidence-library
+        purpose: Holding the signed check sheets the board's seasonal review is settled against.
+        refresh: quarterly
+        personalData: none
+  timeline:
+    start: "2025-09"
+    phases:
+      - id: pilot-at-two-depots
+        name: Pilot at two depots
+        months: 3
+      - id: rollout-to-every-depot
+        name: Rollout to every depot
+        months: 6
+  risks:
+    - id: vendor-delay
+      description: The quality check tool's printer runs low on supply during the pilot.
+      type: risk
+      impact: medium
+      likelihood: low
+      mitigation: Order a second season of forms before the pilot starts.
+    - id: late-transcription
+      description: Some quality check forms arrive at the depot office after the season closes.
+      type: issue
+      impact: medium
+      likelihood: medium
+      mitigation: Move to same-day transcription during the pilot.
+      escalate:
+        flag: true
+        reason: Late forms are already delaying quality reporting to the board this season.
+        to: {local: resources, id: sponsor}
+    - id: register-currency
+      description: The member register must stay current through the season for the check to know who delivered.
+      type: dependency
+      depends:
+        direction: needs
+        on: {kind: DataSource, id: member-register}
+        needBy: pilot-at-two-depots
+      impact: high
+      likelihood: low
+    - id: board-approval
+      description: The board must approve extending the check beyond the two pilot depots.
+      type: dependency
+      depends:
+        direction: needs
+        on: {external: Cooperative Board}
+        needBy: rollout-to-every-depot
+      impact: high
+      likelihood: low
+      mitigation: Put the pilot's results to the board one month before rollout starts.
+  compliance:
+    - item: Data protection review of member delivery records
+      status: inProgress
+  resources:
+    - id: sponsor
+      role: sponsor
+      resource: depot-network
+    - id: lead
+      role: manager
+      resource: depot-supervisor
+    - id: delivery-lead
+      role: teamMember
+      resource: depot-supervisor
+    - id: analytics
+      role: teamMember
+      resource: data-analyst
+    - id: operations
+      role: teamMember
+      resource: operations-lead
+    - id: quality-reviewer
+      role: teamMember
+      resource: quality-reviewer
+    - id: operational-owner
+      role: serviceOwner
+      resource: operations-lead
+    - id: training-facilitator
+      role: teamMember
+      resource: training-facilitator

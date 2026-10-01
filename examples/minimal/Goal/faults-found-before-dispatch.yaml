@@ -1,0 +1,20 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: faults-found-before-dispatch
+  name: Faults are found before produce leaves the depot
+spec:
+  level: outcome
+  parent: produce-meets-one-standard
+  contributesTo:
+    - goal: members-reach-more-buyers
+      because: Retail buyers drop a supplier after repeated rejected loads.
+  objective: A fault is caught at intake, where it can still be put right, instead of at the buyer, where it cannot.
+  keyResults:
+    - id: kr-caught-at-intake
+      metric: the share of faults found at intake rather than by a buyer
+      direction: increase
+      kind: percent
+      baseline: {value: 20, date: "2025-09"}
+      target: {value: 85, date: "2026-06"}
+  evidence: Quality check records and buyer complaints, matched by delivery.

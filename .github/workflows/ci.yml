@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # The same `just ci` a contributor runs, inside the same flake, on
+  # both architectures the release targets.
+  ci:
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - run: nix develop --command just ci
+
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: DeterminateSystems/nix-installer-action@main
+      - run: nix develop --command just commit-check origin/${{ github.base_ref }}
+
+  # The binary and the image from the flake, on both architectures; the
+  # image is started and asked whether it is ready.
+  image:
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - run: nix flake check --print-build-logs
+      - run: nix run .#cartograph -- validate examples/minimal
+      - run: nix build .#image --out-link result-image && docker load < result-image
+      - name: seed a volume and start the container
+        run: |
+          tag=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '^cartograph:' | head -n 1)
+          docker volume create cartograph-vault
+          docker run --rm -v cartograph-vault:/vault -v "$PWD/examples/minimal:/src:ro" busybox \
+            sh -c 'cp -r /src/. /vault/ && chown -R 65532:65532 /vault'
+          docker run -d --name cartograph -p 8080:8080 -v cartograph-vault:/vault "$tag"
+      - name: ready
+        run: |
+          for i in $(seq 1 60); do curl -sf http://localhost:8080/readyz && exit 0; sleep 0.5; done
+          docker logs cartograph; exit 1

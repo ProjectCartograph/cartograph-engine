@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Team
+metadata:
+  id: depot-network-team
+  name: Depot Network Team
+spec:
+  name: Depot Network Team
+  parent: operations-team
+  description: Runs the fifteen depots, their cold stores and the collection rounds between them.

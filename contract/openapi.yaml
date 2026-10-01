@@ -1,0 +1,1793 @@
+openapi: 3.1.0
+info:
+  title: Cartograph contract API
+  version: "1"
+  description: >
+    Declarative capture engine. Manifests are validated against the JSON
+    Schema files in contract/schemas; this document describes the HTTP
+    surface around that engine.
+
+    Every operation may answer 401 (no identity where one is required)
+    or 403 (the authorizer refused), decided by two middlewares before
+    any handler runs; see cartograph/docs/DEPLOYMENT.md.
+servers:
+  - url: /api/v1
+paths:
+  /settings:
+    get:
+      operationId: getSettings
+      summary: The singleton configuration, defaulted where unset
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  /goals/tree:
+    get:
+      operationId: getGoalTree
+      summary: The goal tree, computed from every Goal manifest and the reference index
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalTree"
+
+  /manifests/Goal/{id}/checks:
+    get:
+      operationId: getGoalChecks
+      summary: Whether a goal can be assessed. Checks never block a save.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GoalCheck"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/Gap/{id}/checks:
+    get:
+      operationId: getGapChecks
+      summary: >-
+        Whether a gap can be used for what a gap register is for. Advisory
+        only, like a programme's: every one of these reads a manifest other
+        than the gap.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProgrammeCheck"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/Gap/{id}/coverage:
+    get:
+      operationId: getGapCoverage
+      summary: >-
+        Which part of a gap each piece of work addresses, and which parts
+        nobody does. Derived from the citations, never stored: work declares
+        what it reaches and this reads it back, the same way a programme's
+        members are derived. Addressed, not closed — whether the shortfall
+        narrowed is what the gap's measure reads.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GapCoverage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/Operation/{id}/checks:
+    get:
+      operationId: getOperationChecks
+      summary: >-
+        Whether an operation is described well enough to be run and
+        measured, step by step. Advisory only.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProgrammeCheck"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/Programme/{id}/checks:
+    get:
+      operationId: getProgrammeChecks
+      summary: >-
+        Whether a programme can be judged on what a programme is judged on.
+        Advisory only: none of these has a state that stops anything, because
+        most of them can change when somebody edits a different manifest.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProgrammeCheck"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/Goal/{id}:
+    delete:
+      operationId: deleteGoal
+      summary: >-
+        Delete a goal (I3.2: goals are easily mutable). Allowed only when
+        nothing currently references it; every committed version of every
+        manifest remains in the immutable manifest store regardless (a
+        tombstone, not a destructive delete), so this never disturbs
+        history or audit -- it only stops the goal from being listed,
+        picked or resolved as a reference going forward.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteGoalRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Refused, something still references this goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+
+  /manifests/Project/{id}/checks:
+    get:
+      operationId: getProjectChecks
+      summary: >-
+        Every per-section check for a project (goals, aim, scope,
+        deliverables, beneficiaries, timeline, data, risks, closing,
+        landing). Checks never block a save; state block stops submission.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectChecks"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/Project/{id}/state:
+    get:
+      operationId: getProjectState
+      summary: A project's current state and its full transition history
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectState"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: transitionProjectState
+      summary: >-
+        Move a project to a new state. draft to in review is refused with
+        422 (the blocking checks as problems) unless every blocking check
+        currently passes; cancelled requires a reason; every other move
+        must be the next state in the fixed sequence.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectStateTransitionRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Transitioned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectState"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /manifests/Project/{id}/charter.html:
+    get:
+      operationId: getProjectCharterHtml
+      summary: >-
+        Project charter rendered as HTML from the latest snapshot (or working
+        copy with ?working=true).
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: working
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Use working copy instead of latest snapshot
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            text/html:
+              schema:
+                type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/{kind}/{id}/charter.pdf:
+    get:
+      operationId: getCharterPdf
+      summary: >-
+        The charter of a project, programme or operation as a PDF, printed
+        from the same HTML the charter page shows. Needs a chromium: the
+        vault's spec.chromium, the CHROMIUM environment variable, or one on
+        the PATH.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+        - name: working
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: For a project, use the working copy instead of the latest snapshot.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /manifests/Programme/{id}/charter.html:
+    get:
+      operationId: getProgrammeCharterHtml
+      summary: >-
+        Programme charter rendered as HTML from the working copy: what it is
+        for, what is wrong, what it serves, how it believes the change
+        happens, what is inside it and who runs it. Derived, like every
+        other view, so there is nothing to keep in step.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            text/html:
+              schema:
+                type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/Operation/{id}/charter.html:
+    get:
+      operationId: getOperationCharterHtml
+      summary: >-
+        Operation charter rendered as HTML from the working copy: what the
+        service does and when, who runs it, what it is part of, how it is
+        measured, what it uses and produces, and which projects will hand
+        over to it. Derived, like every other view.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            text/html:
+              schema:
+                type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/{kind}/{id}/working:
+    get:
+      operationId: getWorking
+      summary: >-
+        The working copy as last saved, decoded, so an interface or a
+        conformance driver can read the draft back without a version.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManifestDraft"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: putWorking
+      summary: >-
+        Stage a draft. Writes to the vault's staging directory, not to the
+        vault's own tree, and does not include the ref: autosave is not a
+        decision to add something to the vault. A save promotes it.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [yaml]
+              properties:
+                yaml:
+                  type: string
+                  description: YAML manifest document
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "204":
+          description: Saved
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Excluded, cannot create working copy; recover to restore
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+    delete:
+      operationId: discardWorking
+      summary: >-
+        Throw away a staged draft and go back to what the vault holds. The
+        operation that could not exist before drafts were staged: the working
+        copy used to be the file, so there was nothing to go back to. A ref
+        the vault has never held leaves nothing behind, which is the honest
+        answer rather than an empty manifest.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "204":
+          description: Discarded. Nothing is returned; read the manifest back.
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness check
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /kinds:
+    get:
+      operationId: listKinds
+      summary: Every registered kind and how many manifests exist for it
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KindCount"
+
+  /flows:
+    get:
+      operationId: listFlows
+      summary: >-
+        The kinds that have a flow (a stepped definition, contract/flows).
+        A kind without one is a sheet: one step, every field.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /flows/{kind}:
+    get:
+      operationId: getFlow
+      summary: The flow document for a kind, as written in the contract
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A Flow document (contract/flows/flow.schema.json).
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /schemas/{kind}:
+    get:
+      operationId: getSchema
+      summary: The JSON Schema document for a kind
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A JSON Schema document (draft 2020-12).
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/{kind}:
+    get:
+      operationId: listManifests
+      summary: Summaries of every manifest of a kind
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Case-insensitive substring filter over id and name.
+        - name: ref
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          description: >-
+            Repeatable. Each value is "Kind/id"; a manifest must have an
+            outgoing reference matching every one given (logical AND). For
+            example ref=Goal/reading-outcomes lists only manifests that
+            reference that goal.
+        - name: expand
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [spec]
+          description: >-
+            spec carries each manifest's spec on its summary, so a list can
+            show what each record holds without one request per row.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+          description: >-
+            Page size (default 50, max 200). Giving limit or cursor (either
+            one) switches the response from the bare array to the paginated
+            envelope; omitting both keeps the bare-array response.
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >-
+            Opaque pagination cursor from a previous response's next field.
+            Giving limit or cursor (either one) switches the response from
+            the bare array to the paginated envelope; omitting both keeps
+            the bare-array response.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: >-
+            OK. A bare array of Summary, never null, when neither limit nor
+            cursor is given (backward compatible). The paginated envelope
+            (ManifestList) when either is given.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/Summary"
+                  - $ref: "#/components/schemas/ManifestList"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/{kind}/{id}/references:
+    get:
+      operationId: getReferences
+      summary: What a manifest points to, and what points back at it
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/References"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/{kind}/{id}:
+    get:
+      operationId: getManifest
+      summary: The current version of one manifest
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManifestView"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: putManifest
+      summary: >-
+        Validate and commit a new version of a manifest: the save that
+        promotes a staged draft into the vault's own tree and its include
+        list, in one atomic journalled write, then clears the draft. Only
+        this ref's draft — other drafts are left alone, because there may be
+        many and saving one is not a decision about the rest.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WriteRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Committed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Version"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+    delete:
+      operationId: deleteManifest
+      summary: >-
+        Exclude a manifest from the live state (a tombstone operation).
+        Allowed only when nothing currently references it; the file remains
+        on disk, and the exclusion can be recovered. Applies the leaf rule:
+        a manifest is a leaf if no live manifest references it.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "204":
+          description: Excluded
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Refused, something still references this manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+
+  /manifests/{kind}/{id}/versions:
+    get:
+      operationId: listVersions
+      summary: Version history of one manifest
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Version"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/{kind}/{id}/versions/{n}:
+    get:
+      operationId: getVersion
+      summary: One historical version of a manifest
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+        - name: n
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManifestView"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+  /manifests/{kind}/{id}/snapshots:
+    post:
+      operationId: postSnapshot
+      summary: Create an explicit snapshot (version) with a reason
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  minLength: 1
+                  description: Reason for this snapshot
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Snapshot created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Version"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+  /manifests/{kind}/{id}/diff:
+    get:
+      operationId: diffManifest
+      summary: Structural diff between two versions
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Change"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /validate/{kind}:
+    post:
+      operationId: validateManifest
+      summary: Validate a manifest without storing it
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK, problems is empty when the manifest is valid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /vault:
+    get:
+      operationId: getVault
+      summary: The vault state manifest
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Vault state manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vault"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /vault/unapplied:
+    get:
+      operationId: listUnapplied
+      summary: Manifest files present but not included in the live state
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: List of unapplied files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ManifestRef"
+
+  /vault/apply:
+    post:
+      operationId: applyRef
+      summary: Include a manifest in the live state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vault"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /vault/excluded:
+    get:
+      operationId: listExcluded
+      summary: Manifests that were excluded from the live state with reasons
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: List of excluded manifests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Exclusion"
+
+  /vault/recover:
+    post:
+      operationId: recoverRef
+      summary: Re-include an excluded manifest in the live state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoverRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Recovered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vault"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /snapshots:
+    get:
+      operationId: listSnapshots
+      summary: Every snapshot (version) across all kinds, newest first, with pagination
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of snapshots to return
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Pagination cursor from a prior response's nextCursor
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Snapshots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SnapshotList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+components:
+  parameters:
+    KindParam:
+      name: kind
+      in: path
+      required: true
+      schema:
+        type: string
+      description: A registered kind name, for example Project or Goal.
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    Unauthenticated:
+      description: >-
+        No identity, where the deployment's authenticator requires one
+        (CARTOGRAPH_AUTH=proxy and the proxy header is missing).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemList"
+    Forbidden:
+      description: >-
+        The principal may not perform this action under the deployment's
+        authorizer (CARTOGRAPH_AUTHZ=roles). The message names the actor and
+        the verb.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemList"
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemList"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemList"
+    Conflict:
+      description: File changed on disk (vault) or stale base version (database)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ConflictResponse"
+    Unprocessable:
+      description: Schema, reference or kind rule violation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemList"
+
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    KindCount:
+      type: object
+      required: [kind, count]
+      properties:
+        kind:
+          type: string
+        count:
+          type: integer
+
+    Summary:
+      type: object
+      required: [kind, id, name, version, updatedOn]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        version:
+          type: integer
+        updatedOn:
+          type: string
+          format: date-time
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            metadata.labels, carried on the summary so a register can be
+            grouped and filtered without fetching every manifest behind
+            it. Omitted (never {}) where the manifest sets none.
+        state:
+          type: string
+          description: >-
+            The project's current state (see ProjectState). Present only
+            when kind is Project.
+        draft:
+          type: boolean
+          description: >-
+            true when this Summary represents a project that has only ever
+            been saved as a draft, never committed (version is then 0).
+            Present only when kind is Project and includeDrafts=true
+            surfaced it; omitted (never false) for every ordinary,
+            committed Summary.
+        spec:
+          type: object
+          additionalProperties: true
+          description: The manifest's spec, present only when expand=spec was given.
+
+    ManifestList:
+      description: >
+        The paginated envelope for listManifests, returned instead of the
+        bare array when limit or cursor is given.
+      type: object
+      required: [items, next]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Summary"
+        next:
+          type: [string, "null"]
+          description: Opaque cursor for the next page, or null when this is the last page.
+
+    Vault:
+      type: object
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          const: "cartograph/v1"
+        kind:
+          const: "Vault"
+        metadata:
+          type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+              description: Vault directory name
+        spec:
+          type: object
+          properties:
+            include:
+              type: array
+              items:
+                type: string
+                pattern: "^[A-Za-z][A-Za-z0-9]*\\/[A-Za-z0-9_-]+$"
+              description: Manifests in live state (Kind/id, one per line)
+
+    ManifestRef:
+      type: object
+      required: [kind, id, name]
+      properties:
+        kind:
+          type: string
+          description: Manifest kind
+        id:
+          type: string
+          description: Manifest id
+        name:
+          type: string
+          description: Manifest name from metadata.name
+
+    ApplyRequest:
+      type: object
+      properties:
+        ref:
+          type: string
+          pattern: "^[A-Za-z][A-Za-z0-9]*\\/[A-Za-z0-9_-]+$"
+          description: One reference to include (Kind/id).
+        refs:
+          type: array
+          description: >-
+            Several references in one call. Applying a hundred files one
+            request at a time reread and rewrote vault.yaml a hundred times,
+            which is quadratic in the number of files and is why it felt slow;
+            one call reads and writes once. Exactly one of ref or refs.
+          items:
+            type: string
+            pattern: "^[A-Za-z][A-Za-z0-9]*\\/[A-Za-z0-9_-]+$"
+
+    Exclusion:
+      type: object
+      required: [kind, id, name, on, reason]
+      properties:
+        kind:
+          type: string
+          description: Manifest kind
+        id:
+          type: string
+          description: Manifest id
+        name:
+          type: string
+          description: Manifest name at time of exclusion
+        on:
+          type: string
+          format: date-time
+          description: When excluded
+        reason:
+          type: string
+          description: Reason for exclusion
+
+    RecoverRequest:
+      type: object
+      required: [ref]
+      properties:
+        ref:
+          type: string
+          pattern: "^[A-Za-z][A-Za-z0-9]*\\/[A-Za-z0-9_-]+$"
+          description: Reference to recover (Kind/id)
+
+    Snapshot:
+      type: object
+      required: [version, kind, id, name, number, reason, on]
+      properties:
+        version:
+          type: string
+          description: Version identifier (e.g., "v1", "v2")
+        definition:
+          type: string
+          description: Manifest name
+        kind:
+          type: string
+          description: Manifest kind
+        id:
+          type: string
+          description: Manifest id
+        number:
+          type: integer
+          description: Version number
+        reason:
+          type: string
+          description: Reason for this snapshot
+        on:
+          type: string
+          format: date-time
+          description: When the snapshot was created
+        bundle:
+          type: string
+          description: Handoff bundle directory (relative to vault root), when a handoff used this snapshot
+
+    SnapshotList:
+      type: object
+      required: [snapshots, cursor]
+      properties:
+        snapshots:
+          type: array
+          items:
+            $ref: "#/components/schemas/Snapshot"
+        cursor:
+          type: [string, "null"]
+          description: Opaque cursor for the next page, or null when this is the last page
+
+    Manifest:
+      description: >
+        The generic manifest envelope, mirroring
+        contract/schemas/manifest.schema.json (kept in sync by hand: the
+        authoritative shape and every kind-specific spec shape live under
+        contract/schemas/, since the code generator cannot follow that
+        file's further reference into common.schema.json without a
+        hand-written import mapping). Runtime validation always uses the
+        JSON Schema files directly, never this generated type.
+      type: object
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+          required: [id, name]
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            labels:
+              type: object
+              additionalProperties:
+                type: string
+        spec:
+          type: object
+
+    Version:
+      type: object
+      required: [kind, id, number, actor, reason, on]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        number:
+          type: integer
+        actor:
+          type: string
+        reason:
+          type: string
+        on:
+          type: string
+          format: date-time
+        draft:
+          type: boolean
+          description: >-
+            true when this response is a draft save (X-Cartograph-Draft): number
+            then reflects the current committed version, 0 when the project
+            has never been committed, and no new version was created.
+
+    ManifestView:
+      type: object
+      required: [version, manifest, yaml]
+      properties:
+        version:
+          $ref: "#/components/schemas/Version"
+        manifest:
+          $ref: "#/components/schemas/Manifest"
+        yaml:
+          type: string
+
+    Ref:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        path:
+          type: string
+          description: JSON pointer within the manifest where this reference sits.
+
+    References:
+      type: object
+      required: [outgoing, incoming]
+      properties:
+        outgoing:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ref"
+        incoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/Summary"
+
+    Problem:
+      type: object
+      required: [path, message]
+      properties:
+        path:
+          type: string
+          description: A JSON pointer into the manifest.
+        message:
+          type: string
+
+    ConflictResponse:
+      type: object
+      required: [ours, theirs]
+      properties:
+        ours:
+          type: string
+          description: The YAML text being written
+        theirs:
+          type: string
+          description: The YAML text currently on disk (vault only)
+
+    DeleteGoalRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    DeleteRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    ProblemList:
+      type: object
+      required: [problems]
+      properties:
+        problems:
+          type: array
+          items:
+            $ref: "#/components/schemas/Problem"
+
+    Change:
+      type: object
+      required: [path, op]
+      properties:
+        path:
+          type: string
+        op:
+          type: string
+          enum: [add, remove, replace]
+        from: {}
+        to: {}
+
+    WriteRequest:
+      type: object
+      required: [reason]
+      properties:
+        yaml:
+          type: string
+        manifest:
+          type: object
+        reason:
+          type: string
+      description: Exactly one of yaml or manifest must be supplied.
+
+    Settings:
+      type: object
+      required: [goalLevels, projectLevelName, operator]
+      properties:
+        goalLevels:
+          type: array
+          items:
+            type: string
+          description: Display names for the three levels, in order goal, objective, outcome.
+        projectLevelName:
+          type: string
+        operator:
+          type: string
+          description: Author name recorded in versions (default local)
+        purpose:
+          type: object
+          description: The vault's vision and mission, stated once above every goal (TAXONOMY.md D24).
+          properties:
+            vision:
+              type: string
+            mission:
+              type: string
+            source:
+              type: string
+        examples:
+          type: object
+          description: >-
+            Examples this vault shows per field, in its own words (TAXONOMY.md
+            D20). Absent when the vault supplies none.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    GoalAligned:
+      type: object
+      required: [projects, programmes, operations, kpis]
+      properties:
+        projects:
+          type: integer
+        programmes:
+          type: integer
+        operations:
+          type: integer
+        kpis:
+          type: integer
+
+    GoalNode:
+      type: object
+      required: [id, name, level, keyResults, aligned, children, smart]
+      properties:
+        smart:
+          type: object
+          description: Which SMART criteria it meets, read from what it holds (TAXONOMY.md D25).
+          required: [specific, measurable, attainable, relevant, timeBound]
+          properties:
+            specific: {type: boolean}
+            measurable: {type: boolean}
+            attainable: {type: boolean}
+            relevant: {type: boolean}
+            timeBound: {type: boolean}
+        owner:
+          type: string
+          description: The role accountable for it (a Resource id), when named (TAXONOMY.md D26).
+        horizon:
+          type: object
+          description: The period it covers as YYYY-MM at each end; inherited is true when it takes its parent's.
+          required: [start, end]
+          properties:
+            start: {type: string}
+            end: {type: string}
+            inherited: {type: boolean}
+        objective:
+          type: string
+          description: The goal's short statement (an aim for goals and objectives, a changed state for outcomes).
+        why:
+          type: string
+          description: Why it matters (whyItMatters).
+        contributesTo:
+          type: array
+          description: Higher objectives this outcome also leads to, with the reason (TAXONOMY.md D24).
+          items:
+            type: object
+            required: [goal]
+            properties:
+              goal:
+                type: string
+              because:
+                type: string
+        gaps:
+          type: array
+          description: The gaps that name this goal as the outcome that would close them, read back from the gaps (D24).
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              current:
+                type: string
+              desired:
+                type: string
+        id:
+          type: string
+        name:
+          type: string
+        level:
+          type: string
+        parent:
+          type: string
+        keyResults:
+          type: integer
+        aligned:
+          $ref: "#/components/schemas/GoalAligned"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoalNode"
+
+    GoalTree:
+      type: object
+      required: [levels, nodes]
+      properties:
+        levels:
+          type: array
+          items:
+            type: string
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoalNode"
+
+    GoalCheckFix:
+      type: object
+      required: [section]
+      properties:
+        section:
+          type: string
+
+    GapClaim:
+      type: object
+      required: [kind, id, name, whole]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        segments:
+          type: array
+          items:
+            type: string
+        whole:
+          type: boolean
+          description: The citation named no segments, so it claims the whole gap.
+
+    GapSegmentCoverage:
+      type: object
+      required: [segment, name]
+      properties:
+        segment:
+          type: string
+        name:
+          type: string
+        addressedBy:
+          type: array
+          items:
+            $ref: "#/components/schemas/GapClaim"
+
+    GapCoverage:
+      type: object
+      required: [gap, segments]
+      properties:
+        gap:
+          type: string
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/GapSegmentCoverage"
+        whole:
+          type: array
+          description: Citations that named no segments.
+          items:
+            $ref: "#/components/schemas/GapClaim"
+
+    ProgrammeCheck:
+      type: object
+      required: [id, section, state, message]
+      properties:
+        id:
+          type: string
+        section:
+          type: string
+          description: The step of the programme walk this is about, so the panel can send the reader there.
+        state:
+          type: string
+          enum: [ok, warn]
+          description: >-
+            No block state. A programme's checks read other manifests — the work
+            that names it, the graph it sits in — so one could otherwise refuse a
+            definition because a different file changed.
+        message:
+          type: string
+
+    GoalCheck:
+      type: object
+      required: [id, state, message]
+      properties:
+        id:
+          type: string
+        state:
+          type: string
+          enum: [ok, warn]
+        message:
+          type: string
+        fix:
+          $ref: "#/components/schemas/GoalCheckFix"
+
+    ValidateRequest:
+      type: object
+      properties:
+        yaml:
+          type: string
+        manifest:
+          type: object
+      description: Exactly one of yaml or manifest must be supplied.
+
+    ProjectCheckFix:
+      type: object
+      required: [phase, section]
+      properties:
+        phase:
+          type: string
+          enum: [initiation, closing, landing]
+        section:
+          type: string
+
+    ProjectCheckState:
+      type: string
+      enum: [ok, warn, block]
+
+    ProjectCheckItem:
+      type: object
+      required: [id, section, phase, state, message, fix]
+      properties:
+        id:
+          type: string
+        section:
+          type: string
+        phase:
+          type: string
+          enum: [initiation, closing, landing]
+        state:
+          $ref: "#/components/schemas/ProjectCheckState"
+        message:
+          type: string
+        fix:
+          $ref: "#/components/schemas/ProjectCheckFix"
+
+    ProjectChecks:
+      type: object
+      required: [blocking, items]
+      properties:
+        derivedEnd:
+          type: string
+          description: The end month derived from timeline.start plus every phase's months.
+        blocking:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectCheckItem"
+
+    ProjectStateName:
+      type: string
+      enum:
+        - draft
+        - defined
+        - handed off
+        - cancelled
+
+    ProjectStateEntry:
+      type: object
+      required: [state, actor, on]
+      properties:
+        state:
+          $ref: "#/components/schemas/ProjectStateName"
+        actor:
+          type: string
+        reason:
+          type: string
+        on:
+          type: string
+          format: date-time
+        snapshot:
+          type: integer
+          description: The snapshot number rendered to the bundle, set when state is handed off
+        bundle:
+          type: string
+          description: The directory path where the rendered charter bundle was written, relative to vault root
+
+    ProjectState:
+      type: object
+      required: [state, history]
+      properties:
+        state:
+          $ref: "#/components/schemas/ProjectStateName"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectStateEntry"
+
+    ProjectStateTransitionRequest:
+      type: object
+      required: [to]
+      properties:
+        to:
+          $ref: "#/components/schemas/ProjectStateName"
+        reason:
+          type: string
+          description: Required when to is cancelled.
+
+    ManifestDraft:
+      description: >-
+        A manifest's working copy, kind-agnostic (the kind and id are
+        already in the request path): the text as saved, in the
+        deployment's codec, and the same decoded.
+      type: object
+      required: [yaml, manifest]
+      properties:
+        yaml:
+          type: string
+        manifest:
+          $ref: "#/components/schemas/Manifest"

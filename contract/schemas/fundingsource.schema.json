@@ -1,0 +1,60 @@
+{
+  "$id": "fundingsource.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FundingSource",
+  "description": "A budget, grant, fund or facility that work draws money from, declared once and referenced by every funding line that draws on it. Standalone for the reason every catalogue here is: the identifier belongs to the budget, not to one project's use of it, so it is written where it cannot be mistyped per project. Until 2026-09-29 a funding line carried two free-text boxes instead \u2014 which budget, and a reference whose placeholder read \"Head 26-02-001\", a code nobody could tell the purpose of and nothing could check (Programme Lead, 2026-09-29). Not a Resource: a Resource is what a project draws on to do the work, and money is what it draws on to pay for it. See TAXONOMY.md D7.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "FundingSource"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "What this budget is called by the people who hold it."
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "How this budget is identified in the ledger it belongs to \u2014 a head, a subhead, a fund or a grant number. Free text because it is somebody else's identifier and Cartograph cannot check it, but written once here rather than re-typed on every project that draws on it. Optional: not every organisation codes its budgets."
+        },
+        "heldBy": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Resource",
+          "description": "The unit or party that holds this budget and answers for it. A reference to the catalogue, so the body is named once wherever it appears."
+        },
+        "period": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "What span this budget covers, as the organisation names it: a financial year, a season, a grant term. Free text because a financial year is not a date range everybody starts in January."
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "Anything about this budget the fields above cannot hold."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+apiVersion: cartograph/v1
+kind: Segment
+metadata:
+  id: depot
+  name: Depot
+spec:
+  name: Depot
+  description: Which collection depot produce passed through. Every depot in the network is a value; produce collected in the field is counted against the depot it was taken to.

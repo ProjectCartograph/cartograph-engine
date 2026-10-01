@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: handheld-scanner
+  name: Handheld scanner
+spec:
+  name: Handheld scanner
+  category: system
+  description: The scanner used at intake to record a delivery against a member.

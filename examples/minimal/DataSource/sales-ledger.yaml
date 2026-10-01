@@ -1,0 +1,12 @@
+apiVersion: cartograph/v1
+kind: DataSource
+metadata:
+  id: sales-ledger
+  name: Sales Ledger
+spec:
+  name: Sales Ledger
+  category: operationalSystem
+  team: finance-team
+  access: Read access on request from the finance team.
+  refresh: monthly
+  classification: restricted

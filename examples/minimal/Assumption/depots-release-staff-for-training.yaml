@@ -1,0 +1,11 @@
+apiVersion: cartograph/v1
+kind: Assumption
+metadata:
+  id: depots-release-staff-for-training
+  name: Depots release staff for training during the season
+spec:
+  statement: Depots let checkers off the floor for a training day while produce is still coming in.
+  confidence: medium
+  ifFalse: Training waits for the closed season, so the shared standard arrives a season after the produce it was meant to grade.
+  testedBy: {kind: KPI, id: quality-pass-rate}
+  note: The two pilot depots agreed; the rest were not asked.

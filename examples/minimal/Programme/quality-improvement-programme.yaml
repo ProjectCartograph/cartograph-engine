@@ -1,0 +1,37 @@
+apiVersion: cartograph/v1
+kind: Programme
+metadata:
+  id: quality-improvement-programme
+  name: Quality Improvement Programme
+  alias: quality
+spec:
+  name: Quality Improvement Programme
+  aim:
+    change: Bring every part of the delivery quality experience up to the same standard, checks included
+  leadTeam: quality-team
+  supportingTeams: [operations-team]
+  goals: [raise-produce-quality]
+  # How the programme believes the change happens. A step resting on
+  # nothing is where the programme's own work does it directly; every
+  # later step rests on outcomes reached earlier, and `because` is the
+  # part an arrow on a diagram cannot carry.
+  pathway:
+    - id: step-one-standard
+      outcome: depot-staff-apply-the-standard-alike
+      because: One published standard, and training run against it, is what makes two checkers give the same delivery the same verdict.
+      assumes: [depots-release-staff-for-training]
+    - id: step-caught-early
+      outcome: faults-found-before-dispatch
+      from: [depot-staff-apply-the-standard-alike]
+      because: A checker who applies the standard the same way each time catches the fault at intake instead of passing it down the line.
+      assumes: [faults-found-at-intake-can-be-reworked]
+    - id: step-one-quality
+      outcome: produce-meets-one-standard
+      from: [depot-staff-apply-the-standard-alike, faults-found-before-dispatch]
+      because: A buyer gets one quality from the cooperative when every depot checks the same way and puts right what it finds.
+    - id: step-quality-rises
+      outcome: raise-produce-quality
+      from: [produce-meets-one-standard]
+      because: Meeting the standard at every depot is what raises the share of deliveries meeting it across the season.
+      assumes: [buyers-pay-for-consistency]
+  kpis: [quality-pass-rate]

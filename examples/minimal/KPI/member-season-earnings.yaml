@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: KPI
+metadata:
+  id: member-season-earnings
+  name: Member season earnings
+  labels: {pillar: livelihoods, pack: board}
+spec:
+  name: Member season earnings
+  definition: Median amount paid to a delivering member across one season.
+  unit: usd
+  direction: increase
+  baseline: {value: 820, date: "2025-09"}
+  target: {value: 1000, date: "2027-06"}
+  source: sales-ledger
+  cycle: seasonal-cycle
+  goals: [grow-member-livelihoods, members-earn-more-each-season]
+  resultLevel: impact
+  disaggregations: [region, holding-size]

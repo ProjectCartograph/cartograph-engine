@@ -1,0 +1,22 @@
+apiVersion: cartograph/v1
+kind: Operation
+metadata:
+  id: quality-check-service
+  name: Quality Check Service
+spec:
+  name: Quality Check Service
+  purpose: Check every delivery for quality and route failures into rework.
+  team: quality-team
+  serviceWindow: Every delivery day, ongoing.
+  kpis: [quality-pass-rate]
+  data:
+    consumes:
+      - source: member-register
+        purpose: Identify members with deliveries due for a check this season.
+        handoff: apiOrFeed
+    produces:
+      - output: recordsInExistingSource
+        sink: quality-check-tool
+        purpose: Record quality check results for each delivery.
+        refresh: quarterly
+        personalData: personal

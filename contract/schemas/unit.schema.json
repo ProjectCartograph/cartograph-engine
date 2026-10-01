@@ -1,0 +1,62 @@
+{
+  "$id": "unit.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Unit",
+  "description": "What a measure is counted in. Free text on the KPI until 2026-09-29, and the two vaults show what that cost: \"percent\" fifteen times beside \"score\", \"index\", \"count\", \"USD\", \"rate\" and \"hours\", no two checkable against each other. A kind rather than an enum, because every organisation measures something nobody anticipated and a closed list sends that number into a note; the standard units ship with a vault and an instance declares its own beside them, so a custom unit is not a special case. See TAXONOMY.md D10.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Unit"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "dimension"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "What this unit is called, as it reads beside a number."
+        },
+        "symbol": {
+          "type": "string",
+          "maxLength": 12,
+          "description": "The short form, where there is one: % for percent, hrs for hours. Optional, because most units are written out."
+        },
+        "dimension": {
+          "type": "string",
+          "enum": [
+            "percent",
+            "count",
+            "money",
+            "ratio",
+            "duration"
+          ],
+          "description": "What kind of quantity this is, from the set KeyResult.kind already uses, so the two places Cartograph talks about measurement agree. What a unit is called and what it is are separate: hours and days are both durations, and something adding two measures can tell whether it may."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "What exactly is counted, where the name alone could be read two ways."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,500 @@
+{
+  "$id": "common.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Common definitions",
+  "$defs": {
+    "Slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+    },
+    "Ref": {
+      "description": "A link to something else, in the one shape Cartograph uses everywhere it points at anything. Exactly one of three forms is filled in: kind+id for another manifest in the vault, local+id for an item inside this manifest (a role in spec.resources, a phase in the timeline), and external for something Cartograph will never hold, such as a the board approval or a vendor. One shape means one walk compiles every edge in the vault into a dependency tree, and one picker edits them all. The id of the kind+id form carries x-cartograph-ref \"*\", so the generic reference walker reads the sibling kind and checks the target exists; the other two forms have no sibling kind and are skipped by it, which is correct, since neither points at a manifest. A local reference is resolved by a kind rule instead.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Project",
+            "Programme",
+            "Operation",
+            "Goal",
+            "KPI",
+            "DataSource",
+            "Resource",
+            "Team",
+            "BeneficiaryGroup",
+            "ReportingCycle"
+          ]
+        },
+        "local": {
+          "type": "string",
+          "description": "The list inside this manifest that holds the target, for example \"resources\" or \"phases\". A kind rule checks the list exists and holds the id.",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,39}$"
+        },
+        "id": {
+          "$ref": "#/$defs/Slug",
+          "x-cartograph-ref": "*"
+        },
+        "external": {
+          "type": "string",
+          "description": "A target Cartograph does not hold, named as written. The escape hatch exists so nobody invents a manifest just to record that the project waits on a regulator.",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "kind",
+            "id"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "local"
+                ]
+              },
+              {
+                "required": [
+                  "external"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "local",
+            "id"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "required": [
+                  "external"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "external"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "required": [
+                  "local"
+                ]
+              },
+              {
+                "required": [
+                  "id"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Labels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Free-form key and value pairs for grouping and filtering, the same shape and the same purpose Kubernetes gives them. Deliberately unvalidated: a label is for the cuts somebody wants to make later and nobody anticipated \u2014 which pillar, whose directorate, which reporting pack. A fact that belongs to what the thing *is* is a property with a name and a check, not a label; putting an anticipated fact here loses the check that would have caught it missing. The cost is that a typo makes a new group, which is the right way round for a cut nobody planned. See TAXONOMY.md D11."
+    },
+    "Metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Slug"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "alias": {
+          "type": "string",
+          "maxLength": 80,
+          "pattern": "^[^\\n]*$",
+          "description": "A short reference people quote this by among themselves: a project code, a working name, the thing somebody types into a search box. Filled in from the name as dashed lower-case words and editable from there, and it follows the name until somebody changes it, after which it is theirs. Deliberately not an identifier Cartograph uses: `id` is what references resolve against and is fixed once chosen, which is exactly why a name people actually say needs somewhere else to live (Programme Lead, 2026-09-29). Nothing validates it beyond a length and a single line, for the same reason nothing validates a label."
+        },
+        "labels": {
+          "$ref": "#/$defs/Labels"
+        }
+      }
+    },
+    "YearMonth": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+    },
+    "Horizon": {
+      "description": "The period an aim covers, as a year (2025) or a year and month (2025-09) at each end. A year is enough when the source gives only years; Cartograph reads a start year as its January and an end year as its December.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "string", "pattern": "^[0-9]{4}(-(0[1-9]|1[0-2]))?$"},
+        "end": {"type": "string", "pattern": "^[0-9]{4}(-(0[1-9]|1[0-2]))?$"}
+      }
+    },
+    "ValueAndDate": {
+      "description": "A known value as of a date. Used for both a baseline (the date it was measured) and a target (the date it is due), since the parent property (baseline, target) already names which; a bare 'date' beneath either is unambiguous.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "date"
+      ],
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "date": {
+          "$ref": "#/$defs/YearMonth"
+        }
+      }
+    },
+    "Refresh": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "annual",
+        "irregular"
+      ]
+    },
+    "Handoff": {
+      "type": "string",
+      "enum": [
+        "apiOrFeed",
+        "fileTransfer",
+        "sharedDatabase",
+        "manualReentry",
+        "paper"
+      ]
+    },
+    "PersonalData": {
+      "type": "string",
+      "enum": [
+        "none",
+        "personal",
+        "sensitive"
+      ]
+    },
+    "MandateDate": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$",
+      "description": "yyyy-mm-dd or yyyy-mm."
+    },
+    "Mandate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "title"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "decision",
+            "policy",
+            "lawOrRegulation",
+            "contract",
+            "businessCase",
+            "request"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "reference": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "date": {
+          "$ref": "#/$defs/MandateDate"
+        },
+        "issuedBy": {
+          "type": "string",
+          "maxLength": 80
+        }
+      }
+    },
+    "KeyResultBaseline": {
+      "description": "Either a known starting value as of a date, or an admitted unknown with a reason and, optionally, when it will become known. Whether unit applies to value is a kind rule (see KeyResult.kind), not part of this shape.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ValueAndDate"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "unknownReason"
+          ],
+          "properties": {
+            "unknownReason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expectedBy": {
+              "$ref": "#/$defs/YearMonth"
+            }
+          }
+        }
+      ]
+    },
+    "KeyResult": {
+      "required": [
+        "id",
+        "metric",
+        "direction",
+        "kind"
+      ],
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Slug"
+        },
+        "metric": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "increase",
+            "decrease",
+            "reach",
+            "maintain"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "percent",
+            "count",
+            "money",
+            "ratio",
+            "duration"
+          ],
+          "description": "What sort of number this key result is measured in. unit is required when kind is count, money or duration, and forbidden when kind is percent or ratio (a kind rule, not enforced here)."
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline": {
+          "$ref": "#/$defs/KeyResultBaseline"
+        },
+        "target": {
+          "$ref": "#/$defs/ValueAndDate"
+        },
+        "source": {
+          "$ref": "#/$defs/Slug",
+          "x-cartograph-ref": "DataSource"
+        }
+      }
+    },
+    "GoalKeyResult": {
+      "description": "A goal's own key result: typed parts only, no downward reference (I3.2: the goal is the root of the dependency tree, so it never names a DataSource or a KPI relation itself; a KPI names the goal instead, through KPI.spec.goals).",
+      "required": [
+        "id",
+        "metric",
+        "direction",
+        "kind"
+      ],
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Slug"
+        },
+        "metric": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "increase",
+            "decrease",
+            "reach",
+            "maintain"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "percent",
+            "count",
+            "money",
+            "ratio",
+            "duration"
+          ],
+          "description": "What sort of number this key result is measured in. unit is required when kind is count, money or duration, and forbidden when kind is percent or ratio (a kind rule, not enforced here)."
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline": {
+          "$ref": "#/$defs/KeyResultBaseline"
+        },
+        "target": {
+          "$ref": "#/$defs/ValueAndDate"
+        }
+      }
+    },
+    "DataUseConsumeItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "purpose"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/Slug",
+          "x-cartograph-ref": "DataSource"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "handoff": {
+          "$ref": "#/$defs/Handoff"
+        },
+        "personalData": {
+          "$ref": "#/$defs/PersonalData"
+        }
+      }
+    },
+    "DataUseProduceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "output",
+        "sink",
+        "purpose",
+        "personalData"
+      ],
+      "properties": {
+        "output": {
+          "$ref": "#/$defs/DataOutput"
+        },
+        "sink": {
+          "$ref": "#/$defs/Slug",
+          "x-cartograph-ref": "DataSource",
+          "description": "Where the produced data lands: the register, system or store that holds it afterwards. For 'a new data source' this is the source the project itself delivers."
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "refresh": {
+          "$ref": "#/$defs/Refresh"
+        },
+        "personalData": {
+          "$ref": "#/$defs/PersonalData"
+        }
+      }
+    },
+    "DataUse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "consumes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DataUseConsumeItem"
+          }
+        },
+        "produces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DataUseProduceItem"
+          }
+        }
+      }
+    },
+    "DataOutput": {
+      "type": "string",
+      "enum": [
+        "newDataSource",
+        "recordsInExistingSource",
+        "documentsOrFiles",
+        "extractOrReport"
+      ],
+      "description": "What this project puts into the world. 'a new data source' is a register or system the project itself delivers; 'documents or files' are reports, evidence or scans that land in a store (a shared document site, an object store)."
+    },
+    "ProblemStatement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "situation"
+      ],
+      "description": "What a group cannot do today, in the parts the interface builds it from: the situation, and the one thing behind it. The sentence is not stored, because it is not an input \u2014 it is `<the groups> <situation>, because <cause>`, composed the same way by the interface, the renderer and anything the CLI grows later. Storing the composed sentence instead meant the subject lived in two places, every reader had to split the text back into parts to edit it, and the splitting was wrong twice in one day (Programme Lead, 2026-09-29). A situation written with its own subject is left as written: composition never doubles a subject the text already names.",
+      "properties": {
+        "situation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600,
+          "description": "What the groups cannot do today, said about them: \"wait a season to learn a delivery failed\". The subject comes from `groups`, so it is not repeated here."
+        },
+        "cause": {
+          "type": "string",
+          "maxLength": 600,
+          "description": "The one thing behind it: \"checks happen after dispatch, when the produce has already left\". Optional, since a situation nobody has traced to a cause is still a situation."
+        }
+      }
+    },
+    "ChangeStatement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "what"
+      ],
+      "description": "What will be different once this has worked, in the parts the interface builds it from. Composed as `<what>, so <the groups> <gain>`, and not stored composed, for the reasons on ProblemStatement.",
+      "properties": {
+        "what": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600,
+          "description": "How things stand once this has worked, rather than the work that gets there: \"every delivery is checked at intake against one published standard\"."
+        },
+        "gain": {
+          "type": "string",
+          "maxLength": 600,
+          "description": "What those groups can then do: \"learn of a failure the same day and can rework it\". The subject comes from `groups`. Optional: until it is written the sentence stops at what will be true, which is a smaller claim rather than an unfinished one."
+        }
+      }
+    }
+  }
+}

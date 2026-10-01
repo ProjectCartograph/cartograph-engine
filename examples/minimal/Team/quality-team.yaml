@@ -1,0 +1,8 @@
+apiVersion: cartograph/v1
+kind: Team
+metadata:
+  id: quality-team
+  name: Quality Team
+spec:
+  name: Quality Team
+  description: Sets and checks the produce quality standard for Example Cooperative.

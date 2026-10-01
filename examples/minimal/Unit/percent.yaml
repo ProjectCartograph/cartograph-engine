@@ -1,0 +1,10 @@
+apiVersion: cartograph/v1
+kind: Unit
+metadata:
+  id: percent
+  name: Percent
+spec:
+  name: Percent
+  symbol: "%"
+  dimension: percent
+  description: A share of a whole, out of a hundred.

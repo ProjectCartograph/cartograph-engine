@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Check every commit message since a base against STYLE.md's commit rules
+# (Google's CL description guidance): a short imperative summary line, a
+# blank line, a body that says what and why, and a sign-off.
+#
+#   scripts/check-commit-msg [base]      default base: origin/main
+#   scripts/check-commit-msg --file F    one message from a file (a commit-msg hook)
+set -euo pipefail
+
+check() {
+    local msg="$1" where="$2" bad=0
+    local subject body
+    subject=$(printf '%s\n' "$msg" | sed -n '1p')
+    body=$(printf '%s\n' "$msg" | sed -n '3,$p' | grep -vE '^(Signed-off-by|Co-Authored-By|Co-authored-by|Change-Id|Reviewed-by|Fixes|Bug|Refs):' | sed '/^\s*$/d' || true)
+    if [ ${#subject} -gt 72 ]; then echo "$where: summary line is ${#subject} characters; keep it under 72"; bad=1; fi
+    if [ ${#subject} -lt 12 ]; then echo "$where: summary line is too short to say what the change does"; bad=1; fi
+    case "$subject" in
+        *.) echo "$where: summary line ends with a period"; bad=1 ;;
+    esac
+    case "$subject" in
+        [a-z]*) echo "$where: summary line starts with a lower-case letter; it is a sentence"; bad=1 ;;
+    esac
+    if printf '%s' "$subject" | grep -qE '^(feat|fix|chore|docs|refactor|test|style|perf|build|ci)(\(.*\))?!?:'; then
+        echo "$where: summary line carries a type prefix; this repository uses Google CL descriptions, not Conventional Commits (STYLE.md)"; bad=1
+    fi
+    if printf '%s' "$subject" | grep -qiE '^(added|fixed|fixes|fixing|updated|changed|removed|wip)\b'; then
+        echo "$where: summary line should be imperative (Add, Fix, Update), not '$subject'"; bad=1
+    fi
+    if [ "$(printf '%s\n' "$msg" | sed -n '2p')" != "" ]; then echo "$where: the second line must be blank"; bad=1; fi
+    if [ -z "$body" ]; then echo "$where: a body is required: what the change does and why, for the reader who was not there"; bad=1; fi
+    if ! printf '%s\n' "$msg" | grep -q '^Signed-off-by: '; then echo "$where: no Signed-off-by (git commit -s)"; bad=1; fi
+    return $bad
+}
+
+if [ "${1:-}" = "--file" ]; then
+    check "$(cat "$2")" "commit message"
+    exit $?
+fi
+
+base="${1:-origin/main}"
+status=0
+for sha in $(git rev-list --no-merges "$base..HEAD" 2>/dev/null || true); do
+    check "$(git log -1 --format=%B "$sha")" "$(git log -1 --format=%h "$sha")" || status=1
+done
+if [ $status -eq 0 ]; then echo "commit messages follow STYLE.md"; fi
+exit $status

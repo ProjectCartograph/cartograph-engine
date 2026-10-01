@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: data-analyst
+  name: Data analyst
+spec:
+  name: Data analyst
+  category: personRole
+  description: Turns register and check records into the numbers a season is judged on.

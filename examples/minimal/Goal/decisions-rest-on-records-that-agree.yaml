@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: decisions-rest-on-records-that-agree
+  name: Keep records that agree
+spec:
+  level: objective
+  parent: run-a-dependable-cooperative
+  objective: Keep one set of records, so a number quoted in a meeting can be found again afterwards.
+  whyItMatters: Two registers that disagree turn every decision into an argument about the numbers.
+  keyResults:
+    - id: kr-sourced-reports
+      metric: the share of board reports drawn from the register of record
+      direction: increase
+      kind: percent
+      baseline: {value: 40, date: "2025-09"}
+      target: {value: 100, date: "2026-06"}
+  evidence: Board papers checked against the sources they name.

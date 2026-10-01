@@ -1,0 +1,13 @@
+{
+  "key": "working-save-never-refused",
+  "name": "A working save is never refused for incompleteness",
+  "rule": "A check never blocks a save; only Save as version validates",
+  "steps": [
+    { "open": { "Kind": "Goal", "ID": "" } },
+    { "set": { "Field": "/metadata/name", "Value": "Keep deliveries on time" } },
+    { "act": { "Action": "save" } },
+    { "expect": { "noProblems": true } },
+    { "expect": { "working": { "field": "/metadata/name", "value": "Keep deliveries on time" } } },
+    { "expect": { "current": { "absent": true } } }
+  ]
+}

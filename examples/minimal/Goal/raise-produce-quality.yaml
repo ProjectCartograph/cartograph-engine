@@ -1,0 +1,20 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: raise-produce-quality
+  name: Raise produce quality
+spec:
+  level: goal
+  owner: quality-reviewer
+  horizon: {start: "2025", end: "2028"}
+  objective: >-
+    More deliveries meet the quality standard, since catching problems early
+    beats handling returns later.
+  keyResults:
+    - id: kr-quality-rate
+      metric: Deliveries meeting the quality standard
+      direction: increase
+      kind: percent
+      baseline: {value: 62, date: "2025-09"}
+      target: {value: 75, date: "2027-06"}
+  evidence: Seasonal quality check results compared against the standard.

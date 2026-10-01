@@ -1,0 +1,12 @@
+apiVersion: cartograph/v1
+kind: DataSource
+metadata:
+  id: quality-evidence-library
+  name: Quality Evidence Library
+spec:
+  name: Quality Evidence Library
+  category: documentStore
+  team: quality-team
+  access: Shared document site, readable by the quality team and the board.
+  refresh: quarterly
+  classification: Internal

@@ -1,0 +1,19 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: run-a-dependable-cooperative
+  name: Run a dependable cooperative
+spec:
+  level: goal
+  owner: operations-lead
+  horizon: {start: "2025", end: "2028"}
+  objective: Keep the cooperative's own services running predictably, so members can rely on the day they are told.
+  whyItMatters: Every unreliable depot day teaches members to sell elsewhere, and the habit outlasts the fault.
+  keyResults:
+    - id: kr-dependability
+      metric: Depot days running to the published schedule
+      direction: increase
+      kind: percent
+      baseline: {value: 88, date: "2025-09"}
+      target: {value: 97, date: "2027-06"}
+  evidence: Depot opening records against the published schedule.

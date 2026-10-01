@@ -1,0 +1,8 @@
+apiVersion: cartograph/v1
+kind: Team
+metadata:
+  id: member-services-team
+  name: Member Services Team
+spec:
+  name: Member Services Team
+  description: Handles member registration, payments and enquiries for Example Cooperative.

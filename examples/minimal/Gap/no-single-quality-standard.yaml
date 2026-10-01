@@ -1,0 +1,12 @@
+apiVersion: cartograph/v1
+kind: Gap
+metadata:
+  id: no-single-quality-standard
+  name: No single quality standard
+spec:
+  current: Each depot checks against its own checklist.
+  desired: Every depot checks against one published standard.
+  outcomes: [depot-staff-apply-the-standard-alike]
+  statement: Each depot keeps its own checklist and none of them agree.
+  source: Quality review of the 2025 spring season, section 4
+  note: Counted by hand during the review; no system holds the checklists, so this cannot be watched yet.

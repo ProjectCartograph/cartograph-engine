@@ -1,0 +1,90 @@
+{
+  "$id": "operation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Operation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Operation"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "purpose",
+        "team"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "serviceOwner": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Resource",
+          "description": "The role accountable for the service end to end (ITIL 4 service owner). A role from the Resource catalogue; team is the unit that runs it."
+        },
+        "team": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Team"
+        },
+        "programmes": {
+          "type": "array",
+          "description": "The programmes this operation is part of. Both programme standards put business-as-usual inside the programme boundary, so a programme that could only name projects would answer \"what is in this programme?\" with half the work (TAXONOMY.md D2). Declared here and read back on the programme, the same way a project declares its own.",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "Programme"
+          }
+        },
+        "serviceWindow": {
+          "type": "string"
+        },
+        "kpis": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "KPI"
+          }
+        },
+        "data": {
+          "$ref": "common.schema.json#/$defs/DataUse"
+        },
+        "mandate": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Mandate"
+          }
+        },
+        "notes": {
+          "type": "object",
+          "description": "A note per step of the walk, keyed by the step's own name. One map rather than a property per step, because a note is the same thing wherever it is written and a schema that names every step has to be edited whenever the walk changes. What belongs here is what the fields above cannot hold and nobody should have to hold in their head \u2014 a caveat, a reason a choice was made, something to come back to. Not a substitute for a field: anything Cartograph can hold in a shape belongs in that shape, where it can be checked, rolled up and read back.",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/Slug"
+          }
+        }
+      }
+    }
+  }
+}

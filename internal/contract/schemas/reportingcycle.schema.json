@@ -1,0 +1,24 @@
+{
+  "$id": "reportingcycle.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReportingCycle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": { "const": "cartograph/v1" },
+    "kind": { "const": "ReportingCycle" },
+    "metadata": { "$ref": "common.schema.json#/$defs/Metadata" },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "periodMonths", "startMonth"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "periodMonths": { "type": "integer", "enum": [1, 3, 6, 12] },
+        "startMonth": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "dueOffsetDays": { "type": "integer", "minimum": 0, "default": 0 }
+      }
+    }
+  }
+}

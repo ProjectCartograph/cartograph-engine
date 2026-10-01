@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: depot-network
+  name: Depot network
+spec:
+  name: Depot network
+  category: orgUnit
+  description: The fifteen depots and the staff who run them.

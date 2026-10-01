@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: season-results-reach-members-on-time
+  name: Season results reach members on time
+spec:
+  level: outcome
+  parent: decisions-rest-on-records-that-agree
+  objective: A member learns how the season went from the cooperative, before hearing it from anyone else.
+  keyResults:
+    - id: kr-results-lag
+      metric: days from the season closing to results reaching members
+      direction: decrease
+      kind: duration
+      unit: days
+      baseline: {value: 96, date: "2025-09"}
+      target: {value: 30, date: "2026-06"}
+  evidence: Publication dates against season closing dates.

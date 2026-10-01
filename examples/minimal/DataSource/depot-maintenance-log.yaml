@@ -1,0 +1,12 @@
+apiVersion: cartograph/v1
+kind: DataSource
+metadata:
+  id: depot-maintenance-log
+  name: Depot Maintenance Log
+spec:
+  name: Depot Maintenance Log
+  category: paperRecord
+  team: depot-network-team
+  access: A logbook at each depot, collected and filed at the end of the season.
+  refresh: quarterly
+  qualityIssues: Entries stop when a depot is short staffed, which is when they matter most.

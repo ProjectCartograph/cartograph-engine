@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: one-member-register-is-the-authority
+  name: One member register is the authority
+spec:
+  level: outcome
+  parent: decisions-rest-on-records-that-agree
+  objective: There is one answer to who a member is, and every other list defers to it.
+  keyResults:
+    - id: kr-duplicate-members
+      metric: members held in more than one register
+      direction: decrease
+      kind: count
+      unit: members
+      baseline: {value: 340, date: "2025-09"}
+      target: {value: 0, date: "2026-06"}
+  evidence: Duplicate detection run across the member registers.

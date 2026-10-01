@@ -1,0 +1,25 @@
+{
+  "key": "goal-flow-steps",
+  "name": "The goal flow asks its steps in the contract's order",
+  "rule": "Every interface renders a flow from the contract: same steps, same order, same fields",
+  "steps": [
+    { "open": { "Kind": "Goal", "ID": "" } },
+    { "expect": { "where": "aim" } },
+    { "act": { "Action": "next" } },
+    { "expect": { "where": "measures" } },
+    { "act": { "Action": "next" } },
+    { "expect": { "where": "owner" } },
+    { "act": { "Action": "next" } },
+    { "expect": { "where": "rationale" } },
+    { "act": { "Action": "next" } },
+    { "expect": { "where": "contributes" } },
+    { "step": "measures" },
+    { "set": { "Field": "/spec/keyResults/{kr-1}/id", "Value": "kr-1" } },
+    { "set": { "Field": "/spec/keyResults/{kr-1}/metric", "Value": "deliveries graded A" } },
+    { "set": { "Field": "/spec/keyResults/{kr-1}/kind", "Value": "percent" } },
+    { "set": { "Field": "/spec/keyResults/{kr-1}/direction", "Value": "increase" } },
+    { "set": { "Field": "/spec/keyResults/{kr-1}/target", "Value": 90 } },
+    { "act": { "Action": "save" } },
+    { "expect": { "noProblems": true } }
+  ]
+}

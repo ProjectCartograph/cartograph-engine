@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: analytics-partner
+  name: Analytics partner
+spec:
+  name: Analytics partner
+  category: externalParty
+  description: The cooperative federation's analytics team, who fund part of the tool and want it extended.

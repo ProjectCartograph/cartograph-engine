@@ -1,0 +1,13 @@
+apiVersion: cartograph/v1
+kind: DataSource
+metadata:
+  id: collection-log
+  name: Collection Log
+spec:
+  name: Collection Log
+  category: spreadsheet
+  team: depot-network-team
+  access: Shared spreadsheet, one tab per depot, filled in by the depot supervisor.
+  refresh: weekly
+  classification: internal
+  qualityIssues: Collection times are entered by hand and are sometimes rounded to the hour.

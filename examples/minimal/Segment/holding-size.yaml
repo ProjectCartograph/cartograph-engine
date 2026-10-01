@@ -1,0 +1,8 @@
+apiVersion: cartograph/v1
+kind: Segment
+metadata:
+  id: holding-size
+  name: Holding size
+spec:
+  name: Holding size
+  description: How much land a member works, banded as the membership register bands it.

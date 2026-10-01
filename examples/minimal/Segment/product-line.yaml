@@ -1,0 +1,8 @@
+apiVersion: cartograph/v1
+kind: Segment
+metadata:
+  id: product-line
+  name: Product line
+spec:
+  name: Product line
+  description: Which line produce belongs to. A crate is counted against one line only, by what it mostly holds.

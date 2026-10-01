@@ -1,0 +1,50 @@
+{
+  "$id": "segment.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Segment",
+  "description": "One named slice of what an organisation serves: a level, a region, a product line, a service tier. Segments are what a gap is observed in and what a measure is broken down by, and they are a tree rather than two kinds \u2014 a dimension is simply a Segment with no parent, and its values are its children, the same shape Goal already uses for its levels. So \"geography\" is a Segment and \"the northern region\" is its child, without a second kind for regions. Not a BeneficiaryGroup: a group is who work is for, a segment is where a shortfall was observed, and a region or a service tier is not a group of people. See GAP_DESIGN.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Segment"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "What this slice is called."
+        },
+        "parent": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Segment",
+          "description": "The dimension this is a value of, or the broader slice it sits inside. Absent for a dimension itself. A kind rule refuses a segment that is its own ancestor."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "What falls inside this slice and what does not, precisely enough that two people counting it would agree."
+        }
+      }
+    }
+  }
+}

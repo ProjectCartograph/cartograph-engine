@@ -1,0 +1,96 @@
+{
+  "$id": "kpi.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KPI",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "KPI"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "definition",
+        "unit",
+        "direction",
+        "source"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "definition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Unit",
+          "description": "What this is counted in. A reference since 2026-09-29, where it was free text and the same quantity was spelled three ways across two vaults."
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "increase",
+            "decrease",
+            "maintain"
+          ]
+        },
+        "baseline": {
+          "$ref": "common.schema.json#/$defs/ValueAndDate"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/ValueAndDate"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "DataSource"
+        },
+        "cycle": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "ReportingCycle"
+        },
+        "goals": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "Goal"
+          },
+          "description": "Alignment to outcomes only (a kind rule)."
+        },
+        "resultLevel": {
+          "type": "string",
+          "enum": [
+            "output",
+            "outcome",
+            "impact"
+          ]
+        },
+        "disaggregations": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "Segment"
+          },
+          "description": "The dimensions this KPI can be broken down by, as Segment references. Free text until 2026-09-29, which meant the thing a measure is split by and the thing a gap is observed in were the same concept under two names, one of them uncheckable."
+        }
+      }
+    }
+  }
+}

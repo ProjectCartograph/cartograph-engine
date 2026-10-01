@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: BeneficiaryGroup
+metadata:
+  id: delivering-members
+  name: Delivering members
+spec:
+  name: Delivering members
+  description: Members who deliver produce to a depot during the season.
+  source: member-register

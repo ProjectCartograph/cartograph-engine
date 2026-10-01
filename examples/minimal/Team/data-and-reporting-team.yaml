@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Team
+metadata:
+  id: data-and-reporting-team
+  name: Data and Reporting Team
+spec:
+  name: Data and Reporting Team
+  parent: operations-team
+  description: Keeps the registers and the seasonal reports the board and the members read.

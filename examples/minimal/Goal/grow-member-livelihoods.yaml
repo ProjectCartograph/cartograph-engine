@@ -1,0 +1,20 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: grow-member-livelihoods
+  name: Grow member livelihoods
+spec:
+  level: goal
+  owner: operations-lead
+  horizon: {start: "2025", end: "2028"}
+  objective: Raise what a member earns from a season of deliveries, by selling more of what they grow at a better price.
+  whyItMatters: Members stay with the cooperative when it pays better than the roadside buyer, and leave quietly when it does not.
+  keyResults:
+    - id: kr-earnings
+      metric: Median member earnings for a season
+      direction: increase
+      kind: money
+      unit: USD
+      baseline: {value: 820, date: "2025-09"}
+      target: {value: 1000, date: "2027-06"}
+  evidence: Payments made to members through the sales ledger, per season.

@@ -1,0 +1,8 @@
+apiVersion: cartograph/v1
+kind: BeneficiaryGroup
+metadata:
+  id: depot-staff
+  name: Depot staff
+spec:
+  name: Depot staff
+  description: Staff working at a depot during the season, including supervisors and intake clerks.

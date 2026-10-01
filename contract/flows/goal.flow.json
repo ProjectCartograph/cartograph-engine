@@ -1,0 +1,145 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "goal",
+    "name": "Goal"
+  },
+  "spec": {
+    "for": "Goal",
+    "steps": [
+      {
+        "key": "aim",
+        "title": "Aim",
+        "guide": "What changes, said as an action and a result.",
+        "fields": [
+          {
+            "path": "/spec/level",
+            "control": "choice"
+          },
+          {
+            "path": "/spec/parent",
+            "control": "reference"
+          },
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/objective",
+            "control": "sentence",
+            "checks": [
+              "specific",
+              "attainable"
+            ]
+          },
+          {
+            "path": "/spec/statedAs",
+            "control": "choice"
+          }
+        ]
+      },
+      {
+        "key": "measures",
+        "title": "Measures",
+        "guide": "How anyone will know it happened.",
+        "fields": [
+          {
+            "path": "/spec/keyResults",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "measurable"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/metric",
+                "control": "text"
+              },
+              {
+                "path": "/kind",
+                "control": "choice"
+              },
+              {
+                "path": "/unit",
+                "control": "reference"
+              },
+              {
+                "path": "/direction",
+                "control": "choice"
+              },
+              {
+                "path": "/baseline",
+                "control": "number"
+              },
+              {
+                "path": "/target",
+                "control": "number"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "owner",
+        "title": "Owner and horizon",
+        "guide": "Whose aim it is, and by when.",
+        "fields": [
+          {
+            "path": "/spec/owner",
+            "control": "reference",
+            "checks": [
+              "accountable"
+            ]
+          },
+          {
+            "path": "/spec/horizon",
+            "control": "horizon",
+            "checks": [
+              "timeBound"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "rationale",
+        "title": "Rationale",
+        "guide": "Why this aim, in one line, and where it comes from.",
+        "fields": [
+          {
+            "path": "/spec/whyItMatters",
+            "control": "sentence",
+            "checks": [
+              "relevant"
+            ]
+          },
+          {
+            "path": "/spec/source",
+            "control": "text"
+          },
+          {
+            "path": "/spec/evidence",
+            "control": "readonly"
+          }
+        ]
+      },
+      {
+        "key": "contributes",
+        "title": "Also leads to",
+        "guide": "Other aims this one moves, besides its parent.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/contributesTo",
+            "control": "references"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Unit
+metadata:
+  id: index
+  name: Index
+spec:
+  name: Index
+  dimension: ratio
+  description: A number set against a base period, so movement rather than level is what it shows.

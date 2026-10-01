@@ -1,0 +1,110 @@
+{
+  "$id": "goal.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Goal",
+  "description": "One level of the results hierarchy (TAXONOMY.md D25): a goal (the long-term aim) has no parent, an objective (a specific aim) has a goal as its parent, and an outcome (a changed state) has an objective as its parent. Every other component references a goal record instead; a goal record never references a lower component. The kind keeps the name Goal as an identifier for all three levels.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Goal"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": [
+            "goal",
+            "objective",
+            "outcome"
+          ]
+        },
+        "parent": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Goal",
+          "description": "Required for objectives and outcomes; forbidden for a goal."
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "The goal as Cartograph states it: one glanceable sentence naming the desired future state. Where the goal comes from a published plan, this is the reading, and statedAs is the record."
+        },
+        "statedAs": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "The goal exactly as its source states it, unaltered, where that source is a published plan or policy. Uncapped in practice because plan prose is not written to fit a field; objective carries the short reading beside it (Programme Lead, 2026-09-27). Never paraphrase into this property."
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Where statedAs was taken from, precisely enough to find again: the document, and the section or page."
+        },
+        "owner": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Resource",
+          "description": "The role accountable for this aim, from the Resource catalogue, never a person (GPRA's goal leader; the programme sponsor's counterpart for an aim). Optional; a check asks for one."
+        },
+        "horizon": {
+          "$ref": "common.schema.json#/$defs/Horizon",
+          "description": "The period this aim covers. A goal usually spans the plan period (three to five years), an objective one to three years inside it. Optional below a goal: an objective or outcome without one takes its parent's. Time-bound (SMART) reads targets against it, and a check flags a horizon that runs past its parent's (TAXONOMY.md D26)."
+        },
+        "whyItMatters": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "keyResults": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/GoalKeyResult"
+          }
+        },
+        "evidence": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "contributesTo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "goal"
+            ],
+            "properties": {
+              "goal": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "Goal",
+                "description": "A higher objective this outcome also leads to, beyond the one it is filed under."
+              },
+              "because": {
+                "type": "string",
+                "maxLength": 240,
+                "description": "Why this outcome leads to that objective, written so somebody could disagree with it."
+              }
+            }
+          },
+          "description": "The objectives this outcome leads to, besides its parent, each with the reason (results-based management's contribution, a theory of change's 'because'). parent files a goal in one place; contributesTo says what else it serves and why, so one outcome can feed objectives under different goals. Outcomes only (a kind rule advised by the checks). See TAXONOMY.md D24."
+        }
+      }
+    }
+  }
+}

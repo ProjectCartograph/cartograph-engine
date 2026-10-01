@@ -1,0 +1,8 @@
+apiVersion: cartograph/v1
+kind: BeneficiaryGroup
+metadata:
+  id: retail-partners
+  name: Retail partners
+spec:
+  name: Retail partners
+  description: Retailers who receive checked produce from the cooperative.

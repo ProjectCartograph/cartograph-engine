@@ -1,0 +1,12 @@
+apiVersion: cartograph/v1
+kind: DataSource
+metadata:
+  id: member-register
+  name: Member Register
+spec:
+  name: Member Register
+  category: database
+  team: operations-team
+  access: Read access via the operations team's records system.
+  refresh: monthly
+  classification: internal

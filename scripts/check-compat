@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""Fail on a change to the contract or the schemas that breaks a
+deployed version, unless VERSION has a higher major than the last tag
+(VERSIONING.md).
+
+    scripts/check-compat [base-ref]     default: the latest v* tag
+
+Compares contract/openapi.yaml and contract/schemas/*.json at base-ref
+with the working tree. The rules are SemVer's applied to this shape of
+contract: removing or renaming something a client may rely on, or
+requiring something it may not send, is breaking; adding is not.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+
+try:
+    import yaml  # PyYAML, from the flake's python
+except ImportError:  # pragma: no cover
+    yaml = None
+
+
+def git(*args):
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
+
+
+def at(ref, path):
+    try:
+        return git("show", f"{ref}:{path}")
+    except subprocess.CalledProcessError:
+        return None
+
+
+def version_of(text):
+    m = re.match(r"(\d+)\.(\d+)\.(\d+)", text.strip())
+    return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
+
+
+def openapi_breaks(old, new):
+    out = []
+    op, np = old.get("paths", {}), new.get("paths", {})
+    for path, ops in op.items():
+        if path not in np:
+            out.append(f"path removed: {path}")
+            continue
+        for method, spec in ops.items():
+            if not isinstance(spec, dict):
+                continue
+            if method not in np[path]:
+                out.append(f"operation removed: {method.upper()} {path}")
+                continue
+            nspec = np[path][method]
+            for code in spec.get("responses", {}):
+                if code not in nspec.get("responses", {}):
+                    out.append(f"response {code} removed: {method.upper()} {path}")
+            oreq = required_props(request_schema(spec, old))
+            nreq = required_props(request_schema(nspec, new))
+            for p in nreq - oreq:
+                out.append(f"request field made required: {method.upper()} {path} .{p}")
+    oschemas = old.get("components", {}).get("schemas", {})
+    nschemas = new.get("components", {}).get("schemas", {})
+    for name, schema in oschemas.items():
+        if name not in nschemas:
+            out.append(f"component schema removed: {name}")
+            continue
+        out += schema_breaks(schema, nschemas[name], f"components.schemas.{name}")
+    return out
+
+
+def request_schema(op, doc):
+    body = op.get("requestBody", {}).get("content", {}).get("application/json", {}).get("schema", {})
+    return resolve(body, doc)
+
+
+def resolve(schema, doc):
+    while isinstance(schema, dict) and "$ref" in schema:
+        ref = schema["$ref"]
+        if not ref.startswith("#/"):
+            return {}
+        node = doc
+        for seg in ref[2:].split("/"):
+            node = node.get(seg, {})
+        schema = node
+    return schema or {}
+
+
+def required_props(schema):
+    return set(schema.get("required", []) if isinstance(schema, dict) else [])
+
+
+def schema_breaks(old, new, where):
+    out = []
+    if not isinstance(old, dict) or not isinstance(new, dict):
+        return out
+    oprops, nprops = old.get("properties", {}), new.get("properties", {})
+    for name, sub in oprops.items():
+        if name not in nprops:
+            out.append(f"property removed: {where}.{name}")
+        else:
+            out += schema_breaks(sub, nprops[name], f"{where}.{name}")
+    for name in set(new.get("required", [])) - set(old.get("required", [])):
+        out.append(f"property made required: {where}.{name}")
+    if "enum" in old and "enum" in new:
+        for v in set(map(str, old["enum"])) - set(map(str, new["enum"])):
+            out.append(f"enum value removed: {where} = {v}")
+    if "type" in old and "type" in new and old["type"] != new["type"]:
+        out.append(f"type changed: {where} {old['type']} -> {new['type']}")
+    if "items" in old and "items" in new:
+        out += schema_breaks(old["items"], new["items"], f"{where}[]")
+    for key in ("$defs", "definitions"):
+        for name, sub in old.get(key, {}).items():
+            if name not in new.get(key, {}):
+                out.append(f"definition removed: {where}.{key}.{name}")
+            else:
+                out += schema_breaks(sub, new[key][name], f"{where}.{key}.{name}")
+    return out
+
+
+def main():
+    base = sys.argv[1] if len(sys.argv) > 1 else None
+    if base is None:
+        tags = [t for t in git("tag", "--list", "v*", "--sort=-v:refname").split() if re.match(r"v\d+\.\d+\.\d+$", t)]
+        if not tags:
+            print("no release tag yet; nothing to compare against")
+            return 0
+        base = tags[0]
+    old_version = version_of(at(base, "VERSION") or "0.0.0")
+    new_version = version_of(open("VERSION").read())
+    breaks = []
+
+    old_api = at(base, "contract/openapi.yaml")
+    if old_api and yaml:
+        breaks += openapi_breaks(yaml.safe_load(old_api), yaml.safe_load(open("contract/openapi.yaml")))
+    elif old_api and not yaml:
+        print("warning: PyYAML not available; the OpenAPI comparison was skipped", file=sys.stderr)
+
+    for name in git("ls-tree", "--name-only", base, "contract/schemas/").split():
+        old = at(base, name)
+        if old is None:
+            continue
+        if not os.path.exists(name):
+            breaks.append(f"schema removed: {name}")
+            continue
+        breaks += schema_breaks(json.loads(old), json.load(open(name)), os.path.basename(name))
+
+    if not breaks:
+        print(f"compatible with {base}")
+        return 0
+    if new_version[0] > old_version[0]:
+        print(f"{len(breaks)} breaking change(s) since {base}, allowed by the major bump to {'.'.join(map(str, new_version))}:")
+        for b in breaks:
+            print("  " + b)
+        return 0
+    print(f"{len(breaks)} breaking change(s) since {base}; VERSION {'.'.join(map(str, new_version))} is not a new major (VERSIONING.md):")
+    for b in breaks:
+        print("  " + b)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

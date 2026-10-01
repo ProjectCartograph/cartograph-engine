@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Fail if the tree tracks anything that is not the product: agent working
+# files, hand-off notes, session logs, scratch output, editor state. Those
+# belong in a pull request description or in the contributor's own
+# machine, never upstream.
+set -euo pipefail
+
+forbidden='(^|/)(HANDOFF|SESSION_LOG|ISSUES_LOG|TODO|NOTES|PLAN|SCRATCH)[^/]*\.md$|(^|/)\.(claude|cursor|codex|aider|idea|vscode)(/|$)|(^|/)(node_modules|dist|bin|result|\.direnv|\.cartograph)(/|$)|\.(log|orig|rej|swp|tmp|db|db-wal|db-shm)$|(^|/)tasks/|(^|/)transcripts?/|\.DS_Store$'
+hits=$(git ls-files | grep -E "$forbidden" || true)
+if [ -n "$hits" ]; then
+    echo "these tracked files are not part of the product; remove them from the change:"
+    printf '  %s\n' $hits
+    exit 1
+fi
+echo "tree is clean"

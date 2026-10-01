@@ -1,0 +1,20 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: produce-meets-one-standard
+  name: Hold every depot to one standard
+spec:
+  level: objective
+  owner: quality-reviewer
+  horizon: {start: "2025-09", end: "2026-12"}
+  parent: raise-produce-quality
+  objective: Hold every depot to one quality standard, so a buyer gets the same quality from any of them.
+  whyItMatters: An inconsistent supplier is priced as its worst delivery, not its average one.
+  keyResults:
+    - id: kr-standard-met
+      metric: the share of deliveries meeting the published standard
+      direction: increase
+      kind: percent
+      baseline: {value: 62, date: "2025-09"}
+      target: {value: 80, date: "2026-06"}
+  evidence: Quality check results against the published standard.

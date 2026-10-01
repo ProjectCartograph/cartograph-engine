@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cartograph.example/contract/flows/flow.schema.json",
+  "title": "Flow",
+  "description": "What a person is walked through to define one kind of manifest: the steps, in order, and the fields each step asks for. Every interface renders a flow from this description, so a web screen and a terminal screen ask the same questions in the same order with the same words. A field is addressed by its path in the manifest (a JSON pointer), which is also how a check names the field it is about and how the conformance driver finds it.",
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Flow"
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The flow's id; one flow per manifest kind, named after it in lower case."
+        },
+        "name": {
+          "type": "string",
+          "description": "The standard noun for what is being defined, in the organisation's words via Settings when they differ."
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": [
+        "for",
+        "steps"
+      ],
+      "properties": {
+        "for": {
+          "type": "string",
+          "description": "The manifest kind this flow defines."
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        },
+        "review": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the flow ends with a review step showing everything gathered before a version is saved."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "required": [
+        "key",
+        "title",
+        "fields"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Stable identifier; what a check's fix link and a driver's Step() name."
+        },
+        "title": {
+          "type": "string",
+          "description": "The standard term for the step (Aim, Measures, Scope), never a chatty paraphrase."
+        },
+        "guide": {
+          "type": "string",
+          "description": "One spoken sentence saying what the step settles, plain idea first."
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "required": [
+        "path",
+        "control"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "JSON pointer into the manifest; the schema at that path says the type, the enum, the reference target and the title."
+        },
+        "control": {
+          "type": "string",
+          "enum": [
+            "text",
+            "sentence",
+            "choice",
+            "reference",
+            "references",
+            "number",
+            "date",
+            "horizon",
+            "list",
+            "toggle",
+            "readonly"
+          ],
+          "description": "How the field is asked for. choice: pick one of the schema's enum; reference: pick an existing manifest of the x-cartograph-ref kind, with a way to add one; references: pick several; list: a keyed list of items, each defined by the fields below; horizon: years and optional months with a 'same as above' choice."
+        },
+        "title": {
+          "type": "string",
+          "description": "Overrides the schema's title for this step only; otherwise the schema's title is the label."
+        },
+        "hint": {
+          "type": "string",
+          "description": "One spoken sentence shown while the field is empty. Never a placeholder inside the control."
+        },
+        "key": {
+          "type": "string",
+          "description": "For a list: the item property that identifies an item (the schema's x-cartograph-list-key). Items are merged by this key across editors."
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field"
+          },
+          "description": "For a list: the fields of one item, paths relative to the item."
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Keys of the checks this field answers (SMART marks, completeness lines); shown beside the field as marks, never as prose."
+        }
+      }
+    }
+  }
+}

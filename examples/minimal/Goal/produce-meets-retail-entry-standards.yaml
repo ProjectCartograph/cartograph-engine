@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: produce-meets-retail-entry-standards
+  name: Produce meets what retail buyers require
+spec:
+  level: outcome
+  parent: members-reach-more-buyers
+  objective: Nothing about the cooperative's own produce is the reason a retail buyer says no.
+  keyResults:
+    - id: kr-retail-ready
+      metric: buyers whose entry requirements the cooperative meets
+      direction: increase
+      kind: count
+      unit: buyers
+      baseline: {value: 1, date: "2025-09"}
+      target: {value: 5, date: "2026-06"}
+  evidence: Buyer requirement assessments held by the market access team.

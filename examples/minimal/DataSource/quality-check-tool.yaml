@@ -1,0 +1,12 @@
+apiVersion: cartograph/v1
+kind: DataSource
+metadata:
+  id: quality-check-tool
+  name: Quality Check Tool
+spec:
+  name: Quality Check Tool
+  category: formOrSurvey
+  team: quality-team
+  access: Paper forms transcribed into a shared spreadsheet each season.
+  refresh: quarterly
+  qualityIssues: Some forms arrive late and are transcribed after the season closes.

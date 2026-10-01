@@ -1,0 +1,14 @@
+apiVersion: cartograph/v1
+kind: KPIReadings
+metadata:
+  id: collection-turnaround-readings
+  name: Collection turnaround readings
+spec:
+  kpi: collection-turnaround
+  readings:
+    - {period: "2025-10", value: 40}
+    - {period: "2025-11", value: 38}
+    - {period: "2025-12", value: 39}
+    - {period: "2026-01", value: 35}
+    - {period: "2026-03", value: 33}
+    - {period: "2026-04", value: 31, provisional: true}

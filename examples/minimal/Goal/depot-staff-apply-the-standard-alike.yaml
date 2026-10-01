@@ -1,0 +1,17 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: depot-staff-apply-the-standard-alike
+  name: Depot staff apply the standard alike
+spec:
+  level: outcome
+  parent: produce-meets-one-standard
+  objective: The same delivery gets the same verdict whoever checks it.
+  keyResults:
+    - id: kr-checker-agreement
+      metric: the share of audit re-checks agreeing with the depot's own verdict
+      direction: increase
+      kind: percent
+      baseline: {value: 61, date: "2025-09"}
+      target: {value: 90, date: "2026-06"}
+  evidence: Audit re-checks sampled against depot check records.

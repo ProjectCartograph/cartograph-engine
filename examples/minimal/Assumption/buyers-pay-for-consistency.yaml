@@ -1,0 +1,11 @@
+apiVersion: cartograph/v1
+kind: Assumption
+metadata:
+  id: buyers-pay-for-consistency
+  name: Buyers pay more for produce they can rely on
+spec:
+  statement: Retail buyers price a supplier on how consistent its deliveries are, not only on the best of them.
+  confidence: medium
+  ifFalse: Quality rises and the price does not, so the effort has to be justified on retained buyers rather than on earnings.
+  testedBy: {kind: DataSource, id: sales-ledger}
+  note: Held by the market access team from two buyer conversations, not from a price schedule.

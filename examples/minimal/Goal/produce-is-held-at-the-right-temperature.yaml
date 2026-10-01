@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: produce-is-held-at-the-right-temperature
+  name: Produce is held at the right temperature
+spec:
+  level: outcome
+  parent: less-harvest-lost-after-picking
+  objective: From intake to dispatch, produce stays in the range that keeps it.
+  keyResults:
+    - id: kr-out-of-range
+      metric: hours a consignment spends outside the temperature range
+      direction: decrease
+      kind: duration
+      unit: hours
+      baseline: {value: 9, date: "2025-09"}
+      target: {value: 2, date: "2026-06"}
+  evidence: Cold store temperature logs, by consignment.

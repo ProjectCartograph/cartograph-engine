@@ -1,0 +1,63 @@
+{
+  "$id": "assumption.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Assumption",
+  "description": "Something that has to be true for a step of the reasoning to hold. Not a risk: a risk is something that might go wrong and is mitigated, an assumption is a condition the causal step requires, and the answer to a false assumption is a different theory rather than a contingency. They also sit in different places \u2014 a risk belongs to the work, an assumption belongs to the link between two levels of it. Standalone because the same assumption conditions several steps across several programmes, and stating it once is the argument every catalogue here has already had. `risks[].type` carried an \"assumption\" value from the beginning and not one of the seventeen risks across both vaults used it: people did not decline to record assumptions, they had nowhere that fitted. See RESULTS_LOGIC.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Assumption"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "statement"
+      ],
+      "properties": {
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "What has to be true, stated so somebody could find out whether it is. Present tense and about the world, not about the work: \"depots release staff for training days\", not \"we will arrange cover\"."
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "description": "How sure anybody is. A mark for a reader to weigh, never a number anything multiplies: a theory resting on three low assumptions is worth looking at, and no arithmetic makes that judgement better."
+        },
+        "ifFalse": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "What happens to the reasoning if this does not hold. The field that makes an assumption worth recording: one nobody can say the consequence of is one nobody will act on."
+        },
+        "testedBy": {
+          "$ref": "common.schema.json#/$defs/Ref",
+          "description": "How anybody would find out, where there is a way: a KPI that would move, or a data source somebody could look in. An assumption is tested, where a risk is mitigated."
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "Anything else worth knowing, including who doubted it and why."
+        }
+      }
+    }
+  }
+}

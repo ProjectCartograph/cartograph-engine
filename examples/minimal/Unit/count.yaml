@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Unit
+metadata:
+  id: count
+  name: Count
+spec:
+  name: Count
+  dimension: count
+  description: A plain number of things. Say what is being counted in the KPI's own definition.

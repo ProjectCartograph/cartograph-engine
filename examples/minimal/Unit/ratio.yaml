@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Unit
+metadata:
+  id: ratio
+  name: Ratio
+spec:
+  name: Ratio
+  dimension: ratio
+  description: One quantity divided by another, written as a single number.

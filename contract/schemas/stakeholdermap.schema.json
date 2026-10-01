@@ -1,0 +1,57 @@
+{
+  "$id": "stakeholdermap.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StakeholderMap",
+  "description": "How much power each stakeholder holds over one piece of work. A binding, not a container: it does not decide who is on a project — a project references the resources it involves directly, stakeholders among them — it adds the one thing that belongs to neither end. A resource is declared once and used across many projects; the power it holds is particular to each, so it is stored on the link rather than on either side (Programme Lead, 2026-09-28). Scoring is optional on purpose: identifying a stakeholder and assessing their power are separate acts, and an entry with no score is one somebody has declared but not yet placed, which is a state worth holding rather than one that loses the entry.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": { "const": "cartograph/v1" },
+    "kind": { "const": "StakeholderMap" },
+    "metadata": { "$ref": "common.schema.json#/$defs/Metadata" },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope"],
+      "properties": {
+        "scope": {
+          "$ref": "common.schema.json#/$defs/Ref",
+          "description": "The work this map is about. A reference rather than a fixed Project field, so a programme or an operation can carry one without a second near-identical kind. A kind rule refuses a scope that is not work."
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["resource"],
+            "properties": {
+              "resource": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "Resource",
+                "description": "The catalogue entry being scored. It need not be one the work references: a party with power over a project is often not part of it."
+              },
+              "influence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3,
+                "description": "How much this stakeholder can change what happens. Absent until assessed."
+              },
+              "interest": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3,
+                "description": "How much this stakeholder cares what happens. Absent until assessed."
+              },
+              "tier": {
+                "type": "string",
+                "enum": ["primary", "secondary"],
+                "description": "Primary stakeholders are directly affected by the work; secondary ones indirectly (Clarkson, 1995). A separate question from influence and interest, whose grid gives the engagement approach (Mendelow)."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

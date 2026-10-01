@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: BeneficiaryGroup
+metadata:
+  id: seasonal-workers
+  name: Seasonal workers
+spec:
+  name: Seasonal workers
+  description: Workers hired by members for harvest and delivery during the peak months.
+  source: member-survey

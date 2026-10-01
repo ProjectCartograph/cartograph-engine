@@ -1,0 +1,55 @@
+{
+  "$id": "resource.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resource",
+  "description": "A directory entry naming a resource type a project can draw on (a role, a unit, an external party, a system, a facility, or something else), declared once and picked by a project's own People and resources section rather than typed afresh each time. Free-text stays allowed when no catalogue entry fits (Project.spec.resources[].title).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Resource"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "category"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "personRole",
+            "orgUnit",
+            "externalParty",
+            "system",
+            "facility",
+            "other"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 240
+        }
+      }
+    }
+  }
+}

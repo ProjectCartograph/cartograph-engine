@@ -1,0 +1,17 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: depot-downtime-is-planned
+  name: Depot downtime is planned, not discovered
+spec:
+  level: outcome
+  parent: depots-stay-open-through-the-season
+  objective: A depot closes on a day members were told about, for work that was scheduled.
+  keyResults:
+    - id: kr-planned-closures
+      metric: the share of depot closures that were planned
+      direction: increase
+      kind: percent
+      baseline: {value: 35, date: "2025-09"}
+      target: {value: 90, date: "2026-06"}
+  evidence: Maintenance schedules against depot closure records.

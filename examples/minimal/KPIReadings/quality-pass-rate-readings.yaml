@@ -1,0 +1,16 @@
+apiVersion: cartograph/v1
+kind: KPIReadings
+metadata:
+  id: quality-pass-rate-readings
+  name: Quality pass rate readings
+spec:
+  kpi: quality-pass-rate
+  readings:
+    - {period: "2025-11", value: 63}
+    - {period: "2026-02", value: 64.5}
+    - {period: "2026-05", value: 66}
+    - period: "2026-08"
+      value: 64
+      note: The wet season brought more bruising than the standard allows for; the method did not change.
+    - {period: "2026-11", value: 69}
+    - {period: "2027-02", value: 71, provisional: true}

@@ -1,0 +1,11 @@
+apiVersion: cartograph/v1
+kind: FundingSource
+metadata:
+  id: operating-budget
+  name: Cooperative operating budget
+spec:
+  name: Cooperative operating budget
+  code: BUD-2025-Q4-07
+  heldBy: depot-network
+  period: 2025 season
+  note: Covers the depots' running costs, including anything bought for them mid-season.

@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: less-harvest-lost-after-picking
+  name: Cut loss after picking
+spec:
+  level: objective
+  parent: raise-produce-quality
+  objective: Cut the share of each harvest that spoils between picking and the buyer.
+  whyItMatters: "Loss after picking is paid for twice: the member is not paid for it, and the cooperative handles it anyway."
+  keyResults:
+    - id: kr-loss-share
+      metric: the share of each harvest lost between field and buyer
+      direction: decrease
+      kind: percent
+      baseline: {value: 14, date: "2025-09"}
+      target: {value: 7, date: "2026-06"}
+  evidence: Intake weights against dispatch weights, per season.

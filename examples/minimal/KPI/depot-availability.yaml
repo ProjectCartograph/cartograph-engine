@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: KPI
+metadata:
+  id: depot-availability
+  name: Depot availability
+  labels: {pillar: dependability}
+spec:
+  name: Depot availability
+  definition: Share of scheduled depot days on which the depot opened and took in produce.
+  unit: percent
+  direction: increase
+  baseline: {value: 88, date: "2025-09"}
+  target: {value: 97, date: "2027-06"}
+  source: depot-maintenance-log
+  cycle: monthly-cycle
+  goals: [depots-stay-open-through-the-season, run-a-dependable-cooperative]
+  resultLevel: outcome
+  disaggregations: [depot]

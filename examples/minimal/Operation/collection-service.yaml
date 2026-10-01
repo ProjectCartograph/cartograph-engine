@@ -1,0 +1,22 @@
+apiVersion: cartograph/v1
+kind: Operation
+metadata:
+  id: collection-service
+  name: Collection Service
+spec:
+  name: Collection Service
+  purpose: Move produce from every depot to the buyer within a day of intake.
+  team: depot-network-team
+  serviceWindow: Daily through the season, reduced rounds out of season.
+  kpis: [collection-turnaround, post-harvest-loss-rate]
+  data:
+    consumes:
+      - source: member-register
+        purpose: Know which depots expect deliveries on a given day.
+        handoff: apiOrFeed
+    produces:
+      - output: recordsInExistingSource
+        sink: collection-log
+        purpose: Record when each depot was collected from and what was taken.
+        refresh: weekly
+        personalData: none

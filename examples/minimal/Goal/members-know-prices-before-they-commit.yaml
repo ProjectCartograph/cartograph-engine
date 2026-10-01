@@ -1,0 +1,17 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: members-know-prices-before-they-commit
+  name: Members know prices before they commit
+spec:
+  level: outcome
+  parent: members-earn-more-each-season
+  objective: A member chooses what to deliver, and when, already knowing what it will fetch.
+  keyResults:
+    - id: kr-prices-seen
+      metric: the share of members who see the season's prices before it opens
+      direction: increase
+      kind: percent
+      baseline: {value: 0, date: "2025-09"}
+      target: {value: 90, date: "2026-03"}
+  evidence: Price circulation records matched against the member register.

@@ -1,0 +1,10 @@
+apiVersion: cartograph/v1
+kind: Unit
+metadata:
+  id: days
+  name: Days
+spec:
+  name: Days
+  symbol: "d"
+  dimension: duration
+  description: Whole days.

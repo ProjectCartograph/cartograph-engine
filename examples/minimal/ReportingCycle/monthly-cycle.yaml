@@ -1,0 +1,10 @@
+apiVersion: cartograph/v1
+kind: ReportingCycle
+metadata:
+  id: monthly-cycle
+  name: Monthly Cycle
+spec:
+  name: Monthly Cycle
+  periodMonths: 1
+  startMonth: 1
+  dueOffsetDays: 7

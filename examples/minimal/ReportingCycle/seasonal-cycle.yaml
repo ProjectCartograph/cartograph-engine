@@ -1,0 +1,10 @@
+apiVersion: cartograph/v1
+kind: ReportingCycle
+metadata:
+  id: seasonal-cycle
+  name: Seasonal Cycle
+spec:
+  name: Seasonal Cycle
+  periodMonths: 3
+  startMonth: 9
+  dueOffsetDays: 14

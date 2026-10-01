@@ -1,0 +1,17 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: more-produce-sold-direct
+  name: More produce is sold direct to buyers
+spec:
+  level: outcome
+  parent: members-earn-more-each-season
+  objective: A larger share of each harvest reaches its buyer without a middle hand taking a cut.
+  keyResults:
+    - id: kr-direct-share
+      metric: the share of the harvest sold direct to a buyer
+      direction: increase
+      kind: percent
+      baseline: {value: 18, date: "2025-09"}
+      target: {value: 45, date: "2026-06"}
+  evidence: Sales ledger lines by channel, per season.

@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: training-facilitator
+  name: Training facilitator
+spec:
+  name: Training facilitator
+  category: personRole
+  description: Prepares and runs training for depot staff, in person and at the depot.

@@ -1,0 +1,19 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: members-earn-more-each-season
+  name: Raise member earnings each season
+spec:
+  level: objective
+  parent: grow-member-livelihoods
+  objective: Raise what a season delivered through the cooperative is worth to a member.
+  whyItMatters: Members compare the two every season, and the comparison is the whole membership decision.
+  keyResults:
+    - id: kr-season-earnings
+      metric: USD earned by the median member in a season
+      direction: increase
+      kind: money
+      unit: USD
+      baseline: {value: 820, date: "2025-09"}
+      target: {value: 920, date: "2026-06"}
+  evidence: Payments to members in the sales ledger, by season.

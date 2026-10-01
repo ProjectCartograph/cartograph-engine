@@ -1,0 +1,22 @@
+apiVersion: cartograph/v1
+kind: StakeholderMap
+metadata:
+  id: quality-check-rollout-stakeholders
+  name: Quality Check Rollout stakeholders
+spec:
+  scope: {kind: Project, id: quality-check-rollout}
+  entries:
+    # A resource is declared once and used across projects; how much power
+    # it holds is particular to each, so it is scored here and not on
+    # either end.
+    - resource: analytics-partner
+      influence: 2
+      interest: 3
+      tier: primary
+    - resource: transport-contractor
+      influence: 1
+      interest: 2
+      tier: secondary
+    # Declared, not yet assessed. Naming a stakeholder and placing one are
+    # separate acts, and an entry with no score is a real entry.
+    - resource: depot-network

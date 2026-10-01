@@ -1,0 +1,8 @@
+apiVersion: cartograph/v1
+kind: Team
+metadata:
+  id: finance-team
+  name: Finance Team
+spec:
+  name: Finance Team
+  description: Holds the budget, pays members for accepted deliveries and reports on spending.

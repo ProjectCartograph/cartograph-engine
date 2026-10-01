@@ -1,0 +1,788 @@
+{
+  "$id": "project.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Project",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Project"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "team"
+      ],
+      "properties": {
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "problems"
+          ],
+          "properties": {
+            "problems": {
+              "type": "array",
+              "minItems": 1,
+              "description": "The problems this project addresses, each with the change that answers it and the beneficiary groups that feel it. A project may answer more than one problem, and the same change may land differently on different groups (Programme Lead, 2026-09-27); the first line is the headline the register and the renderer show.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "problem",
+                  "change"
+                ],
+                "properties": {
+                  "id": {
+                    "$ref": "common.schema.json#/$defs/Slug",
+                    "description": "Stable identity for this problem."
+                  },
+                  "problem": {
+                    "$ref": "common.schema.json#/$defs/ProblemStatement"
+                  },
+                  "change": {
+                    "$ref": "common.schema.json#/$defs/ChangeStatement"
+                  },
+                  "groups": {
+                    "type": "array",
+                    "description": "Which of the project's beneficiary groups feel this problem. A subset of summary.beneficiaries.",
+                    "items": {
+                      "$ref": "common.schema.json#/$defs/Slug",
+                      "x-cartograph-ref": "BeneficiaryGroup"
+                    }
+                  },
+                  "gaps": {
+                    "type": "array",
+                    "description": "The gaps this problem answers, and how much of each. A citation, not a restatement: a gap is what is wrong and how we know, written once in the register; the problem says what that does to these groups, here. Naming segments is what keeps the claim honest \u2014 a gap observed in four slices, answered by work that reaches one of them, is a quarter of a claim, and until 2026-09-29 a bare list of ids made it look like the whole (Programme Lead, 2026-09-29). Optional, because a problem nobody has traced to evidence is still a problem.",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "gap"
+                      ],
+                      "properties": {
+                        "gap": {
+                          "$ref": "common.schema.json#/$defs/Slug",
+                          "x-cartograph-ref": "Gap",
+                          "description": "The entry in the gap register this answers."
+                        },
+                        "segments": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "common.schema.json#/$defs/Slug",
+                            "x-cartograph-ref": "Segment"
+                          },
+                          "description": "Which of the gap's own segments this work reaches. Absent means all of them, so a gap that names no segments needs no ceremony. A kind rule refuses a segment the gap does not have: claiming to address a gap somewhere it was never observed is a different claim, not a narrower one."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "scopeIn": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 60
+              }
+            },
+            "scopeOut": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 60
+              }
+            },
+            "beneficiaries": {
+              "type": "array",
+              "description": "Beneficiary groups are qualitative: who the project is for. A line names a group and nothing else; no count belongs here (Programme Lead, 2026-09-26).",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "group"
+                ],
+                "properties": {
+                  "group": {
+                    "$ref": "common.schema.json#/$defs/Slug",
+                    "x-cartograph-ref": "BeneficiaryGroup"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "team": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Team"
+        },
+        "resources": {
+          "type": "array",
+          "description": "The People and resources section (I3.2): roles the project needs, never a person; mapping roles to people lives in the delivery tool.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "role"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "description": "Stable identity for this role, so acceptance criteria and success criteria point at it instead of copying its name. Generated on write; the legacy rewriter back-fills it."
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "sponsor",
+                  "manager",
+                  "teamMember",
+                  "userRepresentative",
+                  "technicalLead",
+                  "dataOwner",
+                  "dataCustodian",
+                  "dataSteward",
+                  "projectSupport",
+                  "serviceOwner"
+                ],
+                "description": "The role this resource plays in the project organisation, from the standard set: sponsor (GovS 002 senior responsible owner, PRINCE2 executive), project manager, team member, user representative (PRINCE2 senior user), technical lead, data owner, data steward and data custodian (DAMA-DMBOK: the owner is accountable, the steward looks after content and quality, the custodian runs the storage), project support (PRINCE2), and the service owner who accepts the handover (ITIL). Renamed 2026-09-30 from lead, owner, custodian, technicalOwner, filer and operationalOwner, which mixed a RACI word into a role list; older files are rewritten on read. Positions only: accountable, responsible, consulted and informed left this list on 2026-09-27, because a RACI letter says how somebody relates to a task; \"stakeholder\" left it on 2026-09-28, because a stakeholder is not a position a project staffs. Somebody with an interest in the outcome is held on the StakeholderMap scoped to the work, whether or not the work also draws on them."
+              },
+              "resource": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "Resource",
+                "description": "The catalogue entry this project draws on for this position, and the only place the role is named. Every resource is standalone: a role, unit, party, system or facility is declared once under Resource and referenced here, so renaming it follows everywhere and two projects naming the same party are visibly naming the same party. A free-text \"title\" sat beside this until 2026-09-29, and the data showed why it could not: it held a restatement of the position (\"Sponsor\" on a row already typed sponsor) as often as a name, so nobody could tell the catalogue entry from the local label and the two would have drifted apart (Programme Lead, 2026-09-29). Optional, because knowing a project needs a sponsor before knowing who is a state worth holding \u2014 a check says so."
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 160
+              }
+            }
+          }
+        },
+        "mandate": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Mandate"
+          }
+        },
+        "funding": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "amount",
+              "currency",
+              "status"
+            ],
+            "properties": {
+              "amount": {
+                "type": "number",
+                "minimum": 0
+              },
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "AED",
+                  "AFN",
+                  "ALL",
+                  "AMD",
+                  "ANG",
+                  "AOA",
+                  "ARS",
+                  "AUD",
+                  "AWG",
+                  "AZN",
+                  "BAM",
+                  "BBD",
+                  "BDT",
+                  "BHD",
+                  "BIF",
+                  "BMD",
+                  "BND",
+                  "BOB",
+                  "BOV",
+                  "BRL",
+                  "BSD",
+                  "BTN",
+                  "BWP",
+                  "BYN",
+                  "BZD",
+                  "CAD",
+                  "CDF",
+                  "CHE",
+                  "CHF",
+                  "CHW",
+                  "CLF",
+                  "CLP",
+                  "CNY",
+                  "COP",
+                  "COU",
+                  "CRC",
+                  "CUP",
+                  "CVE",
+                  "CZK",
+                  "DJF",
+                  "DKK",
+                  "DOP",
+                  "DZD",
+                  "EGP",
+                  "ERN",
+                  "ETB",
+                  "EUR",
+                  "FJD",
+                  "FKP",
+                  "GBP",
+                  "GEL",
+                  "GHS",
+                  "GIP",
+                  "GMD",
+                  "GTQ",
+                  "GYD",
+                  "HKD",
+                  "HNL",
+                  "HTG",
+                  "HUF",
+                  "IDR",
+                  "ILS",
+                  "INR",
+                  "IQD",
+                  "IRR",
+                  "ISK",
+                  "JMD",
+                  "JOD",
+                  "JPY",
+                  "KES",
+                  "KGS",
+                  "KHR",
+                  "KMF",
+                  "KPW",
+                  "KRW",
+                  "KWD",
+                  "KYD",
+                  "KZT",
+                  "LAK",
+                  "LBP",
+                  "LRD",
+                  "LSL",
+                  "LYD",
+                  "MAD",
+                  "MDL",
+                  "MGA",
+                  "MKD",
+                  "MMK",
+                  "MNT",
+                  "MOP",
+                  "MRU",
+                  "MUR",
+                  "MVR",
+                  "MWK",
+                  "MXN",
+                  "MXV",
+                  "MYR",
+                  "MZN",
+                  "NAD",
+                  "NPR",
+                  "NZD",
+                  "OMR",
+                  "PAB",
+                  "PEN",
+                  "PHP",
+                  "PKR",
+                  "PLN",
+                  "PYG",
+                  "QAR",
+                  "RON",
+                  "RSD",
+                  "RUB",
+                  "RWF",
+                  "SAR",
+                  "SBD",
+                  "SCR",
+                  "SDG",
+                  "SEK",
+                  "SGD",
+                  "SHP",
+                  "SLE",
+                  "SOS",
+                  "SRD",
+                  "SSP",
+                  "STN",
+                  "SYP",
+                  "SZL",
+                  "THB",
+                  "TJS",
+                  "TMT",
+                  "TND",
+                  "TOP",
+                  "TRY",
+                  "TTD",
+                  "TWD",
+                  "TZS",
+                  "UAH",
+                  "UGX",
+                  "USD",
+                  "USN",
+                  "UYI",
+                  "UYU",
+                  "UYW",
+                  "UZS",
+                  "VED",
+                  "VES",
+                  "VND",
+                  "VUV",
+                  "WST",
+                  "XAF",
+                  "XAG",
+                  "XAU",
+                  "XBA",
+                  "XBB",
+                  "XBC",
+                  "XBD",
+                  "XCD",
+                  "XDR",
+                  "XOF",
+                  "XPD",
+                  "XPF",
+                  "XPT",
+                  "XSU",
+                  "XTS",
+                  "XUA",
+                  "XXX",
+                  "YER",
+                  "ZAR",
+                  "ZMW",
+                  "ZWG"
+                ],
+                "description": "The currency this line is drawn in, from the active ISO 4217 list. A picker rather than three typed letters since 2026-09-29: a currency is an identifier from a published standard, and a field that accepts any three capitals accepts a typo."
+              },
+              "source": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "FundingSource",
+                "description": "The budget this line draws on. A reference since 2026-09-29, where it was free text and a code beside it; the code identifies the budget rather than this project's use of it, so it lives on the budget. Optional, because an amount nobody has found a budget for yet is a real state and a project should be able to say so."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "approved",
+                  "requested",
+                  "unfunded"
+                ]
+              }
+            }
+          },
+          "description": "At most one line per currency (a kind rule). No other money field anywhere in the contract, and no free text on a line: what a budget is called and how it is coded lives on the FundingSource it references."
+        },
+        "alignment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "goals": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "Goal"
+              },
+              "description": "Alignment to outcomes only (a kind rule). A project may serve goals none of its programmes serve; it may not join a programme it shares no goal with."
+            },
+            "programmes": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "Programme"
+              },
+              "description": "The programmes this project is part of. Belonging to one is a declaration, not a derivation: a programme coordinates the work inside it, which only means something if the work says which programme it is in. Declared here and read back on the programme, so there is one place to change it. Sharing a goal with a programme corroborates the claim and a check says so when it is missing, but it does not constitute it \u2014 an enabling component can belong to a programme and serve no goal the programme lists. Advisory since 2026-09-28; it blocked until then. See TAXONOMY.md."
+            },
+            "partOf": {
+              "$ref": "common.schema.json#/$defs/Slug",
+              "x-cartograph-ref": "Project",
+              "description": "The project this one is a component of (PMI's subproject; the World Bank's component under one development objective). Declared here and read back on the parent, the same rule programme membership follows. One parent, one level deep. A component serves its parent's goals and belongs to its parent's programmes, so it names neither itself; it has its own lead, deliverables and key results, and shares its parent's sponsor and budget. A part that needs its own sponsor or budget is a separate project, and the pair is a programme. See TAXONOMY.md D15."
+            }
+          },
+          "description": "What this project is part of, and what it is for. The two are separate: goals are what the work is meant to move, programmes are what it belongs to, and a project can serve a goal none of its programmes serve. See TAXONOMY.md for why membership is declared rather than derived."
+        },
+        "objectives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "objective"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "description": "Stable identity for this objective."
+              },
+              "objective": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 250,
+                "description": "The objective as one sentence: the change, then how. The editor builds it in two parts of up to 120 characters each and joins them with \" by \", so the sentence it can produce runs to about 240; capping the stored value at 120 meant the editor could build one the contract then refused (Programme Lead, 2026-09-27)."
+              },
+              "keyResults": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/KeyResult"
+                }
+              }
+            }
+          }
+        },
+        "deliverables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 240
+              },
+              "acceptance": {
+                "type": "array",
+                "description": "What makes this deliverable accepted, and who says so. One line per part that has to be signed off; each reads as the verifying role followed by what it confirms.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "outcome"
+                  ],
+                  "properties": {
+                    "by": {
+                      "$ref": "common.schema.json#/$defs/Ref",
+                      "description": "The role that verifies this, as a reference. It held a copy of spec.resources[].title until 2026-09-28; renaming a role left every copy stale, which is one fact in four stores."
+                    },
+                    "outcome": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160,
+                      "description": "What that role confirms, written as the test someone else could apply."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "kpis": {
+          "type": "array",
+          "description": "The standing measures this project moves, named at project level with the reason for naming each (Programme Lead, 2026-09-26). A KPI is a whole-of-project concern, not a property of one key result, and one KPI may be named by several projects; nothing here assumes a KPI can assess this project's landing.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kpi",
+              "reason"
+            ],
+            "properties": {
+              "kpi": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "KPI"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              }
+            }
+          }
+        },
+        "successCriteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "statement",
+              "metric",
+              "confirmedBy",
+              "when"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "statement": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160,
+                "description": "The outcome that has to be true, written so somebody else could settle it."
+              },
+              "from": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Ref"
+                },
+                "description": "The deliverables that produce this outcome, where any do. Optional and never a completeness test: a criterion may be the result of a deliverable, and may equally assess schedule, budget, compliance or any dimension at closing or landing that no deliverable produces \u2014 which is what the seven metric dimensions are for, and a criterion standing on its own is complete (Programme Lead, 2026-09-29). What this buys is that the arrow can be drawn where it exists, and the assumption on that step can be named."
+              },
+              "assumes": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Slug",
+                  "x-cartograph-ref": "Assumption"
+                },
+                "description": "What has to be true for the outputs to produce this outcome. The logframe's third column, which Cartograph had a word for and nowhere to put."
+              },
+              "metric": {
+                "type": "string",
+                "enum": [
+                  "efficiency",
+                  "customer",
+                  "team",
+                  "business",
+                  "future",
+                  "compliance"
+                ],
+                "description": "Which dimension of success this measures, from Shenhar and Dvir's five (Reinventing Project Management, 2007): project efficiency, impact on the customer, impact on the team, business and direct success, preparation for the future. compliance is Cartograph's addition (TAXONOMY.md D25): the one kind that is satisfied rather than measured, and so carries no standard, source or cycle. Older values are rewritten on read: product, happiness, adoption and engagement become customer."
+              },
+              "standard": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "The target, threshold or acceptable standard that has to be cleared."
+              },
+              "source": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "DataSource",
+                "description": "Where the measurement is read from. The method, named once in the register."
+              },
+              "cycle": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "ReportingCycle",
+                "description": "How often it is read. The frequency, named once in the register."
+              },
+              "owner": {
+                "$ref": "common.schema.json#/$defs/Ref",
+                "description": "The role that tracks this, as a reference. Held a copy of a role title until 2026-09-28."
+              },
+              "confirmedBy": {
+                "$ref": "common.schema.json#/$defs/Ref",
+                "description": "The role or governance body that confirms success, as a reference. Held a copy of a role title until 2026-09-28; a governance body Cartograph does not hold takes the external form."
+              },
+              "when": {
+                "type": "string",
+                "enum": [
+                  "atClosing",
+                  "atLanding",
+                  "postClosingCycle"
+                ]
+              }
+            }
+          },
+          "description": "What has to be true for this project to have succeeded, not merely to have finished. Each line names the outcome, the metric and the standard that settles it, where that measurement is read from and how often, the role that tracks it and the role that confirms it (Programme Lead, 2026-09-27). A success criterion is the floor the project must clear; an objective's key result is the stretch it reaches for, which is why neither is derived from the other."
+        },
+        "operation": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Operation",
+          "description": "The literal value 'new' is exempt from reference resolution."
+        },
+        "data": {
+          "$ref": "common.schema.json#/$defs/DataUse"
+        },
+        "timeline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "start",
+            "phases"
+          ],
+          "description": "The end month is derived from start plus the sum of every phase's months; it is never stored.",
+          "properties": {
+            "start": {
+              "$ref": "common.schema.json#/$defs/YearMonth"
+            },
+            "phases": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "months"
+                ],
+                "properties": {
+                  "id": {
+                    "$ref": "common.schema.json#/$defs/Slug",
+                    "description": "Stable identity for this phase, so a dependency can say which phase it must land by. Phases are reorderable, so neither position nor name is stable enough."
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "months": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60
+                  }
+                }
+              }
+            }
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "description",
+              "type"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "risk",
+                  "issue",
+                  "dependency",
+                  "constraint"
+                ],
+                "description": "What kind of thing this row is. \"assumption\" left this list on 2026-09-29: an assumption is not a risk \u2014 a risk is mitigated, an assumption is tested, and a false assumption changes the theory rather than the plan \u2014 and it belongs on the link it conditions rather than in a flat list. Not one of the seventeen risks across both vaults had used the value. See the Assumption kind."
+              },
+              "impact": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "likelihood": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "mitigation": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "escalate": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "flag"
+                ],
+                "properties": {
+                  "flag": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "to": {
+                    "$ref": "common.schema.json#/$defs/Ref",
+                    "description": "Whose decision is needed: usually the sponsor or a board. Escalating means handing a decision up to someone with more authority than the project, so it names them (PRINCE2, GovS 002)."
+                  }
+                },
+                "description": "reason is required when flag is true (a kind rule)."
+              },
+              "depends": {
+                "description": "The edge itself, and the reason the dependency type is worth having: a shape a risk sentence cannot be poured into. Only when type is dependency (a kind rule). Direction is declared at one end only; the other end is derived, so nobody has to write both halves.",
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "direction",
+                  "on"
+                ],
+                "properties": {
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "needs",
+                      "neededBy"
+                    ]
+                  },
+                  "on": {
+                    "$ref": "common.schema.json#/$defs/Ref"
+                  },
+                  "needBy": {
+                    "$ref": "common.schema.json#/$defs/Slug",
+                    "description": "The id of the phase in this project's timeline the dependency must land by."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "compliance": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "item"
+            ],
+            "properties": {
+              "item": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "notStarted",
+                  "inProgress",
+                  "met",
+                  "notApplicable"
+                ]
+              }
+            }
+          }
+        },
+        "notes": {
+          "type": "object",
+          "description": "A note per step of the walk, keyed by the step's own name. One map rather than a property per step, because a note is the same thing wherever it is written and a schema that names every step has to be edited whenever the walk changes. What belongs here is what the fields above cannot hold and nobody should have to hold in their head \u2014 a caveat, a reason a choice was made, something to come back to. Not a substitute for a field: anything Cartograph can hold in a shape belongs in that shape, where it can be checked, rolled up and read back.",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/Slug"
+          }
+        }
+      }
+    }
+  }
+}

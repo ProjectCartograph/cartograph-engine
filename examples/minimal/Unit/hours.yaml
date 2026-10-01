@@ -1,0 +1,10 @@
+apiVersion: cartograph/v1
+kind: Unit
+metadata:
+  id: hours
+  name: Hours
+spec:
+  name: Hours
+  symbol: "hrs"
+  dimension: duration
+  description: Hours, to the nearest hour unless the KPI says otherwise.

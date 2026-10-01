@@ -1,0 +1,18 @@
+apiVersion: cartograph/v1
+kind: KPI
+metadata:
+  id: post-harvest-loss-rate
+  name: Post harvest loss rate
+  labels: {pillar: quality, pack: board}
+spec:
+  name: Post harvest loss rate
+  definition: Share of intake weight lost between the depot and the buyer in a season.
+  unit: percent
+  direction: decrease
+  baseline: {value: 18, date: "2025-09"}
+  target: {value: 9, date: "2027-06"}
+  source: collection-log
+  cycle: seasonal-cycle
+  goals: [less-harvest-lost-after-picking]
+  resultLevel: outcome
+  disaggregations: [depot, product-line]

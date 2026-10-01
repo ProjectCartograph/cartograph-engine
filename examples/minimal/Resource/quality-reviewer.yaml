@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: quality-reviewer
+  name: Quality reviewer
+spec:
+  name: Quality reviewer
+  category: personRole
+  description: Checks that work meets the published produce quality standard before it is accepted.

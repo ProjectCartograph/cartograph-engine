@@ -1,0 +1,21 @@
+apiVersion: cartograph/v1
+kind: KPI
+metadata:
+  id: quality-pass-rate
+  name: Quality pass rate
+  labels: {pillar: quality, pack: board}
+spec:
+  name: Quality pass rate
+  definition: Share of deliveries meeting the quality standard at intake.
+  unit: percent
+  direction: increase
+  baseline: {value: 62, date: "2025-09"}
+  target: {value: 75, date: "2027-06"}
+  source: quality-check-tool
+  cycle: seasonal-cycle
+  # The pillar it moves, and the functional goal it measures directly:
+  # the share meeting the standard at intake is what "faults found
+  # before dispatch" means in a number.
+  goals: [raise-produce-quality, faults-found-before-dispatch]
+  resultLevel: outcome
+  disaggregations: [region, product-line]

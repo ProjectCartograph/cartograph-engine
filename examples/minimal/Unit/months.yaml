@@ -1,0 +1,10 @@
+apiVersion: cartograph/v1
+kind: Unit
+metadata:
+  id: months
+  name: Months
+spec:
+  name: Months
+  symbol: "mo"
+  dimension: duration
+  description: Whole months.

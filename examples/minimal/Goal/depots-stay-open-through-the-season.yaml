@@ -1,0 +1,19 @@
+apiVersion: cartograph/v1
+kind: Goal
+metadata:
+  id: depots-stay-open-through-the-season
+  name: Keep depots open through the season
+spec:
+  level: objective
+  parent: run-a-dependable-cooperative
+  objective: Keep every depot open on its published days, all season.
+  whyItMatters: One wasted journey teaches a member to sell elsewhere, and the habit outlasts the fault.
+  keyResults:
+    - id: kr-unnotified-closures
+      metric: days a depot is shut without notice in a season
+      direction: decrease
+      kind: count
+      unit: days
+      baseline: {value: 11, date: "2025-09"}
+      target: {value: 2, date: "2026-06"}
+  evidence: Depot opening records against the published schedule.

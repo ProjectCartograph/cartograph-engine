@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Resource
+metadata:
+  id: cold-store
+  name: Cold store
+spec:
+  name: Cold store
+  category: facility
+  description: Chilled storage at a depot, used between intake and collection.
