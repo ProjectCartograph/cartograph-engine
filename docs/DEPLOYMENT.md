@@ -27,6 +27,11 @@ prints the same table.
 | `CARTOGRAPH_VAULT` | `-vault` | `.` | The vault directory, or a SQLite file. A positional argument wins over both |
 | `CARTOGRAPH_STORE` | `-store` | empty | A `postgres://` URL. When set, the database is the store and `CARTOGRAPH_VAULT` is ignored. See "A stateless deployment" |
 | `CARTOGRAPH_FANOUT` | `-fanout` | see meaning | How replicas tell each other a document changed: `memory` (one replica) or `postgres`. Empty means `postgres` with a Postgres store and `memory` with a vault |
+| `CARTOGRAPH_FANOUT_URL` | `-fanout-url` | the store URL | A direct Postgres URL for the fan-out's listening connection. Set it when the store URL goes through a transaction-mode pooler such as PgBouncer, where `LISTEN` does not work |
+| `CARTOGRAPH_METRICS_ADDR` | `-metrics-addr` | empty (off) | Serve Prometheus `/metrics` on this address, a listener of its own kept off the address users reach, for example `:9090` |
+| `CARTOGRAPH_SYNC_PING` | `-sync-ping` | `20s` | How often the sync socket pings an idle peer; `0` turns pings off. Keep it below the shortest idle timeout between users and the replica (60 s for nginx and an AWS load balancer by default) |
+| `CARTOGRAPH_DOC_CACHE` | `-doc-cache` | `1000` | Shared documents a replica keeps in memory, least recently used dropped first. A cache only: the store holds every change |
+| `CARTOGRAPH_DRAIN_DELAY` | `-drain-delay` | `0` | After SIGTERM, how long the replica keeps serving with `/readyz` at 503 so load balancers stop sending it work. Set it to at least the load balancer's health-check interval |
 | `CARTOGRAPH_WATCH` | `-watch` | `true` | Reload manifests when their files change. Turn off on a read-only or network filesystem where inotify misbehaves |
 | `CARTOGRAPH_CHROMIUM` | `-chromium` | empty | Browser to print PDFs with. Empty means the vault's `Settings.spec.chromium`, then `CHROMIUM`, then the PATH |
 | `CARTOGRAPH_LOG_FORMAT` | `-log-format` | `text` | `text` or `json`. Always stdout |
@@ -52,7 +57,11 @@ letting the environment override it, and nowhere else.
 | `GET /readyz` | The process will take requests. 503 during shutdown, so a load balancer drains it |
 | `GET /api/v1/health` | The API answers. Part of the contract; the web interface uses it |
 
-Probes are not logged.
+Probes are not logged. Neither probe checks the database, on purpose:
+a liveness probe that did would restart every replica during a database
+blip, and a readiness probe that did would take every replica out of
+service at once, exactly when the database is recovering. A request
+that needs the database fails on its own and says so.
 
 ## Logs
 
@@ -257,15 +266,9 @@ import of the example, two replicas, and nginx in front (`just image`,
 then `just ha-up`, and `just ha-down` to stop). The Helm chart in
 `deploy/helm/cartograph` deploys it on Kubernetes.
 
-### Settings for this shape
-
-| Variable | Default | Meaning |
-|---|---|---|
-| `CARTOGRAPH_FANOUT_URL` | the store URL | A direct Postgres URL for the listening connection, when the store URL goes through a transaction-mode pooler |
-| `CARTOGRAPH_METRICS_ADDR` | empty (off) | Serve Prometheus `/metrics` on this address, a listener of its own, for example `:9090` |
-| `CARTOGRAPH_SYNC_PING` | `20s` | How often the server pings an open sync socket. Below the 60 second idle timeout of nginx and of an AWS load balancer |
-| `CARTOGRAPH_DOC_CACHE` | `1000` | Shared documents cached per replica. A cache only: the store is the truth |
-| `CARTOGRAPH_DRAIN_DELAY` | `0` | On SIGTERM, how long `/readyz` answers 503 while the replica still serves, before shutdown begins |
+The settings this shape tunes (`CARTOGRAPH_STORE`, `CARTOGRAPH_FANOUT_URL`,
+`CARTOGRAPH_METRICS_ADDR`, `CARTOGRAPH_SYNC_PING`, `CARTOGRAPH_DOC_CACHE`,
+`CARTOGRAPH_DRAIN_DELAY`) are in the configuration table above.
 
 ### Connection budget
 

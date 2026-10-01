@@ -204,6 +204,11 @@ flowchart LR
   peers whatever they lack. Hints are at most once. Every connection
   also offers each of its documents every 15 seconds, so a lost hint
   costs at most that long, and never an edit.
+- **Connections stay up, and leave cleanly.** The socket pings every
+  `CARTOGRAPH_SYNC_PING` (20 s), under common load balancers' idle
+  timeouts, and drops a peer that stops answering. A replica shutting
+  down sends each peer "going away", and the peer reconnects at once
+  to a replica that stays (ADR 0009).
 - **Permissions are per document.** A peer may open a document only if
   the authorizer lets the principal read its manifest. A sync message
   from a principal who may not write is tried on a copy first; if it
@@ -254,8 +259,8 @@ still has no Person kind (`DESIGN_RULES.md`).
 
 | Held in a replica | Why it is only a cache |
 |---|---|
-| Open documents, keyed by id | Refreshed from the store before every use; dropped when the last peer leaves |
-| A sync state per connection and document | Lives as long as the connection; a new one starts from heads |
+| Open documents, keyed by id | Refreshed from the store before every use; dropped when the last peer leaves, and bounded by `CARTOGRAPH_DOC_CACHE` (least recently used go first; a dropped one reloads) |
+| A sync state per connection and document | Lives as long as the connection; a new one starts from heads, which is also what happens when a document is reloaded into another module instance |
 | Fan-out subscriptions per open document | Re-made on the next connection; hints are only hints |
 | Presence in flight | Never stored; the next heartbeat replaces it |
 

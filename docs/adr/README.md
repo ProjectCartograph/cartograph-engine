@@ -18,6 +18,8 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0006](0006-interfaces-reach-the-engine-through-a-client-port.md) | The web interface reaches the engine through a client port | Accepted |
 | [0007](0007-automerge-is-the-one-crdt.md) | Automerge is the one CRDT | Accepted |
 | [0008](0008-postgres-and-a-fan-out-port.md) | Postgres holds the state; fan-out is a port | Accepted |
+| [0009](0009-operating-at-scale.md) | Operating at scale: probes, shutdown, metrics, and a chart | Accepted |
+| [0010](0010-prefer-the-standard-library.md) | Prefer the standard library; every dependency earns its place | Accepted |
 
 ## Writing one
 
