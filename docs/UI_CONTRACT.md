@@ -1,7 +1,6 @@
 # The interface contract
 
-**2026-10-01, design of record for increment I5, revised after the
-Programme Lead's answers the same day. Built: the client port with two
+**Design of record. Built: the client port with two
 transports, the conformance suite as data with its reference driver
 passing over both, the flow contract with the Goal exemplar.**
 
@@ -14,7 +13,7 @@ steps in the same order, be refused the same things at the same fields,
 and end up with the same manifest. This page says what makes that true
 and how it is tested, in any repository, in CI.
 
-Three decisions, from the Programme Lead:
+Three decisions:
 
 1. **An interface depends on a port, never on a wire.** The engine
    publishes `pkg/client.Client`, a Go interface. In the same process it
@@ -144,7 +143,7 @@ Two adapters today, under `pkg/client`:
   uses inside the cartograph binary, and what the suite runs first.
 - `remote`: the HTTP contract, over TCP or a UNIX socket (`Dial`). `Edit`,
   `OpsSince` and `Subscribe` answer `ErrUnsupported` until the ops and
-  events endpoints land (card I5.2); everything else is carried.
+  events endpoints land; everything else is carried.
 
 A transport is proven by running the conformance suite over it with the
 reference driver, which is exactly what `clientdriver_test.go` does for
@@ -190,9 +189,9 @@ them when the ops endpoints land.
 Drivers:
 
 - `clientdriver` (built): the reference, over any `client.Client`.
-- `tuidriver` (card I5.5): drives the Bubble Tea program in-process with
+- `tuidriver` (planned): drives the Bubble Tea program in-process with
   `teatest`, fields by model id.
-- `webdriver` (card I5.4, in the interface repository): drives the served
+- `webdriver` (planned, in the interface repository): drives the served
   web interface headlessly over the Chrome DevTools Protocol, controls by
   `data-cartograph-field`, steps by key, actions by accessible name.
 
@@ -204,13 +203,18 @@ interface is a new driver and one line in a job.
 
 ## 4. What this asks of the web interface
 
-Today's web interface hand-codes its flows (`definition/outline.ts`,
-`GoalSteps.tsx`) in TypeScript, addresses no field by path, and calls
-HTTP paths through `openapi-fetch` directly. Card I5.4 moves it onto the
-port (a TypeScript `Client` with the HTTP adapter behind it), renders
-flows from `Flow(kind)`, adds `data-cartograph-field` to every control, and
-ports `pkg/merge` to TypeScript held to the same test vectors. Nothing
-visible changes.
+The web interface works through the port. `src/client/port.ts` is a
+TypeScript `Client` typed from the generated contract, and
+`src/client/http.ts` is the one HTTP adapter behind it. Components get
+the client from a provider, tests hand them a fake, and `just wire`
+fails the build on a path, a `fetch` or `openapi-fetch` anywhere else
+(ADR 0006).
+
+Still to do, and planned in this order: render flows from `Flow(kind)`
+instead of the hand-coded `definition/outline.ts` and `GoalSteps.tsx`;
+add `data-cartograph-field` to every control, which the web driver
+needs; port `pkg/merge` to TypeScript, held to the same test vectors.
+Nothing visible changes.
 
 ## 5. Repository split
 

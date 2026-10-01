@@ -1,9 +1,8 @@
 # Cartograph systems architecture
 
-**2026-10-01. Describes the tree as built after increment I4, including
-the codec port and the authorizer enforcement added at its review; where
-it describes a port with one adapter, that is the state of things, not a
-promise.**
+**Describes the tree as built. Where it describes a port with one
+adapter, that is the state of things, not a promise. The decisions
+behind it are recorded one per file in [`adr/`](adr/README.md).**
 
 Cartograph captures what an organisation has decided to do (goals, programmes,
 projects, operations, KPIs, the data sources behind them) as declarative
@@ -40,7 +39,7 @@ Three decisions shape everything below.
 
 ```mermaid
 flowchart LR
-    author(["Definition author<br/>(division staff, project lead)"])
+    author(["Definition author<br/>(whoever defines the work)"])
     reader(["Reader<br/>(executive, reviewer)"])
     operator(["Operator<br/>(runs the deployment)"])
 
@@ -114,9 +113,13 @@ flowchart TB
     db[("index.sqlite")] --- sqlitead
 ```
 
-The web interface is built with Vite and embedded into the binary with
-`go:embed`, so a deployment ships one file. It talks only to `/api/v1`
-through a client generated from the same OpenAPI document the server is
+The web interface is built with Vite in `cartograph-ui` and embedded
+into the binary with `go:embed`, so a deployment ships one file. The
+engine embeds a released build, not a source tree: `UI_VERSION` names
+the release and `UI_SHA256` pins its bytes, and `just ui` and the flake
+both unpack exactly that into `internal/spa/dist` before compiling
+(ADR 0002). The interface talks only to `/api/v1`, through one HTTP
+adapter generated from the same OpenAPI document the server is
 generated from, which is how the two halves stay in step.
 
 ## 3. The hexagon
@@ -240,7 +243,10 @@ on live files.
 
 `VaultIndex` is the vault adapter's own port, one layer down: the vault is
 files plus a rebuildable cache, and that cache is SQLite today and may be
-Postgres tomorrow. The engine does not see this port at all.
+Postgres tomorrow. The engine does not see this port at all, and the
+vault does not choose its adapter: the composition root passes an opener
+(`vault.Options.OpenIndex`), so the vault and SQLite adapters never
+import each other (ADR 0004).
 
 `pkg/client.Client` is the port on the other side: what an interface
 (web, terminal, a bot) uses, as a Go interface and never as a wire. In
@@ -261,44 +267,54 @@ rings, from the centre out:
 
 | Ring | Here | May depend on |
 |---|---|---|
-| Entities | `pkg/merge` (the replicated types), `internal/kinds` and `kinds/kit` (what a kind is, its rules), the contract's schemas | nothing in the module |
-| Use cases | `internal/engine` | the ports (`internal/store`, `internal/codec`, `internal/printer`, `engine.Bus`) and the entities |
-| Interface adapters | `internal/api`, `cmd`'s subcommands, `pkg/client/*`, `internal/render`; `store/vault`, `store/sqlite`, `store/memory`, `codec/yaml`, `codec/json`, `printer/chromium`, `auth/proxy`, `auth/roles` | the ring inside them |
-| Frameworks and drivers | `net/http`, `modernc.org/sqlite`, `fsnotify`, Chromium, the generated server | used only by adapters |
+| Entities | `pkg/merge` (the replicated types), `internal/kinds`, `kinds/<kind>` and `kinds/kit` (what a kind is, its rules), `internal/contract` (the schemas and flows), `internal/sentence` | nothing in the module but each other; no driver |
+| Use cases | `internal/engine` | the ports and the entities |
+| Ports | `internal/store`, `internal/codec`, `internal/printer`, `engine.Bus` (driven); `pkg/client`, `pkg/uiconformance`, `internal/auth` (driving) | the entities; `internal/auth` also `net/http`, because the identity ports are request middleware |
+| Interface adapters | driving: `internal/api`, `internal/render`, `internal/spa`, `pkg/client/inproc`, `pkg/client/remote`, `uiconformance/clientdriver`; driven: `store/vault`, `store/sqlite`, `store/memory`, `codec/yaml`, `codec/json`, `printer/chromium`, `auth/proxy`, `auth/roles`, and the helpers they share (`yamlfmt`, `store/manifestmeta`) | the rings inside them, never another adapter of their side |
+| Frameworks and drivers | `net/http`, `database/sql`, `os/exec`, `modernc.org/sqlite`, `fsnotify`, `yaml.v3`, Chromium, the generated server (`api/gen`) | used only by adapters |
+| Composition root | `cmd/cartograph`, `internal/config` | everything; the one place an adapter is chosen |
 
 The dependency rule, dependencies point inward, is a test
-(`internal/arch`, run by `just arch` and in the gate): for each package
-it lists what that package must never depend on, transitively, and
-fails the build on a violation. The engine may not import an adapter,
-a driver, or a syntax library; a port package may not import the
-engine; `pkg/merge` may not import anything in the module; `cmd` is the
-only package that knows everything, which is what makes it the one
-place an adapter is chosen. A change that needs a new edge gets a new
-port, not an exception.
+(`internal/arch`, run by `just arch` and in the gate). Every package in
+the module has a rule there, and a new package without one fails the
+build, so nothing joins the tree without somebody saying which ring it
+belongs to. Each rule lists what that package must never depend on,
+transitively: module packages by subtree, third-party drivers by
+module path, and standard-library drivers (`net/http`, `database/sql`,
+`os/exec`) by name. The engine may not import an adapter, a driver, or
+a syntax library; a port may not import the engine; an adapter may not
+import another adapter, because composing adapters is the root's job;
+`pkg/merge` may not import anything in the module; `cmd` is the only
+package that knows everything, which is what makes it the one place an
+adapter is chosen. A change that needs a new edge gets a new port, not
+an exception (ADR 0003).
 
 ### 3.2 Packages
 
 | Package | Role | Depends on |
 |---|---|---|
-| `internal/contract` | The JSON Schema files, embedded; the schema set | nothing |
+| `internal/contract` | The JSON Schema and flow files, embedded; the schema set | nothing |
+| `internal/sentence` | Composes the sentences a manifest stores in parts, the same way everywhere they are shown | nothing |
 | `internal/kinds`, `internal/kinds/<kind>` | The registry of kinds and each kind's rules beyond its schema | `kinds/kit` |
 | `internal/kinds/kit` | The small types rules need (`Problem`, `Lookup`) so kind packages never import the engine | nothing |
-| `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, drafts (shared editing over the op log), the event bus | `store`, `kinds`, `codec`, `merge` |
-| `internal/store` | The port definitions and the record shapes | nothing |
-| `internal/store/vault` | Files are the truth; journalled writes; watcher; apply gate; bundles | `store`, `store/sqlite` (default index) |
-| `internal/store/sqlite` | SQLite adapter: manifest store, operational store, journal, vault index | `store`, `modernc.org/sqlite` |
-| `internal/store/memory` | In-memory adapter for tests and the conformance suite | `store` |
+| `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, drafts (shared editing over the op log), the event bus | `store`, `codec`, `kinds`, `kinds/kit`, `contract`, `sentence`, `merge`; a JSON Schema validator |
+| `internal/store` | The port definitions and the record shapes | `merge` |
+| `internal/store/vault` | Files are the truth; journalled writes; watcher; apply gate; bundles. Its index is a `store.VaultIndex` the root opens for it | `store`, `store/manifestmeta`, `yamlfmt`, `fsnotify`, `yaml.v3` |
+| `internal/store/sqlite` | SQLite adapter: manifest store, operational store, journal, vault index | `store`, `store/manifestmeta`, `modernc.org/sqlite` |
+| `internal/store/memory` | In-memory adapter for tests and the conformance suite | `store`, `store/manifestmeta` |
+| `internal/store/manifestmeta` | Reads the envelope (kind, id, name, labels) from manifest text for the store adapters | `yaml.v3` |
 | `internal/store/conformance` | The one suite every adapter of a port must pass | `store` |
-| `internal/codec`, `codec/yaml`, `codec/json`, `codec/conformance` | Manifest syntax port, its two adapters, and the suite both pass | nothing / `yamlfmt` |
+| `internal/codec`, `codec/yaml`, `codec/json`, `codec/conformance` | Manifest syntax port, its two adapters, and the suite both pass | nothing / `codec`, `yamlfmt`, `yaml.v3` |
+| `internal/yamlfmt` | Canonical YAML output, shared by the YAML codec and the vault | `yaml.v3` |
 | `pkg/merge` | The CRDTs under shared editing: the field map (keyed lists, sets) and the text sequence, with hybrid logical clocks | nothing |
-| `pkg/client`, `client/inproc`, `client/remote` | The port every interface uses, and its two transports | `merge`; `engine` (inproc), the HTTP contract (remote) |
+| `pkg/client`, `client/inproc`, `client/remote` | The port every interface uses, and its two transports | `merge`; `engine` and `auth` (inproc), `net/http` (remote) |
 | `pkg/uiconformance`, `uiconformance/clientdriver` | The interface suite as data, its Go runner, and the reference driver | `client`, `merge` |
-| `internal/printer`, `printer/chromium` | PDF port and the headless-browser adapter | nothing / `printer` |
-| `internal/auth`, `auth/proxy`, `auth/roles` | Identity and policy ports, context plumbing, the two middlewares; the proxy-header authenticator and the role policy | `net/http` |
+| `internal/printer`, `printer/chromium` | PDF port and the headless-browser adapter | nothing / `printer`, `os/exec` |
+| `internal/auth`, `auth/proxy`, `auth/roles` | Identity and policy ports, context plumbing, the two middlewares; the proxy-header authenticator and the role policy | `net/http` / `auth` |
+| `internal/render` | HTML documents (charters) from engine data; reads through the engine and decodes through its codec | `engine` |
+| `internal/api`, `api/gen` | The generated strict server and the thin handlers | `engine`, `store`, `codec`, `auth`, `printer`, `render` |
+| `internal/spa` | The embedded web build, a pinned `cartograph-ui` release | `net/http` |
 | `internal/config` | Every setting, from environment then flags | nothing |
-| `internal/render` | HTML documents (charters) from engine data; a driven adapter of presentation that reads through the engine | `engine` |
-| `internal/api`, `api/gen` | The generated strict server and the thin handlers | `engine`, `auth`, `printer`, `render` |
-| `internal/spa` | The embedded web build | nothing |
 | `cmd/cartograph` | The composition root and every subcommand | everything above |
 
 Dependency direction is inward: adapters and drivers import the core,
@@ -454,8 +470,8 @@ sequenceDiagram
     participant IX as VaultIndex
     participant E as Engine
 
-    CLI->>V: New(dir, Options{Watch, Index})
-    V->>IX: open (SQLite by default)
+    CLI->>V: New(dir, Options{Watch, OpenIndex})
+    V->>IX: OpenIndex(.cartograph/) (SQLite, as cmd chose)
     V->>V: replay unapplied journal units
     V->>V: read vault.yaml (generate it if absent)
     loop every included ref
@@ -477,7 +493,8 @@ sequenceDiagram
 
 Apply, recover and the watcher all end in rehydrate plus reindex, once per
 batch. The reference index is rebuilt whenever the state is loaded, not
-only on writes; the regression that taught this is ISSUES_LOG 30.
+only on writes, because files edited while nothing was running carry
+references the index has never seen.
 
 ### 5.3 Handoff
 
@@ -585,7 +602,7 @@ flowchart LR
 | Factor | What Cartograph does |
 |---|---|
 | Codebase | One repository, one `cartograph` binary, many deployments by environment |
-| Dependencies | `go.mod` and `package-lock.json`; `flake.nix` pins the toolchain; the image builds from source |
+| Dependencies | `go.mod`; `flake.nix` pins the toolchain; the embedded web build is a `cartograph-ui` release pinned by `UI_VERSION` and `UI_SHA256`; the image builds from source |
 | Config | `internal/config`: every setting is an `CARTOGRAPH_*` variable (address, vault, codec, authenticator, policy, roles, log format, printer), a flag overrides it. See `DEPLOYMENT.md` |
 | Backing services | The vault directory, the index database, the printer and the identity provider are attached resources chosen by configuration |
 | Build, release, run | `just ci` builds; the image or `nix build .#cartograph` is the release; `cartograph serve` is the run. Nothing is edited at run time |
@@ -593,7 +610,7 @@ flowchart LR
 | Port binding | `CARTOGRAPH_ADDR`; a bare port works for platforms that hand out `PORT` |
 | Concurrency | One process per vault; the engine is safe for concurrent requests within it |
 | Disposability | SIGTERM drains in-flight requests (`CARTOGRAPH_SHUTDOWN_TIMEOUT`), `/readyz` goes 503 first, the journal makes a kill at any point safe |
-| Dev/prod parity | The flake, the Makefile and the Dockerfile build the same thing; CI runs both |
+| Dev/prod parity | `just` recipes run inside the flake, and the image is built from the same flake; CI runs `just ci` and `nix build` on both architectures |
 | Logs | `log/slog` to stdout, text or JSON; health probes are not logged |
 | Admin processes | Every admin task is a subcommand of the same binary against the same adapters (`import`, `export`, `apply`, `snapshot`, `render`, `handoff`) |
 
@@ -611,14 +628,14 @@ and what a new implementation must pass.
 | A new kind of thing to capture | CRD | `kinds.Spec` (schema file + rules func) | 18 kinds | A schema under `contract/schemas`, a line in `kinds/registry.go`, words in `cartograph-ui's src/copy.ts`; the engine does not change |
 | A rule beyond the schema | Admission webhook | `kit.RulesFunc` | per-kind packages | A function `(doc, RuleContext) []Problem`; cross-kind lookups through `kit.Lookup` |
 | Manifests somewhere other than files | CSI driver | `store.ManifestStore` | vault, sqlite, memory | An adapter that passes `conformance.RunManifestStore`; wire it in `cmd/cartograph/store.go` |
-| The index in Postgres (many replicas, one database) | etcd backend | `store.VaultIndex` | sqlite | An adapter that passes `conformance.RunVaultIndex`; pass it as `vault.Options.Index` |
+| The index in Postgres (many replicas, one database) | etcd backend | `store.VaultIndex` | sqlite | An adapter that passes `conformance.RunVaultIndex`; pass its opener as `vault.Options.OpenIndex` in `cmd/cartograph/store.go` |
 | Define projects in a database, not YAML | Different storage class | `store.ManifestStore` without `StateStore` | sqlite does this already | A Postgres `ManifestStore`; the API is the only write path; the apply gate simply reports `ErrNoState` |
 | Write manifests in another syntax | Serialisation (JSON/protobuf at the API server) | `codec.Codec` | yaml, json | An adapter that passes `codec/conformance.Run`; select it by `CARTOGRAPH_CODEC`; migrate a vault with `cartograph export --codec` |
 | Authentication | Authn webhook, OIDC | `auth.Authenticator` | none, proxy | An adapter that returns a `Principal`; select it by `CARTOGRAPH_AUTH` |
 | User types and permissions | RBAC, authz webhook | `auth.Authorizer` | AllowAll, roles | An adapter over `(Principal, Action)`; enforced once for the whole API by `auth.Authorize`; select it by `CARTOGRAPH_AUTHZ` |
 | PDF without Chromium | Container runtime (CRI) | `printer.Printer` | chromium, none | An adapter over `Print(ctx, html)` |
 | Handoff bundles in object storage | Volume plugin | `store.BundleStore` | vault, memory | An adapter over `PutBundle`; the state entry records the location it returns |
-| A new interface (terminal, native, bot) | kubectl, the dashboard: clients of the API | `pkg/client.Client` + the `Driver` protocol | web (hand-coded today), reference driver | Build on the client port, write a driver, pass `pkg/uiconformance` in your own CI (`UI_CONTRACT.md`) |
+| A new interface (terminal, native, bot) | kubectl, the dashboard: clients of the API | `pkg/client.Client` + the `Driver` protocol | web (on the port; flows still hand-coded), reference driver | Build on the client port, write a driver, pass `pkg/uiconformance` in your own CI (`UI_CONTRACT.md`) |
 | Another transport (socket, SSH, broker) | API server transports | `pkg/client.Client` as an adapter | inproc, remote (HTTP over TCP or UNIX socket) | Implement the port, pass the same suite with the reference driver |
 | Shared drafts across replicas | etcd watch | `store.OpLog`, `engine.Bus` | memory | A SQLite or Postgres op log passing `RunOpLog`; a bus over LISTEN/NOTIFY or a broker |
 
@@ -636,6 +653,9 @@ needs one.
 
 ## 8. Decisions and their reasons
 
+The reasons in brief. Decisions made since the first release, with the
+options weighed and what they cost, are in [`adr/`](adr/README.md).
+
 **Why files, and not a database, as the truth.** Because the people who
 own the content are not database administrators, and a directory of YAML
 survives every tool choice. It can be reviewed in a pull request, restored
@@ -647,8 +667,8 @@ processes yet. The Postgres index is the answer when that day comes.
 **Why the engine knows no file path and no HTTP header.** So the same
 rules run in every front door and in every test. The handoff gate is one
 function; the API, the command line and the tests call it. An engine that
-read `vault.yaml` itself (as the API did until I4) would have made a
-database-backed deployment impossible without a fork.
+read `vault.yaml` itself would make a database-backed deployment
+impossible without a fork.
 
 **Why generated code is committed.** So a fresh checkout builds without
 running generators, so a reviewer sees what a contract change does to the
@@ -657,7 +677,10 @@ Go and TypeScript types, and so CI can refuse drift with one `git diff`.
 **Why one binary.** Deployment is copying a file. The web interface
 cannot be out of step with its API because they ship together. The
 command line is the API's twin, which is what makes scripts and the
-interface agree.
+interface agree. The interface's build is the one input a fresh
+checkout does not carry: it is a pinned, checksummed `cartograph-ui`
+release that `just ui` fetches (every recipe that compiles runs it), not
+committed output (ADR 0002).
 
 **Why identity is a middleware concern.** A version records an actor
 string. Everything above that line (sessions, tokens, groups) varies by
@@ -680,13 +703,15 @@ In rough order of expected need.
   once an organisation needs one; the shipped roles policy is read or
   write for the whole API.
 - The ops and events endpoints of the HTTP transport, the SQLite op log,
-  presence, the terminal interface and the web interface on the client
-  port: the I5 cards, sequenced in `the programme's task cards`.
+  presence, and the terminal interface (`UI_CONTRACT.md`,
+  `MULTIPLAYER.md`).
 - A document-rendering port, if a second output format joins HTML, JSON
   and PDF.
 - Out-of-process adapters, if an organisation needs to write one in
   another language.
 
-Related reading: `DEPLOYMENT.md` (running it), `SERVERLESS.md` (stateless
-operation and the plan), `EXTENDING.md` (adding to it), `../README.md` (building it), and under docs/: `DESIGN_RULES.md` (how it behaves),
-`TAXONOMY.md` (what the nouns mean), `SCOPE.md` (what it is not).
+Related reading: `DEPLOYMENT.md` (running it), `SERVERLESS.md`
+(stateless operation and the plan), `EXTENDING.md` (adding to it),
+`../README.md` (building it), `DESIGN_RULES.md` (how it behaves),
+`TAXONOMY.md` (what the nouns mean), and `adr/` (each decision, with
+what it cost).
