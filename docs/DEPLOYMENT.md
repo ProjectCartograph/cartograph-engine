@@ -296,6 +296,11 @@ headers (`Upgrade`, `Connection`) and allow long idle periods.
   (`proxy_read_timeout`). Raise it to an hour; with ingress-nginx, set
   `nginx.ingress.kubernetes.io/proxy-read-timeout` and
   `proxy-send-timeout` to `"3600"`.
+- nginx without active health checks (the open-source build) finds a
+  stopped replica only by connecting to it, and waits up to 60 seconds
+  (`proxy_connect_timeout`) before trying the next. Lower it to a second
+  or two on a local network; `compose.ha.yaml` uses `1s`. On Kubernetes,
+  readiness takes a draining pod out of the Service before it stops.
 - An AWS Application Load Balancer has a 60 second idle timeout by
   default. The ping keeps an idle socket under it; raising it does no
   harm.
