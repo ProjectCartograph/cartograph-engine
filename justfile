@@ -17,6 +17,9 @@ default:
 test: embed
     #!{{toolchain}} bash
     set -euo pipefail
+    # Compile every test binary first: the budget is for the tests, and a
+    # cold CI runner spends most of ten seconds compiling.
+    go test -count=1 -run '^$' ./... >/dev/null
     start=$(date +%s%3N)
     go test -count=1 ./...
     end=$(date +%s%3N)
