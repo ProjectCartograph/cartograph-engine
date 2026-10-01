@@ -39,6 +39,13 @@
               rm -rf internal/spa/dist && mkdir -p internal/spa/dist
               tar -xzf ${ui} -C internal/spa/dist
             '';
+            # subPackages narrows the check phase to cmd/cartograph, which
+            # has no tests of its own; the gate is every package.
+            checkPhase = ''
+              runHook preCheck
+              go test -count=1 ./...
+              runHook postCheck
+            '';
             meta = {
               description = "Cartograph: a vault of project, goal and KPI definitions, with its interface embedded";
               mainProgram = "cartograph";
