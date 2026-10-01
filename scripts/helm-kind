@@ -79,6 +79,12 @@ step "lose a pod; the service keeps answering"
 # whichever replica is left (a port-forward is pinned to one pod).
 kubectl run probe --image=curlimages/curl --restart=Never --command -- sleep 600 >/dev/null
 kubectl wait --for=condition=Ready pod/probe --timeout=120s >/dev/null
+step "metrics, as Prometheus and KEDA would scrape them"
+metrics=$(kubectl exec probe -- curl -s --max-time 3 http://cartograph:9090/metrics || true)
+for want in cartograph_sync_connections cartograph_shared_documents_cached cartograph_http_requests_total go_goroutines; do
+    if printf '%s\n' "$metrics" | grep -q "^$want"; then echo "metrics: $want"; else echo "metrics lack $want"; exit 1; fi
+done
+
 victim=$(kubectl get pods -l app.kubernetes.io/name=cartograph -o jsonpath='{.items[0].metadata.name}')
 echo "deleting $victim"
 kubectl delete pod "$victim" --wait=false
