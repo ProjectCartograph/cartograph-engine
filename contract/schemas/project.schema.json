@@ -67,7 +67,7 @@
                   },
                   "gaps": {
                     "type": "array",
-                    "description": "The gaps this problem answers, and how much of each. A citation, not a restatement: a gap is what is wrong and how we know, written once in the register; the problem says what that does to these groups, here. Naming segments is what keeps the claim honest: a gap observed in four slices, answered by work that reaches one of them, is a quarter of a claim, and until 2026-09-29 a bare list of ids made it look like the whole. Optional, because a problem nobody has traced to evidence is still a problem.",
+                    "description": "The gaps this problem answers, and how much of each. A citation, not a restatement: a gap is what is wrong and how we know, written once in the register; the problem says what that does to these groups, here. Naming segments is what keeps the claim honest: a gap observed in four slices, answered by work that reaches one of them, is a quarter of a claim, and a bare list of ids would make it look like the whole. Optional, because a problem nobody has traced to evidence is still a problem.",
                     "items": {
                       "type": "object",
                       "additionalProperties": false,
@@ -159,12 +159,12 @@
                   "projectSupport",
                   "serviceOwner"
                 ],
-                "description": "The role this resource plays in the project organisation, from the standard set: sponsor (GovS 002 senior responsible owner, PRINCE2 executive), project manager, team member, user representative (PRINCE2 senior user), technical lead, data owner, data steward and data custodian (DAMA-DMBOK: the owner is accountable, the steward looks after content and quality, the custodian runs the storage), project support (PRINCE2), and the service owner who accepts the handover (ITIL). Renamed 2026-09-30 from lead, owner, custodian, technicalOwner, filer and operationalOwner, which mixed a RACI word into a role list; older files are rewritten on read. Positions only: accountable, responsible, consulted and informed left this list on 2026-09-27, because a RACI letter says how somebody relates to a task; \"stakeholder\" left it on 2026-09-28, because a stakeholder is not a position a project staffs. Somebody with an interest in the outcome is held on the StakeholderMap scoped to the work, whether or not the work also draws on them."
+                "description": "The role this resource plays in the project organisation, from the standard set: sponsor (GovS 002 senior responsible owner, PRINCE2 executive), project manager, team member, user representative (PRINCE2 senior user), technical lead, data owner, data steward and data custodian (DAMA-DMBOK: the owner is accountable, the steward looks after content and quality, the custodian runs the storage), project support (PRINCE2), and the service owner who accepts the handover (ITIL). Older files that use lead, owner, custodian, technicalOwner, filer or operationalOwner, which mixed a RACI word into a role list, are rewritten on read. Positions only: accountable, responsible, consulted and informed are not in this list, because a RACI letter says how somebody relates to a task; nor is \"stakeholder\", because a stakeholder is not a position a project staffs. Somebody with an interest in the outcome is held on the StakeholderMap scoped to the work, whether or not the work also draws on them."
               },
               "resource": {
                 "$ref": "common.schema.json#/$defs/Slug",
                 "x-cartograph-ref": "Resource",
-                "description": "The catalogue entry this project draws on for this position, and the only place the role is named. Every resource is standalone: a role, unit, party, system or facility is declared once under Resource and referenced here, so renaming it follows everywhere and two projects naming the same party are visibly naming the same party. A free-text \"title\" sat beside this until 2026-09-29, and the data showed why it could not: it held a restatement of the position (\"Sponsor\" on a row already typed sponsor) as often as a name, so nobody could tell the catalogue entry from the local label and the two would have drifted apart. Optional, because knowing a project needs a sponsor before knowing who is a state worth holding; a check says so."
+                "description": "The catalogue entry this project draws on for this position, and the only place the role is named. Every resource is standalone: a role, unit, party, system or facility is declared once under Resource and referenced here, so renaming it follows everywhere and two projects naming the same party are visibly naming the same party. A free-text \"title\" beside this would not work, because it ends up holding a restatement of the position (\"Sponsor\" on a row already typed sponsor) as often as a name, so nobody could tell the catalogue entry from the local label and the two would have drifted apart. Optional, because knowing a project needs a sponsor before knowing who is a state worth holding; a check says so."
               },
               "note": {
                 "type": "string",
@@ -369,12 +369,12 @@
                   "ZMW",
                   "ZWG"
                 ],
-                "description": "The currency this line is drawn in, from the active ISO 4217 list. A picker rather than three typed letters since 2026-09-29: a currency is an identifier from a published standard, and a field that accepts any three capitals accepts a typo."
+                "description": "The currency this line is drawn in, from the active ISO 4217 list. A picker rather than three typed letters: a currency is an identifier from a published standard, and a field that accepts any three capitals accepts a typo."
               },
               "source": {
                 "$ref": "common.schema.json#/$defs/Slug",
                 "x-cartograph-ref": "FundingSource",
-                "description": "The budget this line draws on. A reference since 2026-09-29, where it was free text and a code beside it; the code identifies the budget rather than this project's use of it, so it lives on the budget. Optional, because an amount nobody has found a budget for yet is a real state and a project should be able to say so."
+                "description": "The budget this line draws on. A reference, not free text with a code beside it: the code identifies the budget rather than this project's use of it, so it lives on the budget. Optional, because an amount nobody has found a budget for yet is a real state and a project should be able to say so."
               },
               "status": {
                 "type": "string",
@@ -406,7 +406,7 @@
                 "$ref": "common.schema.json#/$defs/Slug",
                 "x-cartograph-ref": "Programme"
               },
-              "description": "The programmes this project is part of. Belonging to one is a declaration, not a derivation: a programme coordinates the work inside it, which only means something if the work says which programme it is in. Declared here and read back on the programme, so there is one place to change it. Sharing a goal with a programme corroborates the claim and a check says so when it is missing, but it does not constitute it: an enabling component can belong to a programme and serve no goal the programme lists. Advisory since 2026-09-28; it blocked until then. See TAXONOMY.md."
+              "description": "The programmes this project is part of. Belonging to one is a declaration, not a derivation: a programme coordinates the work inside it, which only means something if the work says which programme it is in. Declared here and read back on the programme, so there is one place to change it. Sharing a goal with a programme corroborates the claim and a check says so when it is missing, but it does not constitute it: an enabling component can belong to a programme and serve no goal the programme lists. That check is advisory: it shows a missing shared goal and never refuses the save. See TAXONOMY.md."
             },
             "partOf": {
               "$ref": "common.schema.json#/$defs/Slug",
@@ -478,7 +478,7 @@
                   "properties": {
                     "by": {
                       "$ref": "common.schema.json#/$defs/Ref",
-                      "description": "The role that verifies this, as a reference. It held a copy of spec.resources[].title until 2026-09-28; renaming a role left every copy stale, which is one fact in four stores."
+                      "description": "The role that verifies this, as a reference. Not a copy of the role's title: renaming a role would leave every copy stale, which is one fact in four stores."
                     },
                     "outcome": {
                       "type": "string",
@@ -581,11 +581,11 @@
               },
               "owner": {
                 "$ref": "common.schema.json#/$defs/Ref",
-                "description": "The role that tracks this, as a reference. Held a copy of a role title until 2026-09-28."
+                "description": "The role that tracks this, as a reference. Not a copy of a role title, which would go stale when the role is renamed."
               },
               "confirmedBy": {
                 "$ref": "common.schema.json#/$defs/Ref",
-                "description": "The role or governance body that confirms success, as a reference. Held a copy of a role title until 2026-09-28; a governance body Cartograph does not hold takes the external form."
+                "description": "The role or governance body that confirms success, as a reference. Not a copy of a role title; a governance body Cartograph does not hold takes the external form."
               },
               "when": {
                 "type": "string",
@@ -675,7 +675,7 @@
                   "dependency",
                   "constraint"
                 ],
-                "description": "What kind of thing this row is. \"assumption\" left this list on 2026-09-29: an assumption is not a risk (a risk is mitigated, an assumption is tested, and a false assumption changes the theory rather than the plan), and it belongs on the link it conditions rather than in a flat list. Risk lists had not used the value. See the Assumption kind."
+                "description": "What kind of thing this row is. \"assumption\" is not in this list: an assumption is not a risk (a risk is mitigated, an assumption is tested, and a false assumption changes the theory rather than the plan), and it belongs on the link it conditions rather than in a flat list. Risk lists had not used the value. See the Assumption kind."
               },
               "impact": {
                 "type": "string",

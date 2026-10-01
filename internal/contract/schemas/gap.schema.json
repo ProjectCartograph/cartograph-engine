@@ -48,7 +48,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 400,
-          "description": "The evidence's own words, quoted as the source states them (Evidence step). Optional since 2026-09-30: a gap is defined by its name and its current and desired states, and the quote is the evidence behind them."
+          "description": "The evidence's own words, quoted as the source states them (Evidence step). Optional: a gap is defined by its name and its current and desired states, and the quote is the evidence behind them."
         },
         "measure": {
           "$ref": "common.schema.json#/$defs/Slug",

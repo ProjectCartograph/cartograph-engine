@@ -39,7 +39,7 @@
           "required": [
             "change"
           ],
-          "description": "The change this programme exists to bring about. Not what it does: a programme coordinates work to deliver beneficial change, so the change is its own and the doing belongs to the components inside it. Said the other way round on 2026-09-28 (\"where it comes from a published plan, the plan's own objective, verbatim\"), which describes one organisation's paperwork rather than what the field holds, and Cartograph has no concept of a plan. Where a definition is set out somewhere, spec.source says where. Held in the parts the interface builds it from and composed as `<change>, so that <gain>`, so the thing stored is what somebody typed rather than what the joiner made of it. Where the aim is somebody else's words, `change` carries them whole and `spec.source` says where they came from.",
+          "description": "The change this programme exists to bring about. Not what it does: a programme coordinates work to deliver beneficial change, so the change is its own and the doing belongs to the components inside it. It is not \"the plan's own objective, verbatim\": that would describe one organisation's paperwork rather than what the field holds, and Cartograph has no concept of a plan. Where a definition is set out somewhere, spec.source says where. Held in the parts the interface builds it from and composed as `<change>, so that <gain>`, so the thing stored is what somebody typed rather than what the joiner made of it. Where the aim is somebody else's words, `change` carries them whole and `spec.source` says where they came from.",
           "properties": {
             "change": {
               "type": "string",
@@ -84,7 +84,7 @@
               },
               "gaps": {
                 "type": "array",
-                "description": "The gaps this problem answers, and how much of each. A citation, not a restatement: a gap is what is wrong and how we know, written once in the register; the problem says what that does to these groups, here. Naming segments is what keeps the claim honest: a gap observed in four slices, answered by work that reaches one of them, is a quarter of a claim, and until 2026-09-29 a bare list of ids made it look like the whole. Optional, because a problem nobody has traced to evidence is still a problem.",
+                "description": "The gaps this problem answers, and how much of each. A citation, not a restatement: a gap is what is wrong and how we know, written once in the register; the problem says what that does to these groups, here. Naming segments is what keeps the claim honest: a gap observed in four slices, answered by work that reaches one of them, is a quarter of a claim, and a bare list of ids would make it look like the whole. Optional, because a problem nobody has traced to evidence is still a problem.",
                 "items": {
                   "type": "object",
                   "additionalProperties": false,

@@ -2,7 +2,7 @@
   "$id": "unit.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Unit",
-  "description": "What a measure is counted in. Free text on the KPI until 2026-09-29, and free text shows what that cost: \"percent\" many times over beside \"score\", \"index\", \"count\", \"USD\", \"rate\" and \"hours\", no two checkable against each other. A kind rather than an enum, because every organisation measures something nobody anticipated and a closed list sends that number into a note; the standard units ship with a vault and an instance declares its own beside them, so a custom unit is not a special case. See TAXONOMY.md D10.",
+  "description": "What a measure is counted in. Free text on the KPI would cost what free text always does: \"percent\" many times over beside \"score\", \"index\", \"count\", \"USD\", \"rate\" and \"hours\", no two checkable against each other. A kind rather than an enum, because every organisation measures something nobody anticipated and a closed list sends that number into a note; the standard units ship with a vault and an instance declares its own beside them, so a custom unit is not a special case. See TAXONOMY.md D10.",
   "type": "object",
   "additionalProperties": false,
   "required": [
