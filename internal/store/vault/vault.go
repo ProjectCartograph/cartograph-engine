@@ -10,7 +10,9 @@ package vault
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -23,7 +25,6 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/manifestmeta"
 	"github.com/fsnotify/fsnotify"
-	"github.com/google/uuid"
 )
 
 const timeLayout = time.RFC3339Nano
@@ -1358,7 +1359,7 @@ func (m *ManifestStore) Recover(ctx context.Context, kind, id, reason, operator 
 // sha256, it is skipped. This makes replay safe after a crash at any point.
 func (m *ManifestStore) applyUnit(ctx context.Context, unit store.ApplyUnit) error {
 	// Step 1: Write the unit to the journal with applied=false
-	unit.ID = uuid.New().String()
+	unit.ID = newUnitID()
 	unit.On = time.Now().UTC()
 	unit.Applied = false
 
@@ -1558,4 +1559,17 @@ func (m *ManifestStore) pruneJournal(ctx context.Context) error {
 
 func sha256String(data []byte) string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
+}
+
+// newUnitID returns a random version 4 UUID (RFC 9562) for a journal unit,
+// from crypto/rand, in the usual 8-4-4-4-12 hex form.
+func newUnitID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(err) // the system's randomness failing is not recoverable
+	}
+	b[6] = b[6]&0x0f | 0x40 // version 4
+	b[8] = b[8]&0x3f | 0x80 // the RFC 9562 variant
+	h := hex.EncodeToString(b[:])
+	return h[0:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:32]
 }
