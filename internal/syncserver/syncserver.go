@@ -20,6 +20,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -83,6 +84,9 @@ type Server struct {
 
 	mu    sync.Mutex
 	rooms map[string]*room // by document id
+	conns map[*conn]struct{}
+
+	received, sent, refused atomic.Int64
 }
 
 // New returns a server over the engine's shared drafts. authz decides,
@@ -94,7 +98,23 @@ func New(shared *engine.Shared, fan fanout.Bus, authz auth.Authorizer, log *slog
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Server{shared: shared, fan: fan, authz: authz, log: log, peerID: "cartograph-" + shared.Replica(), rooms: map[string]*room{}}
+	return &Server{shared: shared, fan: fan, authz: authz, log: log, peerID: "cartograph-" + shared.Replica(), rooms: map[string]*room{}, conns: map[*conn]struct{}{}}
+}
+
+// Stats are counters for monitoring.
+type Stats struct {
+	Connections int   // peers connected to this replica
+	Documents   int   // documents at least one of them has open
+	Received    int64 // sync messages received
+	Sent        int64 // sync messages sent
+	Refused     int64 // messages refused: a read-only peer's change, a protocol error
+}
+
+// Stats returns the current counters.
+func (s *Server) Stats() Stats {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return Stats{Connections: len(s.conns), Documents: len(s.rooms), Received: s.received.Load(), Sent: s.sent.Load(), Refused: s.refused.Load()}
 }
 
 // ServeHTTP upgrades the request and runs one peer until it leaves.
@@ -111,6 +131,14 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	c := &conn{s: s, ws: ws, principal: auth.PrincipalFrom(r.Context()), docs: map[string]*peerDoc{}}
+	s.mu.Lock()
+	s.conns[c] = struct{}{}
+	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		delete(s.conns, c)
+		s.mu.Unlock()
+	}()
 	err = c.run(ctx)
 	c.leaveAll()
 	switch {
@@ -313,10 +341,12 @@ func (c *conn) sync(ctx context.Context, m message) error {
 	if err != nil {
 		return err
 	}
+	c.s.received.Add(1)
 	pd.mu.Lock()
 	changed, err := c.s.shared.Receive(ctx, m.DocumentID, pd.state, m.Data, pd.canWrite)
 	pd.mu.Unlock()
 	if errors.Is(err, engine.ErrReadOnly) {
+		c.s.refused.Add(1)
 		return c.fail(ctx, "this principal may not change "+m.DocumentID)
 	}
 	if err != nil {
@@ -382,7 +412,9 @@ func (c *conn) offer(ctx context.Context, docID string) {
 	if err != nil || !ok {
 		return
 	}
-	_ = c.write(ctx, message{Type: "sync", SenderID: c.s.peerID, TargetID: c.remote, DocumentID: docID, Data: msg})
+	if c.write(ctx, message{Type: "sync", SenderID: c.s.peerID, TargetID: c.remote, DocumentID: docID, Data: msg}) == nil {
+		c.s.sent.Add(1)
+	}
 }
 
 // ephemeral relays a peer's presence to the document's other peers, here

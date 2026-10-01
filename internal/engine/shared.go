@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"sync/atomic"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/crdt"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
@@ -75,6 +76,8 @@ type Shared struct {
 
 	mu   sync.Mutex
 	open map[string]*sharedDoc
+
+	stored, compactions, storeErrors atomic.Int64
 }
 
 type sharedDoc struct {
@@ -83,6 +86,22 @@ type sharedDoc struct {
 	doc      crdt.Doc
 	seq      int64 // the last chunk folded in
 	chunks   int   // chunks stored since the snapshot this replica last saw
+}
+
+// SharedStats are counters for monitoring.
+type SharedStats struct {
+	Cached      int   // documents in this replica's cache
+	Stored      int64 // changes appended to the store by this replica
+	Compactions int64 // snapshots this replica wrote
+	StoreErrors int64 // appends that failed
+}
+
+// Stats returns the current counters.
+func (s *Shared) Stats() SharedStats {
+	s.mu.Lock()
+	n := len(s.open)
+	s.mu.Unlock()
+	return SharedStats{Cached: n, Stored: s.stored.Load(), Compactions: s.compactions.Load(), StoreErrors: s.storeErrors.Load()}
 }
 
 // Shared returns the shared-draft service, or nil when the engine has no
@@ -364,8 +383,10 @@ func (s *Shared) store(ctx context.Context, docID string, sd *sharedDoc) error {
 		// next use loads what the store has and the peer, which still
 		// holds its changes, sends them again.
 		s.discard(sd)
+		s.storeErrors.Add(1)
 		return err
 	}
+	s.stored.Add(1)
 	// Folding our own chunk back in is a no-op for the document; it moves
 	// the position so the next refresh does not fetch it.
 	if seq == sd.seq+1 {
@@ -393,7 +414,11 @@ func (s *Shared) compact(ctx context.Context, docID string, sd *sharedDoc) error
 	if err != nil {
 		return err
 	}
-	return s.docs.Compact(ctx, docID, snapshot, sd.seq)
+	if err := s.docs.Compact(ctx, docID, snapshot, sd.seq); err != nil {
+		return err
+	}
+	s.compactions.Add(1)
+	return nil
 }
 
 // materialise writes the draft as the manifest's working copy.
