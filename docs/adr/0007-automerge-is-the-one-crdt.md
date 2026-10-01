@@ -147,6 +147,11 @@ Cartograph inventing any.
   reordered.
 - The flake gains a Rust toolchain for one purpose, regenerating the
   module. Contributors who never touch `crdt/` never build it.
+- The module's bytes are the ones built on x86_64 Linux. A Rust
+  compiler hosted on aarch64 emits different, equivalent WebAssembly
+  from the same source, so `just generate` rebuilds the module, and CI
+  checks it for drift, on x86_64 only. Every architecture runs the
+  tests against the committed module.
 - The binary grows by about a megabyte. Calls into the module cost a
   copy across the WebAssembly boundary. The engine batches: one call
   per sync message or reconcile, never one per field.

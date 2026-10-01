@@ -54,8 +54,15 @@ generate:
     cp contract/schemas/*.json internal/contract/schemas/
     cp contract/flows/*.json internal/contract/flows/
     cd internal/api && go generate ./...
-    # The Automerge module, built from crdt/ by the flake (docs/adr/0007)
-    install -m 644 "$(nix --extra-experimental-features 'nix-command flakes' build .#automerge-wasm --no-link --print-out-paths)/automerge.wasm" internal/crdt/automerge/automerge.wasm
+    # The Automerge module, built from crdt/ by the flake (docs/adr/0007).
+    # Its bytes are those x86_64 Linux builds: a compiler hosted on another
+    # architecture emits different, equivalent WebAssembly, so elsewhere
+    # the committed module is kept and only x86_64 checks it for drift.
+    if [ "$(uname -sm)" = "Linux x86_64" ]; then \
+      install -m 644 "$(nix --extra-experimental-features 'nix-command flakes' build .#automerge-wasm --no-link --print-out-paths)/automerge.wasm" internal/crdt/automerge/automerge.wasm; \
+    else \
+      echo "automerge.wasm: built and checked on x86_64 Linux only; kept as committed"; \
+    fi
 
 # Fail if generate produced anything that is not committed
 drift:
