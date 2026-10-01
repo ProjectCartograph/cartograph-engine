@@ -53,16 +53,41 @@ type Bus struct {
 
 var _ fanout.Bus = (*Bus)(nil)
 
+// Option configures a Bus.
+type Option func(*Bus) error
+
+// ListenOn makes the listening connection reach Postgres at url instead
+// of through the pool's settings. LISTEN needs a session of its own, so
+// when the pool goes through a pooler in transaction mode (PgBouncer's
+// usual setting), where LISTEN does not work, url must reach Postgres
+// directly. Publishing (pg_notify) works through any pooler and stays
+// on the pool.
+func ListenOn(url string) Option {
+	return func(b *Bus) error {
+		c, err := pgx.ParseConfig(url)
+		if err != nil {
+			return fmt.Errorf("fanout: listen url: %w", err)
+		}
+		b.config = c
+		return nil
+	}
+}
+
 // New publishes through pool and listens on a connection of its own,
-// configured as the pool's connections are. It returns once that
-// connection is listening, so a message published after New returns
-// reaches this Bus's subscribers.
-func New(ctx context.Context, pool *pgxpool.Pool) (*Bus, error) {
+// configured as the pool's connections are unless ListenOn says
+// otherwise. It returns once that connection is listening, so a message
+// published after New returns reaches this Bus's subscribers.
+func New(ctx context.Context, pool *pgxpool.Pool, opts ...Option) (*Bus, error) {
 	b := &Bus{
 		pool:   pool,
 		config: pool.Config().ConnConfig.Copy(),
 		done:   make(chan struct{}),
 		subs:   map[string]map[*subscription]struct{}{},
+	}
+	for _, o := range opts {
+		if err := o(b); err != nil {
+			return nil, err
+		}
 	}
 	conn, err := b.listen(ctx)
 	if err != nil {

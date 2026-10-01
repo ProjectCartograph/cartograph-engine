@@ -55,6 +55,9 @@ type storeOptions struct {
 	Watch  bool
 	Codec  string
 	Fanout string
+	// FanoutURL, when set, is where the Postgres fan-out listens: a
+	// direct connection when Target goes through a transaction pooler.
+	FanoutURL string
 }
 
 // openEngine composes an engine for a one-shot command, which needs no
@@ -101,7 +104,11 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		}
 		var bus fanout.Bus = fanoutmemory.New()
 		if fanoutName == "postgres" {
-			if bus, err = fanoutpostgres.New(ctx, pool); err != nil {
+			var opts []fanoutpostgres.Option
+			if o.FanoutURL != "" {
+				opts = append(opts, fanoutpostgres.ListenOn(o.FanoutURL))
+			}
+			if bus, err = fanoutpostgres.New(ctx, pool, opts...); err != nil {
 				pool.Close()
 				return nil, err
 			}

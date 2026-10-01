@@ -41,6 +41,13 @@ type Config struct {
 	// resolves it.
 	Fanout string
 
+	// FanoutURL, when set, is the Postgres URL the fan-out's listening
+	// connection uses instead of Store. LISTEN needs a session of its own,
+	// so when Store goes through a pooler in transaction mode (PgBouncer's
+	// usual setting), this must reach Postgres directly.
+	// CARTOGRAPH_FANOUT_URL, default empty: the Store URL.
+	FanoutURL string
+
 	// Watch reloads manifests when their files change on disk.
 	// CARTOGRAPH_WATCH, default true.
 	Watch bool
@@ -130,6 +137,9 @@ func FromEnv(getenv Getenv) (Config, error) {
 	if v := getenv("CARTOGRAPH_FANOUT"); v != "" {
 		c.Fanout = v
 	}
+	if v := getenv("CARTOGRAPH_FANOUT_URL"); v != "" {
+		c.FanoutURL = v
+	}
 	if v := getenv("CARTOGRAPH_WATCH"); v != "" {
 		b, err := strconv.ParseBool(v)
 		if err != nil {
@@ -185,6 +195,7 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.Vault, "vault", c.Vault, "vault directory or SQLite file to serve (CARTOGRAPH_VAULT)")
 	fs.StringVar(&c.Store, "store", c.Store, "postgres:// URL of the database to serve instead of a vault (CARTOGRAPH_STORE)")
 	fs.StringVar(&c.Fanout, "fanout", c.Fanout, "memory or postgres; default postgres with a Postgres store, else memory (CARTOGRAPH_FANOUT)")
+	fs.StringVar(&c.FanoutURL, "fanout-url", c.FanoutURL, "direct postgres:// URL for the fan-out's LISTEN connection; default the store URL (CARTOGRAPH_FANOUT_URL)")
 	fs.BoolVar(&c.Watch, "watch", c.Watch, "reload manifests when their files change (CARTOGRAPH_WATCH)")
 	fs.StringVar(&c.Chromium, "chromium", c.Chromium, "browser to print PDFs with (CARTOGRAPH_CHROMIUM)")
 	fs.StringVar(&c.LogFormat, "log-format", c.LogFormat, "text or json (CARTOGRAPH_LOG_FORMAT)")
@@ -243,6 +254,14 @@ func (c Config) Validate() error {
 		}
 	default:
 		return fmt.Errorf("fanout %q: want memory or postgres", c.Fanout)
+	}
+	if c.FanoutURL != "" {
+		if !IsPostgresURL(c.FanoutURL) {
+			return fmt.Errorf("fanout url %q: want a postgres:// URL", Redact(c.FanoutURL))
+		}
+		if c.FanoutAdapter() != "postgres" {
+			return fmt.Errorf("fanout url is for the postgres fan-out: set CARTOGRAPH_STORE")
+		}
 	}
 	if c.ShutdownTimeout < 0 {
 		return fmt.Errorf("shutdown timeout must not be negative")

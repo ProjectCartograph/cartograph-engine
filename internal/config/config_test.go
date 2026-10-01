@@ -128,3 +128,32 @@ func TestStoreAndFanoutRefusals(t *testing.T) {
 		t.Errorf("a refused URL is named without its password: %v", err)
 	}
 }
+
+// The settings a replicated deployment tunes: where the fan-out listens.
+func TestScaleSettings(t *testing.T) {
+	c, err := FromEnv(env(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.FanoutURL != "" {
+		t.Fatalf("defaults: fanout url %q", c.FanoutURL)
+	}
+	c, err = FromEnv(env(map[string]string{
+		"CARTOGRAPH_STORE":      "postgres://app@pgbouncer:6432/db",
+		"CARTOGRAPH_FANOUT_URL": "postgres://app@postgres:5432/db",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.FanoutURL != "postgres://app@postgres:5432/db" {
+		t.Fatalf("not applied: %+v", c)
+	}
+	for name, vars := range map[string]map[string]string{
+		"fanout url without a postgres store": {"CARTOGRAPH_FANOUT_URL": "postgres://x/db"},
+		"fanout url that is not postgres":     {"CARTOGRAPH_STORE": "postgres://x/db", "CARTOGRAPH_FANOUT_URL": "mysql://x/db"},
+	} {
+		if _, err := FromEnv(env(vars)); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}
