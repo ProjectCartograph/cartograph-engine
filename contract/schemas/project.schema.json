@@ -398,7 +398,7 @@
                 "$ref": "common.schema.json#/$defs/Slug",
                 "x-cartograph-ref": "Goal"
               },
-              "description": "Alignment to outcomes only (a kind rule). A project may serve goals none of its programmes serve; it may not join a programme it shares no goal with."
+              "description": "Alignment to outcomes only (a kind rule). A project may serve goals none of its programmes serve; joining a programme it shares no goal with raises a warning, never a refusal."
             },
             "programmes": {
               "type": "array",

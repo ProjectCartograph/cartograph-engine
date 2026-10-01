@@ -101,7 +101,8 @@ and open conditions show on the checks.
 
 ## Goals as the root
 - **Hierarchy:** goal, objective, outcome, project. A goal has no parent; an objective serves one
-  goal; a project aligns to objectives. Each level depends only on the level above.
+  goal; an outcome serves one objective; a project aligns to outcomes. Each level depends only
+  on the level above.
 - **A goal references nothing below it.** No team, cycle, source or KPI on a goal; KPIs, projects,
   programmes and operations reference goals, and the tree reads those references back.
 - **Goals are easily mutable.** Add a goal or an objective by title alone, inline; rename in
