@@ -36,6 +36,7 @@ var outer = []string{"internal/api", "internal/spa", "internal/render", "interna
 // outward.
 var adapters = []string{
 	"internal/store/", "internal/codec/", "internal/printer/", "internal/auth/",
+	"internal/crdt/", "internal/fanout/",
 	"internal/yamlfmt", "pkg/client/",
 }
 
@@ -88,6 +89,8 @@ var rules = map[string][]string{
 	"internal/store":    join([]string{"internal/engine", "internal/kinds", "internal/store/", "internal/codec", "pkg/client", "pkg/uiconformance"}, outer, adapters, drivers),
 	"internal/codec":    join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/printer":  join([]string{"internal", "pkg", "cmd"}, drivers),
+	"internal/crdt":     join([]string{"internal", "pkg", "cmd"}, drivers),
+	"internal/fanout":   join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/auth":     join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
 	"pkg/client":        join([]string{"internal", "pkg/client/", "pkg/uiconformance", "cmd"}, drivers),
 	"pkg/uiconformance": join([]string{"internal", "pkg/client/", "cmd"}, drivers),
