@@ -82,6 +82,7 @@ type Server struct {
 	log    *slog.Logger
 	peerID string
 
+	ping  time.Duration
 	mu    sync.Mutex
 	rooms map[string]*room // by document id
 	conns map[*conn]struct{}
@@ -89,16 +90,29 @@ type Server struct {
 	received, sent, refused atomic.Int64
 }
 
+// Option configures a Server.
+type Option func(*Server)
+
+// WithPing pings each peer at this interval, so a quiet connection is
+// not closed by a load balancer's idle timeout (60 s by default behind
+// nginx or an AWS ALB) and a dead one is noticed. 0 turns pings off.
+func WithPing(d time.Duration) Option { return func(s *Server) { s.ping = d } }
+
 // New returns a server over the engine's shared drafts. authz decides,
 // per document, whether a peer may read or write it.
-func New(shared *engine.Shared, fan fanout.Bus, authz auth.Authorizer, log *slog.Logger) *Server {
+func New(shared *engine.Shared, fan fanout.Bus, authz auth.Authorizer, log *slog.Logger, opts ...Option) *Server {
 	if authz == nil {
 		authz = auth.AllowAll{}
 	}
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Server{shared: shared, fan: fan, authz: authz, log: log, peerID: "cartograph-" + shared.Replica(), rooms: map[string]*room{}, conns: map[*conn]struct{}{}}
+	s := &Server{shared: shared, fan: fan, authz: authz, log: log, peerID: "cartograph-" + shared.Replica(),
+		ping: 20 * time.Second, rooms: map[string]*room{}, conns: map[*conn]struct{}{}}
+	for _, o := range opts {
+		o(s)
+	}
+	return s
 }
 
 // Stats are counters for monitoring.
@@ -139,6 +153,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		delete(s.conns, c)
 		s.mu.Unlock()
 	}()
+	if s.ping > 0 {
+		go c.keepalive(ctx, cancel)
+	}
 	err = c.run(ctx)
 	c.leaveAll()
 	switch {
@@ -266,6 +283,27 @@ type peerDoc struct {
 	mu       sync.Mutex
 	state    crdt.SyncState
 	canWrite bool
+}
+
+// keepalive pings the peer until ctx ends; a peer that does not answer
+// within the interval is gone, and its connection is ended.
+func (c *conn) keepalive(ctx context.Context, end context.CancelFunc) {
+	t := time.NewTicker(c.s.ping)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			pctx, cancel := context.WithTimeout(ctx, c.s.ping)
+			err := c.ws.Ping(pctx)
+			cancel()
+			if err != nil && ctx.Err() == nil {
+				end()
+				return
+			}
+		}
+	}
 }
 
 func (c *conn) run(ctx context.Context) error {

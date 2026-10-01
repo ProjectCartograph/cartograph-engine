@@ -133,7 +133,7 @@ func runServe(args []string) error {
 	}
 
 	var ready atomic.Bool
-	mux := routes(e, comp.Fanout, authn, authz, pdf, &ready)
+	mux := routes(e, comp.Fanout, authn, authz, pdf, &ready, syncserver.WithPing(cfg.SyncPing))
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr(),
@@ -274,14 +274,14 @@ func withSync(next, sync http.Handler) http.Handler {
 // routes is every route the server answers, behind the same middleware
 // for the API and the sync socket. Split out so a test drives exactly the
 // stack serve runs.
-func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, ready *atomic.Bool) *http.ServeMux {
+func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, ready *atomic.Bool, syncOpts ...syncserver.Option) *http.ServeMux {
 	mux := http.NewServeMux()
 	var inner http.Handler = api.New(e, api.Deps{Printer: pdf, Authorizer: authz})
 	if sh := e.Shared(); sh != nil {
 		// The sync socket sits inside the same authentication and
 		// authorization as every other request; a WebSocket upgrade on
 		// /sync goes to it, everything else to the API.
-		inner = withSync(inner, syncserver.New(sh, fan, authz, slog.Default()))
+		inner = withSync(inner, syncserver.New(sh, fan, authz, slog.Default(), syncOpts...))
 	}
 	apiHandler := auth.Middleware(authn, auth.Authorize(authz, inner))
 	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiHandler))

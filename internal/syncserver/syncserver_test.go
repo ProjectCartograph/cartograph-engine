@@ -463,3 +463,77 @@ func (readOnly) Authorize(_ context.Context, _ auth.Principal, a auth.Action) er
 }
 
 var _ http.Handler = (*syncserver.Server)(nil)
+
+// syncServer is one replica's sync server over memory adapters, with
+// options, for tests of the socket's own behaviour.
+func syncServer(t *testing.T, opts ...syncserver.Option) (*syncserver.Server, *httptest.Server) {
+	t.Helper()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(yaml.New()),
+		engine.WithCRDT(am), engine.WithDocStore(memory.NewDocStore()), engine.WithFanout(fanoutmemory.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := syncserver.New(e.Shared(), fanoutmemory.New(), nil, nil, opts...)
+	srv := httptest.NewServer(s)
+	t.Cleanup(srv.Close)
+	return s, srv
+}
+
+func dialJoin(t *testing.T, srv *httptest.Server) *websocket.Conn {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	join, _ := cbor.Marshal(msg{Type: "join", SenderID: "p", SupportedProtocolVersions: []string{"1"}})
+	if err := ws.Write(ctx, websocket.MessageBinary, join); err != nil {
+		t.Fatal(err)
+	}
+	return ws
+}
+
+func waitFor(t *testing.T, what string, cond func() bool) {
+	t.Helper()
+	for end := time.Now().Add(5 * time.Second); time.Now().Before(end); time.Sleep(20 * time.Millisecond) {
+		if cond() {
+			return
+		}
+	}
+	t.Fatalf("%s did not happen", what)
+}
+
+// A peer that stops answering pings (a laptop lid closed, a network
+// gone) is dropped, so a replica does not keep dead peers forever. A
+// coder/websocket client answers pings only while it reads, so a client
+// that never reads is one that stopped answering.
+func TestAPeerThatStopsAnsweringIsDropped(t *testing.T) {
+	s, srv := syncServer(t, syncserver.WithPing(100*time.Millisecond))
+	ws := dialJoin(t, srv)
+	defer ws.CloseNow()
+	waitFor(t, "the peer connecting", func() bool { return s.Stats().Connections == 1 })
+	waitFor(t, "the silent peer being dropped", func() bool { return s.Stats().Connections == 0 })
+}
+
+// A peer that keeps reading answers pings and stays, however long it is
+// quiet: the ping is what keeps a load balancer from closing it.
+func TestAQuietPeerThatAnswersStays(t *testing.T) {
+	s, srv := syncServer(t, syncserver.WithPing(50*time.Millisecond))
+	ws := dialJoin(t, srv)
+	defer ws.CloseNow()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		for {
+			if _, _, err := ws.Read(ctx); err != nil {
+				return
+			}
+		}
+	}()
+	waitFor(t, "the peer connecting", func() bool { return s.Stats().Connections == 1 })
+	time.Sleep(400 * time.Millisecond) // eight ping intervals
+	if got := s.Stats().Connections; got != 1 {
+		t.Fatalf("a peer answering pings was dropped (%d connected)", got)
+	}
+}

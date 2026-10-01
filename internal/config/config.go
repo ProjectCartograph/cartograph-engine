@@ -48,6 +48,12 @@ type Config struct {
 	// CARTOGRAPH_FANOUT_URL, default empty: the Store URL.
 	FanoutURL string
 
+	// SyncPing is how often the sync socket pings an idle peer, so a load
+	// balancer or proxy does not close a quiet connection (nginx and AWS
+	// ALB close one after 60 s by default). CARTOGRAPH_SYNC_PING, default
+	// 20s; 0 turns pings off.
+	SyncPing time.Duration
+
 	// DocCache bounds how many shared documents a replica keeps in
 	// memory; the least recently used are dropped first, and a dropped
 	// one is loaded again from the store when next needed.
@@ -120,6 +126,7 @@ func Defaults() Config {
 		LogFormat:       "text",
 		LogLevel:        "info",
 		ShutdownTimeout: 10 * time.Second,
+		SyncPing:        20 * time.Second,
 		DocCache:        1000,
 		Auth:            "none",
 		AuthProxyHeader: "X-Forwarded-User",
@@ -146,6 +153,13 @@ func FromEnv(getenv Getenv) (Config, error) {
 	}
 	if v := getenv("CARTOGRAPH_FANOUT_URL"); v != "" {
 		c.FanoutURL = v
+	}
+	if v := getenv("CARTOGRAPH_SYNC_PING"); v != "" {
+		p, err := time.ParseDuration(v)
+		if err != nil {
+			return c, fmt.Errorf("CARTOGRAPH_SYNC_PING: %w", err)
+		}
+		c.SyncPing = p
 	}
 	if v := getenv("CARTOGRAPH_DOC_CACHE"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -210,6 +224,7 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.Store, "store", c.Store, "postgres:// URL of the database to serve instead of a vault (CARTOGRAPH_STORE)")
 	fs.StringVar(&c.Fanout, "fanout", c.Fanout, "memory or postgres; default postgres with a Postgres store, else memory (CARTOGRAPH_FANOUT)")
 	fs.StringVar(&c.FanoutURL, "fanout-url", c.FanoutURL, "direct postgres:// URL for the fan-out's LISTEN connection; default the store URL (CARTOGRAPH_FANOUT_URL)")
+	fs.DurationVar(&c.SyncPing, "sync-ping", c.SyncPing, "ping interval for idle sync sockets; 0 for none (CARTOGRAPH_SYNC_PING)")
 	fs.IntVar(&c.DocCache, "doc-cache", c.DocCache, "shared documents kept in memory per replica (CARTOGRAPH_DOC_CACHE)")
 	fs.BoolVar(&c.Watch, "watch", c.Watch, "reload manifests when their files change (CARTOGRAPH_WATCH)")
 	fs.StringVar(&c.Chromium, "chromium", c.Chromium, "browser to print PDFs with (CARTOGRAPH_CHROMIUM)")
@@ -280,6 +295,9 @@ func (c Config) Validate() error {
 	}
 	if c.ShutdownTimeout < 0 {
 		return fmt.Errorf("shutdown timeout must not be negative")
+	}
+	if c.SyncPing < 0 || (c.SyncPing > 0 && c.SyncPing < time.Second) {
+		return fmt.Errorf("sync ping %s: want 0 (off) or at least 1s", c.SyncPing)
 	}
 	if c.DocCache < 1 {
 		return fmt.Errorf("doc cache %d: want at least 1", c.DocCache)

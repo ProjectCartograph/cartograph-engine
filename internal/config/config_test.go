@@ -129,35 +129,41 @@ func TestStoreAndFanoutRefusals(t *testing.T) {
 	}
 }
 
-// The settings a replicated deployment tunes: where the fan-out listens
-// and the cache bound.
+// The settings a replicated deployment tunes: where the fan-out listens,
+// the sync ping and the cache bound.
 func TestScaleSettings(t *testing.T) {
 	c, err := FromEnv(env(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.DocCache != 1000 || c.FanoutURL != "" {
-		t.Fatalf("defaults: cache %d fanout url %q", c.DocCache, c.FanoutURL)
+	if c.SyncPing != 20*time.Second || c.DocCache != 1000 || c.FanoutURL != "" {
+		t.Fatalf("defaults: ping %s cache %d fanout url %q", c.SyncPing, c.DocCache, c.FanoutURL)
 	}
 	c, err = FromEnv(env(map[string]string{
 		"CARTOGRAPH_STORE":      "postgres://app@pgbouncer:6432/db",
 		"CARTOGRAPH_FANOUT_URL": "postgres://app@postgres:5432/db",
+		"CARTOGRAPH_SYNC_PING":  "25s",
 		"CARTOGRAPH_DOC_CACHE":  "5000",
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.FanoutURL != "postgres://app@postgres:5432/db" || c.DocCache != 5000 {
+	if c.FanoutURL != "postgres://app@postgres:5432/db" || c.SyncPing != 25*time.Second || c.DocCache != 5000 {
 		t.Fatalf("not applied: %+v", c)
 	}
 	for name, vars := range map[string]map[string]string{
 		"fanout url without a postgres store": {"CARTOGRAPH_FANOUT_URL": "postgres://x/db"},
 		"fanout url that is not postgres":     {"CARTOGRAPH_STORE": "postgres://x/db", "CARTOGRAPH_FANOUT_URL": "mysql://x/db"},
+		"a ping too short to be a ping":       {"CARTOGRAPH_SYNC_PING": "10ms"},
+		"an unreadable ping":                  {"CARTOGRAPH_SYNC_PING": "soon"},
 		"an empty cache":                      {"CARTOGRAPH_DOC_CACHE": "0"},
 		"a cache that is not a number":        {"CARTOGRAPH_DOC_CACHE": "many"},
 	} {
 		if _, err := FromEnv(env(vars)); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
+	}
+	if c, err := FromEnv(env(map[string]string{"CARTOGRAPH_SYNC_PING": "0"})); err != nil || c.SyncPing != 0 {
+		t.Errorf("0 turns pings off: %v %v", c.SyncPing, err)
 	}
 }
