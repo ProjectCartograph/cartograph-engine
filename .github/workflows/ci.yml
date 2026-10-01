@@ -10,6 +10,9 @@ jobs:
   # both architectures the release targets.
   ci:
     strategy:
+      # Each architecture reports for itself; one failing must not hide
+      # the other's result.
+      fail-fast: false
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
@@ -26,6 +29,9 @@ jobs:
   # database-free.
   postgres:
     strategy:
+      # Each architecture reports for itself; one failing must not hide
+      # the other's result.
+      fail-fast: false
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
@@ -49,6 +55,9 @@ jobs:
   # image is started and asked whether it is ready.
   image:
     strategy:
+      # Each architecture reports for itself; one failing must not hide
+      # the other's result.
+      fail-fast: false
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
