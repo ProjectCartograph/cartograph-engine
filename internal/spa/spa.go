@@ -1,9 +1,11 @@
-// Package spa embeds the built SPA (cartograph/web, built with `npm run build`
-// into web/dist and synced here by `make generate`, since Go embed cannot
-// reach outside its module) and serves it at "/", falling back to
-// index.html for any path that is not a real file, so client-side routes
-// resolve on a hard refresh. Never applied to "/api": the caller mounts
-// that separately, before this handler.
+// Package spa embeds the web interface's build and serves it at "/",
+// falling back to index.html for any path that is not a real file, so
+// client-side routes resolve on a hard refresh. Never applied to "/api":
+// the caller mounts that separately, before this handler.
+//
+// The build is a cartograph-ui release, not source: `just ui` (and the
+// flake) unpack the release UI_VERSION names into dist, checked against
+// UI_SHA256, and `just ui <path>` puts a local build there instead.
 package spa
 
 import (

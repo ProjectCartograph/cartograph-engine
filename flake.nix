@@ -9,15 +9,24 @@
       systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
       version = builtins.replaceStrings [ "\n" ] [ "" ] (builtins.readFile ./VERSION);
+      trim = f: builtins.replaceStrings [ "\n" " " ] [ "" "" ] (builtins.readFile f);
     in
     {
       packages = forEachSystem (pkgs:
         let
           lib = pkgs.lib;
 
+          # The web build the binary embeds: the cartograph-ui release
+          # UI_VERSION names, pinned by UI_SHA256. scripts/fetch-ui reads
+          # the same two files, so `just` and `nix build` embed the same
+          # bytes.
+          ui = pkgs.fetchurl {
+            url = "https://github.com/ProjectCartograph/cartograph-ui/releases/download/${trim ./UI_VERSION}/dist.tar.gz";
+            sha256 = trim ./UI_SHA256;
+          };
+
           # The binary. Tests run in the build (buildGoModule's checkPhase),
-          # so `nix build` is also the gate. The interface is embedded from
-          # internal/spa/dist, a release artifact of cartograph-ui.
+          # so `nix build` is also the gate.
           cartograph = pkgs.buildGoModule {
             pname = "cartograph";
             inherit version;
@@ -26,6 +35,10 @@
             subPackages = [ "cmd/cartograph" ];
             env.CGO_ENABLED = 0;
             ldflags = [ "-s" "-w" "-X main.version=${version}" ];
+            preBuild = ''
+              rm -rf internal/spa/dist && mkdir -p internal/spa/dist
+              tar -xzf ${ui} -C internal/spa/dist
+            '';
             meta = {
               description = "Cartograph: a vault of project, goal and KPI definitions, with its interface embedded";
               mainProgram = "cartograph";

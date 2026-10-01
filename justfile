@@ -14,7 +14,7 @@ default:
 # --- the gate -------------------------------------------------------------
 
 # The gate, after every edit: under ten seconds
-test:
+test: embed
     #!{{toolchain}} bash
     set -euo pipefail
     start=$(date +%s%3N)
@@ -40,9 +40,21 @@ generate:
 drift:
     git diff --exit-code -- .
 
+# The web build the binary embeds, into internal/spa/dist: the
+# cartograph-ui release UI_VERSION names, checked against UI_SHA256; or,
+# given a path, a local build (a dist directory or dist.tar.gz)
+ui source="":
+    scripts/fetch-ui {{source}}
+
+# What every recipe that compiles the binary needs: the pinned web build,
+# or a local one `just ui <path>` already put in place
+[private]
+embed:
+    scripts/fetch-ui --keep-local
+
 # --- checks ---------------------------------------------------------------
 
-vet:
+vet: embed
     go vet ./...
 
 # gofmt, as the style guide requires; `just fmt` rewrites
@@ -56,11 +68,11 @@ fmt:
     gofmt -w .
 
 # staticcheck, the analyser the style guide names
-lint:
+lint: embed
     staticcheck ./...
 
 # The dependency rule: inward only (internal/arch)
-arch:
+arch: embed
     go test -count=1 ./internal/arch/
 
 # No organisation's words, no em dashes in what a person reads
@@ -82,7 +94,7 @@ commit-check base="origin/main":
 
 # No breaking change to the contract, the schemas or pkg/ since the last
 # release without a major bump (VERSIONING.md)
-compat base="":
+compat base="": embed
     #!{{toolchain}} bash
     set -euo pipefail
     scripts/check-compat {{base}}
@@ -92,15 +104,15 @@ compat base="":
 
 # --- build and run --------------------------------------------------------
 
-build:
+build: embed
     go build ./...
 
 # The binary, for this machine, into bin/
-bin:
+bin: embed
     mkdir -p bin && go build -trimpath -ldflags="-s -w" -o bin/cartograph ./cmd/cartograph
 
 # Release binaries for both architectures (pure Go, static)
-release:
+release: embed
     #!{{toolchain}} bash
     set -euo pipefail
     mkdir -p dist
@@ -117,20 +129,20 @@ image:
     docker load < result-image
 
 # Serve a copy of the example on 127.0.0.1:8080
-serve addr="127.0.0.1:8080":
+serve addr="127.0.0.1:8080": embed
     rm -rf /tmp/cartograph-example && cp -r examples/minimal /tmp/cartograph-example
     go run ./cmd/cartograph serve /tmp/cartograph-example -addr {{addr}}
 
 # Serve any vault directory
-serve-vault dir addr="127.0.0.1:8080":
+serve-vault dir addr="127.0.0.1:8080": embed
     go run ./cmd/cartograph serve "{{dir}}" -addr {{addr}}
 
 # Validate a directory of manifests
-validate dir="examples/minimal":
+validate dir="examples/minimal": embed
     go run ./cmd/cartograph validate "{{dir}}"
 
 # Export, re-open the export, export again, diff: must be identical
-roundtrip dir="examples/minimal":
+roundtrip dir="examples/minimal": embed
     #!{{toolchain}} bash
     set -euo pipefail
     rm -rf /tmp/cartograph-rt && mkdir -p /tmp/cartograph-rt && cp -r "{{dir}}" /tmp/cartograph-rt/v1
@@ -140,4 +152,4 @@ roundtrip dir="examples/minimal":
     diff -r /tmp/cartograph-rt/e1 /tmp/cartograph-rt/e2 && echo "round trip identical"
 
 clean:
-    rm -rf bin dist result result-image
+    rm -rf bin dist result result-image internal/spa/dist internal/spa/dist.stamp

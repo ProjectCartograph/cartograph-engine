@@ -22,7 +22,12 @@ no other supported way to build: one environment is the point.
    commit what it produced with your change. CI fails on drift.
 3. `just ci` before you open a pull request: it is exactly what CI
    runs, on both architectures.
-4. `git config core.hooksPath .githooks` once, so every commit message
+4. To try an interface change against the engine before it is
+   released, build it in `cartograph-ui` and `just ui
+   ../cartograph-ui/dist`; every recipe then embeds that build until
+   `just ui` puts the pinned release back. Never commit a change to
+   `UI_VERSION` without the matching `UI_SHA256` (see `VERSIONING.md`).
+5. `git config core.hooksPath .githooks` once, so every commit message
    is checked against `STYLE.md` as you write it.
 
 ## What a change looks like
@@ -41,6 +46,9 @@ no other supported way to build: one environment is the point.
   say so in the summary line, and bump `VERSION` in the release.
 - Nothing that keeps a fact in the process between requests: see
   `docs/SERVERLESS.md`.
+- A structural decision (a new port, a new ring, a change to how the
+  binary is built or composed) gets an architecture decision record in
+  `docs/adr/` in the same change.
 
 ## Pull requests
 

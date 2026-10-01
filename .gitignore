@@ -1,6 +1,7 @@
-# Build outputs
+# Build outputs; internal/spa/dist is the embedded web build (scripts/fetch-ui)
 bin/
 dist/
+/internal/spa/dist.stamp
 /result
 /result-*
 /.direnv/

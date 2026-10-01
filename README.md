@@ -21,7 +21,7 @@ terminal interfaces are in [cartograph-ui](https://github.com/ProjectCartograph/
 ## Run it
 
 ```
-go run ./cmd/cartograph serve ./examples/minimal      # copy the example first if you will write
+just serve        # a copy of examples/minimal on 127.0.0.1:8080
 ```
 
 Open http://localhost:8080. `cartograph serve -h` lists every setting
@@ -43,6 +43,11 @@ just release  # static binaries for linux/amd64 and linux/arm64
 just image    # the container image, from the flake, loaded into docker
 ```
 
+The binary embeds the web interface. Every recipe that compiles fetches
+the `cartograph-ui` release named in `UI_VERSION` first and refuses it
+unless it matches `UI_SHA256`; `just ui ../cartograph-ui/dist` embeds a
+local interface build instead, and `just ui` puts the release back.
+
 ## Layout
 
 ```
@@ -60,14 +65,18 @@ pkg/client/      the port every interface uses, in-process and remote
 pkg/merge/       the CRDTs under shared editing
 pkg/uiconformance/ the suite every interface passes
 examples/minimal a fictional produce cooperative
+internal/spa/    the embedded web interface: a cartograph-ui release, fetched, never committed
 docs/            SETUP, ARCHITECTURE, DEPLOYMENT, SERVERLESS, EXTENDING, UI_CONTRACT, MULTIPLAYER, DESIGN_RULES, TAXONOMY
+docs/adr/        architecture decision records, one decision per file
+UI_VERSION       the cartograph-ui release the binary embeds; UI_SHA256 pins its bytes
 justfile         every command; flake.nix pins what they run with
 ```
 
 ## Read next
 
 `docs/ARCHITECTURE.md` for the system in diagrams, the extension
-points and the clean-architecture mapping; `docs/DEPLOYMENT.md` and
+points and the clean-architecture mapping; `docs/adr/` for the
+decisions behind it; `docs/DEPLOYMENT.md` and
 `docs/SERVERLESS.md` to run it; `docs/EXTENDING.md` to add a kind, a
 store, a codec, an authenticator or a transport; `CONTRIBUTING.md` for
 the loop; `STYLE.md` for code and commits; `VERSIONING.md` for what a

@@ -48,5 +48,15 @@ say what replaces it.
 
 The interfaces version independently. `ENGINE_VERSION` in `cartograph-ui`
 names the engine contract it was built against; the engine's
-`UI_VERSION` names the interface build it embeds. A UI release is
-compatible with every engine release of the same major.
+`UI_VERSION` names the interface build it embeds, and `UI_SHA256` the
+SHA-256 of that release's `dist.tar.gz`, so an engine commit always
+embeds the same bytes. A UI release is compatible with every engine
+release of the same major.
+
+To embed a new interface release, change both files in one commit:
+
+```
+echo vX.Y.Z > UI_VERSION
+curl -sSfL https://github.com/ProjectCartograph/cartograph-ui/releases/download/vX.Y.Z/dist.tar.gz | sha256sum | cut -d' ' -f1 > UI_SHA256
+just ui && just ci
+```

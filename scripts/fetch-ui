@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Put the web build the binary embeds into internal/spa/dist.
+#
+# With no argument: the cartograph-ui release UI_VERSION names, checked
+# against UI_SHA256 before anything is unpacked, so every build of a
+# given engine commit embeds the same bytes. With a path: that build
+# instead (a dist directory or a dist.tar.gz, from `just build` in a
+# cartograph-ui checkout), for trying an interface change against the
+# engine before it is released. With --keep-local, which is what the
+# recipes that compile run: keep a local build already in place, and
+# otherwise behave as with no argument.
+#
+# The build is a release artifact, not a source file: internal/spa/dist
+# is ignored by git, and a stamp beside it records what was unpacked so
+# a second run with nothing changed is free. flake.nix pins the same
+# release by the same two files.
+set -euo pipefail
+
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+dest="$root/internal/spa/dist"
+stamp="$root/internal/spa/dist.stamp"
+source="${1:-}"
+
+if [ "$source" = "--keep-local" ]; then
+    source=""
+    if [ -f "$dest/index.html" ] && grep -q '^local ' "$stamp" 2>/dev/null; then
+        echo "embedding the $(cat "$stamp") build; \`just ui\` restores the pinned release" >&2
+        exit 0
+    fi
+fi
+
+if [ -z "$source" ]; then
+    version=$(tr -d '[:space:]' <"$root/UI_VERSION")
+    sum=$(tr -d '[:space:]' <"$root/UI_SHA256")
+    want="release $version $sum"
+    if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want" ] && [ -f "$dest/index.html" ]; then
+        exit 0
+    fi
+    org="${CARTOGRAPH_ORG:-ProjectCartograph}"
+    url="https://github.com/$org/cartograph-ui/releases/download/$version/dist.tar.gz"
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+    curl -sSfL --retry 3 -o "$tmp/dist.tar.gz" "$url"
+    echo "$sum  $tmp/dist.tar.gz" | sha256sum --check --status || {
+        echo "fetch-ui: $url does not match UI_SHA256; refusing to embed it" >&2
+        exit 1
+    }
+    rm -rf "$dest" && mkdir -p "$dest"
+    tar -xzf "$tmp/dist.tar.gz" -C "$dest"
+    echo "$want" >"$stamp"
+    echo "embedded cartograph-ui $version"
+    exit 0
+fi
+
+if [ -d "$source" ]; then
+    [ -f "$source/index.html" ] || { echo "fetch-ui: $source has no index.html; is it a built dist?" >&2; exit 1; }
+    rm -rf "$dest" && mkdir -p "$dest"
+    cp -R "$source/." "$dest/"
+elif [ -f "$source" ]; then
+    rm -rf "$dest" && mkdir -p "$dest"
+    tar -xzf "$source" -C "$dest"
+else
+    echo "fetch-ui: $source is neither a directory nor a tarball" >&2
+    exit 1
+fi
+echo "local $(cd -- "$(dirname -- "$source")" && pwd)/$(basename -- "$source")" >"$stamp"
+echo "embedded the local build at $source"
