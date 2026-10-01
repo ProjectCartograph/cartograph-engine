@@ -116,7 +116,7 @@ words:
 clean-tree:
     scripts/check-clean-tree
 
-# Commit messages since main follow STYLE.md (scripts/check-commit-msg)
+# Commit messages since main follow CONTRIBUTING.md (scripts/check-commit-msg)
 commit-check base="origin/main":
     scripts/check-commit-msg {{base}}
 

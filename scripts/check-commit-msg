@@ -1,33 +1,55 @@
 #!/usr/bin/env bash
-# Check every commit message since a base against STYLE.md's commit rules
-# (Google's CL description guidance): a short imperative summary line, a
-# blank line, a body that says what and why, and a sign-off.
+# Check every commit message since a base against the commit rules in
+# CONTRIBUTING.md: Google's Angular commit message format,
+# <type>(<scope>): <summary>, then a blank line, a body that says what
+# and why, and a sign-off.
 #
 #   scripts/check-commit-msg [base]      default base: origin/main
 #   scripts/check-commit-msg --file F    one message from a file (a commit-msg hook)
 set -euo pipefail
 
+# The types are Angular's. The scopes are this repository's areas
+# (CONTRIBUTING.md lists them); a change across several has none.
+types='build|ci|docs|feat|fix|perf|refactor|test'
+scopes='adr api arch chart cli client codec commits compose config contract contributing crdt deployment deps engine fanout flake kinds release render spa store syncserver ui vault'
+
 check() {
     local msg="$1" where="$2" bad=0
-    local subject body
-    subject=$(printf '%s\n' "$msg" | sed -n '1p')
-    body=$(printf '%s\n' "$msg" | sed -n '3,$p' | grep -vE '^(Signed-off-by|Co-Authored-By|Co-authored-by|Change-Id|Reviewed-by|Fixes|Bug|Refs):' | sed '/^\s*$/d' || true)
-    if [ ${#subject} -gt 72 ]; then echo "$where: summary line is ${#subject} characters; keep it under 72"; bad=1; fi
-    if [ ${#subject} -lt 12 ]; then echo "$where: summary line is too short to say what the change does"; bad=1; fi
-    case "$subject" in
-        *.) echo "$where: summary line ends with a period"; bad=1 ;;
-    esac
-    case "$subject" in
-        [a-z]*) echo "$where: summary line starts with a lower-case letter; it is a sentence"; bad=1 ;;
-    esac
-    if printf '%s' "$subject" | grep -qE '^(feat|fix|chore|docs|refactor|test|style|perf|build|ci)(\(.*\))?!?:'; then
-        echo "$where: summary line carries a type prefix; this repository uses Google CL descriptions, not Conventional Commits (STYLE.md)"; bad=1
-    fi
-    if printf '%s' "$subject" | grep -qiE '^(added|fixed|fixes|fixing|updated|changed|removed|wip)\b'; then
-        echo "$where: summary line should be imperative (Add, Fix, Update), not '$subject'"; bad=1
+    local header type scope summary body
+    header=$(printf '%s\n' "$msg" | sed -n '1p')
+    body=$(printf '%s\n' "$msg" | sed -n '3,$p' | grep -vE '^(Signed-off-by|Co-Authored-By|Co-authored-by|Claude-Session|Change-Id|Reviewed-by|Fixes|Bug|Refs):' | sed '/^\s*$/d' || true)
+    if [ ${#header} -gt 72 ]; then echo "$where: header is ${#header} characters; keep it to 72"; bad=1; fi
+    if [[ "$header" =~ ^revert:\ (.+)$ ]]; then
+        if ! printf '%s\n' "$msg" | grep -q '^This reverts commit [0-9a-f]\{7,\}'; then
+            echo "$where: a revert says \"This reverts commit <SHA>\" in its body, and why"; bad=1
+        fi
+    elif [[ "$header" =~ ^($types)(\(([a-z0-9-]+)\))?:\ (.+)$ ]]; then
+        type=${BASH_REMATCH[1]} scope=${BASH_REMATCH[3]} summary=${BASH_REMATCH[4]}
+        if [ -n "$scope" ] && ! [[ " $scopes " == *" $scope "* ]]; then
+            echo "$where: scope '$scope' is not one of: $scopes (or none, for a change across several)"; bad=1
+        fi
+        if [ ${#summary} -lt 8 ]; then echo "$where: the summary is too short to say what the change does"; bad=1; fi
+        case "$summary" in
+            [A-Z]*) echo "$where: the summary starts with a capital letter; Angular starts it lower-case"; bad=1 ;;
+        esac
+        case "$summary" in
+            *.) echo "$where: the summary ends with a period"; bad=1 ;;
+        esac
+        if printf '%s' "$summary" | grep -qiE '^(added|adds|adding|fixed|fixes|fixing|updated|updates|changed|changes|removed|removes|wip)\b'; then
+            echo "$where: write the summary in the imperative, present tense (add, fix, change), not '$summary'"; bad=1
+        fi
+        # Angular requires a body of at least 20 characters, except for docs.
+        if [ "$type" != docs ] && [ ${#body} -lt 20 ]; then
+            echo "$where: a body is required: what the change does and why, for the reader who was not there"; bad=1
+        fi
+    else
+        echo "$where: the header is not <type>(<scope>): <summary> with a type of $types"; bad=1
     fi
     if [ "$(printf '%s\n' "$msg" | sed -n '2p')" != "" ]; then echo "$where: the second line must be blank"; bad=1; fi
-    if [ -z "$body" ]; then echo "$where: a body is required: what the change does and why, for the reader who was not there"; bad=1; fi
+    # Wrap the body at 72 characters; a URL or a line inside a code block
+    # may run longer, since breaking it would break it.
+    long=$(printf '%s\n' "$msg" | sed -n '3,$p' | awk '/^```/{code=!code; next} !code && length($0) > 72 && $0 !~ /:\/\// {print NR+2": "$0}' | head -n 3)
+    if [ -n "$long" ]; then echo "$where: wrap the body at 72 characters:"; printf '  %s\n' "$long"; bad=1; fi
     if ! printf '%s\n' "$msg" | grep -q '^Signed-off-by: '; then echo "$where: no Signed-off-by (git commit -s)"; bad=1; fi
     return $bad
 }
@@ -42,5 +64,5 @@ status=0
 for sha in $(git rev-list --no-merges "$base..HEAD" 2>/dev/null || true); do
     check "$(git log -1 --format=%B "$sha")" "$(git log -1 --format=%h "$sha")" || status=1
 done
-if [ $status -eq 0 ]; then echo "commit messages follow STYLE.md"; fi
+if [ $status -eq 0 ]; then echo "commit messages follow CONTRIBUTING.md"; fi
 exit $status
