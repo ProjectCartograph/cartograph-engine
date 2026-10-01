@@ -479,10 +479,20 @@ func (d *doc) bind(s crdt.SyncState) (uint64, error) {
 		return 0, crdt.ErrClosed
 	}
 	if ss.in != nil {
-		if ss.in != d.in {
-			return 0, errors.New("automerge: sync state belongs to another document")
+		if ss.in == d.in {
+			return ss.h, nil
 		}
-		return ss.h, nil
+		// The document was loaded again into another instance (a replica
+		// dropped it from its cache, then needed it). A sync state only
+		// saves work: free this one and start afresh beside the document,
+		// which resumes the protocol from heads and converges just the
+		// same, instead of failing the peer's connection.
+		ss.in.mu.Lock()
+		if ss.in.broken == nil {
+			_, _ = ss.in.call("free sync state", ss.in.fn.syncFree, ss.h)
+		}
+		ss.in.mu.Unlock()
+		ss.in, ss.h = nil, 0
 	}
 	if err := d.lock(); err != nil {
 		return 0, err
