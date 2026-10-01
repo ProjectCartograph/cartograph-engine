@@ -1,0 +1,10 @@
+# An existing Secret and a CPU HorizontalPodAutoscaler. Rendered by
+# `just helm-lint`.
+store:
+  existingSecret: cartograph-db
+  urlKey: store
+  fanoutUrlKey: listen
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6

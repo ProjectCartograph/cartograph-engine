@@ -1,0 +1,12 @@
+# What `just helm-kind` installs: two replicas on the in-cluster Postgres
+# from deploy/kind/postgres.yaml, the image the flake built.
+replicaCount: 2
+image:
+  repository: cartograph
+  pullPolicy: Never
+store:
+  url: postgres://cartograph:cartograph@postgres:5432/cartograph?sslmode=disable
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi

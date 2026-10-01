@@ -1,0 +1,19 @@
+apiVersion: v2
+name: cartograph
+description: >-
+  Cartograph: declarative goals, programmes, projects and KPIs, with its
+  interface embedded. Stateless replicas on a Postgres store, or one
+  replica on a vault volume.
+type: application
+# version and appVersion are the engine's VERSION; `just helm-lint` fails
+# when they differ, and the release packages the chart at VERSION.
+version: 2.0.0
+appVersion: "2.0.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/ProjectCartograph/cartograph-engine
+sources:
+  - https://github.com/ProjectCartograph/cartograph-engine
+keywords:
+  - cartograph
+  - planning
+  - kpi

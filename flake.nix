@@ -150,6 +150,13 @@
               curl
               git
               postgresql # `just test-postgres` starts a throwaway server
+              # The Helm chart in deploy/helm: `just helm-lint` renders and
+              # validates it, `just helm-kind` installs it on a kind cluster
+              # (Docker comes from the host).
+              kubernetes-helm
+              kubeconform
+              kind
+              kubectl
             ] ++ pkgs.lib.optionals haveChromium [ chromium ];
             shellHook = ''
               ${pkgs.lib.optionalString haveChromium ''export CHROMIUM="${pkgs.chromium}/bin/chromium"''}

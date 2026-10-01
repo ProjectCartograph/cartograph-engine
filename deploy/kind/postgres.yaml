@@ -1,0 +1,48 @@
+# One throwaway Postgres for `just helm-kind`: no volume, a placeholder
+# password, gone with the cluster. A real deployment runs Postgres as a
+# managed service or under an operator (docs/DEPLOYMENT.md).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17
+          env:
+            - name: POSTGRES_USER
+              value: cartograph
+            - name: POSTGRES_PASSWORD
+              value: cartograph
+            - name: POSTGRES_DB
+              value: cartograph
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "cartograph", "-d", "cartograph"]
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

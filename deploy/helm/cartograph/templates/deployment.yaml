@@ -1,0 +1,210 @@
+{{- include "cartograph.validate" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cartograph.fullname" . }}
+  labels:
+    {{- include "cartograph.labels" . | nindent 4 }}
+spec:
+  {{- if not (or .Values.autoscaling.enabled .Values.keda.enabled) }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "cartograph.selectorLabels" . | nindent 6 }}
+  strategy:
+    {{- if .Values.vault.enabled }}
+    # One volume, one writer: stop the old pod before the new one mounts it.
+    type: Recreate
+    {{- else }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+    {{- end }}
+  template:
+    metadata:
+      annotations:
+        {{- if and .Values.store.url (not .Values.store.existingSecret) }}
+        checksum/store: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "cartograph.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "cartograph.serviceAccountName" . }}
+      # Cartograph never talks to the Kubernetes API.
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      # Longer than the drain delay plus the shutdown timeout, so the
+      # process finishes in-flight requests before the kubelet kills it.
+      terminationGracePeriodSeconds: {{ include "cartograph.terminationGracePeriodSeconds" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: cartograph
+          image: {{ include "cartograph.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["serve"]
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: CARTOGRAPH_ADDR
+              value: ":8080"
+            {{- if include "cartograph.hasStore" . }}
+            - name: CARTOGRAPH_STORE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartograph.storeSecretName" . }}
+                  key: {{ if .Values.store.existingSecret }}{{ .Values.store.urlKey }}{{ else }}url{{ end }}
+            {{- if include "cartograph.hasFanoutUrl" . }}
+            - name: CARTOGRAPH_FANOUT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartograph.storeSecretName" . }}
+                  key: {{ if .Values.store.existingSecret }}{{ .Values.store.fanoutUrlKey }}{{ else }}fanoutUrl{{ end }}
+            {{- end }}
+            {{- else }}
+            - name: CARTOGRAPH_VAULT
+              value: /vault
+            {{- end }}
+            {{- with .Values.store.fanout }}
+            - name: CARTOGRAPH_FANOUT
+              value: {{ . | quote }}
+            {{- end }}
+            - name: CARTOGRAPH_AUTH
+              value: {{ .Values.auth.mode | quote }}
+            {{- with .Values.auth.proxyHeader }}
+            - name: CARTOGRAPH_AUTH_PROXY_HEADER
+              value: {{ . | quote }}
+            {{- end }}
+            - name: CARTOGRAPH_AUTHZ
+              value: {{ .Values.authz.mode | quote }}
+            {{- with .Values.authz.readRoles }}
+            - name: CARTOGRAPH_READ_ROLES
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.authz.writeRoles }}
+            - name: CARTOGRAPH_WRITE_ROLES
+              value: {{ . | quote }}
+            {{- end }}
+            - name: CARTOGRAPH_LOG_FORMAT
+              value: {{ .Values.config.logFormat | quote }}
+            - name: CARTOGRAPH_LOG_LEVEL
+              value: {{ .Values.config.logLevel | quote }}
+            {{- with .Values.config.codec }}
+            - name: CARTOGRAPH_CODEC
+              value: {{ . | quote }}
+            {{- end }}
+            - name: CARTOGRAPH_SYNC_PING
+              value: {{ .Values.config.syncPing | quote }}
+            - name: CARTOGRAPH_DOC_CACHE
+              value: {{ .Values.config.docCache | quote }}
+            - name: CARTOGRAPH_DRAIN_DELAY
+              value: "{{ .Values.config.drainDelaySeconds }}s"
+            - name: CARTOGRAPH_SHUTDOWN_TIMEOUT
+              value: "{{ .Values.config.shutdownTimeoutSeconds }}s"
+            {{- if .Values.metrics.enabled }}
+            - name: CARTOGRAPH_METRICS_ADDR
+              value: ":{{ .Values.metrics.port }}"
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            # HOME is /tmp in the image; the root filesystem is read-only.
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.vault.enabled }}
+            - name: vault
+              mountPath: /vault
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.vault.enabled }}
+        - name: vault
+          persistentVolumeClaim:
+            claimName: {{ .Values.vault.persistence.existingClaim | default (printf "%s-vault" (include "cartograph.fullname" .)) }}
+        {{- end }}
+      {{- if .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml .Values.topologySpreadConstraints | nindent 8 }}
+      {{- else if not .Values.vault.enabled }}
+      # Spread across zones, then hosts, when the scheduler can; never
+      # block scheduling on it.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "cartograph.selectorLabels" . | nindent 14 }}
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "cartograph.selectorLabels" . | nindent 14 }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- else if not .Values.vault.enabled }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    {{- include "cartograph.selectorLabels" . | nindent 20 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

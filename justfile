@@ -180,6 +180,54 @@ ha-up:
 ha-down:
     docker compose -f compose.ha.yaml down -v
 
+# --- deployment -----------------------------------------------------------
+
+# The Helm chart, without a cluster: its version is VERSION, it lints, it
+# refuses values that would deploy something broken, and what it renders
+# validates against the Kubernetes and CRD schemas (kubeconform fetches
+# them)
+helm-lint:
+    #!{{toolchain}} bash
+    set -euo pipefail
+    chart=deploy/helm/cartograph
+    v=$(cat VERSION)
+    cv=$(sed -n 's/^version: *//p' $chart/Chart.yaml)
+    av=$(sed -n 's/^appVersion: *"\{0,1\}\([^"]*\)"\{0,1\}/\1/p' $chart/Chart.yaml)
+    if [ "$cv" != "$v" ] || [ "$av" != "$v" ]; then
+      echo "$chart/Chart.yaml: version $cv, appVersion $av; VERSION is $v. Set both to $v."
+      exit 1
+    fi
+    echo "chart version and appVersion: $v"
+    helm lint --strict $chart
+    for f in $chart/ci/*-values.yaml; do helm lint --strict --quiet $chart -f "$f"; done
+    # Values the chart must refuse, each with the message an operator reads.
+    refuse() {
+      want=$1; shift
+      if out=$(helm template t $chart "$@" 2>&1); then
+        echo "rendered, but should refuse: $*"; exit 1
+      fi
+      grep -q -- "$want" <<<"$out" || { echo "refused without saying '$want': $*"; echo "$out"; exit 1; }
+      echo "refuses: ${*:-default values} ($want)"
+    }
+    refuse "needs a Postgres store"
+    refuse "needs a Postgres store" --set autoscaling.enabled=true --set replicaCount=1 --set vault.enabled=true
+    refuse "choose one autoscaler" --set store.url=postgres://h/db --set autoscaling.enabled=true --set keda.enabled=true --set keda.prometheus.serverAddress=http://p:9090
+    refuse "needs keda.prometheus.serverAddress" --set store.url=postgres://h/db --set keda.enabled=true
+    refuse "must be greater than" --set store.url=postgres://h/db --set terminationGracePeriodSeconds=10
+    refuse "needs an authenticator" --set store.url=postgres://h/db --set authz.mode=roles
+    refuse "values don't meet the specifications" --set store.url=mysql://h/db
+    schemas=(-schema-location default
+      -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{{{.Group}}/{{{{.ResourceKind}}_{{{{.ResourceAPIVersion}}.json')
+    for f in $chart/ci/*-values.yaml; do
+      echo "kubeconform: $f"
+      helm template cartograph $chart -f "$f" | kubeconform -strict -summary "${schemas[@]}"
+    done
+
+# Install the chart on a throwaway kind cluster: the image the flake
+# builds, two replicas on an in-cluster Postgres, then probe it and kill a
+# pod (scripts/helm-kind). Needs Docker.
+helm-kind:
+    scripts/helm-kind
 
 # Serve a copy of the example on 127.0.0.1:8080
 serve addr="127.0.0.1:8080": embed

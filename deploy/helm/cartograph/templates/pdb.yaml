@@ -1,0 +1,17 @@
+{{- if and .Values.podDisruptionBudget.enabled (include "cartograph.multiReplica" .) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cartograph.fullname" . }}
+  labels:
+    {{- include "cartograph.labels" . | nindent 4 }}
+spec:
+  {{- if not (kindIs "invalid" .Values.podDisruptionBudget.maxUnavailable) }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "cartograph.selectorLabels" . | nindent 6 }}
+{{- end }}

@@ -1,0 +1,222 @@
+# Cartograph. Two ways to run it:
+#
+# - Stateless (the default): replicaCount replicas, any number, on a
+#   Postgres store. Set store.url, or store.existingSecret.
+# - Vault: one replica on a persistent volume, for a small install.
+#   Set vault.enabled=true and replicaCount=1.
+#
+# The chart refuses to render more than one replica, or an autoscaler,
+# without a Postgres store: a vault cannot be shared between replicas.
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/projectcartograph/cartograph
+  # Empty means the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# The Postgres store (CARTOGRAPH_STORE). Either give the URL here, and the
+# chart keeps it in a Secret of its own, or name an existing Secret.
+store:
+  # postgres://user:password@host:5432/db?sslmode=require
+  # Add pool_max_conns=N to size each replica's pool.
+  url: ""
+  # A direct Postgres URL for the fan-out's listening connection
+  # (CARTOGRAPH_FANOUT_URL). Set it when url goes through PgBouncer in
+  # transaction mode, where LISTEN does not work. Empty: the store URL.
+  fanoutUrl: ""
+  # An existing Secret holding the URLs. When set, url and fanoutUrl
+  # above are ignored.
+  existingSecret: ""
+  urlKey: url
+  # The key in existingSecret for the fan-out URL. Empty: not set.
+  fanoutUrlKey: ""
+  # memory or postgres (CARTOGRAPH_FANOUT). Empty: postgres with a
+  # Postgres store.
+  fanout: ""
+
+# One replica on a persistent volume at /vault, for a small install with
+# no database. Needs replicaCount 1 and no autoscaling.
+vault:
+  enabled: false
+  persistence:
+    # Use this PersistentVolumeClaim instead of creating one.
+    existingClaim: ""
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+
+# Identity (docs/DEPLOYMENT.md, "Identity").
+auth:
+  # none or proxy. proxy is safe only when the proxy is the only route
+  # to the pods.
+  mode: none
+  # The header the proxy sets. Empty: X-Forwarded-User.
+  proxyHeader: ""
+
+authz:
+  # allow or roles. roles needs auth.mode=proxy.
+  mode: allow
+  # Comma-separated roles.
+  readRoles: ""
+  writeRoles: ""
+
+config:
+  # text or json
+  logFormat: json
+  # debug, info, warn or error
+  logLevel: info
+  # yaml or json. Empty: the engine's default.
+  codec: ""
+  # The WebSocket ping interval (CARTOGRAPH_SYNC_PING). Keep it below
+  # the idle timeout of every proxy in front.
+  syncPing: 20s
+  # Shared documents cached per replica (CARTOGRAPH_DOC_CACHE).
+  docCache: 1000
+  # On SIGTERM, how long /readyz answers 503 while the pod still serves,
+  # so load balancers stop routing to it first (CARTOGRAPH_DRAIN_DELAY).
+  drainDelaySeconds: 5
+  # Grace for in-flight requests once shutdown begins
+  # (CARTOGRAPH_SHUTDOWN_TIMEOUT).
+  shutdownTimeoutSeconds: 10
+
+# Empty: drainDelaySeconds + shutdownTimeoutSeconds + 10. When set, it
+# must be greater than drainDelaySeconds + shutdownTimeoutSeconds.
+terminationGracePeriodSeconds: null
+
+# More environment variables, as a container's env list.
+extraEnv: []
+# More environment, as a container's envFrom list.
+extraEnvFrom: []
+
+# Prometheus metrics on a separate port (CARTOGRAPH_METRICS_ADDR).
+metrics:
+  enabled: true
+  port: 9090
+  serviceMonitor:
+    # Needs the Prometheus Operator's CRDs.
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  # The sync socket at /api/v1/sync is a long-lived WebSocket. With
+  # ingress-nginx, raise the timeouts:
+  #   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  #   nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  annotations: {}
+  hosts:
+    - host: cartograph.local
+      paths:
+        - path: /
+          pathType: Prefix
+  # - secretName: cartograph-tls
+  #   hosts: [cartograph.local]
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  capabilities:
+    drop: [ALL]
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 2
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 2
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+podDisruptionBudget:
+  enabled: true
+  # Rendered only with more than one replica or an autoscaler.
+  # maxUnavailable, when set, wins over minAvailable.
+  minAvailable: 1
+  maxUnavailable: null
+
+# CPU-based HorizontalPodAutoscaler. Not with keda.enabled.
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+# A KEDA ScaledObject on a Prometheus query. Not with autoscaling.enabled.
+keda:
+  enabled: false
+  minReplicaCount: 2
+  maxReplicaCount: 10
+  pollingInterval: 30
+  cooldownPeriod: 300
+  prometheus:
+    # For example http://prometheus-operated.monitoring.svc:9090
+    serverAddress: ""
+    # Open sync connections across the deployment; KEDA divides by the
+    # threshold to get the replica count.
+    query: sum(cartograph_sync_connections)
+    threshold: "200"
+
+# Empty: spread across zones and hosts, preferred, not required.
+topologySpreadConstraints: []
+# Empty: prefer hosts without another Cartograph pod.
+affinity: {}
+nodeSelector: {}
+tolerations: []
+priorityClassName: ""

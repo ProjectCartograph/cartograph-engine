@@ -1,0 +1,47 @@
+Cartograph {{ .Chart.AppVersion }} is installed as {{ include "cartograph.fullname" . }}.
+{{- if include "cartograph.hasStore" . }}
+
+State: the Postgres store in Secret {{ include "cartograph.storeSecretName" . }}.
+Replicas are stateless; scale them freely. Size the database for
+replicas x (pool_max_conns + 1 listening connection).
+{{- if not (include "cartograph.hasFanoutUrl" .) }}
+If the store URL goes through PgBouncer in transaction mode, also set
+store.fanoutUrl (or store.fanoutUrlKey) to a direct Postgres URL: LISTEN
+does not work through such a pooler.
+{{- end }}
+The database starts empty. Import manifests with:
+  cartograph import -db "$CARTOGRAPH_STORE" -reason "first import" ./my-vault
+{{- else }}
+
+State: one replica on the volume {{ .Values.vault.persistence.existingClaim | default (printf "%s-vault" (include "cartograph.fullname" .)) }}, mounted at /vault.
+Do not scale it: for more than one replica, use a Postgres store
+(store.url or store.existingSecret).
+{{- end }}
+
+Open it:
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}/
+{{- end }}
+The sync socket at /api/v1/sync is a long-lived WebSocket. Make sure the
+ingress passes upgrades and allows idle connections longer than
+config.syncPing ({{ .Values.config.syncPing }}); for ingress-nginx:
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+{{- else }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "cartograph.fullname" . }} 8080:{{ .Values.service.port }}
+  then http://localhost:8080/
+{{- end }}
+
+Identity: auth.mode={{ .Values.auth.mode }}, authz.mode={{ .Values.authz.mode }}.
+{{- if eq .Values.auth.mode "none" }}
+Every request is anonymous. Put an authenticating proxy in front and set
+auth.mode=proxy before exposing this beyond a trusted network.
+{{- else }}
+Only the authenticating proxy may reach these pods: anyone who can reach
+them directly can set the identity header.
+{{- end }}
+{{- if .Values.metrics.enabled }}
+
+Metrics: Prometheus format on port {{ .Values.metrics.port }} (service port "metrics"), path /metrics.
+{{- end }}

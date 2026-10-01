@@ -1,0 +1,5 @@
+# Test values for `just helm-lint` and `just helm-kind`; not part of the
+# packaged chart.
+ci/
+*.tgz
+.DS_Store

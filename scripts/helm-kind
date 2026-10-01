@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# Install the Helm chart on a throwaway kind cluster and check it works
+# as a highly available deployment: the image the flake builds, two
+# replicas on one in-cluster Postgres, the probes, the API, a WebSocket
+# upgrade on the sync socket, and service through the loss of a pod.
+# The cluster, its kubeconfig and the port-forward go away however the
+# run ends. Needs Docker; `just helm-kind` runs it inside the flake.
+set -euo pipefail
+
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$root"
+chart=deploy/helm/cartograph
+cluster=${CARTOGRAPH_KIND_CLUSTER:-cartograph-helm}
+port=${CARTOGRAPH_KIND_PORT:-18080}
+work=$(mktemp -d /tmp/cartograph-kind.XXXXXX)
+export KUBECONFIG=$work/kubeconfig
+pf=""
+
+cleanup() {
+    status=$?
+    if [ "$status" -ne 0 ] && [ -s "$KUBECONFIG" ]; then
+        echo "--- failed; cluster state:"
+        kubectl get pods -o wide || true
+        kubectl logs -l app.kubernetes.io/name=cartograph --tail=30 --prefix || true
+    fi
+    [ -n "$pf" ] && kill "$pf" 2>/dev/null || true
+    kind delete cluster --name "$cluster" >/dev/null 2>&1 || true
+    rm -rf "$work"
+    exit "$status"
+}
+trap cleanup EXIT
+
+step() { echo "--- $*"; }
+
+step "image from the flake"
+nix --extra-experimental-features "nix-command flakes" build .#image --out-link "$work/image"
+tag=$(cat VERSION)
+
+step "kind cluster $cluster"
+kind create cluster --name "$cluster" --kubeconfig "$KUBECONFIG" --wait 120s
+kind load image-archive "$work/image" --name "$cluster"
+
+step "postgres"
+kubectl apply -f deploy/kind/postgres.yaml
+kubectl rollout status deployment/postgres --timeout=180s
+
+step "chart, two replicas"
+helm install cartograph "$chart" -f "$chart/ci/kind-values.yaml" \
+    --set image.tag="$tag" --wait --timeout 5m
+kubectl rollout status deployment/cartograph --timeout=120s
+kubectl get pods -l app.kubernetes.io/name=cartograph -o wide
+
+step "port-forward to the service"
+kubectl port-forward svc/cartograph "$port:8080" >"$work/port-forward.log" 2>&1 &
+pf=$!
+for _ in $(seq 1 50); do
+    curl -sf "http://127.0.0.1:$port/healthz" >/dev/null 2>&1 && break
+    sleep 0.2
+done
+
+check() {
+    name=$1 want=$2; shift 2
+    got=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "$@" || true)
+    echo "$name: $got"
+    [ "$got" = "$want" ] || { echo "$name: want $want"; exit 1; }
+}
+check "GET /readyz" 200 "http://127.0.0.1:$port/readyz"
+check "GET /api/v1/session" 200 "http://127.0.0.1:$port/api/v1/session"
+curl -s "http://127.0.0.1:$port/api/v1/session"; echo
+# The upgrade answers 101 and then holds the socket open; --max-time
+# ends curl, and the status it printed is what counts.
+check "GET /api/v1/sync (upgrade)" 101 \
+    -H "Connection: Upgrade" -H "Upgrade: websocket" \
+    -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+    "http://127.0.0.1:$port/api/v1/sync"
+
+step "lose a pod; the service keeps answering"
+# From inside the cluster, through the Service, so the request goes to
+# whichever replica is left (a port-forward is pinned to one pod).
+kubectl run probe --image=curlimages/curl --restart=Never --command -- sleep 600 >/dev/null
+kubectl wait --for=condition=Ready pod/probe --timeout=120s >/dev/null
+victim=$(kubectl get pods -l app.kubernetes.io/name=cartograph -o jsonpath='{.items[0].metadata.name}')
+echo "deleting $victim"
+kubectl delete pod "$victim" --wait=false
+ok=0 failed=0
+for _ in $(seq 1 30); do
+    code=$(kubectl exec probe -- curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://cartograph:8080/api/v1/session || true)
+    if [ "$code" = "200" ]; then ok=$((ok + 1)); else failed=$((failed + 1)); echo "answered $code"; fi
+    sleep 0.3
+done
+echo "while one pod went away: $ok answered 200, $failed did not"
+[ "$failed" -eq 0 ]
+kubectl rollout status deployment/cartograph --timeout=120s
+kubectl get pods -l app.kubernetes.io/name=cartograph
+
+step "helm-kind passed"

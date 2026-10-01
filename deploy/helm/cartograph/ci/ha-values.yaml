@@ -1,0 +1,49 @@
+# The large-scale shape: a store through a transaction-mode pooler, the
+# fan-out direct to Postgres, KEDA on Prometheus, a ServiceMonitor, an
+# ingress with WebSocket timeouts. Rendered by `just helm-lint`.
+replicaCount: 3
+store:
+  url: postgres://cartograph:secret@pgbouncer.db.svc:6432/cartograph?sslmode=require&pool_max_conns=10&default_query_exec_mode=exec
+  fanoutUrl: postgres://cartograph:secret@postgres-rw.db.svc:5432/cartograph?sslmode=require
+auth:
+  mode: proxy
+authz:
+  mode: roles
+  readRoles: staff
+  writeRoles: planners
+config:
+  drainDelaySeconds: 10
+  shutdownTimeoutSeconds: 20
+terminationGracePeriodSeconds: 45
+extraEnv:
+  - name: GOMEMLIMIT
+    value: 400MiB
+metrics:
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: prometheus
+keda:
+  enabled: true
+  minReplicaCount: 3
+  maxReplicaCount: 20
+  prometheus:
+    serverAddress: http://prometheus-operated.monitoring.svc:9090
+    query: sum(cartograph_sync_connections{namespace="cartograph"})
+    threshold: "200"
+podDisruptionBudget:
+  maxUnavailable: 1
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  hosts:
+    - host: cartograph.example.org
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: cartograph-tls
+      hosts: [cartograph.example.org]
