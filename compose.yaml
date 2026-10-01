@@ -2,7 +2,7 @@
 # builds it for this machine's architecture, loads it, and tags it
 # cartograph:local); there is no Dockerfile, so the container is the same
 # build as the binary. Set CARTOGRAPH_IMAGE to run a released image
-# instead, for example ghcr.io/projectcartograph/cartograph:2.0.0.
+# instead, for example ghcr.io/projectcartograph/cartograph:2.1.0.
 #
 # Put a vault in before the first start, as the runtime user (uid 65532),
 # never by mounting a tracked example in place (the server writes its
