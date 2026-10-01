@@ -137,7 +137,7 @@ var rules = map[string][]string{
 	"internal/printer/chromium":   join([]string{"internal/store", "internal/codec"}, adapter("internal/printer/chromium")),
 	"internal/auth/proxy":         join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/proxy")),
 	"internal/auth/roles":         join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/roles")),
-	"internal/yamlfmt":            join([]string{"internal", "pkg", "cmd"}, without(drivers, "gopkg.in/yaml.v3")),
+	"internal/yamlfmt":            join([]string{"internal", "pkg", "cmd"}, without(drivers, "go.yaml.in/yaml")),
 	// The CRDT adapter knows its port and wazero; its suite knows the
 	// port only, so it holds any adapter to the same promises.
 	"internal/crdt/automerge":   join([]string{"internal/store", "internal/codec", "internal/printer", "internal/auth", "internal/fanout"}, adapter("internal/crdt/automerge")),

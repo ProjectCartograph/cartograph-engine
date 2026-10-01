@@ -9,7 +9,7 @@
 // instead; none exists yet.
 package manifestmeta
 
-import "gopkg.in/yaml.v3"
+import "go.yaml.in/yaml/v3"
 
 type manifestMeta struct {
 	Metadata struct {

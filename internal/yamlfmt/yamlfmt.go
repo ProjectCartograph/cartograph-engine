@@ -13,7 +13,7 @@ package yamlfmt
 import (
 	"bytes"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Indent is the indentation every file Cartograph writes uses.

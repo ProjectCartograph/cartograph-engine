@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/yamlfmt"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
