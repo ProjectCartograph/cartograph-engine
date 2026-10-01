@@ -43,21 +43,28 @@ What the guide leaves to us:
 
 ## Commits
 
-**[Google's CL description guidance](https://google.github.io/eng-practices/review/developer/cl-descriptions.html)**,
+`CONTRIBUTING.md` ("Commit messages") is the full rule, with an
+example; this is the summary.
+
+**[Google's Angular commit message format](https://github.com/angular/angular/blob/main/contributing-docs/commit-message-guidelines.md)**,
 checked by `just commit-check` (`scripts/check-commit-msg`) in CI on
 every pull request.
 
-- **First line**: a short summary of what the change does, as an
-  imperative sentence without a trailing period, under 72 characters.
-  "Add a NATS fan-out adapter", "Refuse a goal under the wrong level". Not
-  "Fixed bug", not "WIP", not a type prefix (`feat:`, `fix:`): this
-  repository does not use Conventional Commits.
+- **Header**: `<type>(<scope>): <summary>`, at most 72 characters. The
+  type is Angular's (`build`, `ci`, `docs`, `feat`, `fix`, `perf`,
+  `refactor`, `test`); the scope is one of this repository's areas, or
+  none. The summary is imperative, lower-case, with no period:
+  "feat(fanout): add a NATS adapter", "fix(kinds): refuse a goal under
+  the wrong level". Not "fixed bug", not "WIP".
 - **A blank line.**
-- **The body**: what the change does and why, for the reader who was
-  not there. What the problem was, why this approach, what was
-  considered and rejected, what a reviewer should look at. Reference
-  the issue (`Fixes #12`) on its own line at the end. Say what you ran
-  and what it printed when it matters.
+- **The body**, for every type but `docs`: what the change does and
+  why, for the reader who was not there. What the problem was, why
+  this approach, what was considered and rejected, what a reviewer
+  should look at. Say what you ran and what it printed when it
+  matters.
+- **The footer**: `BREAKING CHANGE:` or `DEPRECATED:` with what to do
+  instead, when the change breaks or deprecates something. Then
+  `Fixes #12` on its own line, where an issue exists.
 - **`Signed-off-by`** (`git commit -s`): the Developer Certificate of
   Origin.
 
