@@ -88,7 +88,7 @@ Usage:
   cartograph handoff <project id> -db cartograph.db --reason "..."
   cartograph export <out-dir> [<vault-or-db>] [--codec yaml|json]
   cartograph diff <kind> <id> --from N --to M -db cartograph.db
-  cartograph import <dir> -db cartograph.db --actor <person id> --reason "..."
+  cartograph import <dir> -db cartograph.db --reason "..."
   cartograph apply <Kind/id> <vault-dir>
   cartograph exclude <Kind/id> <vault-dir> --reason "..."
   cartograph recover <Kind/id> <vault-dir> --reason "..."
