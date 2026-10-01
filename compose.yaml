@@ -1,19 +1,22 @@
 # One service, one volume. The image comes from the flake (`just image`
-# builds it for this machine's architecture and loads it); there is no
-# Dockerfile, so the container is the same build as the binary.
+# builds it for this machine's architecture, loads it, and tags it
+# cartograph:local); there is no Dockerfile, so the container is the same
+# build as the binary. Set CARTOGRAPH_IMAGE to run a released image
+# instead, for example ghcr.io/projectcartograph/cartograph:2.0.0.
 #
 # Put a vault in before the first start, as the runtime user (uid 65532),
 # never by mounting a tracked example in place (the server writes its
-# index into whatever it serves):
+# index into whatever it serves). `docker compose create` makes the
+# volume, named cartograph-vault whatever the project is called:
 #
 #   docker compose create
-#   docker run --rm -v cartograph_cartograph-vault:/vault -v "$PWD/examples/minimal:/src:ro" \
+#   docker run --rm -v cartograph-vault:/vault -v "$PWD/examples/minimal:/src:ro" \
 #       busybox sh -c 'cp -r /src/. /vault/ && chown -R 65532:65532 /vault'
 #   docker compose up -d
 
 services:
   cartograph:
-    image: cartograph:0.1.0
+    image: ${CARTOGRAPH_IMAGE:-cartograph:local}
     ports:
       - "8080:8080"
     volumes:
@@ -21,6 +24,8 @@ services:
     environment:
       CARTOGRAPH_LOG_FORMAT: json
       # CARTOGRAPH_AUTH: proxy   # only behind an authenticating proxy; see docs/DEPLOYMENT.md
+    # The image has no shell, so the binary checks itself. /bin/cartograph
+    # is the image's link to the binary in the Nix store.
     healthcheck:
       test: ["CMD", "/bin/cartograph", "ready"]
       interval: 10s
@@ -30,3 +35,4 @@ services:
 
 volumes:
   cartograph-vault:
+    name: cartograph-vault

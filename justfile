@@ -159,12 +159,17 @@ release: embed
       echo "dist/cartograph-linux-$arch"
     done
 
-# The container image, from the flake, for this machine's architecture; loads into docker
+# The container image, from the flake, for this machine's architecture;
+# loads into docker as cartograph:<version> and cartograph:local, the tag
+# compose.yaml runs, so it never names a stale version
 image:
     #!{{toolchain}} bash
     set -euo pipefail
     nix build .#image --out-link result-image
-    docker load < result-image
+    name=$(docker load < result-image | sed -n 's/^Loaded image: //p')
+    docker tag "$name" cartograph:local
+    echo "tagged $name as cartograph:local"
+
 
 # Serve a copy of the example on 127.0.0.1:8080
 serve addr="127.0.0.1:8080": embed
