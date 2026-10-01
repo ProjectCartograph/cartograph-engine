@@ -81,8 +81,10 @@ kubectl run probe --image=curlimages/curl --restart=Never --command -- sleep 600
 kubectl wait --for=condition=Ready pod/probe --timeout=120s >/dev/null
 step "metrics, as Prometheus and KEDA would scrape them"
 metrics=$(kubectl exec probe -- curl -s --max-time 3 http://cartograph:9090/metrics || true)
+# Each family by its TYPE line: a replica that has served nothing yet
+# still declares every family, where a sample line may not exist.
 for want in cartograph_sync_connections cartograph_shared_documents_cached cartograph_http_requests_total go_goroutines; do
-    if printf '%s\n' "$metrics" | grep -q "^$want"; then echo "metrics: $want"; else echo "metrics lack $want"; exit 1; fi
+    if printf '%s\n' "$metrics" | grep -q "^# TYPE $want "; then echo "metrics: $want"; else echo "metrics lack $want"; exit 1; fi
 done
 
 victim=$(kubectl get pods -l app.kubernetes.io/name=cartograph -o jsonpath='{.items[0].metadata.name}')
