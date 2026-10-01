@@ -5,6 +5,7 @@ dist/
 /result
 /result-*
 /.direnv/
+/crdt/target/
 
 # Vault index and scratch state
 .cartograph/

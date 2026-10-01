@@ -25,7 +25,12 @@ import (
 var drivers = []string{
 	"net/http", "database/sql", "os/exec",
 	"gopkg.in/yaml.v3", "go.yaml.in/yaml", "modernc.org/sqlite", "github.com/fsnotify/fsnotify",
+	wazero,
 }
+
+// wazero runs the Automerge module. It is the CRDT adapter's driver and
+// no one else's: another package needing WebAssembly is a new port.
+const wazero = "github.com/tetratelabs/wazero"
 
 // outer is what only the composition root and the driving adapters
 // beside it may know.
@@ -54,12 +59,16 @@ func adapter(own string) []string {
 		"internal/codec/yaml", "internal/codec/json",
 		"internal/printer/chromium", "internal/auth/proxy", "internal/auth/roles",
 		"internal/store/conformance", "internal/codec/conformance",
+		"internal/crdt/automerge", "internal/crdt/conformance",
 	}
 	var forbid []string
 	for _, s := range siblings {
 		if s != own {
 			forbid = append(forbid, s)
 		}
+	}
+	if own != "internal/crdt/automerge" {
+		forbid = append(forbid, wazero)
 	}
 	return join(forbid, outer, []string{"internal/engine", "internal/kinds", "pkg/client", "pkg/uiconformance"})
 }
@@ -112,6 +121,10 @@ var rules = map[string][]string{
 	"internal/auth/proxy":         join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/proxy")),
 	"internal/auth/roles":         join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/roles")),
 	"internal/yamlfmt":            join([]string{"internal", "pkg", "cmd"}, without(drivers, "gopkg.in/yaml.v3")),
+	// The CRDT adapter knows its port and wazero; its suite knows the
+	// port only, so it holds any adapter to the same promises.
+	"internal/crdt/automerge":   join([]string{"internal/store", "internal/codec", "internal/printer", "internal/auth", "internal/fanout"}, adapter("internal/crdt/automerge")),
+	"internal/crdt/conformance": join([]string{"internal/store", "internal/codec", "internal/printer", "internal/auth", "internal/fanout"}, drivers, adapter("internal/crdt/conformance")),
 
 	// Driving adapters: the engine and the ports, never a driven adapter
 	// (the root chooses those), never each other, never the root.

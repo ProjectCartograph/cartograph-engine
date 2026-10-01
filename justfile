@@ -38,6 +38,8 @@ generate:
     cp contract/schemas/*.json internal/contract/schemas/
     cp contract/flows/*.json internal/contract/flows/
     cd internal/api && go generate ./...
+    # The Automerge module, built from crdt/ by the flake (docs/adr/0007)
+    install -m 644 "$(nix --extra-experimental-features 'nix-command flakes' build .#automerge-wasm --no-link --print-out-paths)/automerge.wasm" internal/crdt/automerge/automerge.wasm
 
 # Fail if generate produced anything that is not committed
 drift:

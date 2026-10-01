@@ -1,0 +1,30 @@
+# The Automerge module the engine runs on wazero (docs/adr/0007). The
+# flake builds it for wasm32-wasip1 (`nix build .#automerge-wasm`) and
+# `just generate` copies it to internal/crdt/automerge/automerge.wasm.
+[package]
+name = "cartograph-crdt"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+# Pinned exactly: the module's bytes, and what a document's changes mean,
+# move only when this line does.
+automerge = "=0.12.0"
+# float_roundtrip: a float read and written again is the same float, so
+# a reconciled document reads back exactly.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+debug = false
+incremental = false

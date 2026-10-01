@@ -2,8 +2,13 @@
   description = "Cartograph engine: one pinned toolchain, the binary, the container image, on x86_64 and aarch64";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  # A Rust toolchain with the wasm32-wasip1 standard library, which
+  # nixpkgs does not ship. It builds the CRDT module (crdt/) and nothing
+  # else; the development shell does not carry it.
+  inputs.rust-overlay.url = "github:oxalica/rust-overlay";
+  inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, rust-overlay }:
     let
       # Both architectures the releases target, plus macOS for laptops.
       systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
@@ -25,13 +30,49 @@
             sha256 = trim ./UI_SHA256;
           };
 
+          # The Automerge module the engine embeds (docs/adr/0007): the
+          # crate in crdt/, for wasm32-wasip1, with every dependency taken
+          # from Cargo.lock and the build directory remapped out of the
+          # output, so two builds give the same bytes. `just generate`
+          # copies it to internal/crdt/automerge and `just drift` refuses
+          # a committed module that differs.
+          rustWasm = (rust-overlay.lib.mkRustBin { } pkgs).stable."1.98.1".minimal.override {
+            targets = [ "wasm32-wasip1" ];
+          };
+          rustPlatformWasm = pkgs.makeRustPlatform { cargo = rustWasm; rustc = rustWasm; };
+          automerge-wasm = pkgs.stdenv.mkDerivation {
+            pname = "automerge-wasm";
+            version = "0.1.0";
+            src = lib.fileset.toSource {
+              root = ./crdt;
+              fileset = lib.fileset.unions [ ./crdt/Cargo.toml ./crdt/Cargo.lock ./crdt/src ];
+            };
+            cargoDeps = rustPlatformWasm.importCargoLock { lockFile = ./crdt/Cargo.lock; };
+            nativeBuildInputs = [ rustWasm rustPlatformWasm.cargoSetupHook ];
+            buildPhase = ''
+              runHook preBuild
+              top=$(realpath "$NIX_BUILD_TOP")
+              export RUSTFLAGS="--remap-path-prefix=$top=/build --remap-path-prefix=$NIX_BUILD_TOP=/build --remap-path-prefix=$cargoDeps=/cargo"
+              export SOURCE_DATE_EPOCH=0
+              cargo build --offline --frozen --release --target wasm32-wasip1
+              runHook postBuild
+            '';
+            installPhase = ''
+              runHook preInstall
+              install -Dm444 target/wasm32-wasip1/release/cartograph_crdt.wasm $out/automerge.wasm
+              runHook postInstall
+            '';
+            dontFixup = true;
+            meta.license = lib.licenses.asl20;
+          };
+
           # The binary. Tests run in the build (buildGoModule's checkPhase),
           # so `nix build` is also the gate.
           cartograph = pkgs.buildGoModule {
             pname = "cartograph";
             inherit version;
             src = lib.cleanSource ./.;
-            vendorHash = "sha256-CJmZABpIIRGrUFEBCPl08d9GNQfDOlTsFcQ4jMuk4NA=";
+            vendorHash = "sha256-KlBn5pI88dOV5SLaoLPTyh7uW2Zgf8LllDB/fqWpElQ=";
             subPackages = [ "cmd/cartograph" ];
             env.CGO_ENABLED = 0;
             ldflags = [ "-s" "-w" "-X main.version=${version}" ];
@@ -81,7 +122,7 @@
             };
           };
         in
-        { inherit cartograph; default = cartograph; }
+        { inherit cartograph automerge-wasm; default = cartograph; }
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           image = imageFor { name = "cartograph"; };
           # The same, plus Chromium for PDF printing.
