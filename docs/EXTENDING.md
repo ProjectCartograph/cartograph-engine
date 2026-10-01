@@ -7,8 +7,7 @@ change. `ARCHITECTURE.md` section 7 lists the ports; this page is the
 how.
 
 Before adding a kind, a field that links two kinds, or a rule that
-refuses a link, read docs/
-TAXONOMY.md`. If the discipline has a word for what you are building,
+refuses a link, read `docs/TAXONOMY.md`. If the discipline has a word for what you are building,
 use that word with that meaning. If Cartograph must depart from it, add a
 decision to that file saying why.
 
@@ -54,7 +53,7 @@ state `block`, not a rule.
 
 ## A new manifest store
 
-Implement `store.ManifestStore` in `server/internal/store/<name>/`. The
+Implement `store.ManifestStore` in `internal/store/<name>/`. The
 interface is in `store/store.go`; read the comments on `PutVersion`
 (numbers must be exactly current plus one) and `WithinTransaction`
 (all writes in `fn` commit together or not at all).
@@ -96,8 +95,8 @@ it. To put that in Postgres, implement the interface in
 `store/postgres`, pass `conformance.RunVaultIndex`, and construct the
 vault with `vault.Options{OpenIndex: yourOpener}` in
 `cmd/cartograph/store.go`. The files stay where they
-are; only the cache moves. This is the step that lets several replicas
-share one index.
+are; only the cache moves. For several replicas, the Postgres store
+above is the simpler path: it needs no shared volume.
 
 ## A manifest syntax
 
@@ -237,11 +236,36 @@ there and nowhere else. The memory adapter serves one replica; the
 Postgres adapter uses `LISTEN/NOTIFY` on the store's database and one
 listening connection per replica.
 
+## A different CRDT engine
+
+The shared drafts reach their CRDT through `crdt.Engine` and
+`crdt.Doc` (`internal/crdt`). The one adapter, `crdt/automerge`, runs
+Automerge compiled to WebAssembly from the `crdt/` crate, on wazero.
+Another adapter must pass `internal/crdt/conformance`:
+
+```go
+func TestConformance(t *testing.T) {
+    conformance.Run(t, func(t *testing.T) crdt.Engine {
+        return newYourEngine(t)
+    })
+}
+```
+
+The suite checks save and load round trips, that a reconcile is
+minimal and idempotent, that keyed list items keep their identity,
+that texts merge character by character, that concurrent writes are
+kept as conflicts, and that replicas converge across random partitions
+with messages lost, repeated and reordered. Passing it is not the whole
+job: interfaces sync with the stock automerge-repo libraries, so a
+different engine also needs interfaces that speak its sync protocol,
+and the sync socket's protocol version is part of what a release
+promises (`VERSIONING.md`). Read ADR 0007 first.
+
 ## Rules for every extension
 
 - An adapter imports the core; the core never imports an adapter.
 - An adapter has a conformance test or it is not done.
 - No adapter writes to stdout; use `log/slog`.
-- No organisation's words under `cartograph/` (`just words`).
+- No organisation's words anywhere in the repository (`just words`).
 - `just test` stays under ten seconds.
 - Say in the pull request what you ran and what it printed.

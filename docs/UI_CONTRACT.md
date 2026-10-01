@@ -21,11 +21,16 @@ Three decisions:
    forward it is a transport adapter. A terminal interface runs inside
    the cartograph binary with no server at all, or against a remote one, with
    the same code. Nothing in an interface names an HTTP path.
-2. **Transports are adapters.** HTTP with Server-Sent Events is the
-   first; a UNIX domain socket carries the same contract today
+2. **Transports are adapters.** HTTP is the first; a UNIX domain
+   socket carries the same contract today
    (`CARTOGRAPH_ADDR=unix:///run/cartograph.sock`, `remote.Dial("unix://...")`),
    and SSH forwards it. Another transport implements `client.Client`
-   and passes the same suite.
+   and passes the same suite. Live editing and presence do not travel
+   on the port. A manifest's shared draft is an Automerge document
+   (ADR 0007); the port names it (`SharedDocument`), and the interface
+   syncs it over the sync socket (`/api/v1/sync`, the automerge-repo
+   network protocol, version 1) with the stock automerge-repo
+   libraries.
 3. **The suite is data.** Scenarios are JSON files an interface's own
    CI runs against its own driver, in Go through this package or in the
    interface's language through a runner of its own.
@@ -39,7 +44,7 @@ through the client port.
 |---|---|---|
 | JSON Schema per kind | `Schema(kind)` | Field types, enums, reference targets (`x-cartograph-ref`), titles and descriptions, which lists are keyed (`x-cartograph-list-key`) |
 | Flow per kind | `Flow(kind)` | The steps in order, the fields each step asks for, how each is asked (`control`), the guide sentence, which checks a field answers |
-| Checks | `Checks(kind, id)` | What is wrong or missing, as `{path, message, state, fix}`; `fix` names the flow step that holds the field; conflict notes arrive here too |
+| Checks | `Checks(kind, id)` | What is wrong or missing, as `{path, message, state, fix}`; `fix` names the flow step that holds the field; in process, conflict notes read from the shared draft arrive here too |
 | Problems | the `Refused` error of a validating save | `{path, message}`, landed on the field at `path` |
 | Settings | `Settings()` | The organisation's words for levels and kinds, examples per field |
 
@@ -58,7 +63,7 @@ review.
 A field's identity is its JSON pointer in the manifest: `/spec/objective`,
 `/spec/keyResults/{kr-2}/target`. It is what the schema is keyed by, what
 a check's `path` names, what a problem lands on, what the conformance
-driver sets, and what the draft log records. An element of a keyed list
+driver sets, and what presence names as the focused field. An element of a keyed list
 is addressed by its key in braces, never by its index, because two
 people's lists do not share indices.
 
@@ -74,7 +79,7 @@ An interface implements each control once and reuses it everywhere.
 | Control | Asks for | Terminal (Bubble Tea) |
 |---|---|---|
 | `text` | a short string | `textinput` |
-| `sentence` | one line of prose; marks light as it takes shape; merges character by character between editors | `textinput` bound to a `merge.Text`, marks in the status line |
+| `sentence` | one line of prose; marks light as it takes shape; merges character by character between editors | `textinput` bound to an Automerge `Text`, marks in the status line |
 | `choice` | one of the schema's enum, in the organisation's words | `list` |
 | `reference` | one existing manifest of the `x-cartograph-ref` kind, with a way to add one | filterable `list` with an add row |
 | `references` | several | multi-select `list` |
@@ -128,9 +133,8 @@ type Client interface {
     Validate(ctx, kind, doc) ([]Problem, error)
     Checks(ctx, kind, id) ([]Check, error)
 
-    Edit(ctx, kind, id, ops []merge.Op) (EditResult, error)   // the shared draft
-    OpsSince(ctx, kind, id, after) ([]Op, error)
-    Subscribe(ctx, kind, id) (<-chan Event, error)
+    SharedDocument(ctx, kind, id) (string, error)   // the shared draft's Automerge document id
+    Subscribe(ctx, kind, id) (<-chan Event, error)  // a version saved, a state changed
 
     Actor(ctx) (string, error)
     Close() error
@@ -141,9 +145,12 @@ Two adapters today, under `pkg/client`:
 
 - `inproc`: the engine in the same process. What the terminal interface
   uses inside the cartograph binary, and what the suite runs first.
-- `remote`: the HTTP contract, over TCP or a UNIX socket (`Dial`). `Edit`,
-  `OpsSince` and `Subscribe` answer `ErrUnsupported` until the ops and
-  events endpoints land; everything else is carried.
+  `SharedDocument` answers `ErrUnsupported` when the engine runs
+  without shared drafts.
+- `remote`: the HTTP contract, over TCP or a UNIX socket (`Dial`).
+  `SharedDocument` is `GET /manifests/{kind}/{id}/document`.
+  `Subscribe` answers `ErrUnsupported` until the events endpoint lands;
+  everything else is carried.
 
 A transport is proven by running the conformance suite over it with the
 reference driver, which is exactly what `clientdriver_test.go` does for
@@ -182,9 +189,11 @@ named after the rule they hold:
 Steps are `open`, `step`, `set`, `act` and `expect` (`noProblems`,
 `problem`, `where`, `current`, `working`, `idIsIdentifier`). The Go
 runner (`uiconformance.Run`) executes them; a runner in another language
-reads the same files. Four scenarios exist; every rule in 1.3 becomes
-one, and the multiplayer scenarios in `MULTIPLAYER.md` section 6 join
-them when the ops endpoints land.
+reads the same files. Four scenarios exist, and every rule in 1.3
+becomes one. Shared editing is tested where it lives: the CRDT
+conformance suite and the multi-replica test in the engine, and two
+automerge-repo peers in the web interface's tests (`MULTIPLAYER.md`
+section 10).
 
 Drivers:
 
@@ -210,17 +219,27 @@ the client from a provider, tests hand them a fake, and `just wire`
 fails the build on a path, a `fetch` or `openapi-fetch` anywhere else
 (ADR 0006).
 
-Still to do, and planned in this order: render flows from `Flow(kind)`
-instead of the hand-coded `definition/outline.ts` and `GoalSteps.tsx`;
-add `data-cartograph-field` to every control, which the web driver
-needs; port `pkg/merge` to TypeScript, held to the same test vectors.
-Nothing visible changes.
+The shared draft is the stock `@automerge/automerge-repo` behind that
+port (ADR 0007). One repo per tab syncs over `/api/v1/sync` and keeps
+documents in IndexedDB, so edits made offline survive a reload. Each
+field change is one Automerge change at that field's path; a field the
+document holds as text is spliced with `updateText`, so two people
+typing in it both keep their words. Presence (who is here, their
+focused field, caret and pointer) travels as ephemeral messages in the
+shape of `presence.schema.json`. Every control that edits a field
+carries `data-cartograph-field` with its JSON pointer, and the main
+regions carry `data-cartograph-region`, which is what a pointer is
+anchored to. `just wire` also fails on an `@automerge/` import outside
+the client adapter.
+
+Still to do: render flows from `Flow(kind)` instead of the hand-coded
+`definition/outline.ts` and `GoalSteps.tsx`, and the web driver for
+the conformance suite. Nothing visible changes.
 
 ## 5. Repository split
 
-The engine repository must be importable by the interface repository:
-`cartograph/server` is not a fetchable module path, so the split (recorded in
-the root `README.md`) gives the engine a real one (`github.com/<org>/
-cartograph`, say) and the interface repository depends on `pkg/client`,
-`pkg/merge` and `pkg/uiconformance` from it. Only `pkg/` is public;
-`internal/` stays the engine's own.
+The interface repository imports the engine by its module path,
+`github.com/ProjectCartograph/cartograph-engine/v2`, and depends on
+`pkg/client` and `pkg/uiconformance` from it. Only `pkg/` is public;
+`internal/` stays the engine's own. The HTTP contract and the schemas
+reach it as a synced copy (`cartograph-ui/contract`).

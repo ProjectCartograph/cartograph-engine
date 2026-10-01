@@ -1,35 +1,37 @@
 # Stateless operation and serverless deployment
 
-**2026-10-01. An audit of what holds state in the process, what the
-ports allow, and the plan to a deployment where any replica can serve
-any request and scale to zero.**
+**2026-10-01, engine 2.0.0. What holds state in the process, what the
+ports allow, and how a deployment runs where any replica can serve any
+request and scale to zero.**
 
 The short answer: the engine is stateless by design, and every piece
 of state lives behind a port. The vault adapters keep state on one
 volume; the Postgres adapters keep it in one database. With
-`CARTOGRAPH_STORE` set to a Postgres URL, the stores and the fan-out a
-stateless deployment needs are built. What is left is wiring the shared
-drafts to them (ADR 0007), presence, and printing without Chromium.
+`CARTOGRAPH_STORE` set to a Postgres URL, everything a person does is
+stateless: the stores, the shared drafts, the fan-out between replicas
+and presence (ADR 0007, ADR 0008). What is left is printing without
+Chromium.
 
-## 1. What holds state today
+## 1. What holds state
 
-| State | Where it lives in the reference build | Port | Stateless adapter |
+| State | Where it lives with a vault | Port | With a Postgres store |
 |---|---|---|---|
-| Manifest versions, working copies, references, exclusions | Files under the vault directory plus `.cartograph/index.sqlite` | `store.ManifestStore`, `store.VaultIndex` | Postgres, built (`store/postgres`: rows for versions and working copies; the database is the store and there is no apply gate) |
-| Project state history | The same SQLite file | `store.OperationalStore` | Postgres, built |
-| The shared drafts, as CRDT documents | The same SQLite file (`documents`, `document_chunks`) | `store.DocStore` | Postgres, built: a snapshot per document plus the chunks appended since |
-| The shared draft's edits under 1.x | Memory (`memory.OpLog`) | `store.OpLog` | None: the op log goes in 2.0.0, replaced by the documents above |
-| Draft state per open manifest | Memory, inside `engine.Drafts` | none needed: it is a cache rebuilt on first touch | Keep as a per-replica cache; correctness does not depend on it |
-| Conflict notes | Memory, inside `engine.Drafts` | none | Derived from the document on read in 2.0.0 (ADR 0007), so nothing to store |
-| Fan-out between replicas | Memory (`fanout/memory`) | `fanout.Bus` | Postgres `LISTEN/NOTIFY`, built (`fanout/postgres`); a broker such as NATS in a distribution |
-| Presence | Not built | `fanout.Bus` | Relayed over the fan-out, never stored |
-| Handoff bundles | Files under `.cartograph/handoff` | `store.BundleStore` | Postgres rows, built; object storage remains an option behind the same port |
+| Manifest versions, working copies, references, exclusions | Files under the vault directory plus `.cartograph/index.sqlite` | `store.ManifestStore`, `store.VaultIndex` | Rows for versions and working copies (`store/postgres`); the database is the store and there is no apply gate |
+| Project state history | The same SQLite file | `store.OperationalStore` | Rows |
+| The shared drafts, as Automerge documents | The same SQLite file (`documents`, `document_chunks`) | `store.DocStore` | A snapshot per document plus the chunks appended since |
+| Open documents | Memory, inside `engine.Shared`, per replica | none: a cache | The same cache, refreshed from the `DocStore` before every use, so a replica never serves an older document than the store holds |
+| Sync state per connection | Memory, inside the sync socket, per connection | none: a cache | The same; a new connection starts from heads and arrives at the same place |
+| Conflict notes | Not held: derived on read from the document (`Shared.Conflicts`) | `crdt.Doc` | Nothing to store |
+| Fan-out between replicas | Memory (`fanout/memory`): one replica | `fanout.Bus` | Postgres `LISTEN/NOTIFY` (`fanout/postgres`); a broker such as NATS in a distribution |
+| Presence | Never stored: relayed on the sync socket | `fanout.Bus` | Relayed over the fan-out, never stored |
+| Events (a version saved, a state changed) | Memory (`engine.Bus`), per process | `engine.Bus` | The same; only in-process subscribers hear them, since the events endpoint is not built |
+| Handoff bundles | Files under `.cartograph/handoff` | `store.BundleStore` | Rows; object storage remains an option behind the same port |
 | The embedded interface | The binary | none | none needed |
 | The file watcher | A goroutine over the vault directory | none | Absent: a database has nothing to watch |
-| PDF printing | A Chromium subprocess | `printer.Printer` | A remote printer service, or `printer.None` and a separate renderer |
+| PDF printing | A Chromium subprocess | `printer.Printer` | The same, or `printer.None` and a separate renderer |
 
 The engine itself keeps nothing between requests except what the
-adapters give it, and `cmd/cartograph` already composes adapters from
+adapters give it, and `cmd/cartograph` composes adapters from
 configuration. A replica holds no identity: the authenticator reads the
 request, the authorizer decides per request.
 
@@ -38,55 +40,62 @@ request, the authorizer decides per request.
 - Any replica can serve any request: no sticky sessions, no local
   files the next request needs.
 - A replica can be killed at any moment: the two-phase apply journal
-  already makes a kill safe for the vault adapter; a database adapter
-  gets the same from a transaction.
+  makes a kill safe for the vault adapter; the Postgres adapters get
+  the same from a transaction. A change the replica had accepted but
+  not stored was never acknowledged, and the interface sends it again.
 - A replica can start from nothing: no index to rebuild (the database
   is the index), no vault to scan.
-- Scale to zero: the first request after idle pays the engine's start
-  (schema compilation, under 100 ms) and nothing else.
+- Scale to zero: a cold start pays for compiling the schemas (under
+  100 ms) and the Automerge module (about a quarter of a second), once
+  per process.
+- A fan-out message is a hint. A replica that misses one still
+  converges, because the sync protocol compares heads on every
+  exchange and every connection offers its documents again every 15
+  seconds. A lost message costs latency, never an edit.
 
-Two things do not fit a request-per-invocation platform (Lambda, Cloud
-Functions) and fit a container platform that scales to zero (Cloud Run,
-Fly Machines, Knative, Azure Container Apps) well: the Server-Sent Events
-stream, and the draft service's in-memory state. The stream is a
-long-lived connection; where a platform forbids one, an interface falls
-back to polling `OpsSince`, which the client port already carries. The
-draft cache is per replica and harmless, since every replica rebuilds
-it from the same log.
+A container platform that scales to zero (Cloud Run, Fly Machines,
+Knative, Azure Container Apps) runs this as it is. A
+request-per-invocation platform (Lambda, Cloud Functions) can serve
+every request of the HTTP contract, but it cannot hold a long-lived
+connection, so interfaces cannot hold the sync socket on it. Live
+editing and presence are the one thing such a platform cannot host.
 
-## 3. The plan
+## 3. What was built, and what is left
 
 Each step is one adapter proven by a conformance suite, then selected
-by configuration. Steps 1 to 4 are built. Their suites run against a
-real Postgres in CI (`just test-postgres`), and the ten-second gate
-stays database-free.
+by configuration. The Postgres suites run against a real database in
+CI (`just test-postgres`), and the ten-second gate stays
+database-free.
 
-1. **Built: `store/postgres`, `ManifestStore` and `OperationalStore`.**
-   Passes `conformance.RunManifestStore` and `RunOperationalStore`. No
+1. **`store/postgres`, `ManifestStore` and `OperationalStore`.** Pass
+   `conformance.RunManifestStore` and `RunOperationalStore`. No
    `StateStore`: every row is live, and the apply gate answers "no
    state manifest", which the interfaces already handle. Selected by
    `CARTOGRAPH_STORE=postgres://...`. Migrations are embedded and
    applied when a replica starts, under an advisory lock.
-2. **Built: `store/postgres`, `DocStore`.** Passes
-   `conformance.RunDocStore`, which races two creates of one document,
-   concurrent appends, and an append during compaction. The SQLite
-   index and the memory adapter pass the same suite.
-3. **Built: `fanout/postgres`, `fanout.Bus` over `LISTEN/NOTIFY`.** One
+2. **`store/postgres`, `DocStore`.** Passes `conformance.RunDocStore`,
+   which races two creates of one document, concurrent appends, and an
+   append during compaction. The SQLite index and the memory adapter
+   pass the same suite.
+3. **`fanout/postgres`, `fanout.Bus` over `LISTEN/NOTIFY`.** One
    listening connection per replica, one channel, the topic in the
    payload; it reconnects when the connection drops. Passes
    `fanout/conformance.Run` with two Buses on one database. Selected by
    `CARTOGRAPH_FANOUT`, which defaults to it with a Postgres store.
-4. **Built: `store/postgres`, `BundleStore`.** Handoff bundles as rows.
-   An object store adapter can replace it behind the same port.
-5. **Wire the shared drafts** to `DocStore` and `fanout.Bus` in the
-   engine and the sync endpoint (ADR 0007, ADR 0008). The composition
-   root already hands both over.
+4. **`store/postgres`, `BundleStore`.** Handoff bundles as rows. An
+   object store adapter can replace it behind the same port.
+5. **Shared drafts over `DocStore` and `fanout.Bus`.** `engine.Shared`
+   and the sync socket (`/api/v1/sync`), with Automerge as the CRDT
+   (ADR 0007, ADR 0008).
 6. **Presence**, relayed over the fan-out and never stored.
+
+Left to do:
+
 7. **A `printer` adapter** that calls a rendering service, for images
    without Chromium; or accept `printer.None` and render PDFs out of
    band.
 
-After 5 the deployment is stateless for everything a person does:
+The deployment is stateless for everything a person does:
 `cartograph serve` with a Postgres URL and no volume, on any container
 platform, on either architecture, with the image the flake builds.
 

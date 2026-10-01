@@ -15,10 +15,17 @@ can depend on. A change to any of it is classified by the rules below.
 | The HTTP contract | `contract/openapi.yaml`, served at `/api/v1` | A path, operation, response or field removed or renamed; a request field made required; a type changed | A path, operation, optional field or response added | A description |
 | The manifest schemas | `contract/schemas/*.schema.json`, `apiVersion: cartograph/v1` | A property or enum value removed; a property made required; a type narrowed; a kind removed | A kind, property or enum value added | A title or description |
 | The flows | `contract/flows/*.flow.json` | A step or field removed or re-keyed | A step or field added | Words |
-| The Go packages | `pkg/client`, `pkg/merge`, `pkg/uiconformance` | An exported identifier removed or its signature changed; a scenario's expectation tightened | An identifier or scenario added | Internals |
+| The Go packages | `pkg/client`, `pkg/uiconformance`, module `github.com/ProjectCartograph/cartograph-engine/v2` | An exported identifier removed or its signature changed; a scenario's expectation tightened | An identifier or scenario added | Internals |
+| The sync socket | `/api/v1/sync`: the automerge-repo network protocol, version 1, over a WebSocket | A move to another protocol version; a message type no longer answered | | |
+| The presence payload | `contract/schemas/presence.schema.json` | As for the manifest schemas | As for the manifest schemas | As for the manifest schemas |
 | The command line | `cartograph` subcommands, flags, `CARTOGRAPH_*` settings | A subcommand, flag or setting removed or its meaning changed; a default changed | One added | Help text |
 | The vault layout | `<Kind>/<id>.<ext>`, `vault.yaml`, `.cartograph/` | A vault written by one version not opening in a later one | New files a later version writes and an earlier one ignores | The index (always rebuildable) |
 | The images and binaries | `cartograph:<version>`, `cartograph-linux-{amd64,arm64}` | A runtime user, port, volume or entrypoint changed | | |
+
+The sync socket speaks a protocol that is automerge-repo's, not
+Cartograph's, so the engine promises the version it speaks: moving to
+another version of that protocol is a major change, because every
+interface's sync adapter would have to move with it.
 
 A breaking change ships as a new major with a new contract version
 (`/api/v2`, `cartograph/v2`) served beside the old one for at least one

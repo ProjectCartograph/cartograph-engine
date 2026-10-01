@@ -1,8 +1,9 @@
 # Cartograph systems architecture
 
-**Describes the tree as built. Where it describes a port with one
-adapter, that is the state of things, not a promise. The decisions
-behind it are recorded one per file in [`adr/`](adr/README.md).**
+**Describes the tree as built, at engine 2.0.0. Where it describes a
+port with one adapter, that is the state of things, not a promise. The
+decisions behind it are recorded one per file in
+[`adr/`](adr/README.md).**
 
 Cartograph captures what an organisation has decided to do (goals, programmes,
 projects, operations, KPIs, the data sources behind them) as declarative
@@ -29,11 +30,12 @@ Three decisions shape everything below.
    as rows, and the engine cannot tell the difference. "Files are the
    truth" is the vault's promise, not the architecture's.
 3. **One engine, many adapters.** Every rule lives in the Go engine, which
-   talks to the world through interfaces (ports). Files, SQLite, a
-   browser that prints PDFs, an authenticating proxy: each is an adapter
-   a deployment picks by configuration. The HTTP API and the command line
-   are two front doors to the same engine; the web interface is a client
-   of the API and nothing more.
+   talks to the world through interfaces (ports). Files, SQLite,
+   Postgres, a browser that prints PDFs, an authenticating proxy: each
+   is an adapter a deployment picks by configuration. The HTTP API and
+   the command line are two front doors to the same engine; the web
+   interface is a client of the API and its sync socket, and nothing
+   more.
 
 ## 1. Context
 
@@ -55,6 +57,7 @@ flowchart LR
 
     vault[("Vault<br/>directory of YAML")]
     index[("Index<br/>SQLite, rebuildable")]
+    pg[("Postgres<br/>(optional, instead of the vault)")]
     browser["Headless Chromium<br/>(optional, prints PDF)"]
     proxy["Authenticating proxy<br/>(optional)"]
     delivery["Delivery tool<br/>(Jira, monday.com)"]
@@ -65,22 +68,26 @@ flowchart LR
     operator --> cli
     engine <--> vault
     engine <--> index
+    engine <-.-> pg
     engine --> browser
     engine -. "handoff bundle<br/>(HTML, JSON, PDF)" .-> delivery
     vault <-. "commit, diff, restore" .-> git
 ```
 
-The vault is the only thing that needs backing up, and `git` is a fine
-way to do it. The index lives beside the vault under `.cartograph/` and is
-ignored by version control. The proxy and the browser are optional: a
+With a vault, the vault is the only thing that needs backing up, and
+`git` is a fine way to do it. The index lives beside the vault under
+`.cartograph/` and is ignored by version control. With a Postgres store
+(`CARTOGRAPH_STORE`), the database holds everything instead, and its
+own backups are the backup. The proxy and the browser are optional: a
 single operator on a laptop runs `cartograph serve .` and gets everything but
 PDF printing and identity.
 
 ## 2. Containers
 
-A deployment is one process. The pieces inside it are separable, and the
-command line proves it: every subcommand opens the same engine over the
-same adapters without an HTTP server in the way.
+A deployment is one process, or several identical replicas of it
+against one Postgres database. The pieces inside a process are
+separable, and the command line proves it: every subcommand opens the
+same engine over the same adapters without an HTTP server in the way.
 
 ```mermaid
 flowchart TB
@@ -91,26 +98,37 @@ flowchart TB
             authmw["auth middleware"]
             apigen["Generated strict server<br/>(oapi-codegen)"]
             apipkg["internal/api<br/>request to one engine call"]
+            syncsrv["internal/syncserver<br/>/api/v1/sync, WebSocket<br/>automerge-repo protocol v1"]
             spaemb["internal/spa<br/>embedded web build"]
         end
-        core["internal/engine<br/>+ internal/kinds<br/>+ internal/contract"]
+        core["internal/engine<br/>+ internal/kinds<br/>+ internal/contract<br/>+ engine.Shared (shared drafts)"]
         subgraph driven["Driven adapters"]
             vaultad["store/vault"]
             sqlitead["store/sqlite"]
+            pgad["store/postgres"]
             memad["store/memory"]
+            amad["crdt/automerge<br/>(WebAssembly on wazero)"]
+            fanad["fanout: memory | postgres"]
             chrom["printer/chromium"]
             none["printer.None"]
             authn["auth: none | proxy"]
         end
         http --> authmw --> apigen --> apipkg --> core
+        authmw --> syncsrv --> core
+        syncsrv --> fanad
         http --> spaemb
         core --> vaultad --> sqlitead
         core --> sqlitead
+        core --> pgad
+        core --> amad
+        core --> fanad
         core --> chrom
     end
     cliproc["cartograph validate | import | export | diff | list | snapshot |<br/>check | render | handoff | apply | exclude | recover"] --> core
     fs[("vault directory")] --- vaultad
     db[("index.sqlite")] --- sqlitead
+    pg[("Postgres (optional)<br/>store and LISTEN/NOTIFY")] --- pgad
+    pg --- fanad
 ```
 
 The web interface is built with Vite in `cartograph-ui` and embedded
@@ -120,7 +138,10 @@ the release and `UI_SHA256` pins its bytes, and `just ui` and the flake
 both unpack exactly that into `internal/spa/dist` before compiling
 (ADR 0002). The interface talks only to `/api/v1`, through one HTTP
 adapter generated from the same OpenAPI document the server is
-generated from, which is how the two halves stay in step.
+generated from, which is how the two halves stay in step. Live editing
+and presence go over the sync socket at `/api/v1/sync`, behind the same
+authentication and authorization, with the stock automerge-repo
+WebSocket adapter (ADR 0007).
 
 ## 3. The hexagon
 
@@ -134,20 +155,19 @@ flowchart LR
         direction TB
         d0["pkg/client.Client<br/>the port every interface uses"]
         d1["HTTP API<br/>internal/api (the remote transport's far end)"]
+        d4["Sync socket<br/>internal/syncserver<br/>automerge-repo protocol v1"]
         d2["Command line<br/>cmd/cartograph"]
         d3["Tests<br/>conformance, engine, api"]
         d0 -. inproc .-> E
-        d0 -. remote: HTTP+SSE over TCP, UNIX socket, SSH .-> d1
+        d0 -. remote: HTTP over TCP, UNIX socket, SSH .-> d1
     end
 
     subgraph core["Core"]
         direction TB
-        E["Engine<br/>validate, commit, version, diff,<br/>reference index, checks, goal tree,<br/>project state, apply gate, handoff,<br/>drafts (shared editing), bus"]
-        M["pkg/merge<br/>field map + text sequence CRDTs"]
+        E["Engine<br/>validate, commit, version, diff,<br/>reference index, checks, goal tree,<br/>project state, apply gate, handoff,<br/>shared drafts (engine.Shared)"]
         K["Kinds registry<br/>18 kinds: schema file + rules func"]
         C["Contract<br/>JSON Schema and Flow per kind, embedded"]
         E --> K --> C
-        E --> M
     end
 
     subgraph ports["Driven ports (interfaces the engine owns)"]
@@ -161,8 +181,10 @@ flowchart LR
         p7["auth.Authorizer<br/>principal + action to yes/no"]
         p8["store.VaultIndex<br/>what the vault keeps beside files"]
         p9["codec.Codec<br/>manifest text to document and back"]
-        p10["store.OpLog<br/>the shared draft's edits, by position"]
-        p11["engine.Bus<br/>fan-out of ops, versions, presence"]
+        p10["store.DocStore<br/>shared drafts: snapshot + chunks"]
+        p11["crdt.Engine, crdt.Doc<br/>the CRDT under shared drafts"]
+        p12["fanout.Bus<br/>hints between replicas, presence"]
+        p13["engine.Bus<br/>events: version, state"]
     end
 
     subgraph adapters["Adapters (one deployment picks each)"]
@@ -170,39 +192,46 @@ flowchart LR
         a1["vault (files + index)"]
         a2["sqlite"]
         a3["memory"]
+        a9["postgres"]
         a4["chromium"]
         a5["printer.None"]
         a6["auth none"]
         a7["auth proxy"]
-        a8["auth AllowAll"]
-        a9["postgres (not built)"]
         a10["oidc (not built)"]
+        a8["auth AllowAll"]
         a11["auth roles"]
         a12["codec yaml"]
         a13["codec json"]
-        a14["oplog memory"]
-        a15["bus memory"]
+        a14["automerge<br/>(WebAssembly on wazero)"]
+        a15["fanout memory"]
+        a16["fanout postgres<br/>(LISTEN/NOTIFY)"]
+        a17["NATS etc.:<br/>a distribution's adapter"]
+        a18["bus memory"]
     end
 
     d1 --> E
+    d4 --> E
     d2 --> E
     d3 --> E
-    E --> p1 & p2 & p3 & p4 & p5 & p9 & p10 & p11
+    E --> p1 & p2 & p3 & p4 & p5 & p9 & p10 & p11 & p12 & p13
     d1 --> p6 & p7
+    d4 --> p7 & p12
     a1 --> p8
 
-    p1 --- a1 & a2 & a3
-    p2 --- a2 & a3
+    p1 --- a1 & a2 & a3 & a9
+    p2 --- a2 & a3 & a9
     p3 --- a1
-    p4 --- a1 & a3
+    p4 --- a1 & a3 & a9
     p5 --- a4 & a5
     p6 --- a6 & a7 & a10
     p7 --- a8 & a11
-    p8 --- a2 & a9
+    p8 --- a2
     p9 --- a12 & a13
-    p10 --- a14
-    p11 --- a15
-    p1 -.- a9
+    p10 --- a2 & a3 & a9
+    p11 --- a14
+    p12 --- a15 & a16
+    p12 -.- a17
+    p13 --- a18
 ```
 
 A few things the diagram cannot say.
@@ -257,8 +286,23 @@ end of that transport, not something an interface talks to directly.
 Both transports are proven by the same conformance suite
 (`pkg/uiconformance`), which is how a new transport is admitted.
 `UI_CONTRACT.md` and `MULTIPLAYER.md` are the design of record for the
-interfaces and for shared editing; `OpLog`, `Bus` and `pkg/merge` are
-their engine-side pieces.
+interfaces and for shared editing.
+
+Shared editing has four engine-side pieces (ADR 0007, ADR 0008).
+`engine.Shared` is the shared-draft service: one Automerge document per
+manifest, reached through the `crdt.Engine` port, whose one adapter
+runs Automerge compiled to WebAssembly on wazero, so the binary stays
+free of cgo. `store.DocStore` keeps each document as a snapshot plus
+the chunks appended since, in memory, in SQLite (the vault's index) or
+in Postgres. `fanout.Bus` carries "this document changed" and presence
+from one replica to the others, as hints that correctness never
+depends on. The sync socket, `internal/syncserver`, is a driving
+adapter beside the HTTP API: it speaks the automerge-repo network
+protocol to interfaces and turns each message into a call on
+`engine.Shared`. Live edits and presence travel there, not on the
+client port, which only names a manifest's document
+(`SharedDocument`). `engine.Bus` is what is left of the old event
+bus: versions saved and states changed, in one process.
 
 ### 3.1 Clean architecture, and the test that keeps it
 
@@ -267,11 +311,11 @@ rings, from the centre out:
 
 | Ring | Here | May depend on |
 |---|---|---|
-| Entities | `pkg/merge` (the replicated types), `internal/kinds`, `kinds/<kind>` and `kinds/kit` (what a kind is, its rules), `internal/contract` (the schemas and flows), `internal/sentence` | nothing in the module but each other; no driver |
+| Entities | `internal/kinds`, `kinds/<kind>` and `kinds/kit` (what a kind is, its rules), `internal/contract` (the schemas and flows), `internal/sentence` | nothing in the module but each other; no driver |
 | Use cases | `internal/engine` | the ports and the entities |
-| Ports | `internal/store`, `internal/codec`, `internal/printer`, `engine.Bus` (driven); `pkg/client`, `pkg/uiconformance`, `internal/auth` (driving) | the entities; `internal/auth` also `net/http`, because the identity ports are request middleware |
-| Interface adapters | driving: `internal/api`, `internal/render`, `internal/spa`, `pkg/client/inproc`, `pkg/client/remote`, `uiconformance/clientdriver`; driven: `store/vault`, `store/sqlite`, `store/memory`, `store/postgres`, `fanout/memory`, `fanout/postgres`, `codec/yaml`, `codec/json`, `printer/chromium`, `auth/proxy`, `auth/roles`, and the helpers they share (`yamlfmt`, `store/manifestmeta`) | the rings inside them, never another adapter of their side |
-| Frameworks and drivers | `net/http`, `database/sql`, `os/exec`, `modernc.org/sqlite`, `pgx` (only in the Postgres adapters), `fsnotify`, `yaml.v3`, Chromium, the generated server (`api/gen`) | used only by adapters |
+| Ports | `internal/store` (with `store.DocStore`), `internal/codec`, `internal/printer`, `internal/crdt`, `internal/fanout`, `engine.Bus` (driven); `pkg/client`, `pkg/uiconformance`, `internal/auth` (driving) | the entities; `internal/auth` also `net/http`, because the identity ports are request middleware |
+| Interface adapters | driving: `internal/api`, `internal/syncserver`, `internal/render`, `internal/spa`, `pkg/client/inproc`, `pkg/client/remote`, `uiconformance/clientdriver`; driven: `store/vault`, `store/sqlite`, `store/memory`, `store/postgres`, `crdt/automerge`, `fanout/memory`, `fanout/postgres`, `codec/yaml`, `codec/json`, `printer/chromium`, `auth/proxy`, `auth/roles`, the conformance suites, and the helpers the adapters share (`yamlfmt`, `store/manifestmeta`) | the rings inside them, never another adapter of their side |
+| Frameworks and drivers | `net/http`, `database/sql`, `os/exec`, `modernc.org/sqlite`, `pgx` (only in the Postgres adapters), `wazero` (only in the Automerge adapter), `fsnotify`, `yaml.v3`, Chromium, the generated server (`api/gen`) | used only by adapters |
 | Composition root | `cmd/cartograph`, `internal/config` | everything; the one place an adapter is chosen |
 
 The dependency rule, dependencies point inward, is a test
@@ -284,7 +328,9 @@ module path, and standard-library drivers (`net/http`, `database/sql`,
 `os/exec`) by name. The engine may not import an adapter, a driver, or
 a syntax library; a port may not import the engine; an adapter may not
 import another adapter, because composing adapters is the root's job;
-`pkg/merge` may not import anything in the module; `cmd` is the only
+the entities and the ports `internal/codec`, `internal/printer`,
+`internal/crdt` and `internal/fanout` may not import anything else in
+the module; `cmd` is the only
 package that knows everything, which is what makes it the one place an
 adapter is chosen. A change that needs a new edge gets a new port, not
 an exception (ADR 0003).
@@ -297,26 +343,28 @@ an exception (ADR 0003).
 | `internal/sentence` | Composes the sentences a manifest stores in parts, the same way everywhere they are shown | nothing |
 | `internal/kinds`, `internal/kinds/<kind>` | The registry of kinds and each kind's rules beyond its schema | `kinds/kit` |
 | `internal/kinds/kit` | The small types rules need (`Problem`, `Lookup`) so kind packages never import the engine | nothing |
-| `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, drafts (shared editing over the op log), the event bus | `store`, `codec`, `kinds`, `kinds/kit`, `contract`, `sentence`, `merge`; a JSON Schema validator |
-| `internal/store` | The port definitions and the record shapes | `merge` |
+| `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, the shared drafts (`Shared`, and `Shape`, which maps a kind's schema onto the document), the event bus | `store`, `codec`, `crdt`, `fanout`, `kinds`, `kinds/kit`, `contract`, `sentence`; a JSON Schema validator |
+| `internal/store` | The port definitions (`ManifestStore`, `OperationalStore`, `StateStore`, `BundleStore`, `VaultIndex`, `DocStore`) and the record shapes | nothing |
 | `internal/store/vault` | Files are the truth; journalled writes; watcher; apply gate; bundles. Its index is a `store.VaultIndex` the root opens for it | `store`, `store/manifestmeta`, `yamlfmt`, `fsnotify`, `yaml.v3` |
 | `internal/store/sqlite` | SQLite adapter: manifest store, operational store, journal, document store, vault index | `store`, `store/manifestmeta`, `modernc.org/sqlite` |
 | `internal/store/postgres` | Postgres adapter for a stateless deployment: manifest store, operational store, bundle store, document store; migrations applied on open | `store`, `store/manifestmeta`, `pgx` |
-| `internal/store/memory` | In-memory adapter for tests and the conformance suite | `store`, `store/manifestmeta` |
+| `internal/store/memory` | In-memory adapter for tests and the conformance suite: manifest store, operational store, bundle store, document store | `store`, `store/manifestmeta` |
 | `internal/store/manifestmeta` | Reads the envelope (kind, id, name, labels) from manifest text for the store adapters | `yaml.v3` |
-| `internal/store/conformance` | The one suite every adapter of a port must pass | `store` |
+| `internal/store/conformance` | The one suite every adapter of a store port must pass, `RunDocStore` included | `store` |
+| `internal/crdt`, `crdt/automerge`, `crdt/conformance` | The CRDT port (`Engine`, `Doc`, `SyncState`), its Automerge adapter (the module built from `crdt/`, run on wazero), and the suite every CRDT adapter passes | nothing / `crdt`, `wazero` (automerge) |
 | `internal/fanout`, `fanout/memory`, `fanout/postgres`, `fanout/conformance` | The port that carries a hint from one replica to every other, its in-process and `LISTEN/NOTIFY` adapters, and the suite both pass | nothing / `fanout`, `pgx` (postgres) |
 | `internal/codec`, `codec/yaml`, `codec/json`, `codec/conformance` | Manifest syntax port, its two adapters, and the suite both pass | nothing / `codec`, `yamlfmt`, `yaml.v3` |
 | `internal/yamlfmt` | Canonical YAML output, shared by the YAML codec and the vault | `yaml.v3` |
-| `pkg/merge` | The CRDTs under shared editing: the field map (keyed lists, sets) and the text sequence, with hybrid logical clocks | nothing |
-| `pkg/client`, `client/inproc`, `client/remote` | The port every interface uses, and its two transports | `merge`; `engine` and `auth` (inproc), `net/http` (remote) |
-| `pkg/uiconformance`, `uiconformance/clientdriver` | The interface suite as data, its Go runner, and the reference driver | `client`, `merge` |
+| `pkg/client`, `client/inproc`, `client/remote` | The port every interface uses, and its two transports | nothing; `engine` and `auth` (inproc), `net/http` (remote) |
+| `pkg/uiconformance`, `uiconformance/clientdriver` | The interface suite as data, its Go runner, and the reference driver | `client` |
 | `internal/printer`, `printer/chromium` | PDF port and the headless-browser adapter | nothing / `printer`, `os/exec` |
 | `internal/auth`, `auth/proxy`, `auth/roles` | Identity and policy ports, context plumbing, the two middlewares; the proxy-header authenticator and the role policy | `net/http` / `auth` |
 | `internal/render` | HTML documents (charters) from engine data; reads through the engine and decodes through its codec | `engine` |
 | `internal/api`, `api/gen` | The generated strict server and the thin handlers | `engine`, `store`, `codec`, `auth`, `printer`, `render` |
+| `internal/syncserver` | The sync socket: the automerge-repo network protocol, version 1, over a WebSocket, turned into calls on `engine.Shared` | `engine`, `crdt`, `fanout`, `auth`; `coder/websocket`, a CBOR codec, `net/http` |
 | `internal/spa` | The embedded web build, a pinned `cartograph-ui` release | `net/http` |
 | `internal/config` | Every setting, from environment then flags | nothing |
+| `internal/arch` | The dependency rule as a test: a rule per package | nothing (it reads `go list`) |
 | `cmd/cartograph` | The composition root and every subcommand | everything above |
 
 Dependency direction is inward: adapters and drivers import the core,
@@ -382,7 +430,7 @@ The 18 kinds, in registry order: Team, ReportingCycle, DataSource,
 BeneficiaryGroup, Resource, FundingSource, Segment, Gap, Assumption,
 Goal, Unit, KPI, KPIReadings, Programme, Operation, Project,
 StakeholderMap, Settings. There is no Person kind and no Portfolio kind;
-docs/TAXONOMY.md` says why,
+`docs/TAXONOMY.md` says why,
 and that file is the place to argue before adding a kind.
 
 ### 4.2 The vault on disk (the reference store)
@@ -592,12 +640,18 @@ flowchart LR
         c3["/healthz /readyz"]
         c1 --- c2
     end
+    subgraph replicas["Replicas (any number, scale to zero)"]
+        r1["ENV CARTOGRAPH_STORE=postgres://...<br/>CARTOGRAPH_AUTH=proxy"]
+        r2[("Postgres<br/>store and fan-out")]
+        r1 --- r2
+    end
     subgraph org["Organisation"]
         p["oauth2-proxy / Pomerium / ingress OIDC"]
         idp["Identity provider"]
         p --- idp
     end
     users(["People"]) --> p --> c1
+    p --> r1
     backup[("git remote / snapshot")] <-. "the vault is the backup" .-> c2
 ```
 
@@ -605,13 +659,13 @@ flowchart LR
 |---|---|
 | Codebase | One repository, one `cartograph` binary, many deployments by environment |
 | Dependencies | `go.mod`; `flake.nix` pins the toolchain; the embedded web build is a `cartograph-ui` release pinned by `UI_VERSION` and `UI_SHA256`; the image builds from source |
-| Config | `internal/config`: every setting is an `CARTOGRAPH_*` variable (address, vault, codec, authenticator, policy, roles, log format, printer), a flag overrides it. See `DEPLOYMENT.md` |
-| Backing services | The vault directory, the index database, the printer and the identity provider are attached resources chosen by configuration |
+| Config | `internal/config`: every setting is a `CARTOGRAPH_*` variable (address, vault or store, fan-out, codec, authenticator, policy, roles, log format, printer), a flag overrides it. See `DEPLOYMENT.md` |
+| Backing services | The store (a vault directory and its index, or a Postgres database named by `CARTOGRAPH_STORE`), the fan-out (`CARTOGRAPH_FANOUT`: in-process, or Postgres `LISTEN/NOTIFY`), the printer and the identity provider are attached resources chosen by configuration |
 | Build, release, run | `just ci` builds; the image or `nix build .#cartograph` is the release; `cartograph serve` is the run. Nothing is edited at run time |
-| Processes | The engine keeps nothing between requests except through a port; the reference adapters keep state on a volume (the vault and its index). Two replicas against one vault are not arbitrated: run one writer, or deploy the stateless adapters `SERVERLESS.md` plans (Postgres store and op log, object-storage bundles, a bus), after which any replica serves any request and scales to zero |
+| Processes | The engine keeps nothing between requests except through a port. With a vault, state is on a volume, and two replicas writing to one vault are not arbitrated, so run one writer. With `CARTOGRAPH_STORE=postgres://...` the processes are stateless: versions, working copies, shared drafts and bundles are in the database, fan-out goes over `LISTEN/NOTIFY`, and any replica serves any request and scales to zero (`SERVERLESS.md`, ADR 0008). What a replica holds besides (open documents, sync states) is a cache |
 | Port binding | `CARTOGRAPH_ADDR`; a bare port works for platforms that hand out `PORT` |
-| Concurrency | One process per vault; the engine is safe for concurrent requests within it |
-| Disposability | SIGTERM drains in-flight requests (`CARTOGRAPH_SHUTDOWN_TIMEOUT`), `/readyz` goes 503 first, the journal makes a kill at any point safe |
+| Concurrency | One process per vault, or as many as needed against one Postgres store; the engine is safe for concurrent requests within a process |
+| Disposability | SIGTERM drains in-flight requests (`CARTOGRAPH_SHUTDOWN_TIMEOUT`), `/readyz` goes 503 first; the journal (vault) or a transaction (Postgres) makes a kill at any point safe, and a client on the sync socket reconnects to any replica |
 | Dev/prod parity | `just` recipes run inside the flake, and the image is built from the same flake; CI runs `just ci` and `nix build` on both architectures |
 | Logs | `log/slog` to stdout, text or JSON; health probes are not logged |
 | Admin processes | Every admin task is a subcommand of the same binary against the same adapters (`import`, `export`, `apply`, `snapshot`, `render`, `handoff`) |
@@ -629,22 +683,24 @@ and what a new implementation must pass.
 |---|---|---|---|---|
 | A new kind of thing to capture | CRD | `kinds.Spec` (schema file + rules func) | 18 kinds | A schema under `contract/schemas`, a line in `kinds/registry.go`, words in `cartograph-ui's src/copy.ts`; the engine does not change |
 | A rule beyond the schema | Admission webhook | `kit.RulesFunc` | per-kind packages | A function `(doc, RuleContext) []Problem`; cross-kind lookups through `kit.Lookup` |
-| Manifests somewhere other than files | CSI driver | `store.ManifestStore` | vault, sqlite, memory | An adapter that passes `conformance.RunManifestStore`; wire it in `cmd/cartograph/store.go` |
-| The index in Postgres (many replicas, one database) | etcd backend | `store.VaultIndex` | sqlite | An adapter that passes `conformance.RunVaultIndex`; pass its opener as `vault.Options.OpenIndex` in `cmd/cartograph/store.go` |
+| Manifests somewhere other than files | CSI driver | `store.ManifestStore` | vault, sqlite, memory, postgres | An adapter that passes `conformance.RunManifestStore`; wire it in `cmd/cartograph/store.go` |
+| The vault's index in another database | etcd backend | `store.VaultIndex` | sqlite | An adapter that passes `conformance.RunVaultIndex`; pass its opener as `vault.Options.OpenIndex` in `cmd/cartograph/store.go` |
 | Define projects in a database, not YAML | Different storage class | `store.ManifestStore` without `StateStore` | sqlite, postgres (`CARTOGRAPH_STORE`) | The API is the only write path; the apply gate simply reports `ErrNoState` |
 | Write manifests in another syntax | Serialisation (JSON/protobuf at the API server) | `codec.Codec` | yaml, json | An adapter that passes `codec/conformance.Run`; select it by `CARTOGRAPH_CODEC`; migrate a vault with `cartograph export --codec` |
 | Authentication | Authn webhook, OIDC | `auth.Authenticator` | none, proxy | An adapter that returns a `Principal`; select it by `CARTOGRAPH_AUTH` |
 | User types and permissions | RBAC, authz webhook | `auth.Authorizer` | AllowAll, roles | An adapter over `(Principal, Action)`; enforced once for the whole API by `auth.Authorize`; select it by `CARTOGRAPH_AUTHZ` |
 | PDF without Chromium | Container runtime (CRI) | `printer.Printer` | chromium, none | An adapter over `Print(ctx, html)` |
-| Handoff bundles in object storage | Volume plugin | `store.BundleStore` | vault, memory | An adapter over `PutBundle`; the state entry records the location it returns |
+| Handoff bundles in object storage | Volume plugin | `store.BundleStore` | vault, memory, postgres | An adapter over `PutBundle`; the state entry records the location it returns |
 | A new interface (terminal, native, bot) | kubectl, the dashboard: clients of the API | `pkg/client.Client` + the `Driver` protocol | web (on the port; flows still hand-coded), reference driver | Build on the client port, write a driver, pass `pkg/uiconformance` in your own CI (`UI_CONTRACT.md`) |
 | Another transport (socket, SSH, broker) | API server transports | `pkg/client.Client` as an adapter | inproc, remote (HTTP over TCP or UNIX socket) | Implement the port, pass the same suite with the reference driver |
-| Shared drafts across replicas | etcd watch | `store.DocStore`, `fanout.Bus` | documents: memory, sqlite, postgres; fan-out: memory, postgres (`CARTOGRAPH_FANOUT`) | A document store passing `RunDocStore`; a fan-out adapter (NATS, say) passing `fanout/conformance.Run` (`EXTENDING.md`) |
+| Shared drafts kept somewhere else | Storage class | `store.DocStore` | memory, sqlite (the vault's index), postgres | An adapter that passes `conformance.RunDocStore`; wire it in `cmd/cartograph/store.go` |
+| Fan-out across replicas | etcd watch | `fanout.Bus` | memory, postgres (`CARTOGRAPH_FANOUT`) | Add NATS, Redis streams or a cloud pub/sub: an adapter that passes `fanout/conformance.Run`, selected by a new `CARTOGRAPH_FANOUT` value (`EXTENDING.md`) |
+| Another CRDT engine | etcd's storage engine | `crdt.Engine`, `crdt.Doc` | automerge | An adapter that passes `internal/crdt/conformance`; interfaces must then speak its sync protocol too (ADR 0007) |
 
 The pattern for every row is the same three steps. Write the adapter in
 its own package under the port's directory. Make it pass the port's
-conformance suite, which is how the SQLite and memory adapters are proven
-interchangeable today. Pick it in `cmd/cartograph` from a configuration value.
+conformance suite, which is how the SQLite, memory and Postgres adapters
+are proven interchangeable today. Pick it in `cmd/cartograph` from a configuration value.
 No step touches the engine, the contract or the web interface.
 
 What this is not: a plugin system that loads code at run time. An adapter
@@ -664,7 +720,8 @@ survives every tool choice. It can be reviewed in a pull request, restored
 from any backup, generated by a script, and read without Cartograph running.
 The cost is that concurrent writers to one directory need arbitration,
 which the journal provides within one process and nothing provides across
-processes yet. The Postgres index is the answer when that day comes.
+processes. A deployment that needs more than one writer uses the
+Postgres store instead, and gives up reading the record with `cat`.
 
 **Why the engine knows no file path and no HTTP header.** So the same
 rules run in every front door and in every test. The handoff gate is one
@@ -698,22 +755,22 @@ Word. Checks block the handoff, where incompleteness has a cost.
 
 In rough order of expected need.
 
-- A Postgres `VaultIndex` adapter, then a Postgres `ManifestStore`, each
-  proven by the conformance suite. Needed for more than one replica.
 - An OIDC `Authenticator`, for deployments without a proxy.
 - A finer `Authorizer` (per kind, per manifest, per state transition)
   once an organisation needs one; the shipped roles policy is read or
   write for the whole API.
-- The ops and events endpoints of the HTTP transport, the SQLite op log,
-  presence, and the terminal interface (`UI_CONTRACT.md`,
-  `MULTIPLAYER.md`).
+- The events endpoint of the HTTP transport, so `Subscribe` works over
+  `remote` as it does in process.
+- The terminal interface (`UI_CONTRACT.md`).
+- Presence and live editing in a terminal interface: an automerge-repo
+  peer on the sync socket, as the web interface has (`MULTIPLAYER.md`).
 - A document-rendering port, if a second output format joins HTML, JSON
   and PDF.
 - Out-of-process adapters, if an organisation needs to write one in
   another language.
 
 Related reading: `DEPLOYMENT.md` (running it), `SERVERLESS.md`
-(stateless operation and the plan), `EXTENDING.md` (adding to it),
+(stateless operation), `EXTENDING.md` (adding to it),
 `../README.md` (building it), `DESIGN_RULES.md` (how it behaves),
 `TAXONOMY.md` (what the nouns mean), and `adr/` (each decision, with
 what it cost).

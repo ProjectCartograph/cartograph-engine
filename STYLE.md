@@ -16,7 +16,7 @@ Enforced by `just ci`:
 
 - `gofmt` (`just fmt-check`), `go vet`, `staticcheck` (`just lint`).
 - The dependency rule, as a test (`just arch`, `internal/arch`):
-  dependencies point inward. Entities (`pkg/merge`, the kinds) import
+  dependencies point inward. Entities (the kinds, the contract) import
   nothing of the engine; the engine imports ports, never an adapter or
   a driver; adapters import the engine's ports; `cmd` is the only
   package that knows everything. A package that needs something from
@@ -49,7 +49,7 @@ every pull request.
 
 - **First line**: a short summary of what the change does, as an
   imperative sentence without a trailing period, under 72 characters.
-  "Add a Postgres op log", "Refuse a goal under the wrong level". Not
+  "Add a NATS fan-out adapter", "Refuse a goal under the wrong level". Not
   "Fixed bug", not "WIP", not a type prefix (`feat:`, `fix:`): this
   repository does not use Conventional Commits.
 - **A blank line.**

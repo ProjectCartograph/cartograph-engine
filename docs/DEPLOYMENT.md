@@ -1,6 +1,7 @@
 # Deploying Cartograph
 
-Cartograph is one binary that serves a directory. Everything a deployment
+Cartograph is one binary that serves a directory, or a Postgres
+database. Everything a deployment
 decides is an environment variable; a flag overrides it; a default works
 on a laptop. This page is the operator's view. `ARCHITECTURE.md` says why
 things are shaped this way.
@@ -112,6 +113,10 @@ This is only safe when the proxy is the only route to the port. Bind
 alone can reach. A client that can reach Cartograph directly can set the
 header and be anyone. The same caveat applies to every system that uses
 this pattern; it is not special to Cartograph.
+
+Live editing uses a WebSocket at `/api/v1/sync`, behind the same
+authentication and policy as every other request. The proxy must pass
+WebSocket upgrades on that path and allow long-lived connections there.
 
 **Authorization.** `CARTOGRAPH_AUTHZ=allow` (default) lets every principal do
 everything, which is right when the proxy already decides who may reach

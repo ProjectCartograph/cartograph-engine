@@ -32,8 +32,9 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 ## Rules that are not negotiable
 
 - **Contract first.** `contract/openapi.yaml`, `contract/schemas/*.schema.json` and `contract/flows/*.flow.json` are the truth. Change them, `just generate`, commit the generated Go with the change. Never edit `internal/api/gen`, `internal/contract/schemas` or `internal/contract/flows` by hand.
-- **Clean architecture, enforced.** Dependencies point inward: entities (`pkg/merge`, the kinds) know nothing of the engine; the engine knows ports, never an adapter, never a driver, never a syntax; adapters know the ports; `cmd` is the only package that knows everything and the only place an adapter is chosen, from configuration. `internal/arch` is the test; `docs/ARCHITECTURE.md` section 3 is the picture. A new capability that needs a file path, SQL, an HTTP header, a browser or a syntax is a new port plus an adapter.
-- **An adapter passes its conformance suite or it is not done.** `internal/store/conformance`, `internal/codec/conformance`, `pkg/uiconformance`.
+- **Clean architecture, enforced.** Dependencies point inward: entities (the kinds, the contract) know nothing of the engine; the engine knows ports, never an adapter, never a driver, never a syntax; adapters know the ports; `cmd` is the only package that knows everything and the only place an adapter is chosen, from configuration. `internal/arch` is the test; `docs/ARCHITECTURE.md` section 3 is the picture. A new capability that needs a file path, SQL, an HTTP header, a browser or a syntax is a new port plus an adapter.
+- **An adapter passes its conformance suite or it is not done.** `internal/store/conformance`, `internal/codec/conformance`, `internal/crdt/conformance`, `internal/fanout/conformance`, `pkg/uiconformance`.
+- **Shared drafts are Automerge documents** (`docs/adr/0007`). `crdt/` is the Rust crate behind `internal/crdt/automerge/automerge.wasm`, rebuilt by `just generate`, never edited by hand.
 - **Stateless by design.** Nothing in the engine survives a request except through a port. A change that keeps state in the process (a cache is fine; a fact is not) is wrong; `docs/SERVERLESS.md` says what holds state today and which adapter replaces it.
 - **Style is Google's, enforced.** `STYLE.md`: the Go style guide, gofmt, vet, staticcheck; commit messages as Google CL descriptions (imperative summary, blank line, a body that says what and why, sign-off), checked by `just commit-check`. No Conventional Commits prefixes.
 - **Upstream is the product and nothing else.** No hand-off notes, session logs, task cards, plans, transcripts, screenshots, scratch files or editor and agent state are ever committed (`just clean-tree` fails the build on them). What you did and what you ran goes in the pull request description.
@@ -48,12 +49,12 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 ## Where things are
 
 - `docs/ARCHITECTURE.md`: the system, the hexagon, the flows, the extension points, the clean-architecture mapping. Read sections 3 and 7 before any structural change.
-- `docs/DEPLOYMENT.md`: configuration (`CARTOGRAPH_*`), the image, identity, backups. `docs/SERVERLESS.md`: stateless operation and the plan.
-- `docs/EXTENDING.md`: adding a kind, a store, a codec, an authenticator, a transport.
+- `docs/DEPLOYMENT.md`: configuration (`CARTOGRAPH_*`), the image, identity, backups. `docs/SERVERLESS.md`: stateless operation.
+- `docs/EXTENDING.md`: adding a kind, a store, a codec, an authenticator, a fan-out, a CRDT engine.
 - `docs/UI_CONTRACT.md`, `docs/MULTIPLAYER.md`: what interfaces are built from, and shared editing.
 - `docs/DESIGN_RULES.md`: how Cartograph behaves. `docs/TAXONOMY.md`: what the nouns mean.
 - `STYLE.md`: code and commits. `CONTRIBUTING.md`: the loop.
-- `pkg/`: the public surface other repositories import (`client`, `merge`, `uiconformance`). Changing a signature there is a breaking change; say so.
+- `pkg/`: the public surface other repositories import (`client`, `uiconformance`), under the module path `github.com/ProjectCartograph/cartograph-engine/v2`. Changing a signature there is a breaking change; say so.
 
 ## How to write
 

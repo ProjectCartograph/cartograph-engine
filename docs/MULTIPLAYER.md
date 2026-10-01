@@ -1,177 +1,306 @@
-# Multiplayer
+# Collaboration: CRDTs, sync and presence
 
-> **Superseded in 2.0.0.** This page describes the replicated types in
-> `pkg/merge`, which 1.1.0 deprecates. ADR 0007 replaces them with
-> Automerge in the engine and in every interface, and ADR 0008 makes the
-> engine stateless over Postgres. This page will be rewritten when that
-> ships.
+**Design of record for shared editing, from engine 2.0.0. The decisions
+are ADR 0007 (Automerge is the one CRDT) and ADR 0008 (Postgres holds
+the state; fan-out is a port). This page says how it works.**
 
-**Design of record: sentences merge character by
-character, transports are adapters. Built: `pkg/merge` (the field map
-and the text sequence, with convergence proofs), `store.OpLog` with the
-memory adapter and conformance, `engine.Drafts` and `engine.Bus`, the
-client port's draft methods over the in-process transport.**
+People define work together. Several of them open the same project at
+once, from browsers and terminals, connected to any replica of the
+engine, sometimes over a connection that drops. Each sees the others'
+edits as they happen, and where the others are on the screen. Each keeps
+working while disconnected, and everyone ends with the same document
+without anyone deciding whose edit counts. Nobody needs a shared screen
+or a projector to work on one definition together.
 
-Two people define the same project at the same time, one in a browser
-and one in a terminal, perhaps on another machine over SSH. Each sees
-the other's edits as they happen, each can save, nobody's work is lost,
-two people typing in one sentence both keep their words, and when both
-set the same field the later one shows and the earlier one is kept
-where its author can see it. This page is how the engine makes that
-true, and why this way.
+## 1. Requirements, in the terms the field uses
 
-## 1. What is shared, and what is not
+- **Optimistic replication.** Every participant edits a local replica
+  at once, with no round trip and no lock, and changes propagate
+  afterwards.
+- **Strong eventual consistency.** Any two replicas that have received
+  the same set of changes hold the same document, whatever order the
+  changes arrived in and however often. No coordinator and no
+  consensus round is needed.
+- **Partition tolerance.** A network partition (a laptop offline, a
+  replica cut off from the database's notifications, a whole region
+  away) loses no edit. When the partition heals, the replicas exchange
+  what the others lack and converge.
+- **Stateless engine processes.** Following the twelve-factor process
+  model, a replica keeps nothing a later request needs. Any replica
+  serves any request, a replica can be killed at any moment, and the
+  deployment scales out and in without coordination (`SERVERLESS.md`).
+- **Presence.** Each person sees who else is on the same screen, which
+  field they are in, their caret, and their pointer.
 
-Cartograph already distinguishes two things, and multiplayer keeps the line.
+Conflict-free replicated data types (CRDTs) are the standard answer to
+the first three ([crdt.tech](https://crdt.tech) collects the
+literature). Cartograph uses [Automerge](https://automerge.org), the
+CRDT library from Kleppmann, Beresford and Ink & Switch, in the engine
+and in every interface.
 
-- A **version** is immutable, numbered, attributed, and what `diff`,
-  `export`, the charter and the handoff read. Saving a version is a
-  decision one person makes, with a reason. Nothing here changes that.
-- A **working copy** is the draft between versions. It becomes one
-  shared draft per manifest, made of many people's edits, converging to
-  the same document on every screen, and still materialised into the
-  working copy everything else reads today.
+## 2. What is shared, and what is recorded
 
-The unit of collaboration is the field (and inside a sentence, the
-character); the unit of record stays the version.
+There are two things, and the line between them is the same as before
+2.0.
 
-## 2. The data structure
+- A **version** is immutable, numbered and attributed. It is what
+  `diff`, `export`, the charter and the handoff read. Saving one is a
+  decision a person makes, with a reason, and it is validated.
+- The **shared draft** is everything between versions: one Automerge
+  document per manifest, which everyone edits at once. The engine
+  materialises it into the manifest's working copy, so everything that
+  reads working copies keeps working.
 
-`pkg/merge` holds two replicated types, both CRDTs: any set of edits,
-applied in any order, on any replica, yields the same document.
+Saving a version reads the draft. It does not reset it. The draft
+carries on across versions, so an edit made offline before a version
+was saved still merges after it.
 
-**The field map.** A last-writer-wins map over the manifest's leaf paths
-(Shapiro, Preguica, Baquero, Zawirski, "A comprehensive study of
-Convergent and Commutative Replicated Data Types", 2011, the LWW-Map
-built from LWW-Registers). Each write is one `Op`: a path, a value or a
-delete, a clock, and the clock of the value the writer saw (its base).
-Lists of identified items are merged by key, addressed as
-`/spec/keyResults/{kr-2}/target`, with a per-item rank for order
-(fractional indexing). Lists of values are sets. Which lists are keyed
-is the schema's business (`x-cartograph-list-key`, the idea of Kubernetes'
-`x-kubernetes-list-map-keys`); the engine reads it (`Engine.Keyer`).
+## 3. The CRDT, and the standard patterns it uses
 
-**The text sequence.** A `sentence` field is not one register but a
-sequence of characters, each with a unique id and the id of the
-character it was typed after: the Replicated Growable Array (Roh, Jeon,
-Kim, Lee, "Replicated abstract data types", 2011). Two people editing the
-same sentence both keep what they typed, in a deterministic order, on
-every replica. An interface with a plain input box does not track
-cursors: `Text.Edit(newValue)` turns the box's new value into character
-ops (keep the common prefix and suffix, delete the middle, retype it),
-which is what a keystroke becomes. The first text op on a scalar leaf
-turns it into a text seeded from the string, identically on every
-replica; a later plain Set replaces the whole text under the usual
-last-writer rule.
+An Automerge document is a JSON-like tree of maps, lists, text and
+scalars, replicated as a history of changes.
 
-Clocks are hybrid logical clocks (Kulkarni, Demirbas, Madappa, Avva,
-Leone, "Logical physical clocks", 2014): wall time, a counter within the
-millisecond, the actor as the last tiebreak. A replica that receives a
-newer clock stamps its next write after it.
+**Changes and causal history.** Every edit is a *change*: a set of
+operations, stamped with the editing replica's *actor id* and a
+sequence number for that actor. It names the changes it builds on
+(its dependencies) and is identified by the hash of its contents. The
+changes form a hash-linked directed acyclic graph, as commits do in
+git. The *heads* are the changes nothing depends on yet, and equal
+heads mean equal documents. Because a change is identified by its
+hash, receiving it twice changes nothing (idempotence). Because a
+change waits until its dependencies have arrived, the order of arrival
+does not matter (causal delivery is enforced at the receiver). Those
+two properties make delivery over an unreliable network safe.
 
-The tests prove the properties rather than assert them: 200 random
-field ops over 25 random orders converge; 150 random text edits by three
-actors over 20 random orders converge with no op left waiting for its
-anchor; merge is commutative, associative and idempotent for both types;
-decompose then materialise is the identity.
+**Operation ids are Lamport timestamps.** Every operation has an id
+made of a counter and the actor (`counter@actor`). The counter is
+higher than any counter the actor had seen when it made the operation,
+which is Lamport's logical clock. These ids give a total order that is
+consistent with causality. Every tie-break in the document uses that
+order, so every replica breaks every tie the same way.
 
-Why not Automerge or Yjs. They are the right general answer and the
-wrong fit here: a manifest is a form, the Go binding to Automerge is cgo
-over a Rust core (the static image cannot carry it), and a form needs a
-map with keyed lists plus a text sequence for a few fields, which is
-what was built, in 600 lines, with proofs. If an organisation's
-interface already runs Yjs, the ops here translate; the clocks and ids
-are the same shape.
+**Maps are multi-value registers.** When two replicas set one key
+concurrently, both values are kept. The one with the greater operation
+id is shown, and the others remain as *conflicts* until somebody sets
+the key again (Shapiro, Preguiça, Baquero and Zawirski, 2011, describe
+the multi-value register). A conflict is not an error. It is the
+literal record that two people chose differently, and Cartograph shows
+it to them (section 5).
 
-## 3. Conflicts are notes, never refusals
+**Lists and text are sequences in the RGA family** (Roh, Jeon, Kim and
+Lee, 2011, the Replicated Growable Array). Every element has the id of
+the operation that inserted it and is placed after the element it was
+typed after. Concurrent insertions at one place are ordered by
+operation id, and a deleted element stays as a tombstone, so later
+insertions that refer to it still find their place. Two people typing
+in one sentence both keep their words. An edit inside a list item that
+someone else deleted does not bring a fragment of it back, because the
+item, not its fields, is what the list holds. Kleppmann and Beresford
+(2017, "A Conflict-Free Replicated JSON Datatype") give the composition
+of maps and lists that Automerge's document model follows.
 
-Two people set the same field at the same time. The state converges
-whichever write arrives first (the later clock holds the field). What
-the engine adds is a **Conflict** note: when an op's base is not the
-clock of the value it is overwriting and the other writer is a different
-actor, the losing value is kept with its author. The interface shows it
-as a check item at that field (`state: note`, "Jo changed this while it
-was being edited; the earlier value was X") with the earlier value one
-action from being restored. Sentences never raise this note: they merge.
-This is Kubernetes' server-side apply conflict, turned from a refusal
-into a note, because `DESIGN_RULES.md` says a check never blocks a save
-and that rule holds here too.
+**Cursors.** A position in a text or a list is held as the id of the
+element it is next to, not as an index. It therefore stays on the same
+character while others insert before it. Presence carets use these.
 
-## 4. The engine
+**Sync.** Two replicas reconcile with Automerge's sync protocol, which
+follows Kleppmann and Howard (2020, "Byzantine Eventual Consistency and
+the Fundamental Limits of Peer-to-Peer Databases"). Each side sends its
+heads and a Bloom filter of the changes it added since the last
+exchange. From those each side works out what the other is missing and
+sends it, usually in one round trip. What a side remembers about a peer
+(the sync state) only saves work. A fresh sync state starts from heads
+and arrives at the same place, which is why a replica can forget it.
+
+**Storage.** A document saves as a compressed, columnar encoding of its
+whole history (a snapshot), or as the changes since the last save (an
+incremental chunk). Loading a snapshot followed by chunks in any order
+reproduces the document.
+
+## 4. Manifests as documents
+
+A manifest is a form, not a free-form document, and the engine maps it
+onto Automerge with a *shape* read from the kind's schema
+(`Engine.Shape`), so engine and interfaces agree without either deciding
+it by hand:
+
+- **Keyed lists.** A list of objects is keyed by
+  `x-cartograph-list-key`, or by `id` when its items have one. When a
+  whole document is folded into the draft, items are matched by key,
+  so an item keeps its identity and the edits inside it. A reordered
+  item is deleted and re-inserted, because Automerge has no move
+  operation (Kleppmann, 2020, "Moving Elements in List CRDTs", describes
+  one). An edit made inside an item at the same moment someone moves
+  that item can therefore be lost. Keyed lists in a form are rarely
+  reordered, and this cost is accepted.
+- **Text and scalars.** A string is a text, merged character by
+  character, when the schema leaves it as free prose: no `enum`,
+  `const`, `format`, `pattern` or `x-cartograph-ref`. Every other
+  string (an id, a reference, a date, a choice) is a scalar, so
+  concurrent writes become a conflict rather than an id nobody wrote.
+  Interfaces read which a field is from the document itself.
+- **Reconcile.** Every write that is not a sync message (`PUT
+  .../working`, an import, a file changed in a vault, a discarded draft)
+  arrives as a whole document. The engine folds it into the draft as
+  one change, the smallest diff from the current state: objects key by
+  key, keyed lists by key, unkeyed lists by position, and texts by
+  splice (`update_text`), never by replacement. Every path into a draft
+  ends in the same document.
+- **Genesis.** A manifest's document is made on first use from its
+  working copy or current version, then stored with
+  `DocStore.Create`, which is atomic. If two replicas make it at the
+  same moment, one wins and the other loads the winner's before serving
+  anything. Actors are always random.
+
+## 5. Conflicts are notes, never refusals
+
+A field holding concurrent values is listed by `Shared.Conflicts`,
+which reads the document's conflicts on demand. No replica keeps a list
+of them. Interfaces show each one at its field as a note: the value
+shown, the other value, and one action to choose it instead. Choosing
+is an ordinary edit, which resolves the conflict for everyone. Texts
+never raise one, because they merge. This follows `DESIGN_RULES.md`: a
+check never blocks a save, and neither does a disagreement.
+
+## 6. The engine as a peer
 
 ```mermaid
 flowchart LR
-    subgraph interfaces["Interfaces (their own repository)"]
-        W["Web"]
+    subgraph clients["Interfaces"]
+        B1["Browser tab<br/>automerge-repo + IndexedDB"]
+        B2["Browser tab"]
         T["Terminal"]
     end
-    subgraph port["pkg/client.Client"]
-        I["inproc"]
-        R["remote: HTTP + SSE\nover TCP, UNIX socket, SSH forward"]
+    subgraph replicas["Engine replicas (stateless)"]
+        R1["replica A<br/>sync socket, Shared"]
+        R2["replica B<br/>sync socket, Shared"]
     end
-    subgraph engine["Engine"]
-        D["Drafts: one merge.State per open manifest,\nbuilt from version + log, materialised to the working copy"]
-        B["Bus: ops, version, state, presence"]
-    end
-    L[("store.OpLog")]
-    T --> I --> D
-    W --> R --> D
-    D --> L
-    D --> B
-    B --> I
-    B --> R
+    PG[("Postgres<br/>versions, working copies,<br/>documents: snapshot + chunks")]
+    F{{"fan-out port<br/>LISTEN/NOTIFY, or NATS..."}}
+    B1 -- "WebSocket: automerge-repo protocol v1" --> R1
+    B2 --> R2
+    T --> R2
+    R1 <--> PG
+    R2 <--> PG
+    R1 -- "doc changed, presence" --> F
+    F --> R2
+    F --> R1
 ```
 
-- `store.OpLog` (built; memory adapter; `conformance.RunOpLog`): an
-  append-only log of ops per manifest with dense sequence numbers.
-  Clients catch up by position. Compacted at every version.
-- `engine.Drafts` (built): `Open` builds the state from the working copy
-  or the current version (`merge.Decompose` with the kind's keyer) plus
-  the log; `Edit` applies, appends, publishes, keeps conflict notes and
-  materialises the working copy through `PutWorking`; `Since` catches a
-  client up; a version save (`Commit`, `CommitProject`, `Snapshot`)
-  compacts the log and clears the notes.
-- `engine.Bus` (built; in-process adapter): fan-out of `ops`, `version`,
-  `state` and `presence` events per manifest. Across replicas the
-  Postgres index's `LISTEN/NOTIFY` or a broker is the adapter behind
-  the same interface.
-- Presence (planned): who has which manifest open and which field,
-  ephemeral, on the bus, shown as a mark beside the field.
+- **The sync socket** (`internal/syncserver`, `GET /api/v1/sync`)
+  speaks the automerge-repo network protocol, version 1: CBOR messages
+  over a WebSocket, `join` and `peer` to start, then `request`, `sync`,
+  `doc-unavailable` and `ephemeral`. The stock
+  `@automerge/automerge-repo` WebSocket adapter connects to it
+  unchanged. Nothing on the wire is Cartograph's own.
+- **The shared-draft service** (`engine.Shared`) keeps each document as
+  a snapshot plus chunks in the `DocStore`. On every message it first
+  folds in the chunks other replicas stored since it last looked. It
+  then applies the message, appends the change it produced as a new
+  chunk, writes the working copy, and publishes a hint on the fan-out
+  port. Every 128 chunks, a replica folds them into a new snapshot.
+- **Fan-out wakes the other replicas.** A replica with peers on a
+  document subscribes to its topic. On a hint it offers each of those
+  peers whatever they lack. Hints are at most once. Every connection
+  also offers each of its documents every 15 seconds, so a lost hint
+  costs at most that long, and never an edit.
+- **Permissions are per document.** A peer may open a document only if
+  the authorizer lets the principal read its manifest. A sync message
+  from a principal who may not write is tried on a copy first; if it
+  would change anything it is refused and the connection closes. The
+  presence document (section 8) takes no changes from anyone.
 
-## 5. Transports
+## 7. Failure and partition, case by case
 
-The client port carries `Edit`, `OpsSince` and `Subscribe`. In-process
-they are direct calls and a channel. Over HTTP (planned) they are
-`POST /manifests/{kind}/{id}/ops`, `GET .../ops?after=N` and
-`GET /events` as Server-Sent Events, which every proxy understands and
-which reconnects itself with `Last-Event-ID`. The same HTTP runs over a
-UNIX domain socket (`CARTOGRAPH_ADDR=unix:///run/cartograph.sock`), so a terminal
-interface on the same machine needs no port, and `ssh -L` carries that
-socket to another machine. A second user joining a terminal session over
-SSH (Charm's `wish` hosts a Bubble Tea program per SSH connection) shares
-one in-process client, so the two sessions are two editors of one
-draft with no transport between them at all.
+| What happens | What the system does | What is lost |
+|---|---|---|
+| A browser goes offline and keeps editing | Edits go to its local replica and IndexedDB. On reconnect the sync protocol sends them and fetches what it missed | Nothing |
+| A version is saved while someone is offline | The draft carries on. Their edits merge into it on reconnect and show in the next version | Nothing |
+| A replica is killed mid-request | The client reconnects to any replica, which loads the document from the store and syncs from heads. A change the dead replica had accepted but not stored was not acknowledged, and the client still holds it and sends it again | Nothing |
+| A fan-out hint is lost, or the notification channel is partitioned | Peers on other replicas get the change at the next periodic offer (15 seconds) or on their own next message | Latency only |
+| Two replicas create a manifest's document at once | `DocStore.Create` is atomic; one document stands, and the other replica loads it | Nothing |
+| Two people set one scalar field at once | Both values are kept; one shows; a conflict note offers the other | Nothing |
+| Two people type in one sentence at once | Both keep their words, in an order every replica agrees on | Nothing |
+| The database is unavailable | The engine cannot store changes and refuses them, so clients keep them locally and send them again later | Nothing; availability of the server side only |
 
-A transport that loses its connection keeps editing its local state
-and, on reconnect, sends what it wrote and asks for what it missed. The
-merge makes that safe; there is no rebase, only merge.
+## 8. Presence
 
-## 6. The scenarios
+Presence is ephemeral. It travels as automerge-repo `ephemeral`
+messages on the document of the screen a person is on: a manifest's own
+document, or the presence document (`GET /presence`) on screens that are
+not about one manifest. The engine relays each one to the document's
+other peers on this replica, and through the fan-out port to the other
+replicas. It never reads, stores or logs them.
 
-The conformance suite gains scenarios that drive two drivers against one
-engine, in both transports and in any mix: concurrent edits of different
-fields converge; two people typing in one sentence both keep their
-words; concurrent sets of one field leave the later value and a note on
-both screens; a version saved by one is seen by the other; a
-disconnected client reconnects and converges. The engine-level versions
-of the first three exist today (`drafts_test.go`).
+The payload is `contract/schemas/presence.schema.json`: the session, the
+principal and display name, a colour, the route, the focused field (a
+JSON pointer), the caret as two Automerge cursors, and the pointer. The
+pointer is held as the element it is over (a control's
+`data-cartograph-field`, or a region's `data-cartograph-region`) with x
+and y as fractions of that element, so a pointer lands over the same
+thing on screens of different sizes. A session repeats itself every
+three seconds and on every change (pointer movement at most twenty
+times a second), and sends `leaving` when it closes. Receivers forget a
+session they have not heard from for ten seconds. This is the same
+shape as Yjs's awareness protocol, carried on automerge-repo's
+ephemeral channel.
 
-## 7. Open
+A session is a browser tab or a terminal, not a person: one principal
+may have several. Presence names the authenticated principal of a live
+session and ends with it. It is not a record of a person, and Cartograph
+still has no Person kind (`DESIGN_RULES.md`).
 
-- Presence detail (manifest and field, or manifest only). The design
-  assumes field.
-- Whether a version save should warn when another person has unsaved
-  ops on the same manifest. The design takes the shared draft as it
-  stands, since the draft is one and shared.
-- Peer-to-peer between two terminals with no engine between them: the
-  CRDT allows it; nothing is planned until somebody needs it.
+## 9. What each replica holds, and why that is still stateless
+
+| Held in a replica | Why it is only a cache |
+|---|---|
+| Open documents, keyed by id | Refreshed from the store before every use; dropped when the last peer leaves |
+| A sync state per connection and document | Lives as long as the connection; a new one starts from heads |
+| Fan-out subscriptions per open document | Re-made on the next connection; hints are only hints |
+| Presence in flight | Never stored; the next heartbeat replaces it |
+
+Everything that must outlive a request is in the store: versions,
+working copies and documents. With `CARTOGRAPH_STORE=postgres://...`
+every replica serves every request. With a vault, the documents live
+in the vault's index database beside the files. Delete the index and a
+manifest's draft starts again from its working copy, as the vault's
+promise ("files are the truth") says it should.
+
+## 10. How it is tested
+
+- `internal/crdt/conformance` runs against the Automerge adapter:
+  - save, load and incremental round trips;
+  - reconcile idempotence;
+  - keyed identity across reorders;
+  - delete winning over a concurrent edit inside the item;
+  - concurrent typing in one text;
+  - conflicts reported identically on every replica;
+  - a partition property test. Three to five replicas edit at random
+    while a simulated network drops, duplicates and reorders messages
+    and splits them into groups, then heals. Every replica must end
+    with equal heads, equal JSON and equal conflicts.
+- `conformance.RunDocStore` and `internal/fanout/conformance` hold every
+  adapter of those ports to the same behaviour, and the Postgres
+  adapters run them against a real database in `just test-postgres`.
+- A multi-replica test starts two engines on one database, connects a
+  peer to each, edits on both, and checks they converge.
+- The web interface's tests join two automerge-repo instances over an
+  in-memory network. They check that edits through its client port
+  converge, and that presence arrives, expires and leaves.
+
+## 11. References
+
+- Shapiro, Preguiça, Baquero, Zawirski. *A comprehensive study of
+  Convergent and Commutative Replicated Data Types.* INRIA, 2011.
+- Roh, Jeon, Kim, Lee. *Replicated abstract data types: Building blocks
+  for collaborative applications.* JPDC, 2011.
+- Kleppmann, Beresford. *A Conflict-Free Replicated JSON Datatype.*
+  IEEE TPDS, 2017.
+- Kleppmann, Howard. *Byzantine Eventual Consistency and the
+  Fundamental Limits of Peer-to-Peer Databases.* 2020.
+- Kleppmann. *Moving Elements in List CRDTs.* PaPoC, 2020.
+- Lamport. *Time, Clocks, and the Ordering of Events in a Distributed
+  System.* CACM, 1978.
+- Automerge documentation and the automerge-repo WebSocket protocol
+  (`packages/automerge-repo-network-websocket/README.md` in the
+  automerge-repo repository).
