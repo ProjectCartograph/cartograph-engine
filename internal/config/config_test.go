@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"strings"
 	"testing"
 	"time"
 )
@@ -85,5 +86,45 @@ func TestAuthzAndCodecValidation(t *testing.T) {
 	c, err = FromEnv(env(map[string]string{"CARTOGRAPH_CODEC": "json"}))
 	if err != nil || c.Codec != "json" {
 		t.Fatalf("json codec: %v", err)
+	}
+}
+
+func TestStoreSelectsPostgresAndItsFanout(t *testing.T) {
+	c, err := FromEnv(env(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Store != "" || c.FanoutAdapter() != "memory" {
+		t.Fatalf("a vault fans out in memory: store %q, fanout %q", c.Store, c.FanoutAdapter())
+	}
+	c, err = FromEnv(env(map[string]string{"CARTOGRAPH_STORE": "postgres://u:secret@db/cartograph"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.FanoutAdapter() != "postgres" {
+		t.Fatalf("a Postgres store fans out over Postgres by default, got %q", c.FanoutAdapter())
+	}
+	c, err = FromEnv(env(map[string]string{"CARTOGRAPH_STORE": "postgresql://db/cartograph", "CARTOGRAPH_FANOUT": "memory"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.FanoutAdapter() != "memory" {
+		t.Fatalf("CARTOGRAPH_FANOUT wins, got %q", c.FanoutAdapter())
+	}
+}
+
+func TestStoreAndFanoutRefusals(t *testing.T) {
+	for name, m := range map[string]map[string]string{
+		"store not postgres":        {"CARTOGRAPH_STORE": "mysql://db"},
+		"fanout unknown":            {"CARTOGRAPH_FANOUT": "carrier-pigeon"},
+		"postgres fanout, no store": {"CARTOGRAPH_FANOUT": "postgres"},
+	} {
+		if _, err := FromEnv(env(m)); err == nil {
+			t.Errorf("%s: expected an error", name)
+		}
+	}
+	_, err := FromEnv(env(map[string]string{"CARTOGRAPH_STORE": "mysql://u:secret@db"}))
+	if err == nil || strings.Contains(err.Error(), "secret") {
+		t.Errorf("a refused URL is named without its password: %v", err)
 	}
 }

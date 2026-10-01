@@ -26,6 +26,22 @@ test: embed
     echo "tests completed in $((end - start))ms"
     test $((end - start)) -lt 10000
 
+# The whole suite with the Postgres adapters' tests, against a throwaway
+# server from the flake: a fresh cluster in a temporary directory,
+# reached over a UNIX socket with trust authentication, stopped and
+# removed however the tests end. No Docker, no port.
+test-postgres: embed
+    #!{{toolchain}} bash
+    set -euo pipefail
+    dir=$(mktemp -d /tmp/cartograph-pg.XXXXXX)
+    trap 'pg_ctl -D "$dir/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$dir"' EXIT
+    initdb -D "$dir/data" -U cartograph -A trust -E UTF8 --no-sync >/dev/null
+    pg_ctl -D "$dir/data" -l "$dir/server.log" -w \
+      -o "-k $dir -c listen_addresses= -c fsync=off -c synchronous_commit=off -c full_page_writes=off" \
+      start >/dev/null || { cat "$dir/server.log"; exit 1; }
+    export CARTOGRAPH_TEST_POSTGRES="postgres://cartograph@/postgres?host=$dir"
+    go test -count=1 ./...
+
 # What CI runs, in this order; green here is green there
 ci: generate drift vet fmt-check lint arch test words clean-tree compat build
 

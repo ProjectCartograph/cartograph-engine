@@ -23,3 +23,7 @@ func TestOperationalStoreConformance(t *testing.T) {
 func TestOpLogConformance(t *testing.T) {
 	conformance.RunOpLog(t, func(t *testing.T) store.OpLog { return memory.NewOpLog() })
 }
+
+func TestDocStoreConformance(t *testing.T) {
+	conformance.RunDocStore(t, func(t *testing.T) store.DocStore { return memory.NewDocStore() })
+}

@@ -61,11 +61,17 @@ func runServe(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	e, closeEngine, err := openEngine(ctx, cfg.Vault, cfg.Watch, cfg.Codec)
+	// A Postgres store, when configured, replaces the vault.
+	target := cfg.Vault
+	if cfg.Store != "" {
+		target = cfg.Store
+	}
+	comp, err := compose(ctx, storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout})
 	if err != nil {
 		return err
 	}
-	defer closeEngine()
+	defer comp.Close()
+	e := comp.Engine
 
 	if cfg.ImportDir != "" {
 		report, err := e.ImportDir(ctx, cfg.ImportDir, "serve", "startup import")
@@ -158,7 +164,14 @@ func runServe(args []string) error {
 	}
 	errc := make(chan error, 1)
 	go func() {
-		logger.Info("cartograph listening", "addr", ln.Addr().String(), "network", ln.Addr().Network(), "vault", cfg.Vault, "codec", cfg.Codec, "auth", cfg.Auth, "authz", cfg.Authz)
+		attrs := []any{"addr", ln.Addr().String(), "network", ln.Addr().Network()}
+		if cfg.Store != "" {
+			attrs = append(attrs, "store", config.Redact(cfg.Store))
+		} else {
+			attrs = append(attrs, "vault", cfg.Vault)
+		}
+		attrs = append(attrs, "fanout", comp.FanoutAdapter, "codec", cfg.Codec, "auth", cfg.Auth, "authz", cfg.Authz)
+		logger.Info("cartograph listening", attrs...)
 		ready.Store(true)
 		errc <- srv.Serve(ln)
 	}()

@@ -1,27 +1,29 @@
 # Stateless operation and serverless deployment
 
-**2026-10-01. An audit of what holds state in the process today, what
-the ports already allow, and the plan to a deployment where any replica
-can serve any request and scale to zero.**
+**2026-10-01. An audit of what holds state in the process, what the
+ports allow, and the plan to a deployment where any replica can serve
+any request and scale to zero.**
 
-The short answer: the engine is stateless by design and stateful by its
-reference adapters. Every piece of state lives behind a port, so a
-serverless deployment is a set of adapters, not a redesign. None of
-those adapters exists yet beyond memory and SQLite, so a serverless
-deployment is a plan today, not a flag.
+The short answer: the engine is stateless by design, and every piece
+of state lives behind a port. The vault adapters keep state on one
+volume; the Postgres adapters keep it in one database. With
+`CARTOGRAPH_STORE` set to a Postgres URL, the stores and the fan-out a
+stateless deployment needs are built. What is left is wiring the shared
+drafts to them (ADR 0007), presence, and printing without Chromium.
 
 ## 1. What holds state today
 
 | State | Where it lives in the reference build | Port | Stateless adapter |
 |---|---|---|---|
-| Manifest versions, working copies, references, exclusions | Files under the vault directory plus `.cartograph/index.sqlite` | `store.ManifestStore`, `store.VaultIndex` | Postgres (rows for versions and working copies; the "vault" is then the database and there is no apply gate) |
-| Project state history | The same SQLite file | `store.OperationalStore` | Postgres |
-| The shared draft's edits | Memory (`memory.OpLog`) | `store.OpLog` | Postgres (one table, dense sequence per manifest) |
-| Draft state per open manifest | Memory, inside `engine.Drafts` | none needed: it is a cache rebuilt from the version and the log on first touch | Keep as a per-replica cache; correctness does not depend on it |
-| Conflict notes | Memory, inside `engine.Drafts` | none yet | Either derive from the log on read or persist beside the ops; small |
-| Event fan-out | Memory (`engine.MemoryBus`) | `engine.Bus` | Postgres `LISTEN/NOTIFY`, or a broker (NATS, Redis streams) |
-| Presence | Not built | the `Bus` plus a TTL store | Redis or a Postgres table with expiry |
-| Handoff bundles | Files under `.cartograph/handoff` | `store.BundleStore` | Object storage (S3, GCS, R2) |
+| Manifest versions, working copies, references, exclusions | Files under the vault directory plus `.cartograph/index.sqlite` | `store.ManifestStore`, `store.VaultIndex` | Postgres, built (`store/postgres`: rows for versions and working copies; the database is the store and there is no apply gate) |
+| Project state history | The same SQLite file | `store.OperationalStore` | Postgres, built |
+| The shared drafts, as CRDT documents | The same SQLite file (`documents`, `document_chunks`) | `store.DocStore` | Postgres, built: a snapshot per document plus the chunks appended since |
+| The shared draft's edits under 1.x | Memory (`memory.OpLog`) | `store.OpLog` | None: the op log goes in 2.0.0, replaced by the documents above |
+| Draft state per open manifest | Memory, inside `engine.Drafts` | none needed: it is a cache rebuilt on first touch | Keep as a per-replica cache; correctness does not depend on it |
+| Conflict notes | Memory, inside `engine.Drafts` | none | Derived from the document on read in 2.0.0 (ADR 0007), so nothing to store |
+| Fan-out between replicas | Memory (`fanout/memory`) | `fanout.Bus` | Postgres `LISTEN/NOTIFY`, built (`fanout/postgres`); a broker such as NATS in a distribution |
+| Presence | Not built | `fanout.Bus` | Relayed over the fan-out, never stored |
+| Handoff bundles | Files under `.cartograph/handoff` | `store.BundleStore` | Postgres rows, built; object storage remains an option behind the same port |
 | The embedded interface | The binary | none | none needed |
 | The file watcher | A goroutine over the vault directory | none | Absent: a database has nothing to watch |
 | PDF printing | A Chromium subprocess | `printer.Printer` | A remote printer service, or `printer.None` and a separate renderer |
@@ -54,33 +56,38 @@ it from the same log.
 
 ## 3. The plan
 
-Each step is one adapter proven by an existing conformance suite, then
-selected by configuration. The order follows what each unlocks.
+Each step is one adapter proven by a conformance suite, then selected
+by configuration. Steps 1 to 4 are built. Their suites run against a
+real Postgres in CI (`just test-postgres`), and the ten-second gate
+stays database-free.
 
-1. **`store/postgres`: `ManifestStore` and `OperationalStore`.** Passes
-   `conformance.RunManifestStore` and `RunOperationalStore` against a
-   real Postgres in the test. No `StateStore`: every row is live, and
-   the apply gate answers "no state manifest", which the interfaces
-   already handle. Selected by `CARTOGRAPH_STORE=postgres://...`
-   (reserved in `internal/config`; a directory or a SQLite file is
-   `CARTOGRAPH_VAULT` as today).
-2. **`store/postgres`: `OpLog`.** Passes `RunOpLog`. With 1, the shared
-   draft survives replicas and restarts.
-3. **`bus/postgres`: `engine.Bus` over `LISTEN/NOTIFY`.** Events reach
-   every replica's subscribers. A broker adapter later if one database
-   connection per replica is not enough.
-4. **`store/objectstore`: `BundleStore`.** Handoff bundles in S3-style
-   storage, location recorded in the state history as today.
-5. **Presence** with a TTL in Postgres (`presence` table, expiry on
-   read) or Redis.
-6. **Conflict notes** persisted beside the ops, so a note survives the
-   replica that recorded it.
+1. **Built: `store/postgres`, `ManifestStore` and `OperationalStore`.**
+   Passes `conformance.RunManifestStore` and `RunOperationalStore`. No
+   `StateStore`: every row is live, and the apply gate answers "no
+   state manifest", which the interfaces already handle. Selected by
+   `CARTOGRAPH_STORE=postgres://...`. Migrations are embedded and
+   applied when a replica starts, under an advisory lock.
+2. **Built: `store/postgres`, `DocStore`.** Passes
+   `conformance.RunDocStore`, which races two creates of one document,
+   concurrent appends, and an append during compaction. The SQLite
+   index and the memory adapter pass the same suite.
+3. **Built: `fanout/postgres`, `fanout.Bus` over `LISTEN/NOTIFY`.** One
+   listening connection per replica, one channel, the topic in the
+   payload; it reconnects when the connection drops. Passes
+   `fanout/conformance.Run` with two Buses on one database. Selected by
+   `CARTOGRAPH_FANOUT`, which defaults to it with a Postgres store.
+4. **Built: `store/postgres`, `BundleStore`.** Handoff bundles as rows.
+   An object store adapter can replace it behind the same port.
+5. **Wire the shared drafts** to `DocStore` and `fanout.Bus` in the
+   engine and the sync endpoint (ADR 0007, ADR 0008). The composition
+   root already hands both over.
+6. **Presence**, relayed over the fan-out and never stored.
 7. **A `printer` adapter** that calls a rendering service, for images
    without Chromium; or accept `printer.None` and render PDFs out of
    band.
 
-After 1 to 4 the deployment is stateless: `cartograph serve` with a
-Postgres URL, an object store bucket and no volume, on any container
+After 5 the deployment is stateless for everything a person does:
+`cartograph serve` with a Postgres URL and no volume, on any container
 platform, on either architecture, with the image the flake builds.
 
 ## 4. What does not change

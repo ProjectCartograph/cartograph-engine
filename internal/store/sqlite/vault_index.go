@@ -12,7 +12,8 @@ var _ store.VaultIndex = (*VaultIndex)(nil)
 
 // VaultIndex is the SQLite adapter for store.VaultIndex: everything the
 // vault keeps beside its files, in one database. It wraps a ManifestStore,
-// an ApplyJournal and an OperationalStore over the same *sql.DB, and adds
+// an ApplyJournal, an OperationalStore and a DocStore over the same
+// *sql.DB, and adds
 // the file-hash and meta tables (vault_files, vault_meta) that used to be
 // raw SQL inside the vault package itself.
 type VaultIndex struct {
@@ -20,6 +21,7 @@ type VaultIndex struct {
 	db      *sql.DB
 	journal *ApplyJournal
 	ops     *OperationalStore
+	docs    *DocStore
 }
 
 // NewVaultIndex builds a VaultIndex over an already-open, already-migrated
@@ -30,6 +32,7 @@ func NewVaultIndex(db *sql.DB) *VaultIndex {
 		db:            db,
 		journal:       NewApplyJournal(db),
 		ops:           NewOperationalStore(db),
+		docs:          NewDocStore(db),
 	}
 }
 
@@ -56,6 +59,9 @@ func (v *VaultIndex) Journal() store.ApplyJournal { return v.journal }
 
 // Operational returns the project-state store over the same database.
 func (v *VaultIndex) Operational() store.OperationalStore { return v.ops }
+
+// Docs returns the shared drafts' documents over the same database.
+func (v *VaultIndex) Docs() store.DocStore { return v.docs }
 
 // GetFileHash returns the SHA-256 last recorded for kind/id, if any.
 func (v *VaultIndex) GetFileHash(ctx context.Context, kind, id string) (string, bool, error) {

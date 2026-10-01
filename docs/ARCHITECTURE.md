@@ -270,8 +270,8 @@ rings, from the centre out:
 | Entities | `pkg/merge` (the replicated types), `internal/kinds`, `kinds/<kind>` and `kinds/kit` (what a kind is, its rules), `internal/contract` (the schemas and flows), `internal/sentence` | nothing in the module but each other; no driver |
 | Use cases | `internal/engine` | the ports and the entities |
 | Ports | `internal/store`, `internal/codec`, `internal/printer`, `engine.Bus` (driven); `pkg/client`, `pkg/uiconformance`, `internal/auth` (driving) | the entities; `internal/auth` also `net/http`, because the identity ports are request middleware |
-| Interface adapters | driving: `internal/api`, `internal/render`, `internal/spa`, `pkg/client/inproc`, `pkg/client/remote`, `uiconformance/clientdriver`; driven: `store/vault`, `store/sqlite`, `store/memory`, `codec/yaml`, `codec/json`, `printer/chromium`, `auth/proxy`, `auth/roles`, and the helpers they share (`yamlfmt`, `store/manifestmeta`) | the rings inside them, never another adapter of their side |
-| Frameworks and drivers | `net/http`, `database/sql`, `os/exec`, `modernc.org/sqlite`, `fsnotify`, `yaml.v3`, Chromium, the generated server (`api/gen`) | used only by adapters |
+| Interface adapters | driving: `internal/api`, `internal/render`, `internal/spa`, `pkg/client/inproc`, `pkg/client/remote`, `uiconformance/clientdriver`; driven: `store/vault`, `store/sqlite`, `store/memory`, `store/postgres`, `fanout/memory`, `fanout/postgres`, `codec/yaml`, `codec/json`, `printer/chromium`, `auth/proxy`, `auth/roles`, and the helpers they share (`yamlfmt`, `store/manifestmeta`) | the rings inside them, never another adapter of their side |
+| Frameworks and drivers | `net/http`, `database/sql`, `os/exec`, `modernc.org/sqlite`, `pgx` (only in the Postgres adapters), `fsnotify`, `yaml.v3`, Chromium, the generated server (`api/gen`) | used only by adapters |
 | Composition root | `cmd/cartograph`, `internal/config` | everything; the one place an adapter is chosen |
 
 The dependency rule, dependencies point inward, is a test
@@ -300,10 +300,12 @@ an exception (ADR 0003).
 | `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, drafts (shared editing over the op log), the event bus | `store`, `codec`, `kinds`, `kinds/kit`, `contract`, `sentence`, `merge`; a JSON Schema validator |
 | `internal/store` | The port definitions and the record shapes | `merge` |
 | `internal/store/vault` | Files are the truth; journalled writes; watcher; apply gate; bundles. Its index is a `store.VaultIndex` the root opens for it | `store`, `store/manifestmeta`, `yamlfmt`, `fsnotify`, `yaml.v3` |
-| `internal/store/sqlite` | SQLite adapter: manifest store, operational store, journal, vault index | `store`, `store/manifestmeta`, `modernc.org/sqlite` |
+| `internal/store/sqlite` | SQLite adapter: manifest store, operational store, journal, document store, vault index | `store`, `store/manifestmeta`, `modernc.org/sqlite` |
+| `internal/store/postgres` | Postgres adapter for a stateless deployment: manifest store, operational store, bundle store, document store; migrations applied on open | `store`, `store/manifestmeta`, `pgx` |
 | `internal/store/memory` | In-memory adapter for tests and the conformance suite | `store`, `store/manifestmeta` |
 | `internal/store/manifestmeta` | Reads the envelope (kind, id, name, labels) from manifest text for the store adapters | `yaml.v3` |
 | `internal/store/conformance` | The one suite every adapter of a port must pass | `store` |
+| `internal/fanout`, `fanout/memory`, `fanout/postgres`, `fanout/conformance` | The port that carries a hint from one replica to every other, its in-process and `LISTEN/NOTIFY` adapters, and the suite both pass | nothing / `fanout`, `pgx` (postgres) |
 | `internal/codec`, `codec/yaml`, `codec/json`, `codec/conformance` | Manifest syntax port, its two adapters, and the suite both pass | nothing / `codec`, `yamlfmt`, `yaml.v3` |
 | `internal/yamlfmt` | Canonical YAML output, shared by the YAML codec and the vault | `yaml.v3` |
 | `pkg/merge` | The CRDTs under shared editing: the field map (keyed lists, sets) and the text sequence, with hybrid logical clocks | nothing |
@@ -629,7 +631,7 @@ and what a new implementation must pass.
 | A rule beyond the schema | Admission webhook | `kit.RulesFunc` | per-kind packages | A function `(doc, RuleContext) []Problem`; cross-kind lookups through `kit.Lookup` |
 | Manifests somewhere other than files | CSI driver | `store.ManifestStore` | vault, sqlite, memory | An adapter that passes `conformance.RunManifestStore`; wire it in `cmd/cartograph/store.go` |
 | The index in Postgres (many replicas, one database) | etcd backend | `store.VaultIndex` | sqlite | An adapter that passes `conformance.RunVaultIndex`; pass its opener as `vault.Options.OpenIndex` in `cmd/cartograph/store.go` |
-| Define projects in a database, not YAML | Different storage class | `store.ManifestStore` without `StateStore` | sqlite does this already | A Postgres `ManifestStore`; the API is the only write path; the apply gate simply reports `ErrNoState` |
+| Define projects in a database, not YAML | Different storage class | `store.ManifestStore` without `StateStore` | sqlite, postgres (`CARTOGRAPH_STORE`) | The API is the only write path; the apply gate simply reports `ErrNoState` |
 | Write manifests in another syntax | Serialisation (JSON/protobuf at the API server) | `codec.Codec` | yaml, json | An adapter that passes `codec/conformance.Run`; select it by `CARTOGRAPH_CODEC`; migrate a vault with `cartograph export --codec` |
 | Authentication | Authn webhook, OIDC | `auth.Authenticator` | none, proxy | An adapter that returns a `Principal`; select it by `CARTOGRAPH_AUTH` |
 | User types and permissions | RBAC, authz webhook | `auth.Authorizer` | AllowAll, roles | An adapter over `(Principal, Action)`; enforced once for the whole API by `auth.Authorize`; select it by `CARTOGRAPH_AUTHZ` |
@@ -637,7 +639,7 @@ and what a new implementation must pass.
 | Handoff bundles in object storage | Volume plugin | `store.BundleStore` | vault, memory | An adapter over `PutBundle`; the state entry records the location it returns |
 | A new interface (terminal, native, bot) | kubectl, the dashboard: clients of the API | `pkg/client.Client` + the `Driver` protocol | web (on the port; flows still hand-coded), reference driver | Build on the client port, write a driver, pass `pkg/uiconformance` in your own CI (`UI_CONTRACT.md`) |
 | Another transport (socket, SSH, broker) | API server transports | `pkg/client.Client` as an adapter | inproc, remote (HTTP over TCP or UNIX socket) | Implement the port, pass the same suite with the reference driver |
-| Shared drafts across replicas | etcd watch | `store.OpLog`, `engine.Bus` | memory | A SQLite or Postgres op log passing `RunOpLog`; a bus over LISTEN/NOTIFY or a broker |
+| Shared drafts across replicas | etcd watch | `store.DocStore`, `fanout.Bus` | documents: memory, sqlite, postgres; fan-out: memory, postgres (`CARTOGRAPH_FANOUT`) | A document store passing `RunDocStore`; a fan-out adapter (NATS, say) passing `fanout/conformance.Run` (`EXTENDING.md`) |
 
 The pattern for every row is the same three steps. Write the adapter in
 its own package under the port's directory. Make it pass the port's

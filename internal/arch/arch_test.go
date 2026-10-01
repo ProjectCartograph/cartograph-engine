@@ -26,11 +26,19 @@ var drivers = []string{
 	"net/http", "database/sql", "os/exec",
 	"gopkg.in/yaml.v3", "go.yaml.in/yaml", "modernc.org/sqlite", "github.com/fsnotify/fsnotify",
 	wazero,
+	pgx,
 }
 
 // wazero runs the Automerge module. It is the CRDT adapter's driver and
 // no one else's: another package needing WebAssembly is a new port.
 const wazero = "github.com/tetratelabs/wazero"
+
+// pgx is the Postgres driver. Only the Postgres adapters may use it; the
+// root hands their pool from one to the other.
+const pgx = "github.com/jackc/pgx"
+
+// postgresAdapters are the packages pgx is allowed in.
+var postgresAdapters = []string{"internal/store/postgres", "internal/fanout/postgres"}
 
 // outer is what only the composition root and the driving adapters
 // beside it may know.
@@ -55,10 +63,11 @@ var leaf = join([]string{"internal", "pkg", "cmd"}, drivers)
 // other). The syntax helpers are shared, and allowed.
 func adapter(own string) []string {
 	siblings := []string{
-		"internal/store/vault", "internal/store/sqlite", "internal/store/memory",
+		"internal/store/vault", "internal/store/sqlite", "internal/store/memory", "internal/store/postgres",
 		"internal/codec/yaml", "internal/codec/json",
 		"internal/printer/chromium", "internal/auth/proxy", "internal/auth/roles",
-		"internal/store/conformance", "internal/codec/conformance",
+		"internal/fanout/memory", "internal/fanout/postgres",
+		"internal/store/conformance", "internal/codec/conformance", "internal/fanout/conformance",
 		"internal/crdt/automerge", "internal/crdt/conformance",
 	}
 	var forbid []string
@@ -69,6 +78,9 @@ func adapter(own string) []string {
 	}
 	if own != "internal/crdt/automerge" {
 		forbid = append(forbid, wazero)
+	}
+	if !contains(postgresAdapters, own) {
+		forbid = append(forbid, pgx)
 	}
 	return join(forbid, outer, []string{"internal/engine", "internal/kinds", "pkg/client", "pkg/uiconformance"})
 }
@@ -114,6 +126,12 @@ var rules = map[string][]string{
 	"internal/store/memory":       adapter("internal/store/memory"),
 	"internal/store/manifestmeta": adapter(""),
 	"internal/store/conformance":  adapter("internal/store/conformance"),
+	"internal/store/postgres":     adapter("internal/store/postgres"),
+	// Fan-out adapters carry bytes between replicas; they know no store
+	// and no syntax.
+	"internal/fanout/memory":      join([]string{"internal/store", "internal/codec"}, adapter("internal/fanout/memory")),
+	"internal/fanout/postgres":    join([]string{"internal/store", "internal/codec"}, adapter("internal/fanout/postgres")),
+	"internal/fanout/conformance": join([]string{"internal/store", "internal/codec"}, adapter("internal/fanout/conformance")),
 	"internal/codec/yaml":         join([]string{"internal/store"}, adapter("internal/codec/yaml")),
 	"internal/codec/json":         join([]string{"internal/store"}, adapter("internal/codec/json")),
 	"internal/codec/conformance":  join([]string{"internal/store"}, adapter("internal/codec/conformance")),
@@ -236,6 +254,15 @@ func join(lists ...[]string) []string {
 		out = append(out, l...)
 	}
 	return out
+}
+
+func contains(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }
 
 func without(list []string, drop ...string) []string {

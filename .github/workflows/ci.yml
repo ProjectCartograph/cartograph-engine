@@ -21,6 +21,20 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - run: nix develop --command just ci
 
+  # The Postgres adapters' tests against a throwaway server the flake
+  # provides, on both architectures. The gate above stays
+  # database-free.
+  postgres:
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - run: nix develop --command just test-postgres
+
   commits:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

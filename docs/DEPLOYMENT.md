@@ -24,6 +24,8 @@ prints the same table.
 |---|---|---|---|
 | `CARTOGRAPH_ADDR` | `-addr` | `:8080` | Listen address. A bare port (`8080`) is accepted, so platforms that hand out `PORT` can pass it straight through |
 | `CARTOGRAPH_VAULT` | `-vault` | `.` | The vault directory, or a SQLite file. A positional argument wins over both |
+| `CARTOGRAPH_STORE` | `-store` | empty | A `postgres://` URL. When set, the database is the store and `CARTOGRAPH_VAULT` is ignored. See "A stateless deployment" |
+| `CARTOGRAPH_FANOUT` | `-fanout` | see meaning | How replicas tell each other a document changed: `memory` (one replica) or `postgres`. Empty means `postgres` with a Postgres store and `memory` with a vault |
 | `CARTOGRAPH_WATCH` | `-watch` | `true` | Reload manifests when their files change. Turn off on a read-only or network filesystem where inotify misbehaves |
 | `CARTOGRAPH_CHROMIUM` | `-chromium` | empty | Browser to print PDFs with. Empty means the vault's `Settings.spec.chromium`, then `CHROMIUM`, then the PATH |
 | `CARTOGRAPH_LOG_FORMAT` | `-log-format` | `text` | `text` or `json`. Always stdout |
@@ -158,7 +160,8 @@ everything, which is the same as any export.
 
 ## Backups and restore
 
-The vault directory is the whole state. `.cartograph/` inside it is a cache.
+For a Postgres store, see "A stateless deployment". For a vault, the
+directory is the whole state. `.cartograph/` inside it is a cache.
 A backup is a copy of the directory, or a git commit of it. A restore is
 putting the directory back and starting the server; the index rebuilds.
 Version numbers restart from what the files say, which is why versions
@@ -167,9 +170,52 @@ loses nothing.
 
 ## Several replicas
 
-Two processes can serve the same directory read-mostly; the watcher keeps
-them in step. Two processes writing to one directory are not arbitrated
-across processes yet. Until the Postgres index exists, run one writer.
+Two processes can serve the same vault directory read-mostly; the
+watcher keeps them in step. Two processes writing to one directory are
+not arbitrated across processes. For more than one writer, use a
+Postgres store.
+
+## A stateless deployment
+
+Set `CARTOGRAPH_STORE` to a Postgres URL and the replicas keep nothing
+of their own:
+
+```
+CARTOGRAPH_STORE=postgres://cartograph:secret@db.internal/cartograph?sslmode=require
+cartograph serve
+```
+
+- One database holds everything that outlives a request: versions,
+  working copies, references, exclusions, project state history,
+  handoff bundles and the shared drafts. The tables are created, and
+  later migrated, when a replica starts. Replicas that start together
+  take turns, so each migration runs once.
+- Any replica serves any request. Start, stop or kill replicas at any
+  time; no volume, no sticky sessions, no index to rebuild.
+- Each replica holds one extra connection to the database, which only
+  listens. That is the fan-out: when one replica stores a change to a
+  shared draft, it sends a notification, and every replica tells the
+  people connected to it. If that connection drops, the replica
+  reconnects and listens again. A notification lost meanwhile costs
+  latency, never an edit, because each client compares its state with
+  the server's on every exchange.
+- Size the database's `max_connections` for the pool of every replica
+  (pgx's default is the larger of 4 and the number of CPUs) plus one
+  listening connection each.
+- Any parameter in the URL that the driver does not know is passed to
+  the server, so `?search_path=cartograph` keeps the tables in a schema
+  of their own.
+- There is no apply gate: every row is live, and the state endpoints
+  answer that this store has no state manifest. Files come in through
+  `cartograph import` or `CARTOGRAPH_IMPORT`, and go out through
+  `cartograph export`.
+- `CARTOGRAPH_FANOUT=memory` with a Postgres store is for one replica
+  that wants no listening connection. With more than one replica,
+  people on different replicas would then see each other's edits only
+  when they next sync.
+
+A backup is the database's own (`pg_dump`, or the provider's
+snapshots). `cartograph export` writes the manifests as files as well.
 
 ## Upgrading
 

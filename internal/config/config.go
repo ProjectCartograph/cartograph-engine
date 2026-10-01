@@ -10,6 +10,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +27,19 @@ type Config struct {
 	// CARTOGRAPH_VAULT, default ".". A positional argument on the command line
 	// wins over both.
 	Vault string
+
+	// Store, when set, is a postgres:// (or postgresql://) URL, and the
+	// manifests, project state, bundles and shared drafts live in that
+	// database instead of a vault: what a stateless deployment of many
+	// replicas needs. CARTOGRAPH_STORE, default empty: serve Vault.
+	Store string
+
+	// Fanout carries "this document changed" and presence between
+	// replicas: "memory" (one replica) or "postgres" (LISTEN/NOTIFY on
+	// the Store database). CARTOGRAPH_FANOUT, default empty, which means
+	// postgres when Store is set and memory otherwise; FanoutAdapter
+	// resolves it.
+	Fanout string
 
 	// Watch reloads manifests when their files change on disk.
 	// CARTOGRAPH_WATCH, default true.
@@ -110,6 +124,12 @@ func FromEnv(getenv Getenv) (Config, error) {
 	if v := getenv("CARTOGRAPH_VAULT"); v != "" {
 		c.Vault = v
 	}
+	if v := getenv("CARTOGRAPH_STORE"); v != "" {
+		c.Store = v
+	}
+	if v := getenv("CARTOGRAPH_FANOUT"); v != "" {
+		c.Fanout = v
+	}
 	if v := getenv("CARTOGRAPH_WATCH"); v != "" {
 		b, err := strconv.ParseBool(v)
 		if err != nil {
@@ -163,6 +183,8 @@ func FromEnv(getenv Getenv) (Config, error) {
 func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.Addr, "addr", c.Addr, "address to listen on (CARTOGRAPH_ADDR)")
 	fs.StringVar(&c.Vault, "vault", c.Vault, "vault directory or SQLite file to serve (CARTOGRAPH_VAULT)")
+	fs.StringVar(&c.Store, "store", c.Store, "postgres:// URL of the database to serve instead of a vault (CARTOGRAPH_STORE)")
+	fs.StringVar(&c.Fanout, "fanout", c.Fanout, "memory or postgres; default postgres with a Postgres store, else memory (CARTOGRAPH_FANOUT)")
 	fs.BoolVar(&c.Watch, "watch", c.Watch, "reload manifests when their files change (CARTOGRAPH_WATCH)")
 	fs.StringVar(&c.Chromium, "chromium", c.Chromium, "browser to print PDFs with (CARTOGRAPH_CHROMIUM)")
 	fs.StringVar(&c.LogFormat, "log-format", c.LogFormat, "text or json (CARTOGRAPH_LOG_FORMAT)")
@@ -210,6 +232,18 @@ func (c Config) Validate() error {
 	default:
 		return fmt.Errorf("codec %q: want yaml or json", c.Codec)
 	}
+	if c.Store != "" && !IsPostgresURL(c.Store) {
+		return fmt.Errorf("store %q: want a postgres:// URL, or nothing to serve the vault", Redact(c.Store))
+	}
+	switch c.Fanout {
+	case "", "memory":
+	case "postgres":
+		if c.Store == "" {
+			return fmt.Errorf("fanout postgres needs a Postgres store: set CARTOGRAPH_STORE")
+		}
+	default:
+		return fmt.Errorf("fanout %q: want memory or postgres", c.Fanout)
+	}
 	if c.ShutdownTimeout < 0 {
 		return fmt.Errorf("shutdown timeout must not be negative")
 	}
@@ -227,3 +261,31 @@ func (c Config) ListenAddr() string {
 
 // IsUnix reports whether Addr names a UNIX domain socket (unix:///path).
 func (c Config) IsUnix() bool { return strings.HasPrefix(c.Addr, "unix://") }
+
+// FanoutAdapter is the fan-out adapter to use: Fanout when set, else
+// postgres for a Postgres store and memory for a vault.
+func (c Config) FanoutAdapter() string {
+	if c.Fanout != "" {
+		return c.Fanout
+	}
+	if c.Store != "" {
+		return "postgres"
+	}
+	return "memory"
+}
+
+// IsPostgresURL reports whether s names a Postgres database rather
+// than a vault directory or a SQLite file.
+func IsPostgresURL(s string) bool {
+	return strings.HasPrefix(s, "postgres://") || strings.HasPrefix(s, "postgresql://")
+}
+
+// Redact hides the password in a database URL, so it can be logged or
+// put in an error.
+func Redact(s string) string {
+	u, err := url.Parse(s)
+	if err != nil || u.User == nil {
+		return s
+	}
+	return u.Redacted()
+}

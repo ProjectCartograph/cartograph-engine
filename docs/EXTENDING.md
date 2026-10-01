@@ -69,13 +69,19 @@ func TestConformance(t *testing.T) {
 }
 ```
 
-The same suite runs against SQLite and memory, which is what makes them
-interchangeable. An adapter that also keeps project state implements
-`store.OperationalStore` and runs `RunOperationalStore`.
+The same suite runs against SQLite, memory and Postgres, which is what
+makes them interchangeable. An adapter that also keeps project state
+implements `store.OperationalStore` and runs `RunOperationalStore`. One
+that keeps the shared drafts implements `store.DocStore` and runs
+`RunDocStore`, which races creates, appends and compaction the way two
+replicas would.
 
-Select it in `cmd/cartograph/store.go`: that function is the one place a path
-or DSN becomes an adapter. A Postgres adapter would be chosen there from
-an `CARTOGRAPH_STORE=postgres://...` style value added to `internal/config`.
+Select it in `compose` in `cmd/cartograph/store.go`: that function is
+the one place a path or a URL becomes an adapter. The Postgres adapter
+(`internal/store/postgres`) is the worked example: `CARTOGRAPH_STORE`
+holds its URL, and `compose` builds every store from one pool. Tests
+that need a server skip unless `CARTOGRAPH_TEST_POSTGRES` is set, and
+`just test-postgres` starts a throwaway one, so `just test` stays fast.
 
 A store where every row is live does not implement `store.StateStore`,
 and the state endpoints answer "this store has no state manifest". A
@@ -172,8 +178,64 @@ service, or a Go PDF library, slots in without the API knowing.
 ## A bundle store
 
 Implement `store.BundleStore`. `PutBundle` must be all-or-nothing and
-return a location the state history can record. Object storage is the
-obvious second adapter.
+return a location the state history can record. The vault writes
+files, Postgres writes rows; object storage is the obvious next
+adapter.
+
+## A fan-out adapter
+
+`fanout.Bus` (`internal/fanout`) carries a small message from one
+replica to every other: "this document changed", and presence. The
+port promises little, on purpose:
+
+- `Publish` sends to every current subscriber of a topic, on every
+  replica, the publisher's own included. It returns once the adapter
+  has accepted the message, not once it is delivered.
+- Delivery is at most once and best effort. A subscriber that falls
+  behind loses messages; it never slows a publisher.
+- A message is at most `fanout.MaxPayload` bytes of any value, on a
+  topic of at most `fanout.MaxTopic` bytes. Larger is `ErrTooLarge`,
+  never truncated.
+- A subscription ends when it is closed, when its context ends, or
+  when the Bus is closed, and its channel is then closed.
+
+Nothing else depends on delivery. Every message is a hint: a client
+that misses one converges anyway, because the sync protocol compares
+state on every exchange. So an adapter needs no persistence, no
+acknowledgements and no ordering.
+
+Prove it with the suite, where every Bus `newBus` returns shares one
+backend, as two replicas share one broker:
+
+```go
+func TestConformance(t *testing.T) {
+    conformance.Run(t, func(t *testing.T) fanout.Bus {
+        b := newYourBus(t) // a new connection to the shared backend
+        t.Cleanup(func() { b.Close() })
+        return b
+    })
+}
+```
+
+The suite checks delivery across two Buses, topic isolation, that the
+publisher hears itself, binary data at the largest size, the limits,
+unsubscribing, a slow subscriber, and closing.
+
+NATS is the worked example of what a distribution would write. Publish
+is `nc.Publish(prefix+topic, data)`; NATS subjects already carry the
+topic, and its default message size is far above the limit. Subscribe
+is `nc.ChanSubscribe(prefix+topic, ch)` on a buffered channel; a slow
+consumer is what NATS drops by default, which is the behaviour the
+port wants. Close drains the connection and closes every subscription.
+Its test starts a server in process (`nats-server/v2/test`) and runs
+`conformance.Run` against two connections to it.
+
+Add a value for `CARTOGRAPH_FANOUT` in `internal/config` and a case for
+it in `compose` in `cmd/cartograph/store.go`. The adapter lives in its
+own package with a rule in `internal/arch`, and its driver is allowed
+there and nowhere else. The memory adapter serves one replica; the
+Postgres adapter uses `LISTEN/NOTIFY` on the store's database and one
+listening connection per replica.
 
 ## Rules for every extension
 

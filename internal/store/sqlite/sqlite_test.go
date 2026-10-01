@@ -39,3 +39,9 @@ func TestVaultIndexConformance(t *testing.T) {
 		return sqlite.NewVaultIndex(openTestDB(t))
 	})
 }
+
+func TestDocStoreConformance(t *testing.T) {
+	conformance.RunDocStore(t, func(t *testing.T) store.DocStore {
+		return sqlite.NewDocStore(openTestDB(t))
+	})
+}

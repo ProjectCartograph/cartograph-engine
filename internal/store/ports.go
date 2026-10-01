@@ -70,6 +70,7 @@ type VaultIndex interface {
 	ManifestStore                  // versions, summaries, references, working copies, exclusions
 	Journal() ApplyJournal         // the two-phase apply journal
 	Operational() OperationalStore // project state history (same database)
+	Docs() DocStore                // the shared drafts' CRDT documents (same database)
 
 	// File hashes: what the vault compares a file against on open and on a watcher event.
 	GetFileHash(ctx context.Context, kind, id string) (sha256 string, found bool, err error)

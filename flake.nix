@@ -72,7 +72,7 @@
             pname = "cartograph";
             inherit version;
             src = lib.cleanSource ./.;
-            vendorHash = "sha256-KlBn5pI88dOV5SLaoLPTyh7uW2Zgf8LllDB/fqWpElQ=";
+            vendorHash = "sha256-lElEGFTvYb6skF5rr5CxkGH34SeMNdXJnXCWKM9z+Ms=";
             subPackages = [ "cmd/cartograph" ];
             env.CGO_ENABLED = 0;
             ldflags = [ "-s" "-w" "-X main.version=${version}" ];
@@ -149,6 +149,7 @@
               gnused
               curl
               git
+              postgresql # `just test-postgres` starts a throwaway server
             ] ++ pkgs.lib.optionals haveChromium [ chromium ];
             shellHook = ''
               ${pkgs.lib.optionalString haveChromium ''export CHROMIUM="${pkgs.chromium}/bin/chromium"''}

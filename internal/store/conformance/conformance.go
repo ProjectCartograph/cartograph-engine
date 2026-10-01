@@ -1,6 +1,6 @@
-// Package conformance is the one test suite that both the SQLite and the
-// in-memory store adapters must pass, proving they are interchangeable
-// behind the store.ManifestStore and store.OperationalStore ports.
+// Package conformance is the one test suite every store adapter must
+// pass, proving the SQLite, in-memory and Postgres adapters are
+// interchangeable behind the store ports.
 package conformance
 
 import (
@@ -407,6 +407,13 @@ func RunVaultIndex(t *testing.T, newIndex func(t *testing.T) store.VaultIndex) {
 		if idx.Operational() == nil {
 			t.Fatal("expected a non-nil OperationalStore")
 		}
+		if idx.Docs() == nil {
+			t.Fatal("expected a non-nil DocStore")
+		}
+	})
+
+	t.Run("docs", func(t *testing.T) {
+		RunDocStore(t, func(t *testing.T) store.DocStore { return newIndex(t).Docs() })
 	})
 }
 
