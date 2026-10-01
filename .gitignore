@@ -1,6 +1,8 @@
 # Build outputs; internal/spa/dist is the embedded web build (scripts/fetch-ui)
 bin/
 dist/
+# `go build ./cmd/cartograph` at the root writes the binary here
+/cartograph
 /internal/spa/dist.stamp
 /result
 /result-*
