@@ -1,7 +1,6 @@
 # Multiplayer
 
-**2026-10-01, design of record for increment I5, revised the same day
-after the Programme Lead's answers: sentences merge character by
+**Design of record: sentences merge character by
 character, transports are adapters. Built: `pkg/merge` (the field map
 and the text sequence, with convergence proofs), `store.OpLog` with the
 memory adapter and conformance, `engine.Drafts` and `engine.Bus`, the
@@ -130,13 +129,13 @@ flowchart LR
   `state` and `presence` events per manifest. Across replicas the
   Postgres index's `LISTEN/NOTIFY` or a broker is the adapter behind
   the same interface.
-- Presence (card I5.3): who has which manifest open and which field,
+- Presence (planned): who has which manifest open and which field,
   ephemeral, on the bus, shown as a mark beside the field.
 
 ## 5. Transports
 
 The client port carries `Edit`, `OpsSince` and `Subscribe`. In-process
-they are direct calls and a channel. Over HTTP (card I5.2) they are
+they are direct calls and a channel. Over HTTP (planned) they are
 `POST /manifests/{kind}/{id}/ops`, `GET .../ops?after=N` and
 `GET /events` as Server-Sent Events, which every proxy understands and
 which reconnects itself with `Last-Event-ID`. The same HTTP runs over a

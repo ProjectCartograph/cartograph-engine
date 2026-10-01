@@ -66,7 +66,7 @@ func (e *Engine) ImportDir(ctx context.Context, dir, actor, reason string) (Repo
 				})
 				continue
 			}
-			// One release of backward compatibility for names I3.1 retired
+			// One release of backward compatibility for names an earlier schema retired
 			// (Goal level "team" -> "functional", KeyResult/KPI baseline.asOf
 			// and target.by -> baseline.date and target.date): rewrite doc in
 			// place and re-marshal raw so both validation and the version
@@ -179,7 +179,7 @@ func (e *Engine) findManifestFiles(dir string) ([]string, error) {
 			// journal, and the staging directory that holds unfinished
 			// drafts. None of it is a manifest, and a draft in particular
 			// is not one yet, so validating or exporting a vault must not
-			// walk into it (Programme Lead hit a half-filled funding line
+			// walk into it (validating once reported a half-filled funding line
 			// in a draft, 2026-09-29).
 			if d.Name() == ".cartograph" {
 				return filepath.SkipDir
@@ -188,8 +188,8 @@ func (e *Engine) findManifestFiles(dir string) ([]string, error) {
 		}
 		// vault.yaml at the root is the vault's own index, which serve
 		// regenerates; it is not a manifest and importing it reports an
-		// unknown kind "Vault" every time (Programme Lead hit this on
-		// three separate vaults, 2026-09-27).
+		// unknown kind "Vault" every time (seen on three separate vaults,
+		// 2026-09-27).
 		if rel, err := filepath.Rel(dir, p); err == nil && rel == "vault.yaml" {
 			return nil
 		}
@@ -283,7 +283,7 @@ type yamlDocument struct {
 
 // A file may hold several manifests (YAML's "---", the way every
 // Kubernetes example is written); reading only the first silently lost
-// the rest (Programme Lead, 2026-09-28). Whether a syntax allows that,
+// the rest. Whether a syntax allows that,
 // and how each document keeps its own bytes, is the codec's business.
 // splitDocuments reads the manifests in one file through the codec,
 // which decides whether a file can hold several.

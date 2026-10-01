@@ -381,7 +381,7 @@ func (s *Server) GetProjectState(ctx context.Context, req apigen.GetProjectState
 }
 
 // PostSnapshot records an explicit version of a manifest's current content
-// with a reason (I3.3b). Snapshots the working copy if one exists, otherwise
+// with a reason. Snapshots the working copy if one exists, otherwise
 // the current version. The author is from Settings.spec.operator.
 func (s *Server) PostSnapshot(ctx context.Context, req apigen.PostSnapshotRequestObject) (apigen.PostSnapshotResponseObject, error) {
 	reason := ""
@@ -846,8 +846,8 @@ func (s *Server) ListManifests(ctx context.Context, req apigen.ListManifestsRequ
 
 // withProjectState decorates every Project summary with its current state
 // (Summary.state, per the contract, present only for kind Project). Every
-// other kind is returned unchanged. A draft-only Summary (I3a.1,
-// includeDrafts=true: Draft true, no committed version) is always "draft"
+// other kind is returned unchanged. A draft-only Summary
+// (includeDrafts=true: Draft true, no committed version) is always "draft"
 // by construction (a project with no committed version can have no state
 // history at all: TransitionProjectState requires a committed project),
 // so this skips the engine call for it rather than asking GetProjectState
@@ -971,7 +971,7 @@ func (s *Server) PutManifest(ctx context.Context, req apigen.PutManifestRequestO
 
 	var v engine.Version
 	if req.Kind == "Project" {
-		// CommitProject (I3a.1) handles Project specially; the generic Commit
+		// CommitProject handles Project specially; the generic Commit
 		// below stays kind-agnostic. See CommitProject's own doc comment.
 		v, err = s.Engine.CommitProject(ctx, req.Id, yamlBytes, auth.PrincipalFrom(ctx).Actor(settings.Operator), req.Body.Reason)
 	} else {
@@ -1255,8 +1255,8 @@ func (s *Server) ListUnapplied(ctx context.Context, _ apigen.ListUnappliedReques
 }
 
 // ApplyRef includes one manifest, or many, in the live state. Many in one
-// call, because one at a time was quadratic and felt it (Programme Lead,
-// 2026-09-29): the engine reloads and reindexes once for the batch.
+// call, because one at a time was quadratic and felt it:
+// the engine reloads and reindexes once for the batch.
 func (s *Server) ApplyRef(ctx context.Context, request apigen.ApplyRefRequestObject) (apigen.ApplyRefResponseObject, error) {
 	refused := func(problems []engine.Problem) apigen.ApplyRefResponseObject {
 		return apigen.ApplyRef422JSONResponse{UnprocessableJSONResponse: apigen.UnprocessableJSONResponse(toProblemList(problems))}

@@ -240,7 +240,7 @@ func RiskProblems(spec map[string]any, hasPhases bool) []Problem {
 // segments records. Naming a segment the gap does not have is not a
 // narrower claim, it is a different one — the evidence never covered that
 // slice, so nothing there is being addressed on this gap's authority
-// (GAP_DESIGN.md).
+// (TAXONOMY.md D9).
 //
 // Shared by Project and Programme, which carry the same problems list, so
 // the rule reads the same on both. An absent or empty segments list means

@@ -115,7 +115,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "Free-form key and value pairs for grouping and filtering, the same shape and the same purpose Kubernetes gives them. Deliberately unvalidated: a label is for the cuts somebody wants to make later and nobody anticipated \u2014 which pillar, whose directorate, which reporting pack. A fact that belongs to what the thing *is* is a property with a name and a check, not a label; putting an anticipated fact here loses the check that would have caught it missing. The cost is that a typo makes a new group, which is the right way round for a cut nobody planned. See TAXONOMY.md D11."
+      "description": "Free-form key and value pairs for grouping and filtering, the same shape and the same purpose Kubernetes gives them. Deliberately unvalidated: a label is for the cuts somebody wants to make later and nobody anticipated: which pillar, whose directorate, which reporting pack. A fact that belongs to what the thing *is* is a property with a name and a check, not a label; putting an anticipated fact here loses the check that would have caught it missing. The cost is that a typo makes a new group, which is the right way round for a cut nobody planned. See TAXONOMY.md D11."
     },
     "Metadata": {
       "type": "object",
@@ -136,7 +136,7 @@
           "type": "string",
           "maxLength": 80,
           "pattern": "^[^\\n]*$",
-          "description": "A short reference people quote this by among themselves: a project code, a working name, the thing somebody types into a search box. Filled in from the name as dashed lower-case words and editable from there, and it follows the name until somebody changes it, after which it is theirs. Deliberately not an identifier Cartograph uses: `id` is what references resolve against and is fixed once chosen, which is exactly why a name people actually say needs somewhere else to live (Programme Lead, 2026-09-29). Nothing validates it beyond a length and a single line, for the same reason nothing validates a label."
+          "description": "A short reference people quote this by among themselves: a project code, a working name, the thing somebody types into a search box. Filled in from the name as dashed lower-case words and editable from there, and it follows the name until somebody changes it, after which it is theirs. Deliberately not an identifier Cartograph uses: `id` is what references resolve against and is fixed once chosen, which is exactly why a name people actually say needs somewhere else to live. Nothing validates it beyond a length and a single line, for the same reason nothing validates a label."
         },
         "labels": {
           "$ref": "#/$defs/Labels"
@@ -323,7 +323,7 @@
       }
     },
     "GoalKeyResult": {
-      "description": "A goal's own key result: typed parts only, no downward reference (I3.2: the goal is the root of the dependency tree, so it never names a DataSource or a KPI relation itself; a KPI names the goal instead, through KPI.spec.goals).",
+      "description": "A goal's own key result: typed parts only, no downward reference (the goal is the root of the dependency tree, so it never names a DataSource or a KPI relation itself; a KPI names the goal instead, through KPI.spec.goals).",
       "required": [
         "id",
         "metric",
@@ -460,7 +460,7 @@
       "required": [
         "situation"
       ],
-      "description": "What a group cannot do today, in the parts the interface builds it from: the situation, and the one thing behind it. The sentence is not stored, because it is not an input \u2014 it is `<the groups> <situation>, because <cause>`, composed the same way by the interface, the renderer and anything the CLI grows later. Storing the composed sentence instead meant the subject lived in two places, every reader had to split the text back into parts to edit it, and the splitting was wrong twice in one day (Programme Lead, 2026-09-29). A situation written with its own subject is left as written: composition never doubles a subject the text already names.",
+      "description": "What a group cannot do today, in the parts the interface builds it from: the situation, and the one thing behind it. The sentence is not stored, because it is not an input: it is `<the groups> <situation>, because <cause>`, composed the same way by the interface, the renderer and anything the CLI grows later. Storing the composed sentence instead meant the subject lived in two places, every reader had to split the text back into parts to edit it, and the splitting was wrong twice in one day. A situation written with its own subject is left as written: composition never doubles a subject the text already names.",
       "properties": {
         "situation": {
           "type": "string",

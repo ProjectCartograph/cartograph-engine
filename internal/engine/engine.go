@@ -219,8 +219,8 @@ func docID(doc map[string]any) (string, bool) {
 
 // Commit validates a manifest and, if it is valid, stores it as the next
 // immutable version. The id in the manifest's metadata must match id.
-// actor is recorded as given (see checkActor's own doc comment for I3.2's
-// removal of actor validation).
+// actor is recorded as given (see checkActor's own doc comment for why actor
+// validation was removed).
 func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, actor, reason string) (Version, error) {
 	doc, problems, err := e.validate(ctx, kind, yamlBytes, nil)
 	if err != nil {
@@ -312,11 +312,11 @@ func (e *Engine) Snapshot(ctx context.Context, kind, id string, yamlBytes []byte
 // checkActor returns a Problem (not an error) when actor is rejected, so
 // callers can fold it into a ValidationError alongside other problems.
 //
-// I3.2 (the delta on top of the goals-as-root card): Cartograph is a
+// Cartograph is a
 // single-person application synchronised through shared manifests, not a
 // shared platform, so the interface no longer asks "who is doing this" at
 // all -- every write from the SPA carries the literal actor "local". The
-// API accepts any actor unconditionally (I3.2 removed actor validation
+// API accepts any actor unconditionally (actor validation was removed
 // entirely, so the interface never validates against any directory).
 func (e *Engine) checkActor(ctx context.Context, actor string) (*Problem, error) {
 	_ = ctx

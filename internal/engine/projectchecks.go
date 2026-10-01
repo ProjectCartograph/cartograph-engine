@@ -116,7 +116,7 @@ func (e *Engine) ProjectChecks(ctx context.Context, id string, draft bool) (Proj
 	} else {
 		c.add("aim-mandate", "aim", phaseInitiation, checkWarn, "No mandate named yet.")
 	}
-	// I3.4a: projects align to functional goals only. This check blocks if
+	// Projects align to functional goals only. This check blocks if
 	// aligned to a non-functional goal (goals-aligned above already blocks on
 	// zero goals at all).
 	if len(goals) > 0 {
@@ -301,8 +301,8 @@ func (e *Engine) ProjectChecks(ctx context.Context, id string, draft bool) (Proj
 		}
 	}
 
-	// beneficiaries: who the project is for. Qualitative by design
-	// (Programme Lead, 2026-09-26): the groups are identified here and
+	// beneficiaries: who the project is for. Qualitative by design:
+	// the groups are identified here and
 	// nothing is counted, so the only question is whether any are named.
 	beneficiaries, _ := summary["beneficiaries"].([]any)
 	if len(beneficiaries) > 0 {
@@ -338,8 +338,8 @@ func (e *Engine) ProjectChecks(ctx context.Context, id string, draft bool) (Proj
 	}
 
 	// closing: what a project is accepted against is the acceptance
-	// criteria its deliverables already carry (Programme Lead,
-	// 2026-09-27), not a second list authored on the closing step. So
+	// criteria its deliverables already carry,
+	// not a second list authored on the closing step. So
 	// what is checked here is whether every deliverable can be accepted
 	// at all, with the fix filed where those tests are written rather
 	// than where they are read back.
@@ -365,8 +365,8 @@ func (e *Engine) ProjectChecks(ctx context.Context, id string, draft bool) (Proj
 			phaseInitiation, "deliverables")
 	}
 
-	// The standard itself is written on one step now (Programme Lead,
-	// 2026-09-27), so it is checked in one place rather than once per
+	// The standard itself is written on one step now,
+	// so it is checked in one place rather than once per
 	// phase. Every criterion needs the five parts that make it settle:
 	// the outcome, the metric and the standard it clears, where that is
 	// read from and how often, and the roles that track and confirm it.
@@ -447,7 +447,7 @@ func (e *Engine) ProjectChecks(ctx context.Context, id string, draft bool) (Proj
 
 // alignedToFunctionalGoal reports whether at least one of the given Goal ids
 // (Project.spec.alignment.goals, already parsed as []any) resolves to a
-// Goal at level functional (I3.4a), and whether any goal is at a different
+// Goal at level functional, and whether any goal is at a different
 // level. A dangling reference (should not happen: the generic reference
 // check already refuses those at Commit) is silently skipped rather than
 // erroring, matching every other check's leniency toward a draft's own
@@ -563,7 +563,7 @@ func addMeasureChecks(c checkAdder, spec map[string]any) {
 
 // addKPIChecks reads Project.spec.kpis. A KPI is named by the project as a
 // whole, with the reason it is named, and is no longer a property of one
-// key result (Programme Lead, 2026-09-26): one KPI may be moved by several
+// key result: one KPI may be moved by several
 // projects, so tying it to a single key result said something untrue.
 func addKPIChecks(c checkAdder, spec map[string]any, isComponent bool) {
 	kpis, _ := spec["kpis"].([]any)
@@ -629,7 +629,7 @@ func addResourceChecks(c checkAdder, spec map[string]any, isComponent bool) {
 	// catalogue. It used to count every role, mapped or not, and to say
 	// they were unmapped "to a person", which no part of Cartograph holds: a
 	// definition names roles, and who fills one lives in the delivery tool
-	// (the Person kind was removed in I3.3d).
+	// (the Person kind was removed).
 	unnamed := 0
 	for _, r := range resources {
 		rm, ok := r.(map[string]any)
@@ -733,7 +733,7 @@ func addDataChecks(c checkAdder, spec map[string]any) {
 		missing := 0
 		// Data that lands nowhere is data nobody can find again: every
 		// output names the register, system or store that holds it
-		// afterwards (Programme Lead, 2026-09-27).
+		// afterwards.
 		noSink := 0
 		for _, p := range produces {
 			pm, ok := p.(map[string]any)

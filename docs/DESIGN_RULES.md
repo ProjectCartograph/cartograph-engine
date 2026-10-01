@@ -1,4 +1,4 @@
-# Cartograph v5 design rules (Programme Lead, consolidated 2026-09-16)
+# Cartograph v5 design rules (consolidated 2026-09-16)
 
 Rules that every screen follows. Builders derive copy and controls from
 these; they do not invent their own.
@@ -50,17 +50,17 @@ these; they do not invent their own.
 13. **Sample content is marked (sample).** The tool ships generic; instance
     content lives in an instance directory.
 
-## Contract additions from the HCD-01 assessment (card I0.1, 2026-09-17)
+## Contract additions from the HCD-01 assessment (2026-09-17)
 Mandate on Project, Programme and Operation (kind, title, reference, date,
 issued by); one approved funding envelope per currency on Project; risk
 rows typed risk, issue, dependency, assumption or constraint with an
 escalate flag and reason; personal data (none, personal, sensitive) on
 produced and consumed data; BeneficiaryGroup register (its structured
-beneficiary counts withdrawn 2026-09-26); maxLength caps. Approve with conditions belongs to the
-change-control increment: each condition has an owner role and a month,
+beneficiary counts withdrawn 2026-09-26); maxLength caps. Approve with conditions belongs to
+change control: each condition has an owner role and a month,
 and open conditions show on the checks.
 
-## Contract changes queued for I3 (from rules 6 and 8)
+## Contract changes queued (from rules 6 and 8)
 - New directory kind **BeneficiaryGroup** (name, description, source ref
   DataSource). `Project.spec.summary.beneficiaries[]` becomes
   `{group: ref BeneficiaryGroup (req)}`. (Amended 2026-09-26: the counts and
@@ -76,7 +76,7 @@ and open conditions show on the checks.
   list shows where to add the entry and never blocks a save the schema does not require.
 - **Plain field names under a named parent.** `baseline.date` and `target.date`, never `asOf`
   or `by`; the parent already says what the date is.
-- **Level names:** Pillar, Strategic, Functional, then Project. The organisational unit stays "Team". (Functional was removed in I3.2 and restored on 2026-09-19 at the Programme Lead's request after reviewing the running interface: a functional-level goal sits under a strategic goal, and projects align to functional goals.)
+- **Level names:** Pillar, Strategic, Functional, then Project. The organisational unit stays "Team". (Functional was removed once and restored on 2026-09-19 after a review of the running interface: a functional-level goal sits under a strategic goal, and projects align to functional goals.)
 
 ## Added 2026-09-18, goals as the root
 - **Hierarchy:** Pillar, Strategic, Functional, Project. A pillar has no parent; a strategic goal serves one
@@ -122,14 +122,13 @@ after every move.
 
 `just test` is the gate and completes in under 10 seconds on the development machine: Go
 tests plus web unit tests (Vitest, jsdom), no browser, no network, no fixed sleeps (watchers
-and debounces take their interval from an option the test shortens). Every worker runs
-`just test` and `just tsc` after each edit; no card asks a worker to run the browser flows.
-The browser flows (`just e2e`, the former smoke) are an end-to-end check the orchestrator runs
-at increment acceptance only; they wait on conditions, never on timers, and finish in under
+and debounces take their interval from an option the test shortens). Every contributor runs
+`just test` and `just tsc` after each edit; nobody is asked to run the browser flows.
+The browser flows (`just e2e`, the former smoke) are an end-to-end check run
+at acceptance only; they wait on conditions, never on timers, and finish in under
 two minutes; the randomised journey is a separate on-demand recipe. A behaviour that matters
-gets a unit test at the layer that owns it (the goal move data loss of ISSUES_LOG #27 would
-have been a ten-line test of the mutation against a fake client). Programme Lead's rule:
-this is the pitfall of many earlier projects and does not repeat here.
+gets a unit test at the layer that owns it (an earlier data loss on moving a goal would
+have been a ten-line test of the mutation against a fake client). This is the pitfall of many earlier projects and does not repeat here.
 
 ## Files never move; the state manifest says what is live (2026-09-19)
 
@@ -138,8 +137,7 @@ manifest file. `vault.yaml` includes what is live; the index is a cache rehydrat
 A delete removes an include line with a reason; a recovery puts it back; both are ordinary
 diffs for the vault's version control. Every mutation is an apply unit journalled before
 the files are written (outbox), replayed on open. Deleting stays possible only on leaf
-nodes of the reference graph. Programme Lead's instruction; supersedes ISSUES_LOG #29's
-file-removing delete.
+nodes of the reference graph. Supersedes an earlier delete that removed the file.
 
 ## A goal keeps its level (2026-09-20)
 
@@ -148,9 +146,9 @@ interface. A move changes only the parent, and only to a parent of the level abo
 functional goal to a strategic goal, a strategic goal to a pillar); the engine refuses any
 other parent on every write path, and a drop target refuses the wrong level with a message
 before anything is sent. The interface renders a card by the goal's `level`, never by its
-depth in a column. Programme Lead's rule after seeing a functional goal shown as strategic.
+depth in a column. The rule came from a functional goal shown as strategic.
 
-Every goal card carries a tag naming its level, in a muted tone of its own (violet for a pillar, sky for a strategic goal, emerald for a functional goal, on the tag and as a faint tint behind the card, in both themes), so the tier is visible without reading the tree's indentation and a goal that needs to move is recognisable at a glance (Programme Lead, 2026-09-20).
+Every goal card carries a tag naming its level, in a muted tone of its own (violet for a pillar, sky for a strategic goal, emerald for a functional goal, on the tag and as a faint tint behind the card, in both themes), so the tier is visible without reading the tree's indentation and a goal that needs to move is recognisable at a glance.
 
 ## Names are not identities; goals are isolated by level; a goal can exist unbound (2026-09-20)
 
@@ -169,8 +167,8 @@ within their namespace: the parent branch for goals, the kind for everything els
 ids, including the readable slugs in the example and the instance, stay as they are. A strategic or functional goal may exist without its parent: it is then unbound, shown
 in an Unbound tray on Goals home rather than in the tree, flagged by an advisory check, and
 not offered to projects until bound; binding it means giving it a parent of the level above.
-A parent of the wrong level is still refused, and a goal still keeps its level. Programme
-Lead's rule after a functional "test" collided with a strategic "test".
+A parent of the wrong level is still refused, and a goal still keeps its level. The
+rule came from a functional "test" colliding with a strategic "test".
 
 ## Picking from a register is chips, grouped by the shape it has (2026-09-26, supersedes "Picking a goal is a drag from a visible tree")
 
@@ -178,13 +176,13 @@ Wherever a definition picks something a register already holds, the control is
 chips: one chip per thing that can actually be picked, one search box, a click to
 pick and a click to unpick. Nothing unpickable is a control, there is no second
 panel repeating what has been picked, no drop zone, and no paragraph explaining
-the control. Programme Lead's rule after the goal tree on the Alignment step put
+the control. The rule came after the goal tree on the Alignment step put
 two unpickable levels and a duplicate panel on screen to pick one functional goal.
 The canonical tree stays where it is edited (Goals home, with its drags and its
 levels); a definition only picks from it.
 
-**Where the register has a shape, the chips are grouped by it** (Programme Lead,
-same day, correcting the first attempt): a flat wrap of chips gives a person no
+**Where the register has a shape, the chips are grouped by it** (same
+day, correcting the first attempt): a flat wrap of chips gives a person no
 place to put what they are looking at, which defeats the step. The branches are
 quiet headings (the pillar small and uppercase, the strategic area in plain
 weight under it, the chips under that behind a left rule), and the step reads
@@ -206,8 +204,8 @@ is identified and never counted. `Project.spec.summary.beneficiaries[]` is a
 reference to a BeneficiaryGroup and nothing else; `count`, `countBasis` and
 `countReason` are out of the contract, and so is `BeneficiaryGroup.spec.typicalSize`.
 The step is the register as chips, plus the dialog that adds a group the register
-does not hold. The checks ask only whether any group is named. Programme Lead's
-rule; supersedes the structured beneficiary counts added in I0.1.
+does not hold. The checks ask only whether any group is named. This
+supersedes the structured beneficiary counts added on 2026-09-17.
 
 ## Text is the last resort (2026-09-26)
 
@@ -218,12 +216,12 @@ would otherwise break silently (capped at about 40 characters, never a sentence
 about why the rule exists), and an example behind the lightbulb, which is opt-in.
 What does not survive: a paragraph introducing a step, a hint restating its label,
 a note explaining where a field's data goes afterwards, a sentence justifying the
-design to the person using it. Programme Lead's rule, with a number on it: the
+design to the person using it. The rule has a number on it: the
 project flow's copy was cut by half (15,104 characters to 7,453, a 50.7% cut) and no screen
 carries an explanatory paragraph any more. A builder adding text says, in the
-card or the commit, which of the surviving categories it falls into.
+commit, which of the surviving categories it falls into.
 
-## What a success criterion is, and is not (2026-09-26, Programme Lead)
+## What a success criterion is, and is not (2026-09-26)
 
 SMART goals define what the project intends to achieve. Scope defines the
 boundaries of the work required to achieve them. Deliverables define the outputs
@@ -273,10 +271,10 @@ always shows its whole statement, never a fragment with the number in a footnote
 moves, each named with the reason it is named. A KPI is a whole-of-project
 concern and one KPI may be moved by several projects, so hanging it off a single
 key result said something untrue; `relatesTo` is out of the contract. Nothing
-assumes a KPI can judge this project's landing — how landing is assessed is a
-separate question, open at the Programme Lead's direction.
+assumes a KPI can judge this project's landing: how landing is assessed is a
+separate question, still open.
 
-## Every resource is standalone; attach directly, or bind (2026-09-28, Programme Lead)
+## Every resource is standalone; attach directly, or bind (2026-09-28)
 
 A role, unit, party, system or facility is a `Resource` manifest, declared once and
 used across many projects. Work attaches to one of two ways. **Directly referenced**
@@ -372,7 +370,7 @@ and the include entry that admits it land in one journalled apply unit, and then
 draft is cleared.
 
 **Only the ref being saved.** There may be many drafts, and saving one is not a
-decision about the rest (Programme Lead, 2026-09-28).
+decision about the rest.
 
 Two consequences worth stating. A kind whose only write was autosave (a programme, an
 operation) now needs an explicit save control, because the writing used to be
@@ -467,7 +465,7 @@ The gap statement's hint read:
 
 Every word of that is true and none of it tells somebody what to type. It is a
 principle stated at a person who wanted an instruction, and it reads as archaic
-besides (Programme Lead, 2026-09-29). It now reads:
+besides. It now reads:
 
 > *Write what is falling short, not what is missing. Instead of "we have no
 > case management system", write what that costs: "cases take three weeks to
@@ -513,7 +511,7 @@ rewrite it as the instruction it implies.
 
 Restating 2026-09-26's rule, because a plan written three days later broke it.
 
-`RESULTS_LOGIC.md` first proposed that every success criterion trace to a
+That plan first proposed that every success criterion trace to a
 deliverable, with a check reporting "an outcome with no output behind it". The
 earlier rule had already refuted it in passing: the derivation proposes outcome
 lines from the key results, **plus the schedule, budget and compliance the
@@ -598,7 +596,7 @@ Three things follow, and they are why this is a rule rather than a field:
   to use, not to design.
 
 The occasion: twenty-four measures read as chips; a hundred read as a wall
-(Programme Lead, 2026-09-28).
+(2026-09-28).
 
 ## A register with its own shape brings its own add (2026-09-29)
 
@@ -649,9 +647,9 @@ the moment somebody opens the step.
 ## A generated view is a test of the flows (2026-09-29)
 
 The results framework is derived: every cell is read from the manifests when
-the page opens, and nothing is stored (RESULTS_LOGIC.md R4). That makes it
-something better than a report — **it is an audit of the definition flow**, and
-the Programme Lead put the standard plainly: if a project and a programme are
+the page opens, and nothing is stored. That makes it
+something better than a report: **it is an audit of the definition flow**, and
+the standard is plain: if a project and a programme are
 properly defined, the logframe is a generated artifact; if it cannot be
 generated, the fault is in the flows.
 
@@ -705,7 +703,7 @@ Two consequences worth stating, because they are the point:
 - **Changing the groups now changes the sentence and not a word anybody
   wrote.** There is nothing to restate.
 - **A person editing the file by hand sees what the interface shows.** The
-  Programme Lead's reason for asking: outputs are deterministic generations
+  reason for the change: outputs are deterministic generations
   from inputs, so a tool that wants a different output writes a different
   generator, not a migration.
 

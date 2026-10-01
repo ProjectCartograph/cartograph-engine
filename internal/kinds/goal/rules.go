@@ -3,7 +3,7 @@
 // requires a goal as parent; an outcome requires an objective
 // goal as parent), unique key result ids within the goal, the key result
 // unit-by-kind rule, and the objective must-be-qualitative rule. The goal
-// is the root of the dependency tree (I3.2): nothing here ever checks a
+// is the root of the dependency tree: nothing here ever checks a
 // downward reference, since Goal itself carries none.
 package goal
 

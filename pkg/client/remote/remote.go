@@ -4,7 +4,7 @@
 // deployment runs). It speaks only the contract in openapi.yaml, so it
 // is the one place in an interface's dependencies where an HTTP path
 // appears. The draft operations (Edit, OpsSince, Subscribe) answer
-// ErrUnsupported until the ops and events endpoints land (card I5.2).
+// ErrUnsupported until the ops and events endpoints land.
 package remote
 
 import (

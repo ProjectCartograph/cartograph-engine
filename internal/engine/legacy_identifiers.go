@@ -12,7 +12,7 @@ import (
 // everywhere else: it cannot be a key, it cannot be a CSS class or a test
 // name without quoting, and a space is the one character every tool
 // disagrees about. Kubernetes settled this long ago and Cartograph follows it:
-// lowerCamelCase, no spaces, no hyphens (Programme Lead, 2026-09-29).
+// lowerCamelCase, no spaces, no hyphens.
 //
 // The three lifecycle values mirror the phase names Cartograph already uses
 // (initiation, closing, landing) rather than shortening them, so the

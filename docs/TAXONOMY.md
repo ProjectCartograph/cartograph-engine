@@ -1,6 +1,6 @@
 # Cartograph taxonomy: what the words mean outside this repository
 
-**Written 2026-09-28**, after the Programme Lead asked whether a programme
+**Written 2026-09-28**, after it was asked whether a programme
 should be linkable to projects only through a shared goal. It should not, and
 finding out why turned up several other places where Cartograph's vocabulary and
 the discipline's vocabulary have drifted apart.
@@ -228,7 +228,7 @@ where it cannot be mistyped per project. That empties the funding line of
 free text entirely: amount, currency from the ISO 4217 list, a reference to
 the source, and a status.
 
-Decided with the Programme Lead, 2026-09-29, against the alternatives of a
+Decided 2026-09-29, against the alternatives of a
 `budget` category on Resource and of keeping a per-project allocation
 reference.
 
@@ -267,8 +267,7 @@ resources or methods, and it is a noun, not a verb. Cartograph's Gap today is a
 sentence and its provenance: no current state, no desired state, no scope, and
 a citation that can only claim the whole of it.
 
-The design, the research behind it and what changed in the building are in
-**`GAP_DESIGN.md`** beside this file. In short: a measured gap references the KPI whose baseline and
+In short: a measured gap references the KPI whose baseline and
 target already are its two states; a gap enumerates the `Segment`s it was
 observed in; and a citation names which of those segments the work addresses,
 so a project addressing one quarter of a gap is recorded as addressing one
@@ -349,10 +348,9 @@ it belongs on the Programme rather than the Goal: a goal outlives any one
 programme's theory of how to reach it, and two programmes may hold different
 theories about the same goal.
 
-**`RESULTS_LOGIC.md`** beside this file assesses both frameworks against what
-Cartograph holds and plans the remediation. The short version: the measurement
-apparatus of a results framework is present and strong — every level labelled,
-every result naming where it is read, how often, who tracks and who confirms —
+Assessed against what Cartograph holds, the measurement
+apparatus of a results framework is present and strong (every level labelled,
+every result naming where it is read, how often, who tracks and who confirms),
 and the causal logic of both frameworks is absent. Nothing says what leads to
 what, or what has to be true for it to. The evidence that assumptions have
 nowhere to go: `risks[].type` has had an `assumption` value throughout and not
@@ -372,10 +370,10 @@ here saying so and why.
 *A step may rest on more than one outcome, and all of them have to hold.
 There is no "or".*
 
-The shape already allowed it — `pathway[].from` is a list, and the shipped
-example has a step resting on two — but nothing on the screen said which
-reading a list takes, and a picker that accepts several reads as a menu
-(Programme Lead, 2026-09-29). The card now says it: *All of these have to
+The shape already allowed it (`pathway[].from` is a list, and the shipped
+example has a step resting on two), but nothing on the screen said which
+reading a list takes, and a picker that accepts several reads as a menu.
+The card now says it: *All of these have to
 hold: A and B.*
 
 **Why not an "or".** A step that holds either way is two theories of how the
@@ -394,9 +392,8 @@ for. Picking three preconditions is not a workaround; it is the shape.
 
 ## D14 to D22: from the Lean Six Sigma review *(resolved 2026-09-29)*
 
-Derived from the standards, not chosen. The reasoning and sources are in
-**`LSS_REVIEW.md`** and **`research/STANDARDS.md`** beside this file; this is
-the short form.
+Derived from the standards, not chosen. Each decision names the standard
+it follows.
 
 - **D14. The first question is whether the work ends.** Work that ends is a
   project or a programme; work that keeps running is an operation (PMI,
@@ -430,11 +427,10 @@ the short form.
 
 ### D23. One vocabulary, the discipline's, everywhere. *(resolved 2026-09-30)*
 
-The Programme Lead found the same thing called different names on screen,
-in the contract and in the charter, and some things called by words no
+The same thing was called different names on screen,
+in the contract and in the charter, and some things were called by words no
 standard uses ("Responsible" as a role, "Escalated" with no one escalated
-to, "Landing", "Nearness"). A full audit (`research/` beside this file,
-`taxonomy-audit.md` in the session notes) set these, applied in the
+to, "Landing", "Nearness"). A full audit set these, applied in the
 contract, both vaults, the interface and the charter at once:
 
 - **Project roles** are the standard project organisation, not RACI
@@ -524,10 +520,9 @@ SMART objectives) keeps the goal broad and makes the objectives SMART.
   target. Achievable: every measure has a baseline (or an admitted
   unknown). Relevant: placed under the right level (a goal under the
   vision or mission) with a rationale. Time-bound: every target dated. It
-  applies at every level, including the goal, because the Programme Lead
-  asked for goals to be SMART and Doran's own title covers goals.
-- The other classifications were audited (research/CLASSIFICATION_AUDIT.md)
-  and fixed: KPI shown as Indicator; Means of verification; success
+  applies at every level, including the goal, because SMART
+  goals were asked for and Doran's own title covers goals.
+- The other classifications were audited and fixed: KPI shown as Indicator; Means of verification; success
   dimensions from Shenhar and Dvir (efficiency, impact on the customer,
   impact on the team, business success, preparation for the future) plus
   compliance; data source provenance split from category; classification

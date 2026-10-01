@@ -2,7 +2,7 @@
   "$id": "segment.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Segment",
-  "description": "One named slice of what an organisation serves: a level, a region, a product line, a service tier. Segments are what a gap is observed in and what a measure is broken down by, and they are a tree rather than two kinds \u2014 a dimension is simply a Segment with no parent, and its values are its children, the same shape Goal already uses for its levels. So \"geography\" is a Segment and \"the northern region\" is its child, without a second kind for regions. Not a BeneficiaryGroup: a group is who work is for, a segment is where a shortfall was observed, and a region or a service tier is not a group of people. See GAP_DESIGN.md.",
+  "description": "One named slice of what an organisation serves: a level, a region, a product line, a service tier. Segments are what a gap is observed in and what a measure is broken down by, and they are a tree rather than two kinds: a dimension is simply a Segment with no parent, and its values are its children, the same shape Goal already uses for its levels. So \"geography\" is a Segment and \"the northern region\" is its child, without a second kind for regions. Not a BeneficiaryGroup: a group is who work is for, a segment is where a shortfall was observed, and a region or a service tier is not a group of people. See TAXONOMY.md D9.",
   "type": "object",
   "additionalProperties": false,
   "required": [

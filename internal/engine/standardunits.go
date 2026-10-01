@@ -51,7 +51,7 @@ var standardUnits = []struct {
 // the Strategic Plan vault without its (generated, uncommitted) index
 // took the second for the first and rewrote all nine of its unit files,
 // reordering their keys and dropping their quoting, on a read-only visit
-// (Programme Lead, 2026-09-29).
+// (2026-09-29).
 //
 // Writes through the ordinary commit path, so a seeded unit is a manifest
 // like any other and can be edited, renamed or deleted.

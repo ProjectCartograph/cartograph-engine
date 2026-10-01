@@ -39,7 +39,7 @@
           "required": [
             "change"
           ],
-          "description": "The change this programme exists to bring about. Not what it does: a programme coordinates work to deliver beneficial change, so the change is its own and the doing belongs to the components inside it. Said the other way round on 2026-09-28 \u2014 \"where it comes from a published plan, the plan's own objective, verbatim\" \u2014 which describes one organisation's paperwork rather than what the field holds, and Cartograph has no concept of a plan (Programme Lead, 2026-09-29). Where a definition is set out somewhere, spec.source says where. Held in the parts the interface builds it from and composed as `<change>, so that <gain>`, so the thing stored is what somebody typed rather than what the joiner made of it. Where the aim is somebody else's words, `change` carries them whole and `spec.source` says where they came from.",
+          "description": "The change this programme exists to bring about. Not what it does: a programme coordinates work to deliver beneficial change, so the change is its own and the doing belongs to the components inside it. Said the other way round on 2026-09-28 (\"where it comes from a published plan, the plan's own objective, verbatim\"), which describes one organisation's paperwork rather than what the field holds, and Cartograph has no concept of a plan. Where a definition is set out somewhere, spec.source says where. Held in the parts the interface builds it from and composed as `<change>, so that <gain>`, so the thing stored is what somebody typed rather than what the joiner made of it. Where the aim is somebody else's words, `change` carries them whole and `spec.source` says where they came from.",
           "properties": {
             "change": {
               "type": "string",
@@ -56,7 +56,7 @@
         },
         "problems": {
           "type": "array",
-          "description": "The problems this programme answers, each with the change that answers it and the beneficiary groups that feel it. A programme's name says what it is; this says what it is for, at the level the name sits (Programme Lead, 2026-09-27). Same shape as Project.spec.summary.problems.",
+          "description": "The problems this programme answers, each with the change that answers it and the beneficiary groups that feel it. A programme's name says what it is; this says what it is for, at the level the name sits. Same shape as Project.spec.summary.problems.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -84,7 +84,7 @@
               },
               "gaps": {
                 "type": "array",
-                "description": "The gaps this problem answers, and how much of each. A citation, not a restatement: a gap is what is wrong and how we know, written once in the register; the problem says what that does to these groups, here. Naming segments is what keeps the claim honest \u2014 a gap observed in four slices, answered by work that reaches one of them, is a quarter of a claim, and until 2026-09-29 a bare list of ids made it look like the whole (Programme Lead, 2026-09-29). Optional, because a problem nobody has traced to evidence is still a problem.",
+                "description": "The gaps this problem answers, and how much of each. A citation, not a restatement: a gap is what is wrong and how we know, written once in the register; the problem says what that does to these groups, here. Naming segments is what keeps the claim honest: a gap observed in four slices, answered by work that reaches one of them, is a quarter of a claim, and until 2026-09-29 a bare list of ids made it look like the whole. Optional, because a problem nobody has traced to evidence is still a problem.",
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
@@ -248,7 +248,7 @@
         },
         "pathway": {
           "type": "array",
-          "description": "How this programme believes the change happens: one step per intermediate outcome, each naming what must hold before it and why that produces it. Backwards mapping written forwards \u2014 the method is to start from the aim and ask what preconditions it needs, then what those need, until the answer is something the components actually do. Every outcome except the last is also a precondition for the next.\n\nDeliberately a separate edge set from the goal tree. Goal.parent is alignment \u2014 it says where a goal files, allows one parent, and carries no reason \u2014 where a pathway says what produces what, routinely has several inputs converging and one outcome feeding several, and exists to make the reasoning examinable (TAXONOMY.md D12). It lives on the programme rather than the goal because a goal outlives any one programme's theory of how to reach it, and two programmes may hold different theories about the same goal.\n\nAdvisory: a programme without one is a programme nobody has thought through yet, which is worth showing rather than refusing. See RESULTS_LOGIC.md.",
+          "description": "How this programme believes the change happens: one step per intermediate outcome, each naming what must hold before it and why that produces it. Backwards mapping written forwards: the method is to start from the aim and ask what preconditions it needs, then what those need, until the answer is something the components actually do. Every outcome except the last is also a precondition for the next.\n\nDeliberately a separate edge set from the goal tree. Goal.parent is alignment (it says where a goal files, allows one parent, and carries no reason), where a pathway says what produces what, routinely has several inputs converging and one outcome feeding several, and exists to make the reasoning examinable (TAXONOMY.md D12). It lives on the programme rather than the goal because a goal outlives any one programme's theory of how to reach it, and two programmes may hold different theories about the same goal.\n\nAdvisory: a programme without one is a programme nobody has thought through yet, which is worth showing rather than refusing.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -304,7 +304,7 @@
         },
         "notes": {
           "type": "object",
-          "description": "A note per step of the walk, keyed by the step's own name. One map rather than a property per step, because a note is the same thing wherever it is written and a schema that names every step has to be edited whenever the walk changes. What belongs here is what the fields above cannot hold and nobody should have to hold in their head \u2014 a caveat, a reason a choice was made, something to come back to. Not a substitute for a field: anything Cartograph can hold in a shape belongs in that shape, where it can be checked, rolled up and read back.",
+          "description": "A note per step of the walk, keyed by the step's own name. One map rather than a property per step, because a note is the same thing wherever it is written and a schema that names every step has to be edited whenever the walk changes. What belongs here is what the fields above cannot hold and nobody should have to hold in their head: a caveat, a reason a choice was made, something to come back to. Not a substitute for a field: anything Cartograph can hold in a shape belongs in that shape, where it can be checked, rolled up and read back.",
           "additionalProperties": {
             "type": "string",
             "maxLength": 4000

@@ -22,7 +22,7 @@ type schemaSet struct {
 	// properties in, and the interface builds a sheet's columns from that
 	// order — so a Gap's "what is wrong" was the last column instead of
 	// the first, because measuredBy, note, source, statement is what the
-	// alphabet says (Programme Lead, 2026-09-29).
+	// alphabet says.
 	bytes map[string][]byte // by kind name
 }
 

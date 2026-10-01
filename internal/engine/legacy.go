@@ -8,16 +8,16 @@ import (
 )
 
 // rewriteLegacyFields mutates a parsed manifest document in place for one
-// release's worth of backward compatibility with names I3.1 and I3.2
-// retired: Goal's level value "team" (I3.1's own retired name, and its
-// predecessor "functional", I3.2's own retired name) both become
-// "strategic"; a Goal at "strategic" with no parent (I3.1's own root level,
-// before I3.2 split it into Pillar and Strategic) becomes "pillar"; and the
+// release's worth of backward compatibility with names two earlier schemas
+// retired: Goal's level value "team" (the first one's retired name, and its
+// predecessor "functional", the second one's retired name) both become
+// "strategic"; a Goal at "strategic" with no parent (the first one's root level,
+// before the second split it into Pillar and Strategic) becomes "pillar"; and the
 // KeyResult/KPI baseline and target date fields ("asOf"/"by", now plain
 // "date" on both, since the parent object already names the grouping). The
 // admitted-unknown baseline shape ({unknownReason, expectedBy}) is
 // untouched: there the date means something different (when the baseline
-// will be set), and neither I3.1 nor I3.2 ever renamed it.
+// will be set), and neither earlier schema ever renamed it.
 //
 // Returns one human-readable note per field actually rewritten (empty when
 // the document was already in the current shape), so ImportDir can print
@@ -59,13 +59,13 @@ func rewriteLegacyFields(kind string, doc map[string]any) []string {
 		if level, ok := spec["level"].(string); ok {
 			switch level {
 			case "team":
-				// I3.1 "team" level always becomes "strategic"
+				// The older "team" level always becomes "strategic"
 				spec["level"] = "strategic"
 				notes = append(notes, `spec.level: "team" rewritten to "strategic"`)
 			case "functional":
-				// I3.2 "functional" (now called "strategic") becomes "strategic",
+				// The older "functional" (now called "strategic") becomes "strategic",
 				// but only if it has no parent or its parent is a "pillar" (or has no parent in old files).
-				// I3.4a+ "functional" (child of strategic) should not be rewritten.
+				// The current "functional" (child of strategic) should not be rewritten.
 				// Heuristic: if functional has a parent that looks like it could be strategic (not a pillar
 				// root and not missing), assume it's new format and keep it as functional.
 				// If it has no parent, it's old format and should become strategic.
@@ -76,7 +76,7 @@ func rewriteLegacyFields(kind string, doc map[string]any) []string {
 					spec["level"] = "strategic"
 					notes = append(notes, `spec.level: "functional" rewritten to "strategic"`)
 				}
-				// else: new format (I3.4a+), keep as functional
+				// else: new format, keep as functional
 			case "strategic":
 				if _, hasParent := spec["parent"]; !hasParent {
 					spec["level"] = "pillar"
@@ -281,7 +281,7 @@ func assignLocalIDs(spec map[string]any) []string {
 // The sentence used to be the stored value and the parts were recovered
 // by splitting it every time somebody opened the step, which put the
 // subject in two places and got the split wrong twice in one day. The
-// parts are the inputs now (Programme Lead, 2026-09-29). The subject
+// parts are the inputs now. The subject
 // cannot be separated from the situation here, since that needs the
 // group names and this pass sees one document; it stays where it was
 // written, and composition leaves a clause that names its own subject
@@ -559,7 +559,7 @@ func liftStakeholderScores(spec map[string]any) []string {
 // "stakeholder". A project's resources are what it draws on to do the
 // work; somebody with an interest in the outcome is a different relation
 // and is held on the StakeholderMap scoped to the work, whether or not the
-// work also draws on them (Programme Lead, 2026-09-28).
+// work also draws on them.
 //
 // The rewriter reads and writes one document, so it cannot move the row
 // onto a map: it names each one in a note instead, which is enough to
@@ -602,7 +602,7 @@ func dropStakeholderRoles(spec map[string]any) []string {
 // apart: "title" held a restatement of the position as often as a name —
 // `{role: sponsor, title: "Sponsor", resource: depot-network}` — so a
 // reader could not tell the catalogue entry from the local label, and the
-// two would have drifted (Programme Lead, 2026-09-29). The catalogue entry
+// two would have drifted. The catalogue entry
 // survives, because that is the one a second project can point at too.
 //
 // Nothing is lost that was said anywhere else: the position is in `role`,
@@ -689,7 +689,7 @@ func dropFreeTextFunding(spec map[string]any) []string {
 // answered and nothing more. A gap observed in four slices, answered by
 // work reaching one of them, read as the whole claim. A citation is an
 // object now, and the id alone still means the whole gap, so every old
-// file keeps exactly the meaning it had (GAP_DESIGN.md).
+// file keeps exactly the meaning it had (TAXONOMY.md D9).
 func rewriteGapCitations(kind string, spec map[string]any) []string {
 	var lists [][]any
 	switch kind {

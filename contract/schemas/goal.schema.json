@@ -51,7 +51,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 2000,
-          "description": "The goal exactly as its source states it, unaltered, where that source is a published plan or policy. Uncapped in practice because plan prose is not written to fit a field; objective carries the short reading beside it (Programme Lead, 2026-09-27). Never paraphrase into this property."
+          "description": "The goal exactly as its source states it, unaltered, where that source is a published plan or policy. Uncapped in practice because plan prose is not written to fit a field; objective carries the short reading beside it. Never paraphrase into this property."
         },
         "source": {
           "type": "string",

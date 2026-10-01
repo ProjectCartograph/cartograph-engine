@@ -132,7 +132,7 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 }
 
 // alignmentGoalLevelProblems enforces that projects align to functional goals
-// only, not to pillar or strategic goals (I3.4a). This check is not used during
+// only, not to pillar or strategic goals. This check is not used during
 // kind rule validation (to avoid issues with overlay parsing during imports); it
 // is instead enforced by the project checks which have full access to the engine.
 func alignmentGoalLevelProblems(spec map[string]any, lookup kit.Lookup) []kit.Problem {

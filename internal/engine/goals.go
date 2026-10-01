@@ -83,7 +83,7 @@ func (e *Engine) GetSettings(ctx context.Context) (Settings, error) {
 	return out, nil
 }
 
-// DeleteGoal deletes a goal (I3.2: goals are easily mutable), allowed only
+// DeleteGoal deletes a goal (goals are easily mutable), allowed only
 // when nothing currently references it (a child goal's own parent, a
 // Project/Programme/Operation/KPI's own alignment, or anything else the
 // generic reference index tracks). Refused with a *ValidationError listing
@@ -352,7 +352,7 @@ const (
 // objective, a goal parent for an objective or an objective parent for
 // an outcome, one to three key results each with a baseline (or an
 // admitted unknown) and a target, scoring evidence, and at least one KPI
-// referencing it (I3.4a). No check mentions a team or a cycle (I3.2): the
+// referencing it. No check mentions a team or a cycle: the
 // goal is the root of the dependency tree and never references a lower
 // component, so nothing here reads spec.team or spec.reviewCycle, both
 // removed from the schema.

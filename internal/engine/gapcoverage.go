@@ -12,7 +12,7 @@ import (
 // A gap enumerates the slices its shortfall was observed in; work that
 // cites it names which of those slices it reaches. Put together across a
 // vault, that answers the question a gap register exists to answer and
-// could not be asked before: what is nobody working on? (GAP_DESIGN.md.)
+// could not be asked before: what is nobody working on? (TAXONOMY.md D9.)
 //
 // The word throughout is *addressed*, never *closed*. Coverage says
 // somebody is working on a slice, which is contribution. Whether the

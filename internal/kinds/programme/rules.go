@@ -38,7 +38,7 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 //
 // Everything else about a pathway is advisory. A programme with no
 // pathway at all is one nobody has thought through yet, which is worth
-// showing rather than refusing (RESULTS_LOGIC.md).
+// showing rather than refusing (TAXONOMY.md D12).
 func pathwayProblems(spec map[string]any) []kit.Problem {
 	steps, _ := spec["pathway"].([]any)
 	if len(steps) == 0 {

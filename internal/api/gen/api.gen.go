@@ -830,7 +830,7 @@ type ServerInterface interface {
 	// GetGapCoverage Which part of a gap each piece of work addresses, and which parts nobody does. Derived from the citations, never stored: work declares what it reaches and this reads it back, the same way a programme's members are derived. Addressed, not closed: whether the shortfall narrowed is what the gap's measure reads.
 	// (GET /manifests/Gap/{id}/coverage)
 	GetGapCoverage(w http.ResponseWriter, r *http.Request, id IdParam)
-	// DeleteGoal Delete a goal (I3.2: goals are easily mutable). Allowed only when nothing currently references it; every committed version of every manifest remains in the immutable manifest store regardless (a tombstone, not a destructive delete), so this never disturbs history or audit -- it only stops the goal from being listed, picked or resolved as a reference going forward.
+	// DeleteGoal Delete a goal (goals are easily mutable). Allowed only when nothing currently references it; every committed version of every manifest remains in the immutable manifest store regardless (a tombstone, not a destructive delete), so this never disturbs history or audit -- it only stops the goal from being listed, picked or resolved as a reference going forward.
 	// (DELETE /manifests/Goal/{id})
 	DeleteGoal(w http.ResponseWriter, r *http.Request, id IdParam)
 	// GetGoalChecks Whether a goal can be assessed. Checks never block a save.
@@ -4905,7 +4905,7 @@ type StrictServerInterface interface {
 	// GetGapCoverage Which part of a gap each piece of work addresses, and which parts nobody does. Derived from the citations, never stored: work declares what it reaches and this reads it back, the same way a programme's members are derived. Addressed, not closed: whether the shortfall narrowed is what the gap's measure reads.
 	// (GET /manifests/Gap/{id}/coverage)
 	GetGapCoverage(ctx context.Context, request GetGapCoverageRequestObject) (GetGapCoverageResponseObject, error)
-	// DeleteGoal Delete a goal (I3.2: goals are easily mutable). Allowed only when nothing currently references it; every committed version of every manifest remains in the immutable manifest store regardless (a tombstone, not a destructive delete), so this never disturbs history or audit -- it only stops the goal from being listed, picked or resolved as a reference going forward.
+	// DeleteGoal Delete a goal (goals are easily mutable). Allowed only when nothing currently references it; every committed version of every manifest remains in the immutable manifest store regardless (a tombstone, not a destructive delete), so this never disturbs history or audit -- it only stops the goal from being listed, picked or resolved as a reference going forward.
 	// (DELETE /manifests/Goal/{id})
 	DeleteGoal(ctx context.Context, request DeleteGoalRequestObject) (DeleteGoalResponseObject, error)
 	// GetGoalChecks Whether a goal can be assessed. Checks never block a save.

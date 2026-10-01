@@ -31,7 +31,7 @@
         "kpi": {
           "$ref": "common.schema.json#/$defs/Slug",
           "x-cartograph-ref": "KPI",
-          "description": "The KPI these are readings of. What is measured, in what unit, which way is good and how often is read from there and never restated here \u2014 a reading that disagreed with its own definition about the unit would be unanswerable."
+          "description": "The KPI these are readings of. What is measured, in what unit, which way is good and how often is read from there and never restated here: a reading that disagreed with its own definition about the unit would be unanswerable."
         },
         "readings": {
           "type": "array",
@@ -59,7 +59,7 @@
               "note": {
                 "type": "string",
                 "maxLength": 400,
-                "description": "Why this number is what it is, when it needs saying \u2014 a strike, a change of method, a period nobody could collect."
+                "description": "Why this number is what it is, when it needs saying: a strike, a change of method, a period nobody could collect."
               }
             }
           }

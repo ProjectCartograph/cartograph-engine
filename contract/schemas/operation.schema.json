@@ -75,7 +75,7 @@
         },
         "notes": {
           "type": "object",
-          "description": "A note per step of the walk, keyed by the step's own name. One map rather than a property per step, because a note is the same thing wherever it is written and a schema that names every step has to be edited whenever the walk changes. What belongs here is what the fields above cannot hold and nobody should have to hold in their head \u2014 a caveat, a reason a choice was made, something to come back to. Not a substitute for a field: anything Cartograph can hold in a shape belongs in that shape, where it can be checked, rolled up and read back.",
+          "description": "A note per step of the walk, keyed by the step's own name. One map rather than a property per step, because a note is the same thing wherever it is written and a schema that names every step has to be edited whenever the walk changes. What belongs here is what the fields above cannot hold and nobody should have to hold in their head: a caveat, a reason a choice was made, something to come back to. Not a substitute for a field: anything Cartograph can hold in a shape belongs in that shape, where it can be checked, rolled up and read back.",
           "additionalProperties": {
             "type": "string",
             "maxLength": 4000

@@ -170,7 +170,7 @@ paths:
     delete:
       operationId: deleteGoal
       summary: >-
-        Delete a goal (I3.2: goals are easily mutable). Allowed only when
+        Delete a goal (goals are easily mutable). Allowed only when
         nothing currently references it; every committed version of every
         manifest remains in the immutable manifest store regardless (a
         tombstone, not a destructive delete), so this never disturbs

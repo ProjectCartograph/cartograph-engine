@@ -35,7 +35,7 @@ type Summary struct {
 
 	// Draft is true only for a synthetic Summary standing in for a
 	// project that has only ever been saved as a draft, never committed
-	// (I3a.1, includeDrafts=true): Version is then 0 and UpdatedOn is the
+	// (includeDrafts=true): Version is then 0 and UpdatedOn is the
 	// draft's own save time. False (the zero value) for every ordinary,
 	// committed Summary a store adapter's own ListSummaries builds.
 	Draft bool
@@ -168,7 +168,7 @@ type ProjectStateEntry struct {
 
 // ManifestDraft is a manifest's working copy: the YAML as last saved with
 // the draft header, never validated beyond its basic shape, never
-// versioned. Keyed by Kind and ID (I3a.1: generalized from the
+// versioned. Keyed by Kind and ID (generalised from the
 // Project-only project_draft table).
 type ManifestDraft struct {
 	Kind string

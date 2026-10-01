@@ -38,7 +38,7 @@
             "problems": {
               "type": "array",
               "minItems": 1,
-              "description": "The problems this project addresses, each with the change that answers it and the beneficiary groups that feel it. A project may answer more than one problem, and the same change may land differently on different groups (Programme Lead, 2026-09-27); the first line is the headline the register and the renderer show.",
+              "description": "The problems this project addresses, each with the change that answers it and the beneficiary groups that feel it. A project may answer more than one problem, and the same change may land differently on different groups; the first line is the headline the register and the renderer show.",
               "items": {
                 "type": "object",
                 "additionalProperties": false,
@@ -67,7 +67,7 @@
                   },
                   "gaps": {
                     "type": "array",
-                    "description": "The gaps this problem answers, and how much of each. A citation, not a restatement: a gap is what is wrong and how we know, written once in the register; the problem says what that does to these groups, here. Naming segments is what keeps the claim honest \u2014 a gap observed in four slices, answered by work that reaches one of them, is a quarter of a claim, and until 2026-09-29 a bare list of ids made it look like the whole (Programme Lead, 2026-09-29). Optional, because a problem nobody has traced to evidence is still a problem.",
+                    "description": "The gaps this problem answers, and how much of each. A citation, not a restatement: a gap is what is wrong and how we know, written once in the register; the problem says what that does to these groups, here. Naming segments is what keeps the claim honest: a gap observed in four slices, answered by work that reaches one of them, is a quarter of a claim, and until 2026-09-29 a bare list of ids made it look like the whole. Optional, because a problem nobody has traced to evidence is still a problem.",
                     "items": {
                       "type": "object",
                       "additionalProperties": false,
@@ -110,7 +110,7 @@
             },
             "beneficiaries": {
               "type": "array",
-              "description": "Beneficiary groups are qualitative: who the project is for. A line names a group and nothing else; no count belongs here (Programme Lead, 2026-09-26).",
+              "description": "Beneficiary groups are qualitative: who the project is for. A line names a group and nothing else; no count belongs here.",
               "items": {
                 "type": "object",
                 "additionalProperties": false,
@@ -133,7 +133,7 @@
         },
         "resources": {
           "type": "array",
-          "description": "The People and resources section (I3.2): roles the project needs, never a person; mapping roles to people lives in the delivery tool.",
+          "description": "The People and resources section: roles the project needs, never a person; mapping roles to people lives in the delivery tool.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -164,7 +164,7 @@
               "resource": {
                 "$ref": "common.schema.json#/$defs/Slug",
                 "x-cartograph-ref": "Resource",
-                "description": "The catalogue entry this project draws on for this position, and the only place the role is named. Every resource is standalone: a role, unit, party, system or facility is declared once under Resource and referenced here, so renaming it follows everywhere and two projects naming the same party are visibly naming the same party. A free-text \"title\" sat beside this until 2026-09-29, and the data showed why it could not: it held a restatement of the position (\"Sponsor\" on a row already typed sponsor) as often as a name, so nobody could tell the catalogue entry from the local label and the two would have drifted apart (Programme Lead, 2026-09-29). Optional, because knowing a project needs a sponsor before knowing who is a state worth holding \u2014 a check says so."
+                "description": "The catalogue entry this project draws on for this position, and the only place the role is named. Every resource is standalone: a role, unit, party, system or facility is declared once under Resource and referenced here, so renaming it follows everywhere and two projects naming the same party are visibly naming the same party. A free-text \"title\" sat beside this until 2026-09-29, and the data showed why it could not: it held a restatement of the position (\"Sponsor\" on a row already typed sponsor) as often as a name, so nobody could tell the catalogue entry from the local label and the two would have drifted apart. Optional, because knowing a project needs a sponsor before knowing who is a state worth holding; a check says so."
               },
               "note": {
                 "type": "string",
@@ -406,7 +406,7 @@
                 "$ref": "common.schema.json#/$defs/Slug",
                 "x-cartograph-ref": "Programme"
               },
-              "description": "The programmes this project is part of. Belonging to one is a declaration, not a derivation: a programme coordinates the work inside it, which only means something if the work says which programme it is in. Declared here and read back on the programme, so there is one place to change it. Sharing a goal with a programme corroborates the claim and a check says so when it is missing, but it does not constitute it \u2014 an enabling component can belong to a programme and serve no goal the programme lists. Advisory since 2026-09-28; it blocked until then. See TAXONOMY.md."
+              "description": "The programmes this project is part of. Belonging to one is a declaration, not a derivation: a programme coordinates the work inside it, which only means something if the work says which programme it is in. Declared here and read back on the programme, so there is one place to change it. Sharing a goal with a programme corroborates the claim and a check says so when it is missing, but it does not constitute it: an enabling component can belong to a programme and serve no goal the programme lists. Advisory since 2026-09-28; it blocked until then. See TAXONOMY.md."
             },
             "partOf": {
               "$ref": "common.schema.json#/$defs/Slug",
@@ -433,7 +433,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 250,
-                "description": "The objective as one sentence: the change, then how. The editor builds it in two parts of up to 120 characters each and joins them with \" by \", so the sentence it can produce runs to about 240; capping the stored value at 120 meant the editor could build one the contract then refused (Programme Lead, 2026-09-27)."
+                "description": "The objective as one sentence: the change, then how. The editor builds it in two parts of up to 120 characters each and joins them with \" by \", so the sentence it can produce runs to about 240; capping the stored value at 120 meant the editor could build one the contract then refused."
               },
               "keyResults": {
                 "type": "array",
@@ -494,7 +494,7 @@
         },
         "kpis": {
           "type": "array",
-          "description": "The standing measures this project moves, named at project level with the reason for naming each (Programme Lead, 2026-09-26). A KPI is a whole-of-project concern, not a property of one key result, and one KPI may be named by several projects; nothing here assumes a KPI can assess this project's landing.",
+          "description": "The standing measures this project moves, named at project level with the reason for naming each. A KPI is a whole-of-project concern, not a property of one key result, and one KPI may be named by several projects; nothing here assumes a KPI can assess this project's landing.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -542,7 +542,7 @@
                 "items": {
                   "$ref": "common.schema.json#/$defs/Ref"
                 },
-                "description": "The deliverables that produce this outcome, where any do. Optional and never a completeness test: a criterion may be the result of a deliverable, and may equally assess schedule, budget, compliance or any dimension at closing or landing that no deliverable produces \u2014 which is what the seven metric dimensions are for, and a criterion standing on its own is complete (Programme Lead, 2026-09-29). What this buys is that the arrow can be drawn where it exists, and the assumption on that step can be named."
+                "description": "The deliverables that produce this outcome, where any do. Optional and never a completeness test: a criterion may be the result of a deliverable, and may equally assess schedule, budget, compliance or any dimension at closing or landing that no deliverable produces, which is what the seven metric dimensions are for, and a criterion standing on its own is complete. What this buys is that the arrow can be drawn where it exists, and the assumption on that step can be named."
               },
               "assumes": {
                 "type": "array",
@@ -597,7 +597,7 @@
               }
             }
           },
-          "description": "What has to be true for this project to have succeeded, not merely to have finished. Each line names the outcome, the metric and the standard that settles it, where that measurement is read from and how often, the role that tracks it and the role that confirms it (Programme Lead, 2026-09-27). A success criterion is the floor the project must clear; an objective's key result is the stretch it reaches for, which is why neither is derived from the other."
+          "description": "What has to be true for this project to have succeeded, not merely to have finished. Each line names the outcome, the metric and the standard that settles it, where that measurement is read from and how often, the role that tracks it and the role that confirms it. A success criterion is the floor the project must clear; an objective's key result is the stretch it reaches for, which is why neither is derived from the other."
         },
         "operation": {
           "$ref": "common.schema.json#/$defs/Slug",
@@ -675,7 +675,7 @@
                   "dependency",
                   "constraint"
                 ],
-                "description": "What kind of thing this row is. \"assumption\" left this list on 2026-09-29: an assumption is not a risk \u2014 a risk is mitigated, an assumption is tested, and a false assumption changes the theory rather than the plan \u2014 and it belongs on the link it conditions rather than in a flat list. Not one of the seventeen risks across both vaults had used the value. See the Assumption kind."
+                "description": "What kind of thing this row is. \"assumption\" left this list on 2026-09-29: an assumption is not a risk (a risk is mitigated, an assumption is tested, and a false assumption changes the theory rather than the plan), and it belongs on the link it conditions rather than in a flat list. Not one of the seventeen risks across both vaults had used the value. See the Assumption kind."
               },
               "impact": {
                 "type": "string",
@@ -773,7 +773,7 @@
         },
         "notes": {
           "type": "object",
-          "description": "A note per step of the walk, keyed by the step's own name. One map rather than a property per step, because a note is the same thing wherever it is written and a schema that names every step has to be edited whenever the walk changes. What belongs here is what the fields above cannot hold and nobody should have to hold in their head \u2014 a caveat, a reason a choice was made, something to come back to. Not a substitute for a field: anything Cartograph can hold in a shape belongs in that shape, where it can be checked, rolled up and read back.",
+          "description": "A note per step of the walk, keyed by the step's own name. One map rather than a property per step, because a note is the same thing wherever it is written and a schema that names every step has to be edited whenever the walk changes. What belongs here is what the fields above cannot hold and nobody should have to hold in their head: a caveat, a reason a choice was made, something to come back to. Not a substitute for a field: anything Cartograph can hold in a shape belongs in that shape, where it can be checked, rolled up and read back.",
           "additionalProperties": {
             "type": "string",
             "maxLength": 4000
