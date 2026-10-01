@@ -76,10 +76,15 @@ document's id is looked up through the HTTP contract
 (`GET /manifests/{kind}/{id}/document`), never derived by a client.
 
 **Genesis.** A manifest's document is created once, from its working
-copy or current version, by a change whose actor and timestamp are
-derived from the manifest, not chosen at random. Two replicas creating
-it at the same moment produce byte-identical changes with the same
-hash, which Automerge treats as one.
+copy or current version, and stored with `DocStore.Create`. That call is
+atomic: when two replicas create the same manifest's document at once,
+one wins and the other discards its own and loads the winner's before
+serving anything from it. Every actor is random, per replica and per
+document. Deriving the genesis actor from the manifest, so that both
+replicas would produce the same change, was rejected: two replicas
+reading different working copies would then issue different changes
+under one actor and sequence number, which Automerge refuses as
+corruption.
 
 **Versions.** A version still means what it meant: an immutable,
 attributed save that `diff`, `export`, the charter and the handoff
