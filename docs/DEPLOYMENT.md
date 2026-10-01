@@ -67,7 +67,7 @@ The image is built by the flake, so it is the same build as the binary,
 on either architecture, and there is nothing to keep in step with it:
 
 ```
-just image                   # nix build .#image, loaded into docker as cartograph:<version>
+just image                   # nix build .#image, loaded into docker as cartograph:<version> and cartograph:local
 nix build .#image-chromium   # the same plus Chromium, for PDF printing (about 400 MB larger)
 ```
 
@@ -78,7 +78,7 @@ uid 65532, owns `/vault`, sets `CARTOGRAPH_VAULT=/vault` and
 `CARTOGRAPH_LOG_FORMAT=json`, exposes 8080, and checks itself with `cartograph
 ready` (there is no shell and no curl in it). Mount a volume at
 `/vault`; that volume is the only state. `compose.yaml` does the same
-with the health check.
+with the health check, on `cartograph:local` (or `CARTOGRAPH_IMAGE`).
 
 Seed the volume as the runtime user before the first start, and never
 mount a tracked example directory in place (the server writes `.cartograph/`
@@ -221,6 +221,180 @@ cartograph serve
 
 A backup is the database's own (`pg_dump`, or the provider's
 snapshots). `cartograph export` writes the manifests as files as well.
+
+## Large-scale, highly available
+
+The stateless deployment above scales out. This section is how to run
+it for many people, with no single replica that matters.
+
+### The topology
+
+```
+clients ── load balancer ── replica 1 ─┐
+           (no affinity)    replica 2 ─┼── PgBouncer ── Postgres primary (+ standbys)
+                            replica N ─┘        └──── direct: one LISTEN per replica
+```
+
+- N stateless replicas, all with the same `CARTOGRAPH_STORE`, behind
+  any load balancer. No sticky sessions: any replica serves any
+  request, and a sync socket that moves to another replica resumes
+  from heads.
+- Postgres is the one stateful part, and its high availability is the
+  operator's. Use a managed service, or an operator such as
+  CloudNativePG, with a standby and automatic failover. Cartograph
+  reconnects after a failover; a change refused meanwhile stays with
+  the client, which sends it again.
+- Through PgBouncer in transaction mode, two things change. LISTEN
+  does not work through such a pooler, so set `CARTOGRAPH_FANOUT_URL`
+  to a direct Postgres URL; only the one listening connection per
+  replica uses it. And pgx prepares statements, which transaction
+  pooling breaks: add `default_query_exec_mode=exec` to the store URL,
+  or turn on PgBouncer's prepared statement support
+  (`max_prepared_statements`, PgBouncer 1.21 or later).
+
+`compose.ha.yaml` rehearses this on one machine: Postgres, a one-shot
+import of the example, two replicas, and nginx in front (`just image`,
+then `just ha-up`, and `just ha-down` to stop). The Helm chart in
+`deploy/helm/cartograph` deploys it on Kubernetes.
+
+### Settings for this shape
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `CARTOGRAPH_FANOUT_URL` | the store URL | A direct Postgres URL for the listening connection, when the store URL goes through a transaction-mode pooler |
+| `CARTOGRAPH_METRICS_ADDR` | empty (off) | Serve Prometheus `/metrics` on this address, a listener of its own, for example `:9090` |
+| `CARTOGRAPH_SYNC_PING` | `20s` | How often the server pings an open sync socket. Below the 60 second idle timeout of nginx and of an AWS load balancer |
+| `CARTOGRAPH_DOC_CACHE` | `1000` | Shared documents cached per replica. A cache only: the store is the truth |
+| `CARTOGRAPH_DRAIN_DELAY` | `0` | On SIGTERM, how long `/readyz` answers 503 while the replica still serves, before shutdown begins |
+
+### Connection budget
+
+Each replica opens a pool and one listening connection. So the
+database needs at least
+
+```
+replicas × (pool_max_conns + 1)
+```
+
+connections, plus room for migrations, backups and people. Set the
+pool size in the URL: `?pool_max_conns=10`. pgx's default is the larger
+of 4 and the number of CPUs it sees, which on a large node is more than
+a replica needs. With PgBouncer, the pools count against PgBouncer and
+only the listening connections reach Postgres directly. Size an
+autoscaler's maximum from this sum, not the other way round.
+
+### Load balancers and WebSockets
+
+The sync socket at `/api/v1/sync` is a WebSocket that stays open as
+long as the page does. Every proxy in the path must pass the upgrade
+headers (`Upgrade`, `Connection`) and allow long idle periods.
+
+- nginx closes an idle proxied connection after 60 seconds
+  (`proxy_read_timeout`). Raise it to an hour; with ingress-nginx, set
+  `nginx.ingress.kubernetes.io/proxy-read-timeout` and
+  `proxy-send-timeout` to `"3600"`.
+- An AWS Application Load Balancer has a 60 second idle timeout by
+  default. The ping keeps an idle socket under it; raising it does no
+  harm.
+- A Google Cloud backend service's timeout is the longest a WebSocket
+  may live, idle or not. Set it to the longest session you want before
+  a reconnect, for example an hour.
+
+When a socket closes anyway, the client reconnects and resumes from
+heads. Nothing is lost; a reconnect costs one round trip. The server's
+ping (`CARTOGRAPH_SYNC_PING`) keeps idle sockets open through proxies
+that count idle time.
+
+### Probes
+
+- `/healthz` is liveness. It says the process runs, and it never
+  touches the database. A database outage must not make the platform
+  restart every replica.
+- `/readyz` is readiness. It answers 503 only while the replica drains
+  or stops. It deliberately does not check the database either: if it
+  did, a short database blip would mark every replica unready at once,
+  and the load balancer would turn a partial outage into a total one.
+  While the database is away, replicas still answer, refuse writes
+  they cannot store, and recover on their own.
+- A startup probe on `/healthz` covers the first start, which compiles
+  the schemas and the Automerge module.
+
+### Graceful rollout
+
+On SIGTERM a replica answers 503 on `/readyz` for
+`CARTOGRAPH_DRAIN_DELAY` while it keeps serving, so load balancers
+that poll readiness stop sending it new requests. Then it stops
+accepting, and in-flight requests get `CARTOGRAPH_SHUTDOWN_TIMEOUT` to
+finish. Open sync sockets close, and their clients reconnect to another
+replica.
+
+On Kubernetes, set the pod's `terminationGracePeriodSeconds` above the
+drain delay plus the shutdown timeout, or the kubelet kills a replica
+that is still draining. The image has no shell, so a `preStop` hook
+that sleeps is not possible; the drain delay does that job. A
+PodDisruptionBudget (`minAvailable: 1`, or `maxUnavailable: 1`) keeps
+node drains from taking every replica at once, and a rolling update
+with `maxUnavailable: 0` adds a replica before it removes one. The
+chart sets all of this.
+
+### Autoscaling
+
+Two choices, never both on one Deployment:
+
+- **KEDA on Prometheus.** Scale on open sync connections, which is what
+  costs memory and file descriptors. For example, one replica per 200
+  connections:
+
+  ```yaml
+  apiVersion: keda.sh/v1alpha1
+  kind: ScaledObject
+  metadata:
+    name: cartograph
+  spec:
+    scaleTargetRef:
+      name: cartograph
+    minReplicaCount: 2
+    maxReplicaCount: 20
+    triggers:
+      - type: prometheus
+        metadata:
+          serverAddress: http://prometheus-operated.monitoring.svc:9090
+          query: sum(cartograph_sync_connections)
+          threshold: "200"
+  ```
+
+- **A HorizontalPodAutoscaler on CPU.** Simpler, and right when most
+  traffic is plain API requests.
+
+Keep the minimum at 2 or more, so one replica can go away.
+
+### Metrics
+
+With `CARTOGRAPH_METRICS_ADDR` set, each replica serves Prometheus
+metrics on that address:
+
+| Metric | Type | Means |
+|---|---|---|
+| `cartograph_sync_connections` | gauge | Open sync sockets on this replica |
+| `cartograph_sync_documents_open` | gauge | Documents those sockets have open |
+| `cartograph_shared_documents_cached` | gauge | Shared documents in this replica's cache |
+| `cartograph_http_requests_total` | counter | Requests served |
+| `cartograph_http_request_duration_seconds` | histogram | Request latency |
+| `cartograph_fanout_*` | counters | Fan-out activity: messages sent and received, and the listener's reconnects |
+| `go_*`, `process_*` | | The Go runtime and the process |
+
+The metrics listener is separate from the API, so it can stay off
+the load balancer and away from the public network.
+
+### Several regions
+
+There is one Postgres primary, so writes go to one region. Replicas in
+other regions work, at the cost of the round trip to the primary on
+every write. Fan-out over `LISTEN/NOTIFY` needs every replica connected
+to that primary. Fan-out within each region, with a broker between
+regions, needs a fan-out adapter for such a broker (NATS, for example).
+That is a distribution's concern, one adapter behind the `fanout.Bus`
+port (ADR 0008), and nothing else changes.
 
 ## Upgrading
 

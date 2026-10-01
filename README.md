@@ -30,6 +30,13 @@ Open http://localhost:8080. `cartograph serve -h` lists every setting
 
 Or, with nothing checked out: `nix run github:ProjectCartograph/cartograph-engine -- serve ./my-vault`.
 
+In containers: `just image` builds the image from the flake, and
+`compose.yaml` runs it on one vault volume. `compose.ha.yaml` (`just
+ha-up`) runs the highly available shape on one machine: Postgres, two
+stateless replicas and a load balancer. On Kubernetes, the Helm chart
+in `deploy/helm/cartograph` runs either shape; `docs/DEPLOYMENT.md` says
+how to size and operate it.
+
 ## Build and test it
 
 Nix is the toolchain (`docs/SETUP.md`: Linux, macOS, Windows through
@@ -69,6 +76,8 @@ internal/api/    the HTTP driving adapter; gen/ is generated from the contract
 pkg/client/      the port every interface uses, in-process and remote
 pkg/uiconformance/ the suite every interface passes
 examples/minimal a fictional produce cooperative
+deploy/          the Helm chart (helm/cartograph), and the Postgres just helm-kind tests it on (kind/)
+compose*.yaml    one replica on a vault; the highly available shape on one machine
 internal/spa/    the embedded web interface: a cartograph-ui release, fetched, never committed
 docs/            SETUP, ARCHITECTURE, DEPLOYMENT, SERVERLESS, EXTENDING, UI_CONTRACT, MULTIPLAYER, DESIGN_RULES, TAXONOMY
 docs/adr/        architecture decision records, one decision per file
