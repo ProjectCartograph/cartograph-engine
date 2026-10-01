@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/conformance"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/conformance"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/sqlite"
 )
 
 func openTestDB(t *testing.T) *sql.DB {

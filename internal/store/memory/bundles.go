@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // BundleStore keeps handoff bundles in memory: what a test needs to prove

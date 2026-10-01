@@ -9,7 +9,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/fanout"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 )
 
 // buffer is how many messages a subscriber may fall behind by before it

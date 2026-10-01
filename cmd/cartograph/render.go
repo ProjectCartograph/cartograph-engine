@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/render"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/render"
 )
 
 func runRender(args []string) error {

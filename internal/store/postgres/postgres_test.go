@@ -14,9 +14,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/conformance"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/postgres"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/conformance"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/postgres"
 )
 
 // testURL is the database the tests run against, from

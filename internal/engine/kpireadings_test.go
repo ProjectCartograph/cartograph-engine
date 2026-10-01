@@ -2,7 +2,7 @@ package engine_test
 
 import (
 	"context"
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"os"
 	"path/filepath"
 	"strings"

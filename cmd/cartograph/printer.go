@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/printer"
-	"github.com/ProjectCartograph/cartograph-engine/internal/printer/chromium"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer/chromium"
 )
 
 // newPrinter picks the PDF printer a one-shot command uses: the browser

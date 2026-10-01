@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
 // The state commands drive the same engine methods the API does, so what

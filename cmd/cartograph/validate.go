@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	codecyaml "github.com/ProjectCartograph/cartograph-engine/internal/codec/yaml"
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"os"
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/memory"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 // runValidate checks a single manifest file, or every manifest file under a

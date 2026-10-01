@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth"
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth/roles"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/roles"
 )
 
 func TestActionForClassifiesMethodAndPath(t *testing.T) {

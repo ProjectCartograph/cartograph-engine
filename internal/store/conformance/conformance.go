@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // RunManifestStore exercises every store.ManifestStore method against a

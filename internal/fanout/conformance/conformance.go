@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/fanout"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 )
 
 // wait is how long a message may take to arrive. A database round trip

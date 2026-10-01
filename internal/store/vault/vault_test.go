@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/conformance"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/vault"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/conformance"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/sqlite"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/vault"
 )
 
 func TestManifestStoreConformance(t *testing.T) {

@@ -20,7 +20,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/pkg/merge"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/merge"
 )
 
 // ErrNotFound is returned by Get and Working for a manifest that is not

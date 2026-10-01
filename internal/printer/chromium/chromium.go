@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/printer"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
 )
 
 // Printer prints with the browser at Path, or with one it resolves.

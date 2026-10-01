@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // ApplyJournal is the SQLite adapter for store.ApplyJournal.

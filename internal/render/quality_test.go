@@ -2,14 +2,14 @@ package render
 
 import (
 	"context"
-	codecyaml "github.com/ProjectCartograph/cartograph-engine/internal/codec/yaml"
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"html"
 	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/memory"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 // TestChartersReadAsDocuments is the control for LSS_REVIEW.md: every

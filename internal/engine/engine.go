@@ -7,10 +7,10 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/codec"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/kit"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/codec"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // Engine is the kind-agnostic manifest engine. Construct with New. It

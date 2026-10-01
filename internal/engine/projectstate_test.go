@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
 // I3.3b: project state reduced to draft, defined, handed off, cancelled.

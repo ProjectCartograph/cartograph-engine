@@ -8,9 +8,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/fanout"
-	"github.com/ProjectCartograph/cartograph-engine/internal/fanout/conformance"
-	"github.com/ProjectCartograph/cartograph-engine/internal/fanout/postgres"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout/conformance"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout/postgres"
 )
 
 // newBus opens a Bus with a pool of its own on the test database, so

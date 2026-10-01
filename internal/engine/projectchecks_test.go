@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
 // I3a (2026-09-17): GET /manifests/Project/{id}/checks. Every rule is

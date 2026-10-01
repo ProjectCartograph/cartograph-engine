@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
-	"github.com/ProjectCartograph/cartograph-engine/pkg/merge"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/merge"
 )
 
 // Drafts is the shared working document of every open manifest: one

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/config"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/config"
 )
 
 // runReady asks a running server whether it is ready and exits 0 or 1.

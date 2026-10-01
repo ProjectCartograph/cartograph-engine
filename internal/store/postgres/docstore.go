@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // DocStore is the Postgres adapter for store.DocStore: one row per

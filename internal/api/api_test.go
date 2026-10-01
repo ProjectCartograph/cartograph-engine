@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	codecyaml "github.com/ProjectCartograph/cartograph-engine/internal/codec/yaml"
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -15,13 +15,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/api"
-	apigen "github.com/ProjectCartograph/cartograph-engine/internal/api/gen"
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/memory"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/vault"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/api"
+	apigen "github.com/ProjectCartograph/cartograph-engine/v2/internal/api/gen"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/sqlite"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/vault"
 )
 
 func testContext() context.Context {

@@ -3,7 +3,7 @@ package sentence_test
 import (
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/sentence"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/sentence"
 )
 
 // The interface composes the same sentence from the same parts. Where

@@ -15,14 +15,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 
-	apigen "github.com/ProjectCartograph/cartograph-engine/internal/api/gen"
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth"
-	"github.com/ProjectCartograph/cartograph-engine/internal/codec"
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/printer"
-	"github.com/ProjectCartograph/cartograph-engine/internal/render"
+	apigen "github.com/ProjectCartograph/cartograph-engine/v2/internal/api/gen"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/codec"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/render"
 )
 
 // Server implements apigen.StrictServerInterface over an *engine.Engine.

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
 func programmeChecksByID(t *testing.T, e *engine.Engine, id string) map[string]engine.ProgrammeCheck {

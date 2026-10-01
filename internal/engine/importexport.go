@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/codec"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/codec"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 type importFile struct {

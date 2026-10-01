@@ -3,9 +3,9 @@ package automerge_test
 import (
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/crdt"
-	"github.com/ProjectCartograph/cartograph-engine/internal/crdt/automerge"
-	"github.com/ProjectCartograph/cartograph-engine/internal/crdt/conformance"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/crdt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/crdt/automerge"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/crdt/conformance"
 )
 
 func TestConformance(t *testing.T) {

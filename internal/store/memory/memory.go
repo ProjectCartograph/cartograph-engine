@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/manifestmeta"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/manifestmeta"
 )
 
 type manifestKey struct{ kind, id string }

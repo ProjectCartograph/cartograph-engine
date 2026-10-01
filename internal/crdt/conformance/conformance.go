@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/crdt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/crdt"
 )
 
 // Run exercises an adapter. newEngine returns a fresh engine, closed by

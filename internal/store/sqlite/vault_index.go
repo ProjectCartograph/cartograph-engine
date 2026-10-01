@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"path/filepath"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 var _ store.VaultIndex = (*VaultIndex)(nil)

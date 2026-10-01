@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
 // Charter renders a project charter to HTML and JSON for a given snapshot.

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
 func changeAt(cs []engine.Change, path string) (engine.Change, bool) {

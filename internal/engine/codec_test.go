@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	codecjson "github.com/ProjectCartograph/cartograph-engine/internal/codec/json"
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/memory"
+	codecjson "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/json"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 // The same manifests, written in JSON: the engine validates, commits,

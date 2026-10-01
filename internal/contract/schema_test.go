@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/contract"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/contract"
 )
 
 // A property whose values live in common.schema.json carries them a second

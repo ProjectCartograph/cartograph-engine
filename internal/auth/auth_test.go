@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth"
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth/proxy"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/proxy"
 )
 
 func principalEcho(t *testing.T) (http.Handler, *auth.Principal) {

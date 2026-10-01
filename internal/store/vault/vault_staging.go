@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // Unfinished work does not belong in the vault.

@@ -10,8 +10,8 @@ import (
 
 	yamlv3 "gopkg.in/yaml.v3"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/codec"
-	"github.com/ProjectCartograph/cartograph-engine/internal/yamlfmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/codec"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/yamlfmt"
 )
 
 // Codec is the YAML codec. The zero value is ready to use.

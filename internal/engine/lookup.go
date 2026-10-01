@@ -3,8 +3,8 @@ package engine
 import (
 	"context"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/codec"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/codec"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // lookup answers "does this manifest exist" and "give me every current

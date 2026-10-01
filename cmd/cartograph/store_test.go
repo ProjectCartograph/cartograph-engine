@@ -11,7 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/fanout"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 )
 
 func TestComposeAVault(t *testing.T) {

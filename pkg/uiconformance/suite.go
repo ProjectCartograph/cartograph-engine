@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/pkg/client"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client"
 )
 
 //go:embed scenarios/*.json

@@ -1,18 +1,18 @@
 package clientdriver_test
 
 import (
-	codecyaml "github.com/ProjectCartograph/cartograph-engine/internal/codec/yaml"
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/api"
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/memory"
-	"github.com/ProjectCartograph/cartograph-engine/pkg/client"
-	"github.com/ProjectCartograph/cartograph-engine/pkg/client/inproc"
-	"github.com/ProjectCartograph/cartograph-engine/pkg/client/remote"
-	"github.com/ProjectCartograph/cartograph-engine/pkg/uiconformance"
-	"github.com/ProjectCartograph/cartograph-engine/pkg/uiconformance/clientdriver"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/api"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client/inproc"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client/remote"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/uiconformance"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/uiconformance/clientdriver"
 )
 
 func newEngine(t *testing.T) *engine.Engine {

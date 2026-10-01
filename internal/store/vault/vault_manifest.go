@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/yamlfmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/yamlfmt"
 	"gopkg.in/yaml.v3"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // VaultManifest represents the vault.yaml file

@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/manifestmeta"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/manifestmeta"
 )
 
 // The vault is the one adapter with an apply gate: a file can sit in

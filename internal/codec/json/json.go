@@ -11,7 +11,7 @@ import (
 
 	yamlv3 "gopkg.in/yaml.v3"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/codec"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/codec"
 )
 
 // Codec is the JSON codec. The zero value is ready to use.

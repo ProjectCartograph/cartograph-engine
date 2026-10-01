@@ -15,14 +15,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/api"
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth"
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth/proxy"
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth/roles"
-	"github.com/ProjectCartograph/cartograph-engine/internal/config"
-	"github.com/ProjectCartograph/cartograph-engine/internal/printer"
-	"github.com/ProjectCartograph/cartograph-engine/internal/printer/chromium"
-	"github.com/ProjectCartograph/cartograph-engine/internal/spa"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/api"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/proxy"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/roles"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/config"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer/chromium"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/spa"
 )
 
 // runServe is the composition root: it reads the configuration, picks an

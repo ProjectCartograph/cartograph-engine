@@ -5,14 +5,14 @@
 package kinds
 
 import (
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/goal"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/kit"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/kpireadings"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/programme"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/project"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/segment"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/settings"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/stakeholdermap"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/goal"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kpireadings"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/programme"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/project"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/segment"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/settings"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/stakeholdermap"
 )
 
 // Spec describes one kind.

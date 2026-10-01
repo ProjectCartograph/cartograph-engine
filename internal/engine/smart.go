@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/kit"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 )
 
 // Smart is how far one goal, objective or outcome meets the SMART criteria

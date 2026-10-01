@@ -3,11 +3,11 @@ package engine_test
 import (
 	"context"
 	"errors"
-	codecyaml "github.com/ProjectCartograph/cartograph-engine/internal/codec/yaml"
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/memory"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 // A store with no apply gate answers ErrNoState on every state method,

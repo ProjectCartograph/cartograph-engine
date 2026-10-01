@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/contract"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/contract"
 )
 
 // FlowJSON returns a kind's flow document exactly as written in the

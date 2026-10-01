@@ -6,7 +6,7 @@ package stakeholdermap
 import (
 	"fmt"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/kit"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 )
 
 // scopeKinds is what a map may be about. A stakeholder map belongs to a

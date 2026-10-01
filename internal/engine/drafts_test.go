@@ -4,14 +4,14 @@ package engine_test
 
 import (
 	"context"
-	codecyaml "github.com/ProjectCartograph/cartograph-engine/internal/codec/yaml"
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/memory"
-	"github.com/ProjectCartograph/cartograph-engine/pkg/merge"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/merge"
 )
 
 func draftsEngine(t *testing.T) (*engine.Engine, *memory.ManifestStore) {

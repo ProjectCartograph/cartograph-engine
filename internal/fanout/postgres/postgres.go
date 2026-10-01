@@ -24,7 +24,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/fanout"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 )
 
 // Channel is the one NOTIFY channel every replica listens on.

@@ -8,7 +8,7 @@ package engine
 import (
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // Version and Summary are exactly the records store.ManifestStore

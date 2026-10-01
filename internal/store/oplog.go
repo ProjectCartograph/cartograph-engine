@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/pkg/merge"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/merge"
 )
 
 // Op is one write to one leaf of one manifest's shared working document,

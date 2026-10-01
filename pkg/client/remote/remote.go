@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/pkg/client"
-	"github.com/ProjectCartograph/cartograph-engine/pkg/merge"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/merge"
 )
 
 // Client talks to Base ("http://host/api/v1").

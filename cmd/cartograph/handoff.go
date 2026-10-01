@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/render"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/render"
 )
 
 func runHandoff(args []string) error {

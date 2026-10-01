@@ -4,7 +4,7 @@ package kpireadings
 import (
 	"fmt"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/kit"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 )
 
 // Rules refuses two readings for the same period.

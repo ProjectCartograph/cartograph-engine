@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // CommitProject validates and stores a new version of a Project, exactly

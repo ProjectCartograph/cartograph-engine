@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/vault"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/sqlite"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/vault"
 )
 
 func stagedPath(dir, kind, id string) string {

@@ -13,7 +13,7 @@ package project
 import (
 	"fmt"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/kit"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 )
 
 func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {

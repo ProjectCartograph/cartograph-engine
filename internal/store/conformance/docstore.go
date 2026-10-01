@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // RunDocStore exercises every store.DocStore method against a freshly

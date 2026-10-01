@@ -30,7 +30,7 @@ import (
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/crdt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/crdt"
 )
 
 //go:embed automerge.wasm

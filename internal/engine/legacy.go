@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/sentence"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/sentence"
 )
 
 // rewriteLegacyFields mutates a parsed manifest document in place for one

@@ -3,9 +3,9 @@ package memory_test
 import (
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/conformance"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/memory"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/conformance"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 func TestManifestStoreConformance(t *testing.T) {

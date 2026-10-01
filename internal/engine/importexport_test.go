@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
 // exampleDir locates cartograph/examples/minimal relative to this package
-// (github.com/ProjectCartograph/cartograph-engine/internal/engine), without hard-coding an absolute path.
+// (github.com/ProjectCartograph/cartograph-engine/v2/internal/engine), without hard-coding an absolute path.
 func exampleDir(t *testing.T) string {
 	t.Helper()
 	wd, err := os.Getwd()

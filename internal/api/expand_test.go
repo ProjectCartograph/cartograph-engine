@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	apigen "github.com/ProjectCartograph/cartograph-engine/internal/api/gen"
+	apigen "github.com/ProjectCartograph/cartograph-engine/v2/internal/api/gen"
 )
 
 // expand=spec carries each record's spec on its summary, so a register

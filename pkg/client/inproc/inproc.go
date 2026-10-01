@@ -13,10 +13,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth"
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/pkg/client"
-	"github.com/ProjectCartograph/cartograph-engine/pkg/merge"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client"
+	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/merge"
 )
 
 // Client wraps an engine.

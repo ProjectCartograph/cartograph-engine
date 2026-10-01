@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
 )
 
 // Authorizer holds the two role sets.

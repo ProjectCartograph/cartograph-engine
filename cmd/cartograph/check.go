@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
 func runCheck(args []string) error {

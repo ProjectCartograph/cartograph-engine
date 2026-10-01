@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/auth"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
 )
 
 // Authenticator reads the identity from Header and the groups, when the

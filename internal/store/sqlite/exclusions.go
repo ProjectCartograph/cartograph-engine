@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // Exclude records an exclusion for a manifest.

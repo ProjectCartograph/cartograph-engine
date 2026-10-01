@@ -6,8 +6,8 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/contract"
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/contract"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
 )
 
 // schemaSet compiles and holds every kind's JSON Schema, plus the raw

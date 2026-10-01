@@ -3,15 +3,15 @@ package engine_test
 import (
 	"context"
 	"errors"
-	codecyaml "github.com/ProjectCartograph/cartograph-engine/internal/codec/yaml"
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/engine"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/sqlite"
-	"github.com/ProjectCartograph/cartograph-engine/internal/store/vault"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/sqlite"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/vault"
 )
 
 // TestHandoffRefusedWhileCheckBlocks: handoff rejected when blocking checks exist.

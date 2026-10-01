@@ -4,7 +4,7 @@ package segment
 import (
 	"fmt"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/kinds/kit"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 )
 
 // Rules refuses a segment that is its own ancestor.

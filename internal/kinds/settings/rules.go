@@ -3,7 +3,7 @@
 // "default".
 package settings
 
-import "github.com/ProjectCartograph/cartograph-engine/internal/kinds/kit"
+import "github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 
 func Rules(doc map[string]any, _ kit.RuleContext) []kit.Problem {
 	meta, _ := doc["metadata"].(map[string]any)

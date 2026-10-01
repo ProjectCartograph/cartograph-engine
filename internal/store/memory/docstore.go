@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // DocStore is the in-memory adapter for store.DocStore. One lock covers

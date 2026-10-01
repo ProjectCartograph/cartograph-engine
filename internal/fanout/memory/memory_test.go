@@ -3,9 +3,9 @@ package memory_test
 import (
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/internal/fanout"
-	"github.com/ProjectCartograph/cartograph-engine/internal/fanout/conformance"
-	"github.com/ProjectCartograph/cartograph-engine/internal/fanout/memory"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout/conformance"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout/memory"
 )
 
 func TestConformance(t *testing.T) {
