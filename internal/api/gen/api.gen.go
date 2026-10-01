@@ -512,6 +512,18 @@ type References struct {
 	Outgoing []Ref     `json:"outgoing"`
 }
 
+// Session defines model for Session.
+type Session struct {
+	// Actor The principal as the engine records it on versions and state.
+	Actor string `json:"actor"`
+
+	// CanWrite Whether the authorizer allows this principal to write.
+	CanWrite bool `json:"canWrite"`
+
+	// Name A display name, where the authenticator has one; otherwise absent.
+	Name *string `json:"name,omitempty"`
+}
+
 // Settings defines model for Settings.
 type Settings struct {
 	// Examples Examples this vault shows per field, in its own words (TAXONOMY.md D20). Absent when the vault supplies none.
@@ -530,6 +542,15 @@ type Settings struct {
 		Source  *string `json:"source,omitempty"`
 		Vision  *string `json:"vision,omitempty"`
 	} `json:"purpose,omitempty"`
+}
+
+// SharedDocument defines model for SharedDocument.
+type SharedDocument struct {
+	// DocumentId The automerge-repo document id (base58check).
+	DocumentId string `json:"documentId"`
+
+	// Url The same id as an automerge URL, `automerge:<documentId>`.
+	Url string `json:"url"`
 }
 
 // Snapshot defines model for Snapshot.
@@ -878,6 +899,9 @@ type ServerInterface interface {
 	// DiffManifest Structural diff between two versions
 	// (GET /manifests/{kind}/{id}/diff)
 	DiffManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam, params DiffManifestParams)
+	// GetSharedDocument The shared draft of a manifest, as an Automerge document id
+	// (GET /manifests/{kind}/{id}/document)
+	GetSharedDocument(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
 	// GetReferences What a manifest points to, and what points back at it
 	// (GET /manifests/{kind}/{id}/references)
 	GetReferences(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
@@ -899,15 +923,24 @@ type ServerInterface interface {
 	// PutWorking Stage a draft. Writes to the vault's staging directory, not to the vault's own tree, and does not include the ref: autosave is not a decision to add something to the vault. A save promotes it.
 	// (PUT /manifests/{kind}/{id}/working)
 	PutWorking(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
+	// GetPresenceDocument The document that carries presence for screens not about one manifest
+	// (GET /presence)
+	GetPresenceDocument(w http.ResponseWriter, r *http.Request)
 	// GetSchema The JSON Schema document for a kind
 	// (GET /schemas/{kind})
 	GetSchema(w http.ResponseWriter, r *http.Request, kind KindParam)
+	// GetSession Who this request acts as, as the engine records it
+	// (GET /session)
+	GetSession(w http.ResponseWriter, r *http.Request)
 	// GetSettings The singleton configuration, defaulted where unset
 	// (GET /settings)
 	GetSettings(w http.ResponseWriter, r *http.Request)
 	// ListSnapshots Every snapshot (version) across all kinds, newest first, with pagination
 	// (GET /snapshots)
 	ListSnapshots(w http.ResponseWriter, r *http.Request, params ListSnapshotsParams)
+	// Sync The sync socket (automerge-repo network protocol, version 1)
+	// (GET /sync)
+	Sync(w http.ResponseWriter, r *http.Request)
 	// ValidateManifest Validate a manifest without storing it
 	// (POST /validate/{kind})
 	ValidateManifest(w http.ResponseWriter, r *http.Request, kind KindParam)
@@ -1661,6 +1694,41 @@ func (siw *ServerInterfaceWrapper) DiffManifest(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// GetSharedDocument operation middleware
+func (siw *ServerInterfaceWrapper) GetSharedDocument(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSharedDocument(w, r, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetReferences operation middleware
 func (siw *ServerInterfaceWrapper) GetReferences(w http.ResponseWriter, r *http.Request) {
 
@@ -1915,6 +1983,20 @@ func (siw *ServerInterfaceWrapper) PutWorking(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
+// GetPresenceDocument operation middleware
+func (siw *ServerInterfaceWrapper) GetPresenceDocument(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPresenceDocument(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetSchema operation middleware
 func (siw *ServerInterfaceWrapper) GetSchema(w http.ResponseWriter, r *http.Request) {
 
@@ -1932,6 +2014,20 @@ func (siw *ServerInterfaceWrapper) GetSchema(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetSchema(w, r, kind)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetSession operation middleware
+func (siw *ServerInterfaceWrapper) GetSession(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSession(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1992,6 +2088,20 @@ func (siw *ServerInterfaceWrapper) ListSnapshots(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListSnapshots(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Sync operation middleware
+func (siw *ServerInterfaceWrapper) Sync(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Sync(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2242,6 +2352,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/schemas/{kind}", wrapper.GetSchema)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}", wrapper.ListManifests)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/references", wrapper.GetReferences)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/document", wrapper.GetSharedDocument)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/presence", wrapper.GetPresenceDocument)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/session", wrapper.GetSession)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/sync", wrapper.Sync)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/manifests/{kind}/{id}", wrapper.DeleteManifest)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}", wrapper.GetManifest)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/manifests/{kind}/{id}", wrapper.PutManifest)
@@ -3807,6 +3921,71 @@ func (response DiffManifest404JSONResponse) VisitDiffManifestResponse(w http.Res
 	return err
 }
 
+type GetSharedDocumentRequestObject struct {
+	Kind KindParam `json:"kind"`
+	Id   IdParam   `json:"id"`
+}
+
+type GetSharedDocumentResponseObject interface {
+	VisitGetSharedDocumentResponse(w http.ResponseWriter) error
+}
+
+type GetSharedDocument200JSONResponse SharedDocument
+
+func (response GetSharedDocument200JSONResponse) VisitGetSharedDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSharedDocument401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetSharedDocument401JSONResponse) VisitGetSharedDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSharedDocument403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetSharedDocument403JSONResponse) VisitGetSharedDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSharedDocument404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetSharedDocument404JSONResponse) VisitGetSharedDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetReferencesRequestObject struct {
 	Kind KindParam `json:"kind"`
 	Id   IdParam   `json:"id"`
@@ -4309,6 +4488,55 @@ func (response PutWorking422JSONResponse) VisitPutWorkingResponse(w http.Respons
 	return err
 }
 
+type GetPresenceDocumentRequestObject struct {
+}
+
+type GetPresenceDocumentResponseObject interface {
+	VisitGetPresenceDocumentResponse(w http.ResponseWriter) error
+}
+
+type GetPresenceDocument200JSONResponse SharedDocument
+
+func (response GetPresenceDocument200JSONResponse) VisitGetPresenceDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPresenceDocument401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetPresenceDocument401JSONResponse) VisitGetPresenceDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPresenceDocument403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetPresenceDocument403JSONResponse) VisitGetPresenceDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetSchemaRequestObject struct {
 	Kind KindParam `json:"kind"`
 }
@@ -4369,6 +4597,41 @@ func (response GetSchema404JSONResponse) VisitGetSchemaResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSessionRequestObject struct {
+}
+
+type GetSessionResponseObject interface {
+	VisitGetSessionResponse(w http.ResponseWriter) error
+}
+
+type GetSession200JSONResponse Session
+
+func (response GetSession200JSONResponse) VisitGetSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSession401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetSession401JSONResponse) VisitGetSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -4484,6 +4747,57 @@ func (response ListSnapshots403JSONResponse) VisitListSnapshotsResponse(w http.R
 	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
+}
+
+type SyncRequestObject struct {
+}
+
+type SyncResponseObject interface {
+	VisitSyncResponse(w http.ResponseWriter) error
+}
+
+type Sync101Response struct {
+}
+
+func (response Sync101Response) VisitSyncResponse(w http.ResponseWriter) error {
+	w.WriteHeader(101)
+	return nil
+}
+
+type Sync401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response Sync401JSONResponse) VisitSyncResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Sync403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response Sync403JSONResponse) VisitSyncResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Sync426Response struct {
+}
+
+func (response Sync426Response) VisitSyncResponse(w http.ResponseWriter) error {
+	w.WriteHeader(426)
+	return nil
 }
 
 type ValidateManifestRequestObject struct {
@@ -4953,6 +5267,9 @@ type StrictServerInterface interface {
 	// DiffManifest Structural diff between two versions
 	// (GET /manifests/{kind}/{id}/diff)
 	DiffManifest(ctx context.Context, request DiffManifestRequestObject) (DiffManifestResponseObject, error)
+	// GetSharedDocument The shared draft of a manifest, as an Automerge document id
+	// (GET /manifests/{kind}/{id}/document)
+	GetSharedDocument(ctx context.Context, request GetSharedDocumentRequestObject) (GetSharedDocumentResponseObject, error)
 	// GetReferences What a manifest points to, and what points back at it
 	// (GET /manifests/{kind}/{id}/references)
 	GetReferences(ctx context.Context, request GetReferencesRequestObject) (GetReferencesResponseObject, error)
@@ -4974,15 +5291,24 @@ type StrictServerInterface interface {
 	// PutWorking Stage a draft. Writes to the vault's staging directory, not to the vault's own tree, and does not include the ref: autosave is not a decision to add something to the vault. A save promotes it.
 	// (PUT /manifests/{kind}/{id}/working)
 	PutWorking(ctx context.Context, request PutWorkingRequestObject) (PutWorkingResponseObject, error)
+	// GetPresenceDocument The document that carries presence for screens not about one manifest
+	// (GET /presence)
+	GetPresenceDocument(ctx context.Context, request GetPresenceDocumentRequestObject) (GetPresenceDocumentResponseObject, error)
 	// GetSchema The JSON Schema document for a kind
 	// (GET /schemas/{kind})
 	GetSchema(ctx context.Context, request GetSchemaRequestObject) (GetSchemaResponseObject, error)
+	// GetSession Who this request acts as, as the engine records it
+	// (GET /session)
+	GetSession(ctx context.Context, request GetSessionRequestObject) (GetSessionResponseObject, error)
 	// GetSettings The singleton configuration, defaulted where unset
 	// (GET /settings)
 	GetSettings(ctx context.Context, request GetSettingsRequestObject) (GetSettingsResponseObject, error)
 	// ListSnapshots Every snapshot (version) across all kinds, newest first, with pagination
 	// (GET /snapshots)
 	ListSnapshots(ctx context.Context, request ListSnapshotsRequestObject) (ListSnapshotsResponseObject, error)
+	// Sync The sync socket (automerge-repo network protocol, version 1)
+	// (GET /sync)
+	Sync(ctx context.Context, request SyncRequestObject) (SyncResponseObject, error)
 	// ValidateManifest Validate a manifest without storing it
 	// (POST /validate/{kind})
 	ValidateManifest(ctx context.Context, request ValidateManifestRequestObject) (ValidateManifestResponseObject, error)
@@ -5669,6 +5995,33 @@ func (sh *strictHandler) DiffManifest(w http.ResponseWriter, r *http.Request, ki
 	}
 }
 
+// GetSharedDocument operation middleware
+func (sh *strictHandler) GetSharedDocument(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam) {
+	var request GetSharedDocumentRequestObject
+
+	request.Kind = kind
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetSharedDocument(ctx, request.(GetSharedDocumentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetSharedDocument")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetSharedDocumentResponseObject); ok {
+		if err := validResponse.VisitGetSharedDocumentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetReferences operation middleware
 func (sh *strictHandler) GetReferences(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam) {
 	var request GetReferencesRequestObject
@@ -5873,6 +6226,30 @@ func (sh *strictHandler) PutWorking(w http.ResponseWriter, r *http.Request, kind
 	}
 }
 
+// GetPresenceDocument operation middleware
+func (sh *strictHandler) GetPresenceDocument(w http.ResponseWriter, r *http.Request) {
+	var request GetPresenceDocumentRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPresenceDocument(ctx, request.(GetPresenceDocumentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPresenceDocument")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPresenceDocumentResponseObject); ok {
+		if err := validResponse.VisitGetPresenceDocumentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetSchema operation middleware
 func (sh *strictHandler) GetSchema(w http.ResponseWriter, r *http.Request, kind KindParam) {
 	var request GetSchemaRequestObject
@@ -5892,6 +6269,30 @@ func (sh *strictHandler) GetSchema(w http.ResponseWriter, r *http.Request, kind 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetSchemaResponseObject); ok {
 		if err := validResponse.VisitGetSchemaResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetSession operation middleware
+func (sh *strictHandler) GetSession(w http.ResponseWriter, r *http.Request) {
+	var request GetSessionRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetSession(ctx, request.(GetSessionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetSession")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetSessionResponseObject); ok {
+		if err := validResponse.VisitGetSessionResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -5942,6 +6343,30 @@ func (sh *strictHandler) ListSnapshots(w http.ResponseWriter, r *http.Request, p
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListSnapshotsResponseObject); ok {
 		if err := validResponse.VisitListSnapshotsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Sync operation middleware
+func (sh *strictHandler) Sync(w http.ResponseWriter, r *http.Request) {
+	var request SyncRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Sync(ctx, request.(SyncRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Sync")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SyncResponseObject); ok {
+		if err := validResponse.VisitSyncResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

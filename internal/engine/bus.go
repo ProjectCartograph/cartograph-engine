@@ -7,32 +7,21 @@ import (
 )
 
 // Event is one thing that happened to a manifest that an open interface
-// wants to know about without asking: ops appended to its draft, a
-// version saved, its state changed, somebody arriving at or leaving a
-// field. Interfaces subscribe through the Bus; transports (an SSE
-// stream, an in-process channel, a socket) carry what the bus emits.
+// wants to know about without asking: a version saved, its state
+// changed. Interfaces subscribe through the Bus; transports (an SSE
+// stream, an in-process channel) carry what the bus emits. Live edits and
+// presence are not events: they travel on the sync socket.
 type Event struct {
-	Type string    `json:"type"` // ops, version, state, presence
+	Type string    `json:"type"` // version, state
 	Kind string    `json:"kind,omitempty"`
 	ID   string    `json:"id,omitempty"`
 	On   time.Time `json:"on"`
-	// Seq is the op log position for ops events, the version number for
-	// version events; a client resumes from the last Seq it saw.
+	// Seq is the version number for a version event.
 	Seq int64 `json:"seq,omitempty"`
-	// Ops carries the appended ops for an ops event.
-	Ops []EventOp `json:"ops,omitempty"`
-	// Actor is who did it, for version, state and presence events.
+	// Actor is who did it.
 	Actor string `json:"actor,omitempty"`
-	// Presence carries where the actor is for a presence event; Field is
-	// empty when they left the manifest.
+	// Field is where, when the event concerns one field.
 	Field string `json:"field,omitempty"`
-}
-
-// EventOp is an op as the bus carries it: the merge op plus its
-// position.
-type EventOp struct {
-	Seq int64 `json:"seq"`
-	Op  any   `json:"op"`
 }
 
 // Subscription is one listener on the bus.
@@ -51,7 +40,7 @@ type Bus interface {
 	Publish(ev Event)
 	// Subscribe delivers events for one manifest, or for every manifest
 	// when kind is empty. A slow subscriber drops events rather than
-	// blocking the publisher; it catches up from the op log by Seq.
+	// blocking the publisher; it reads the state again when it next needs it.
 	Subscribe(ctx context.Context, kind, id string) *Subscription
 }
 
@@ -103,3 +92,9 @@ func (b *MemoryBus) Subscribe(ctx context.Context, kind, id string) *Subscriptio
 	}()
 	return &Subscription{C: s.ch, cancel: cancel}
 }
+
+// WithBus sets the event bus; the in-process one when none is given.
+func WithBus(b Bus) Option { return func(e *Engine) { e.bus = b } }
+
+// Bus returns the event bus.
+func (e *Engine) Bus() Bus { return e.bus }

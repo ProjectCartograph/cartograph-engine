@@ -1,12 +1,15 @@
 package clientdriver_test
 
 import (
-	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/api"
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/crdt/automerge"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	fanoutmemory "github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout/memory"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client"
 	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client/inproc"
@@ -15,9 +18,19 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/uiconformance/clientdriver"
 )
 
+// am is compiled once for the test binary; it is a quarter of a second.
+var am = sync.OnceValues(func() (*automerge.Engine, error) { return automerge.New(2) })
+
+// newEngine composes an engine the way serve does, shared drafts
+// included, over memory adapters.
 func newEngine(t *testing.T) *engine.Engine {
 	t.Helper()
-	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithOpLog(memory.NewOpLog()), engine.WithCodec(codecyaml.New()))
+	crdt, err := am()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()),
+		engine.WithCRDT(crdt), engine.WithDocStore(memory.NewDocStore()), engine.WithFanout(fanoutmemory.New()))
 	if err != nil {
 		t.Fatal(err)
 	}

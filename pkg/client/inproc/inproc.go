@@ -5,8 +5,6 @@
 // engine directly.
 package inproc
 
-//lint:file-ignore SA1019 the merge-based shared draft is deprecated in 1.1.0 and removed in 2.0.0 (docs/adr/0007); until then this file still carries it.
-
 import (
 	"context"
 	"encoding/json"
@@ -16,7 +14,6 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client"
-	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/merge"
 )
 
 // Client wraps an engine.
@@ -173,10 +170,19 @@ func (c *Client) Checks(ctx context.Context, kind, id string) ([]client.Check, e
 			out = append(out, client.Check{Key: it.ID, State: it.State, Path: it.Section, Message: it.Message, Fix: it.Fix.Section})
 		}
 	}
-	if d := c.E.Drafts(); d != nil {
-		for _, n := range d.Notes(kind, id) {
-			out = append(out, client.Check{Key: "conflict", State: "note", Path: n.Path,
-				Message: fmt.Sprintf("%s changed this while it was being edited; the earlier value was %v", n.Winner.Clock.Actor, n.Loser.Value)})
+	if sh := c.E.Shared(); sh != nil {
+		// Concurrent values in the shared draft, read from the document
+		// itself: nothing keeps a list of them.
+		conflicts, err := sh.Conflicts(ctx, kind, id)
+		if err != nil {
+			return nil, err
+		}
+		for _, cf := range conflicts {
+			if len(cf.Values) < 2 {
+				continue
+			}
+			out = append(out, client.Check{Key: "conflict", State: "note", Path: cf.Path,
+				Message: fmt.Sprintf("two people set this at the same time; the other value was %v", cf.Values[1])})
 		}
 	}
 	if out == nil {
@@ -185,36 +191,16 @@ func (c *Client) Checks(ctx context.Context, kind, id string) ([]client.Check, e
 	return out, nil
 }
 
-func (c *Client) Edit(ctx context.Context, kind, id string, ops []merge.Op) (client.EditResult, error) {
-	d := c.E.Drafts()
-	if d == nil {
-		return client.EditResult{}, client.ErrUnsupported
+func (c *Client) SharedDocument(ctx context.Context, kind, id string) (string, error) {
+	sh := c.E.Shared()
+	if sh == nil {
+		return "", client.ErrUnsupported
 	}
-	actor, err := c.Actor(ctx)
-	if err != nil {
-		return client.EditResult{}, err
+	docID, err := sh.DocumentFor(ctx, kind, id)
+	if errors.Is(err, engine.ErrNotFound) || errors.Is(err, engine.ErrUnknownKind) {
+		return "", client.ErrNotFound
 	}
-	res, err := d.Edit(ctx, kind, id, actor, ops)
-	if err != nil {
-		return client.EditResult{}, err
-	}
-	return client.EditResult{Seq: res.Seq, Conflicts: res.Conflicts}, nil
-}
-
-func (c *Client) OpsSince(ctx context.Context, kind, id string, after int64) ([]client.Op, error) {
-	d := c.E.Drafts()
-	if d == nil {
-		return nil, client.ErrUnsupported
-	}
-	ops, err := d.Since(ctx, kind, id, after)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]client.Op, len(ops))
-	for i, op := range ops {
-		out[i] = client.Op{Seq: op.Seq, Op: op.Op}
-	}
-	return out, nil
+	return docID, err
 }
 
 func (c *Client) Subscribe(ctx context.Context, kind, id string) (<-chan client.Event, error) {
@@ -223,13 +209,7 @@ func (c *Client) Subscribe(ctx context.Context, kind, id string) (<-chan client.
 	go func() {
 		defer close(out)
 		for ev := range sub.C {
-			e := client.Event{Type: ev.Type, Kind: ev.Kind, ID: ev.ID, On: ev.On, Seq: ev.Seq, Actor: ev.Actor, Field: ev.Field}
-			for _, o := range ev.Ops {
-				if op, ok := o.Op.(merge.Op); ok {
-					e.Ops = append(e.Ops, op)
-				}
-			}
-			out <- e
+			out <- client.Event{Type: ev.Type, Kind: ev.Kind, ID: ev.ID, On: ev.On, Seq: ev.Seq, Actor: ev.Actor, Field: ev.Field}
 		}
 	}()
 	return out, nil

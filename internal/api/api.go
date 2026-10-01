@@ -30,6 +30,7 @@ import (
 type Server struct {
 	Engine  *engine.Engine
 	Printer printer.Printer
+	Authz   auth.Authorizer
 }
 
 var _ apigen.StrictServerInterface = (*Server)(nil)
@@ -37,6 +38,9 @@ var _ apigen.StrictServerInterface = (*Server)(nil)
 // Deps is what a Server needs beyond the engine.
 type Deps struct {
 	Printer printer.Printer
+	// Authorizer answers GET /session's canWrite; the middleware still
+	// decides every request. AllowAll when nil.
+	Authorizer auth.Authorizer
 }
 
 // Handler returns the complete net/http handler for the API, mounted under
@@ -53,7 +57,11 @@ func New(e *engine.Engine, deps Deps) http.Handler {
 	if p == nil {
 		p = printer.None{}
 	}
-	strict := apigen.NewStrictHandler(&Server{Engine: e, Printer: p}, nil)
+	z := deps.Authorizer
+	if z == nil {
+		z = auth.AllowAll{}
+	}
+	strict := apigen.NewStrictHandler(&Server{Engine: e, Printer: p, Authz: z}, nil)
 	return apigen.Handler(strict)
 }
 
@@ -470,8 +478,12 @@ func (s *Server) PutWorking(ctx context.Context, req apigen.PutWorkingRequestObj
 		}))}, nil
 	}
 
-	// Save to working copy
-	if err := s.Engine.PutWorking(ctx, req.Kind, req.Id, yamlBytes); err != nil {
+	actor, err := s.actor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Save to working copy, and into the shared draft
+	if err := s.Engine.SaveWorking(ctx, req.Kind, req.Id, yamlBytes, actor); err != nil {
 		var ce *store.ConflictError
 		switch {
 		case errors.As(err, &ce):

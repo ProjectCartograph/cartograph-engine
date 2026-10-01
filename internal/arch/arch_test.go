@@ -2,7 +2,7 @@
 // system is checked in the ten-second gate and not by review alone.
 //
 // The rule is clean architecture's: dependencies point inward. The
-// entities (pkg/merge, the kinds) know nothing about the engine; the
+// entities (the kinds, the contract) know nothing about the engine; the
 // engine (the use cases) knows nothing about any adapter, only the
 // ports; adapters know the engine and the ports; the composition root
 // (cmd) knows everything. A package that needs something from a layer
@@ -96,7 +96,6 @@ var rules = map[string][]string{
 	"internal/arch":  nil,
 
 	// Entities: nothing in the module, no driver.
-	"pkg/merge":          join([]string{"internal", "pkg/client", "pkg/uiconformance", "cmd"}, drivers),
 	"internal/kinds/kit": leaf,
 	"internal/contract":  leaf,
 	"internal/sentence":  leaf,

@@ -659,6 +659,99 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /manifests/{kind}/{id}/document:
+    get:
+      operationId: getSharedDocument
+      summary: The shared draft of a manifest, as an Automerge document id
+      description: >-
+        Every manifest's draft between versions is one Automerge document
+        (docs/adr/0007). This names it, creating it from the working copy
+        or the current version on first use, so an interface can open it
+        over the sync socket. The id is the engine's to assign; an
+        interface never derives one.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedDocument"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /presence:
+    get:
+      operationId: getPresenceDocument
+      summary: The document that carries presence for screens not about one manifest
+      description: >-
+        Presence travels as ephemeral messages on a document
+        (contract/schemas/presence.schema.json). On a manifest's screen
+        that is the manifest's own document; everywhere else (lists, the
+        goal tree, the snapshots page) it is this one, which holds no
+        content and exists only to route presence. Nothing about presence
+        is stored.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedDocument"
+
+  /session:
+    get:
+      operationId: getSession
+      summary: Who this request acts as, as the engine records it
+      description: >-
+        The principal the authenticator resolved for this request, and
+        whether the authorizer lets it write. An interface shows it in
+        presence and uses it to decide whether to offer editing; the
+        engine decides again on every write.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /sync:
+    get:
+      operationId: sync
+      summary: The sync socket (automerge-repo network protocol, version 1)
+      description: >-
+        A WebSocket. After the upgrade the client sends `join` and the
+        engine answers `peer`; from then on either side sends `request`,
+        `sync`, `doc-unavailable` and `ephemeral` messages, CBOR-encoded,
+        exactly as the automerge-repo WebSocket protocol defines them, so
+        the stock `@automerge/automerge-repo` WebSocket adapter connects
+        unchanged. A sync message carrying changes is a write and needs
+        write permission on the document's manifest; one that carries
+        none is a read. Ephemeral messages are relayed to every peer of
+        the same document on every replica and never stored.
+      responses:
+        "101":
+          description: Switching Protocols to a WebSocket.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "426":
+          description: Upgrade Required. The request was not a WebSocket upgrade.
+
   /manifests/{kind}/{id}:
     get:
       operationId: getManifest
@@ -1386,6 +1479,29 @@ components:
           items:
             $ref: "#/components/schemas/Summary"
 
+    SharedDocument:
+      type: object
+      required: [documentId, url]
+      properties:
+        documentId:
+          type: string
+          description: The automerge-repo document id (base58check).
+        url:
+          type: string
+          description: The same id as an automerge URL, `automerge:<documentId>`.
+    Session:
+      type: object
+      required: [actor, canWrite]
+      properties:
+        actor:
+          type: string
+          description: The principal as the engine records it on versions and state.
+        name:
+          type: string
+          description: A display name, where the authenticator has one; otherwise absent.
+        canWrite:
+          type: boolean
+          description: Whether the authorizer allows this principal to write.
     Problem:
       type: object
       required: [path, message]

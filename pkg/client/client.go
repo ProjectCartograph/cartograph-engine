@@ -8,19 +8,20 @@
 // across an SSH-forwarded socket, with the same code.
 //
 // Everything an interface shows comes through this port: the schemas and
-// flows it renders from, the manifests and drafts it edits, the checks
-// and problems it marks, the events it listens to. Nothing in an
-// interface may reach for an HTTP path.
+// flows it renders from, the manifests it reads and saves, the checks and
+// problems it marks, the events it listens to. Nothing in an interface
+// may reach for an HTTP path.
+//
+// Live editing is not on this port. A manifest's shared draft is an
+// Automerge document (docs/adr/0007): SharedDocument names it, and the
+// interface syncs it with the automerge-repo protocol, the same way the
+// web interface does.
 package client
-
-//lint:file-ignore SA1019 the merge-based shared draft is deprecated in 1.1.0 and removed in 2.0.0 (docs/adr/0007); until then this file still carries it.
 
 import (
 	"context"
 	"errors"
 	"time"
-
-	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/merge"
 )
 
 // ErrNotFound is returned by Get and Working for a manifest that is not
@@ -96,35 +97,16 @@ type Settings struct {
 	Examples         map[string][]string
 }
 
-// Event is what Subscribe delivers: ops appended to a draft, a version
-// saved, state and presence changes. Seq is the position to resume from.
+// Event is what Subscribe delivers: a version saved, a state changed.
+// Seq is the version number for a version event.
 type Event struct {
-	Type string
-	Kind string
-	ID   string
-	On   time.Time
-	Seq  int64
-	// Deprecated: Ops carries pkg/merge ops, which 2.0.0 removes; the
-	// shared draft syncs as an Automerge document (docs/adr/0007).
-	Ops   []merge.Op
+	Type  string
+	Kind  string
+	ID    string
+	On    time.Time
+	Seq   int64
 	Actor string
 	Field string
-}
-
-// EditResult is what Edit answers.
-//
-// Deprecated: removed in 2.0.0 with Edit (docs/adr/0007).
-type EditResult struct {
-	Seq       int64
-	Conflicts []merge.Conflict
-}
-
-// Op is a logged op with its position.
-//
-// Deprecated: removed in 2.0.0 with OpsSince (docs/adr/0007).
-type Op struct {
-	Seq int64
-	merge.Op
 }
 
 // Client is the whole port. A transport implements all of it or returns
@@ -147,14 +129,9 @@ type Client interface {
 	Validate(ctx context.Context, kind string, doc map[string]any) ([]Problem, error)
 	Checks(ctx context.Context, kind, id string) ([]Check, error)
 
-	// The shared draft (multiplayer).
-	//
-	// Deprecated: Edit and OpsSince are removed in 2.0.0. The shared draft
-	// becomes one Automerge document per manifest, synced with the
-	// automerge-repo protocol (docs/adr/0007).
-	Edit(ctx context.Context, kind, id string, ops []merge.Op) (EditResult, error)
-	// Deprecated: see Edit.
-	OpsSince(ctx context.Context, kind, id string, after int64) ([]Op, error)
+	// The shared draft: the id of the Automerge document a manifest's
+	// draft lives in, created on first use, for an interface to sync.
+	SharedDocument(ctx context.Context, kind, id string) (string, error)
 	Subscribe(ctx context.Context, kind, id string) (<-chan Event, error)
 
 	// Identity: who this client acts as, as the engine will record it.

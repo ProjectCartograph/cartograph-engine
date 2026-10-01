@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "presence.schema.json",
+  "title": "Presence",
+  "description": "Where one session is and what it is doing, sent as the data of an automerge-repo ephemeral message on the document of the screen it is on (a manifest's own document, or the presence document from GET /presence). Never stored: the engine relays it to every peer of the same document on every replica, and a receiver forgets a session it has not heard from for ten seconds. A sender repeats its presence at least every three seconds while the screen is open, sends it again on any change (pointer movement at most twenty times a second), and sends leaving=true when the screen closes. A session is one browser tab or one terminal, not a person: one principal may have several. Nothing here is a record of a person; it is the state of a live session, and it ends with the session.",
+  "type": "object",
+  "required": ["v", "session", "actor", "at"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1, "description": "The payload version." },
+    "session": { "type": "string", "minLength": 8, "maxLength": 64, "description": "A random id for this tab or terminal, fixed for its lifetime." },
+    "actor": { "type": "string", "maxLength": 256, "description": "The principal, as GET /session reports it." },
+    "name": { "type": "string", "maxLength": 128, "description": "The display name, where there is one." },
+    "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "description": "The colour this session is drawn in, chosen by the sender so every screen draws it alike." },
+    "route": { "type": "string", "maxLength": 512, "description": "The screen, as the interface's own route (for the web, the path)." },
+    "focus": {
+      "description": "The field being edited, by JSON pointer into the manifest; null when none.",
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/field" }]
+    },
+    "caret": {
+      "description": "The selection inside a text field, as Automerge cursors, so it stays on the same characters while others type; null when none.",
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/caret" }]
+    },
+    "pointer": {
+      "description": "The pointer, relative to the element it is over, so screens of different sizes draw it over the same thing; null when it is off the content.",
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/pointer" }]
+    },
+    "at": { "type": "integer", "minimum": 0, "description": "When this was sent, in Unix milliseconds by the sender's clock; for ordering one session's messages, never compared across sessions." },
+    "leaving": { "type": "boolean", "description": "True on the last message of a session, so others remove it at once." }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "maxLength": 512, "description": "A JSON pointer into the manifest: the control's data-cartograph-field." }
+      }
+    },
+    "caret": {
+      "type": "object",
+      "required": ["path", "anchor", "head"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "maxLength": 512 },
+        "anchor": { "type": "string", "maxLength": 256, "description": "An Automerge cursor where the selection starts." },
+        "head": { "type": "string", "maxLength": 256, "description": "An Automerge cursor where it ends; equal to anchor for a caret." }
+      }
+    },
+    "pointer": {
+      "type": "object",
+      "required": ["target", "x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "target": { "type": "string", "maxLength": 512, "description": "What the pointer is over: a control's data-cartograph-field, or a region's data-cartograph-region key." },
+        "x": { "type": "number", "minimum": 0, "maximum": 1, "description": "Across the target, 0 at its left edge, 1 at its right." },
+        "y": { "type": "number", "minimum": 0, "maximum": 1, "description": "Down the target, 0 at its top, 1 at its bottom." }
+      }
+    }
+  }
+}

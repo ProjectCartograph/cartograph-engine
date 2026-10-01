@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
+	"sync"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/codec"
 	codecjson "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/json"
 	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/config"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/crdt/automerge"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 	fanoutmemory "github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout/memory"
@@ -96,12 +99,6 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		if err != nil {
 			return nil, fmt.Errorf("open %s: %w", config.Redact(o.Target), err)
 		}
-		e, err := engine.New(postgres.NewManifestStore(pool), postgres.NewOperationalStore(pool),
-			engine.WithCodec(c), engine.WithBundles(postgres.NewBundleStore(pool)))
-		if err != nil {
-			pool.Close()
-			return nil, fmt.Errorf("build engine: %w", err)
-		}
 		var bus fanout.Bus = fanoutmemory.New()
 		if fanoutName == "postgres" {
 			if bus, err = fanoutpostgres.New(ctx, pool); err != nil {
@@ -109,7 +106,15 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 				return nil, err
 			}
 		}
-		return &composition{Engine: e, Docs: postgres.NewDocStore(pool), Fanout: bus, FanoutAdapter: fanoutName, Close: func() error {
+		docs := postgres.NewDocStore(pool)
+		e, err := engine.New(postgres.NewManifestStore(pool), postgres.NewOperationalStore(pool),
+			append(shared(docs, bus), engine.WithCodec(c), engine.WithBundles(postgres.NewBundleStore(pool)))...)
+		if err != nil {
+			bus.Close()
+			pool.Close()
+			return nil, fmt.Errorf("build engine: %w", err)
+		}
+		return &composition{Engine: e, Docs: docs, Fanout: bus, FanoutAdapter: fanoutName, Close: func() error {
 			err := bus.Close()
 			pool.Close()
 			return err
@@ -122,8 +127,10 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		if err != nil {
 			return nil, fmt.Errorf("open vault: %w", err)
 		}
-		e, err := engine.New(v, v.Index().Operational(), engine.WithCodec(c))
+		bus := fanoutmemory.New()
+		e, err := engine.New(v, v.Index().Operational(), append(shared(v.Index().Docs(), bus), engine.WithCodec(c))...)
 		if err != nil {
+			bus.Close()
 			v.Close()
 			return nil, fmt.Errorf("build engine: %w", err)
 		}
@@ -134,7 +141,6 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 			v.Close()
 			return nil, fmt.Errorf("reindex: %w", err)
 		}
-		bus := fanoutmemory.New()
 		return &composition{Engine: e, Docs: v.Index().Docs(), Fanout: bus, FanoutAdapter: fanoutName, Close: func() error {
 			bus.Close()
 			return v.Close()
@@ -145,14 +151,33 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), engine.WithCodec(c))
+	bus := fanoutmemory.New()
+	docs := sqlite.NewDocStore(db)
+	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(shared(docs, bus), engine.WithCodec(c))...)
 	if err != nil {
+		bus.Close()
 		db.Close()
 		return nil, fmt.Errorf("build engine: %w", err)
 	}
-	bus := fanoutmemory.New()
-	return &composition{Engine: e, Docs: sqlite.NewDocStore(db), Fanout: bus, FanoutAdapter: fanoutName, Close: func() error {
+	return &composition{Engine: e, Docs: docs, Fanout: bus, FanoutAdapter: fanoutName, Close: func() error {
 		bus.Close()
 		return db.Close()
 	}}, nil
+}
+
+// crdtEngine is the one Automerge runtime of the process: compiling the
+// module costs a quarter of a second, so it is done once, on first use.
+var crdtEngine = sync.OnceValues(func() (*automerge.Engine, error) { return automerge.New(0) })
+
+// shared are the options that turn on shared drafts (docs/adr/0007):
+// the Automerge adapter, the document store and the fan-out. A process
+// whose CRDT runtime cannot start serves everything but shared drafts,
+// and says why.
+func shared(docs store.DocStore, bus fanout.Bus) []engine.Option {
+	am, err := crdtEngine()
+	if err != nil {
+		slog.Warn("shared drafts are off: the CRDT runtime did not start", "err", err)
+		return nil
+	}
+	return []engine.Option{engine.WithCRDT(am), engine.WithDocStore(docs), engine.WithFanout(bus)}
 }

@@ -7,8 +7,6 @@
 // scenario.
 package clientdriver
 
-//lint:file-ignore SA1019 the merge-based shared draft is deprecated in 1.1.0 and removed in 2.0.0 (docs/adr/0007); until then this file still carries it.
-
 import (
 	"context"
 	"errors"
@@ -17,7 +15,6 @@ import (
 	"time"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client"
-	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/merge"
 	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/uiconformance"
 )
 
@@ -28,8 +25,7 @@ type Driver struct {
 	kind, id string
 	steps    []step
 	stepIdx  int
-	state    *merge.State
-	clock    merge.HLC
+	doc      map[string]any // the form as the person has filled it in
 	problems []uiconformance.Problem
 	opened   int
 }
@@ -43,12 +39,11 @@ var _ uiconformance.Driver = (*Driver)(nil)
 
 // New returns a driver over c.
 func New(c client.Client) *Driver {
-	return &Driver{C: c, clock: merge.HLC{Actor: "clientdriver"}}
+	return &Driver{C: c}
 }
 
 func (d *Driver) Open(ctx context.Context, kind, id string) (string, error) {
 	d.kind, d.id, d.stepIdx, d.problems = kind, id, 0, nil
-	d.state = merge.New()
 	d.steps = nil
 	flow, found, err := d.C.Flow(ctx, kind)
 	if err != nil {
@@ -72,10 +67,7 @@ func (d *Driver) Open(ctx context.Context, kind, id string) (string, error) {
 		d.opened++
 		d.id = fmt.Sprintf("conformance-%d-%d", time.Now().UnixNano()%100000, d.opened)
 	}
-	base := map[string]any{"apiVersion": "cartograph/v1", "kind": kind, "metadata": map[string]any{"id": d.id}, "spec": map[string]any{}}
-	for _, op := range merge.Decompose(base, d.clock.Now(1), nil) {
-		d.state.Apply(op)
-	}
+	d.doc = map[string]any{"apiVersion": "cartograph/v1", "kind": kind, "metadata": map[string]any{"id": d.id}, "spec": map[string]any{}}
 	return d.id, nil
 }
 
@@ -97,14 +89,7 @@ func (d *Driver) Set(_ context.Context, field uiconformance.Field, value any) er
 	if d.steps != nil && !d.fieldInFlow(path) {
 		return fmt.Errorf("field %s is not asked for anywhere in the %s flow", path, d.kind)
 	}
-	d.state.Apply(merge.Op{Path: path, Value: value, Clock: d.clock.Now(2)})
-	if i := strings.Index(path, "/{"); i > 0 {
-		elem := path[:strings.Index(path[i+1:], "}")+i+2]
-		if _, ok := d.state.ClockAt(elem + "/@rank"); !ok {
-			d.state.Apply(merge.Op{Path: elem + "/@rank", Value: merge.Rank(99, 100), Clock: d.clock.Now(2)})
-		}
-	}
-	return nil
+	return setPath(d.doc, path, value)
 }
 
 func (d *Driver) fieldInFlow(path string) bool {
@@ -129,9 +114,9 @@ func (d *Driver) Act(ctx context.Context, action uiconformance.Action, reason st
 		}
 		return nil
 	case uiconformance.ActSave:
-		return d.outcome(d.C.SaveWorking(ctx, d.kind, d.id, d.state.Document()))
+		return d.outcome(d.C.SaveWorking(ctx, d.kind, d.id, d.doc))
 	case uiconformance.ActSaveVersion:
-		_, err := d.C.SaveVersion(ctx, d.kind, d.id, d.state.Document(), reason)
+		_, err := d.C.SaveVersion(ctx, d.kind, d.id, d.doc, reason)
 		return d.outcome(err)
 	case uiconformance.ActDiscard:
 		return fmt.Errorf("discard: not carried by the client port yet")
@@ -174,3 +159,49 @@ func (d *Driver) Where(context.Context) (uiconformance.Location, error) {
 }
 
 func (d *Driver) Close(context.Context) error { return nil }
+
+// setPath sets value at a JSON pointer in doc, making the objects on the
+// way. A segment written {key} names the item of a list whose id is key,
+// as a scenario addresses items, and adds the item when it is new.
+func setPath(doc map[string]any, path string, value any) error {
+	segs := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	var node any = doc
+	for i, seg := range segs {
+		last := i == len(segs)-1
+		seg = strings.NewReplacer("~1", "/", "~0", "~").Replace(seg)
+		obj, ok := node.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: %s is not an object", path, strings.Join(segs[:i], "/"))
+		}
+		if last {
+			obj[seg] = value
+			return nil
+		}
+		next := segs[i+1]
+		if strings.HasPrefix(next, "{") && strings.HasSuffix(next, "}") {
+			key := next[1 : len(next)-1]
+			list, _ := obj[seg].([]any)
+			var item map[string]any
+			for _, e := range list {
+				if m, ok := e.(map[string]any); ok && fmt.Sprint(m["id"]) == key {
+					item = m
+				}
+			}
+			if item == nil {
+				item = map[string]any{"id": key}
+				obj[seg] = append(list, item)
+			}
+			if i+1 == len(segs)-1 {
+				return fmt.Errorf("%s: a list item is set field by field", path)
+			}
+			return setPath(item, "/"+strings.Join(segs[i+2:], "/"), value)
+		}
+		child, ok := obj[seg].(map[string]any)
+		if !ok {
+			child = map[string]any{}
+			obj[seg] = child
+		}
+		node = child
+	}
+	return nil
+}

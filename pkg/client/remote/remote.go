@@ -3,11 +3,10 @@
 // (a UNIX socket) or elsewhere (TCP, through whatever proxy the
 // deployment runs). It speaks only the contract in openapi.yaml, so it
 // is the one place in an interface's dependencies where an HTTP path
-// appears. The draft operations (Edit, OpsSince, Subscribe) answer
-// ErrUnsupported until the ops and events endpoints land.
+// appears. Subscribe answers ErrUnsupported until the events endpoint
+// lands; live editing is the sync socket's, not this port's
+// (docs/adr/0007).
 package remote
-
-//lint:file-ignore SA1019 the merge-based shared draft is deprecated in 1.1.0 and removed in 2.0.0 (docs/adr/0007); until then this file still carries it.
 
 import (
 	"bytes"
@@ -21,7 +20,6 @@ import (
 	"time"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/client"
-	"github.com/ProjectCartograph/cartograph-engine/v2/pkg/merge"
 )
 
 // Client talks to Base ("http://host/api/v1").
@@ -331,12 +329,22 @@ func (c *Client) Checks(ctx context.Context, kind, id string) ([]client.Check, e
 	return out, nil
 }
 
-func (c *Client) Edit(context.Context, string, string, []merge.Op) (client.EditResult, error) {
-	return client.EditResult{}, client.ErrUnsupported
-}
-
-func (c *Client) OpsSince(context.Context, string, string, int64) ([]client.Op, error) {
-	return nil, client.ErrUnsupported
+func (c *Client) SharedDocument(ctx context.Context, kind, id string) (string, error) {
+	path := "/manifests/" + kind + "/" + id + "/document"
+	var doc struct {
+		DocumentID string `json:"documentId"`
+	}
+	st, raw, err := c.do(ctx, http.MethodGet, path, nil, &doc)
+	if err != nil {
+		return "", err
+	}
+	switch st {
+	case http.StatusOK:
+		return doc.DocumentID, nil
+	case http.StatusNotFound:
+		return "", client.ErrNotFound
+	}
+	return "", refusal("GET", path, st, raw)
 }
 
 func (c *Client) Subscribe(context.Context, string, string) (<-chan client.Event, error) {

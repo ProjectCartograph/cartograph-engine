@@ -8,6 +8,8 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/codec"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/crdt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
@@ -24,9 +26,11 @@ type Engine struct {
 	state     store.StateStore  // nil when the store has no apply gate
 	bundles   store.BundleStore // nil when nowhere keeps handoff bundles
 	codec     codec.Codec       // the manifest syntax; YAML unless told otherwise
-	opLog     store.OpLog       // nil: no multiplayer drafts
 	bus       Bus               // event fan-out; in-process unless told otherwise
-	drafts    *Drafts           // built when opLog is set
+	crdt      crdt.Engine       // the CRDT under shared drafts (docs/adr/0007)
+	docs      store.DocStore    // where shared drafts are kept
+	fan       fanout.Bus        // hints between replicas (docs/adr/0008)
+	shared    *Shared           // built when crdt, docs and fan are all set
 	schemas   *schemaSet
 	refRules  map[string][]refRule
 }
@@ -84,7 +88,10 @@ func New(manifests store.ManifestStore, ops store.OperationalStore, opts ...Opti
 		// the engine never picks one itself.
 		return nil, errors.New("engine: a codec is required (engine.WithCodec)")
 	}
-	e.initDrafts()
+	if e.bus == nil {
+		e.bus = NewMemoryBus()
+	}
+	e.initShared()
 	return e, nil
 }
 
@@ -443,7 +450,18 @@ func (e *Engine) DiscardWorking(ctx context.Context, kind, id string) error {
 	if !ok {
 		return nil
 	}
-	return discarder.DiscardWorking(ctx, kind, id)
+	if err := discarder.DiscardWorking(ctx, kind, id); err != nil {
+		return err
+	}
+	// The shared draft goes back to what is saved too, for everyone.
+	if e.shared != nil {
+		if v, found, err := e.manifests.GetCurrent(ctx, kind, id); err == nil && found {
+			if doc, err := e.codec.Decode(v.YAML); err == nil {
+				return e.shared.Reconcile(ctx, kind, id, doc, "draft discarded")
+			}
+		}
+	}
+	return nil
 }
 
 // PutWorking writes a manifest's YAML as the working copy without creating
@@ -572,12 +590,9 @@ func (e *Engine) Reindex(ctx context.Context) error {
 	return nil
 }
 
-// afterVersion runs once a version is written: the shared draft, when
-// there is one, compacts and tells its listeners.
-func (e *Engine) afterVersion(ctx context.Context, v Version) {
-	if e.drafts != nil {
-		_ = e.drafts.Committed(ctx, v.Kind, v.ID, v.Number)
-	} else if e.bus != nil {
-		e.bus.Publish(Event{Type: "version", Kind: v.Kind, ID: v.ID, On: v.On, Seq: int64(v.Number), Actor: v.Actor})
-	}
+// afterVersion runs once a version is written and tells its listeners.
+// The shared draft carries on unchanged: a version is read from it, never
+// a reset of it (docs/adr/0007).
+func (e *Engine) afterVersion(_ context.Context, v Version) {
+	e.bus.Publish(Event{Type: "version", Kind: v.Kind, ID: v.ID, On: v.On, Seq: int64(v.Number), Actor: v.Actor})
 }
