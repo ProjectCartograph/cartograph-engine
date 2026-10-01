@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -234,6 +235,20 @@ func (r *statusRecorder) WriteHeader(code int) {
 	r.status = code
 	r.ResponseWriter.WriteHeader(code)
 }
+
+// Hijack hands the connection to a WebSocket (the sync socket), which
+// needs the raw connection; without it every upgrade fails with 501.
+func (r *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := r.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("%T cannot be hijacked", r.ResponseWriter)
+	}
+	r.status = http.StatusSwitchingProtocols
+	return h.Hijack()
+}
+
+// Unwrap lets http.ResponseController reach the writer underneath.
+func (r *statusRecorder) Unwrap() http.ResponseWriter { return r.ResponseWriter }
 
 // listen opens the listener an address names: "unix:///path" for a
 // UNIX domain socket (removed first if stale), anything else as TCP.
