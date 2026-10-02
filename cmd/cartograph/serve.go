@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,6 +24,8 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/config"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/mcp"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/oauth"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer/chromium"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/reporting"
@@ -150,7 +153,16 @@ func runServe(args []string) error {
 	if cfg.MetricsAddr != "" {
 		mtr = newMetrics()
 	}
-	mux, syncSrv := routes(e, comp.Fanout, authn, authz, pdf, comp.Reports, &ready, syncserver.WithPing(cfg.SyncPing), syncserver.WithIdle(cfg.SyncIdle))
+	agents := agentsConfig{On: cfg.MCP == "on", Issuer: cfg.MCPIssuer}
+	if agents.On && cfg.MCPAuth == "cartograph" {
+		// Cartograph's own authorization server: its consent page knows the
+		// person by the same authenticator as every other request.
+		agents.OAuth, err = oauth.New(oauth.Options{Grants: e, Person: authn, Key: []byte(cfg.AgentKey), Issuer: cfg.MCPIssuer})
+		if err != nil {
+			return err
+		}
+	}
+	mux, syncSrv := routes(e, comp.Fanout, authn, authz, pdf, comp.Reports, agents, &ready, syncserver.WithPing(cfg.SyncPing), syncserver.WithIdle(cfg.SyncIdle))
 	mtr.watchShared(e.Shared())
 	mtr.watchSync(syncSrv)
 	mtr.watchFanout(comp.Counted)
@@ -323,9 +335,13 @@ func withSync(next, sync http.Handler) http.Handler {
 // routes is every route the server answers, behind the same middleware
 // for the API and the sync socket. Split out so a test drives exactly the
 // stack serve runs.
-func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, reports reporting.Reporter, ready *atomic.Bool, syncOpts ...syncserver.Option) (*http.ServeMux, *syncserver.Server) {
+func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, reports reporting.Reporter, agents agentsConfig, ready *atomic.Bool, syncOpts ...syncserver.Option) (*http.ServeMux, *syncserver.Server) {
 	mux := http.NewServeMux()
-	var inner http.Handler = api.New(e, api.Deps{Printer: pdf, Authorizer: authz, Reports: reports})
+	deps := api.Deps{Printer: pdf, Authorizer: authz, Reports: reports}
+	if agents.On && agents.OAuth != nil {
+		deps.AgentTokens = agents.OAuth
+	}
+	var inner http.Handler = api.New(e, deps)
 	var syncSrv *syncserver.Server
 	if sh := e.Shared(); sh != nil {
 		// The sync socket sits inside the same authentication and
@@ -333,6 +349,34 @@ func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz au
 		// /sync goes to it, everything else to the API.
 		syncSrv = syncserver.New(sh, fan, authz, slog.Default(), syncOpts...)
 		inner = withSync(inner, syncSrv)
+	}
+	if agents.On {
+		// Agents too, behind the same sign-in and access list: /mcp is
+		// MCP, the person on the request is who the agent acts for.
+		opts := mcp.Options{Engine: e, Authz: authz, Reports: reports, Version: version}
+		if syncSrv != nil {
+			opts.Presence = syncSrv
+		}
+		mcpHandler := mcp.Handler(opts)
+		if agents.OAuth != nil {
+			// Agents carry the tokens Cartograph issued, and only those: on
+			// this path no header a proxy would set is read, since the proxy
+			// passes these requests through unchecked.
+			for _, p := range oauth.Routes {
+				mux.Handle(p, agents.OAuth.Handler())
+			}
+			mux.Handle(oauth.MCPPath, agents.OAuth.Protect(http.StripPrefix("/api/v1", auth.Authorize(authz, mcpHandler)),
+				func(r *http.Request, p auth.Principal) *http.Request {
+					return r.WithContext(auth.WithPrincipal(r.Context(), p))
+				}))
+		} else {
+			inner = withMCP(inner, mcpHandler)
+		}
+		if agents.OAuth == nil && agents.Issuer != "" {
+			meta := protectedResource(agents.Issuer)
+			mux.Handle("/.well-known/oauth-protected-resource", meta)
+			mux.Handle("/.well-known/oauth-protected-resource/api/v1/mcp", meta)
+		}
 	}
 	apiHandler := auth.Middleware(authn, auth.Authorize(authz, inner))
 	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiHandler))
@@ -351,4 +395,50 @@ func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz au
 	})
 	mux.Handle("/", spa.Handler())
 	return mux, syncSrv
+}
+
+// agentsConfig says whether to serve agents over MCP, and the
+// authorization server their clients sign in with: another, at Issuer,
+// whose tokens the proxy in front checks, or Cartograph's own (OAuth).
+type agentsConfig struct {
+	On     bool
+	Issuer string
+	OAuth  *oauth.Server
+}
+
+func withMCP(next, mcpHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/mcp" {
+			mcpHandler.ServeHTTP(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// protectedResource is RFC 9728 protected resource metadata, which an
+// MCP client reads to find where its person signs in (docs/adr/0016).
+// Public: it says where to get a token, so it cannot need one. The proxy
+// in front checks the tokens; Cartograph trusts what it passes on.
+func protectedResource(issuer string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		scheme := "https"
+		if p := r.Header.Get("X-Forwarded-Proto"); p != "" {
+			scheme = p
+		} else if r.TLS == nil {
+			scheme = "http"
+		}
+		host := r.Host
+		if h := r.Header.Get("X-Forwarded-Host"); h != "" {
+			host = h
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"resource":                 scheme + "://" + host + "/api/v1/mcp",
+			"authorization_servers":    []string{issuer},
+			"bearer_methods_supported": []string{"header"},
+			"scopes_supported":         []string{"openid", "email", "profile", "groups"},
+			"resource_name":            "Cartograph",
+		})
+	})
 }

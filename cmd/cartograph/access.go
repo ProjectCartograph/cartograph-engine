@@ -38,6 +38,9 @@ type accessFile struct {
 		Name   string `yaml:"name"`
 		Parent string `yaml:"parent"`
 	} `yaml:"teams"`
+	// Agents names the roles whose people may act through an agent
+	// (docs/adr/0016).
+	Agents []string `yaml:"agents"`
 }
 
 // loadDirectory reads an access file. An empty path is an empty mapping:
@@ -61,6 +64,12 @@ func loadDirectory(path string) (engine.Directory, error) {
 		}
 		d.Roles[role] = groups
 	}
+	for _, role := range f.Agents {
+		if !slices.Contains(auth.Roles, role) {
+			return d, fmt.Errorf("access file %s: agents: %q is not a role (want one of %s)", path, role, strings.Join(auth.Roles, ", "))
+		}
+	}
+	d.Agents = f.Agents
 	names := map[string]bool{}
 	for i, t := range f.Teams {
 		if t.Group == "" {
@@ -137,6 +146,7 @@ func runAccessGrant(args []string) error {
 	target := fs.String("store", envStore(), "the vault directory, SQLite file or postgres:// URL (CARTOGRAPH_STORE, else CARTOGRAPH_VAULT)")
 	roles := fs.String("roles", "", "comma-separated: reader, contributor, strategyEditor, administrator")
 	teams := fs.String("teams", "", "comma-separated team ids")
+	noAgents := fs.Bool("no-agents", false, "turn this person's agents off (docs/adr/0016)")
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
 	}
@@ -149,7 +159,7 @@ func runAccessGrant(args []string) error {
 		return err
 	}
 	defer comp.Close()
-	p, err := comp.Engine.GrantPerson(ctx, positional[0], splitList(*roles), splitList(*teams), false, "command line")
+	p, err := comp.Engine.GrantPerson(ctx, positional[0], splitList(*roles), splitList(*teams), *noAgents, "command line")
 	if err != nil {
 		return err
 	}
