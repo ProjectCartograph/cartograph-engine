@@ -35,3 +35,32 @@ func TestReimportAfterAWorkingCopy(t *testing.T) {
 		t.Fatalf("imported: %+v", report.Imported)
 	}
 }
+
+// A directory mounted from a Kubernetes ConfigMap holds each file in a
+// hidden, timestamped directory and links to it beside it. The import
+// reads each manifest once, through the link, and nothing hidden.
+func TestImportSkipsHiddenEntries(t *testing.T) {
+	e := newTestEngine(t)
+	dir := t.TempDir()
+	team := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: quality\n  name: Quality\nspec:\n  name: Quality\n"
+	hidden := filepath.Join(dir, "..2026_10_01_00_00_00.000000001")
+	if err := os.MkdirAll(hidden, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(hidden, "quality.yaml"), []byte(team), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(hidden, "quality.yaml"), filepath.Join(dir, "quality.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".draft.yaml"), []byte(team), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	report, err := e.ImportDir(context.Background(), dir, "seed", "from a ConfigMap")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Problems) != 0 || len(report.Imported) != 1 {
+		t.Fatalf("imported %+v, problems %+v", report.Imported, report.Problems)
+	}
+}

@@ -177,16 +177,21 @@ func (e *Engine) findManifestFiles(dir string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() {
-			// .cartograph is the vault's own bookkeeping: the index, the
-			// journal, and the staging directory that holds unfinished
-			// drafts. None of it is a manifest, and a draft in particular
-			// is not one yet, so validating or exporting a vault must not
-			// walk into it (validating once reported a half-filled funding line
-			// in a draft, 2026-09-29).
-			if d.Name() == ".cartograph" {
+		// Below the root, nothing hidden is a manifest. .cartograph is the
+		// vault's own bookkeeping: the index, the journal, and the staging
+		// directory that holds unfinished drafts, which are not manifests
+		// yet (validating once reported a half-filled funding line in a
+		// draft, 2026-09-29). A Kubernetes ConfigMap mounted as a
+		// directory holds each file twice, under a hidden ..data
+		// directory and through a link beside it, so walking into the
+		// hidden one imports everything twice.
+		if p != dir && strings.HasPrefix(d.Name(), ".") {
+			if d.IsDir() {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if d.IsDir() {
 			return nil
 		}
 		// vault.yaml at the root is the vault's own index, which serve
