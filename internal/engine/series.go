@@ -194,6 +194,20 @@ func (e *Engine) withSeries(ctx context.Context, v Version, doc map[string]any) 
 // in place of the item with the same key. The caller sends one item, not
 // the series.
 func (e *Engine) AppendSeriesItem(ctx context.Context, kind, id, series string, item map[string]any, actor, reason string) (Version, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return Version{}, err
+	}
+	text, _, err := e.withSeriesItem(ctx, kind, id, series, item)
+	if err != nil {
+		return Version{}, err
+	}
+	return e.Commit(ctx, kind, id, text, actor, reason)
+}
+
+// withSeriesItem is a manifest's latest saved version with one series
+// item added in key order or put in place of the item with its key, as
+// text, and that version's number.
+func (e *Engine) withSeriesItem(ctx context.Context, kind, id, series string, item map[string]any) ([]byte, int, error) {
 	var rule *seriesRule
 	for _, r := range e.seriesRules[kind] {
 		if r.field == series {
@@ -202,26 +216,26 @@ func (e *Engine) AppendSeriesItem(ctx context.Context, kind, id, series string, 
 		}
 	}
 	if rule == nil {
-		return Version{}, fmt.Errorf("%w: %s has no series %q", ErrNoSeries, kind, series)
+		return nil, 0, fmt.Errorf("%w: %s has no series %q", ErrNoSeries, kind, series)
 	}
 	key, ok := keyOf(item, rule.key)
 	if !ok {
-		return Version{}, &ValidationError{Problems: []Problem{{Path: "/item/" + rule.key, Message: "An item needs its " + rule.key + "."}}}
+		return nil, 0, &ValidationError{Problems: []Problem{{Path: "/item/" + rule.key, Message: "An item needs its " + rule.key + "."}}}
 	}
 	latest, err := latestNumber(ctx, e.manifests, kind, id)
 	if err != nil {
-		return Version{}, err
+		return nil, 0, err
 	}
 	if latest == 0 {
-		return Version{}, fmt.Errorf("%w: %s/%s has no saved version to record into", ErrNotFound, kind, id)
+		return nil, 0, fmt.Errorf("%w: %s/%s has no saved version to record into", ErrNotFound, kind, id)
 	}
 	v, err := e.GetVersion(ctx, kind, id, latest)
 	if err != nil {
-		return Version{}, err
+		return nil, 0, err
 	}
 	doc, err := e.codec.Decode(v.YAML)
 	if err != nil {
-		return Version{}, err
+		return nil, 0, err
 	}
 	spec, _ := doc["spec"].(map[string]any)
 	if spec == nil {
@@ -249,9 +263,9 @@ func (e *Engine) AppendSeriesItem(ctx context.Context, kind, id, series string, 
 	spec[rule.field] = arr
 	text, err := e.codec.Encode(doc)
 	if err != nil {
-		return Version{}, err
+		return nil, 0, err
 	}
-	return e.Commit(ctx, kind, id, text, actor, reason)
+	return text, latest, nil
 }
 
 // SeriesAsOf returns a manifest's series items as they stood at at (the

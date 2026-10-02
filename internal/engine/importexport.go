@@ -27,6 +27,9 @@ type importFile struct {
 // other, and if every file is valid commits them all in one transaction.
 // If any file has a problem, nothing is written.
 func (e *Engine) ImportDir(ctx context.Context, dir, actor, reason string) (Report, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return Report{}, err
+	}
 	paths, err := e.findManifestFiles(dir)
 	if err != nil {
 		return Report{}, err

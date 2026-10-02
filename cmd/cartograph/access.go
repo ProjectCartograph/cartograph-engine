@@ -149,7 +149,7 @@ func runAccessGrant(args []string) error {
 		return err
 	}
 	defer comp.Close()
-	p, err := comp.Engine.GrantPerson(ctx, positional[0], splitList(*roles), splitList(*teams), "command line")
+	p, err := comp.Engine.GrantPerson(ctx, positional[0], splitList(*roles), splitList(*teams), false, "command line")
 	if err != nil {
 		return err
 	}

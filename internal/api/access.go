@@ -43,7 +43,7 @@ func (s *Server) GrantPerson(ctx context.Context, req apigen.GrantPersonRequestO
 	for i, r := range req.Body.Roles {
 		roles[i] = string(r)
 	}
-	p, err := s.Engine.GrantPerson(ctx, req.Email, roles, req.Body.Teams, actor)
+	p, err := s.Engine.GrantPerson(ctx, req.Email, roles, req.Body.Teams, false, actor)
 	var invalid *engine.ValidationError
 	switch {
 	case errors.As(err, &invalid):

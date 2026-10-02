@@ -100,7 +100,7 @@ func TestAnAdministratorGrantsBesideTheDirectory(t *testing.T) {
 	if _, err := e.Grants(admin, auth.PrincipalFrom(admin)); err != nil {
 		t.Fatal(err)
 	}
-	p, err := e.GrantPerson(admin, "Sam@Example.org", []string{auth.RoleReader, auth.RoleStrategyEditor}, []string{"assessment"}, "admin@example.org")
+	p, err := e.GrantPerson(admin, "Sam@Example.org", []string{auth.RoleReader, auth.RoleStrategyEditor}, []string{"assessment"}, false, "admin@example.org")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestAnAdministratorGrantsBesideTheDirectory(t *testing.T) {
 	}
 
 	var invalid *engine.ValidationError
-	if _, err := e.GrantPerson(admin, "not-an-address", []string{"owner"}, []string{"no-such-team"}, "admin"); !errors.As(err, &invalid) || len(invalid.Problems) != 3 {
+	if _, err := e.GrantPerson(admin, "not-an-address", []string{"owner"}, []string{"no-such-team"}, false, "admin"); !errors.As(err, &invalid) || len(invalid.Problems) != 3 {
 		t.Fatalf("bad grant: %v", err)
 	}
 	if err := e.RemovePerson(admin, "admin@example.org"); !errors.Is(err, engine.ErrSelf) {

@@ -63,6 +63,9 @@ func (e *Engine) ListUnapplied(ctx context.Context) ([]UnappliedRef, error) {
 // cannot find, is a ValidationError naming it; nothing is applied then.
 // Applying what is already applied is quiet.
 func (e *Engine) Apply(ctx context.Context, refs []string) (State, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return State{}, err
+	}
 	if e.state == nil {
 		return State{}, ErrNoState
 	}
@@ -113,6 +116,9 @@ func (e *Engine) ListExcluded(ctx context.Context) ([]store.Exclusion, error) {
 
 // Recover re-includes an excluded manifest, then reloads and reindexes.
 func (e *Engine) Recover(ctx context.Context, ref, actor, reason string) (State, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return State{}, err
+	}
 	if e.state == nil {
 		return State{}, ErrNoState
 	}

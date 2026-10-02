@@ -55,6 +55,9 @@ var standardUnits = []struct {
 // Writes through the ordinary commit path, so a seeded unit is a manifest
 // like any other and can be edited, renamed or deleted.
 func (e *Engine) SeedStandardUnits(ctx context.Context) ([]string, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return nil, err
+	}
 	existing, err := e.manifests.ListSummaries(ctx, "Unit", "", nil)
 	if err != nil {
 		return nil, err

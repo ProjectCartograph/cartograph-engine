@@ -239,6 +239,9 @@ func docID(doc map[string]any) (string, bool) {
 // actor is recorded as given (see checkActor's own doc comment for why actor
 // validation was removed).
 func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, actor, reason string) (Version, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return Version{}, err
+	}
 	doc, problems, err := e.validate(ctx, kind, yamlBytes, nil)
 	if err != nil {
 		return Version{}, err
@@ -295,6 +298,9 @@ func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, 
 // metadata.id must match id. operator is recorded as the actor.
 // For a Project with no state history, appends a "defined" state entry.
 func (e *Engine) Snapshot(ctx context.Context, kind, id string, yamlBytes []byte, reason, operator string) (Version, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return Version{}, err
+	}
 	if reason == "" {
 		return Version{}, &ValidationError{Problems: []Problem{{Message: "reason is required for a snapshot"}}}
 	}
@@ -471,6 +477,9 @@ func (e *Engine) GetWorking(ctx context.Context, kind, id string) ([]byte, bool,
 // to discard, so this is a no-op for them rather than an error: the caller
 // asked for the draft to be gone, and it is.
 func (e *Engine) DiscardWorking(ctx context.Context, kind, id string) error {
+	if err := refuseAgent(ctx); err != nil {
+		return err
+	}
 	discarder, ok := e.manifests.(interface {
 		DiscardWorking(ctx context.Context, kind, id string) error
 	})
@@ -533,6 +542,9 @@ func (e *Engine) PutWorking(ctx context.Context, kind, id string, yamlBytes []by
 // referencing manifest when the manifest is not a leaf; ErrNotFound when the
 // manifest does not exist.
 func (e *Engine) Delete(ctx context.Context, kind, id, actor, reason string) error {
+	if err := refuseAgent(ctx); err != nil {
+		return err
+	}
 	v, found, err := e.manifests.GetCurrent(ctx, kind, id)
 	if err != nil {
 		return err

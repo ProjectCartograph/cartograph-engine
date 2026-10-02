@@ -26,6 +26,9 @@ type Directory struct {
 	Roles map[string][]string
 	// Teams are the groups that are teams, parents before children.
 	Teams []DirectoryTeam
+	// Agents names the roles whose people may act through an agent
+	// (docs/adr/0016). None listed, no agents.
+	Agents []string
 }
 
 // DirectoryTeam is one group that is a team.
@@ -113,6 +116,9 @@ func (e *Engine) Grants(ctx context.Context, p identity.Principal) (identity.Gra
 	if p.Anonymous || email == "" {
 		return identity.Grants{}, nil
 	}
+	if p.Delegated {
+		return e.delegatedGrants(ctx, email)
+	}
 	dirRoles, dirTeams, err := e.directoryGrants(ctx, p)
 	if err != nil {
 		return identity.Grants{}, err
@@ -142,7 +148,33 @@ func (e *Engine) Grants(ctx context.Context, p identity.Principal) (identity.Gra
 	if !listed {
 		return identity.Grants{}, nil
 	}
-	return identity.Grants{Listed: true, Roles: unionRoles(person.Roles, dirRoles), Teams: union(person.Teams, dirTeams)}, nil
+	roles := unionRoles(person.Roles, dirRoles)
+	agents := !person.AgentsOff && slices.ContainsFunc(roles, func(r string) bool { return slices.Contains(e.directory.Agents, r) })
+	return identity.Grants{Listed: true, Roles: roles, Teams: union(person.Teams, dirTeams), Agents: agents}, nil
+}
+
+// delegatedFresh is how long the directory's roles, as recorded at a
+// person's last sign-in, still count for their agents.
+const delegatedFresh = 30 * 24 * time.Hour
+
+// delegatedGrants are a person's grants for an agent acting on a stored
+// grant: what an administrator gave them, and what the directory gave
+// them at their last sign-in if that was recent. Nothing is recorded,
+// since nobody signed in.
+func (e *Engine) delegatedGrants(ctx context.Context, email string) (identity.Grants, error) {
+	person, err := e.access.GetPerson(ctx, email)
+	if errors.Is(err, store.ErrNoPerson) {
+		return identity.Grants{}, nil
+	}
+	if err != nil {
+		return identity.Grants{}, err
+	}
+	roles, teams := person.Roles, person.Teams
+	if timeNow().Sub(person.LastSignedIn) <= delegatedFresh {
+		roles, teams = unionRoles(person.Roles, person.DirectoryRoles), union(person.Teams, person.DirectoryTeams)
+	}
+	agents := !person.AgentsOff && slices.ContainsFunc(roles, func(r string) bool { return slices.Contains(e.directory.Agents, r) })
+	return identity.Grants{Listed: true, Roles: roles, Teams: teams, Agents: agents}, nil
 }
 
 // People returns the access list.
@@ -155,7 +187,10 @@ func (e *Engine) People(ctx context.Context) ([]store.Person, error) {
 
 // GrantPerson lists a person by their address, if they are not listed,
 // and sets the roles and teams an administrator gives them.
-func (e *Engine) GrantPerson(ctx context.Context, email string, roles, teams []string, actor string) (store.Person, error) {
+func (e *Engine) GrantPerson(ctx context.Context, email string, roles, teams []string, agentsOff bool, actor string) (store.Person, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return store.Person{}, err
+	}
 	if e.access == nil {
 		return store.Person{}, fmt.Errorf("%w: no access list is configured", ErrNotFound)
 	}
@@ -187,13 +222,16 @@ func (e *Engine) GrantPerson(ctx context.Context, email string, roles, teams []s
 		}
 	}
 	return e.access.GrantPerson(ctx, store.Person{
-		Email: email, Roles: unionRoles(roles, nil), Teams: union(teams, nil), AddedBy: actor, AddedOn: timeNow().UTC(),
+		Email: email, Roles: unionRoles(roles, nil), Teams: union(teams, nil), AddedBy: actor, AddedOn: timeNow().UTC(), AgentsOff: agentsOff,
 	})
 }
 
 // RemovePerson takes a person off the access list. An administrator may
 // not remove themselves.
 func (e *Engine) RemovePerson(ctx context.Context, email string) error {
+	if err := refuseAgent(ctx); err != nil {
+		return err
+	}
 	if e.access == nil {
 		return fmt.Errorf("%w: no access list is configured", ErrNotFound)
 	}
@@ -213,6 +251,9 @@ func (e *Engine) RemovePerson(ctx context.Context, email string) error {
 // changes an existing team. Run it once per deployment, from one place
 // (`cartograph access apply`), so two replicas never both create a team.
 func (e *Engine) ApplyDirectory(ctx context.Context, actor string) ([]string, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return nil, err
+	}
 	var created []string
 	for _, dt := range e.directory.Teams {
 		e.forgetTeams("Team")

@@ -10,6 +10,9 @@ import (
 // CommitProject validates and stores a new version of a Project, exactly
 // like the generic Commit.
 func (e *Engine) CommitProject(ctx context.Context, id string, yamlBytes []byte, actor, reason string) (Version, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return Version{}, err
+	}
 	doc, problems, err := e.validate(ctx, "Project", yamlBytes, nil)
 	if err != nil {
 		return Version{}, err

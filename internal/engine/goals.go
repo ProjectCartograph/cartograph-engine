@@ -91,6 +91,9 @@ func (e *Engine) GetSettings(ctx context.Context) (Settings, error) {
 // ErrNotFound when the goal does not exist. Calls Exclude to remove from
 // vault.yaml while keeping the file.
 func (e *Engine) DeleteGoal(ctx context.Context, id, actor, reason string) error {
+	if err := refuseAgent(ctx); err != nil {
+		return err
+	}
 	v, found, err := e.manifests.GetCurrent(ctx, "Goal", id)
 	if err != nil {
 		return err

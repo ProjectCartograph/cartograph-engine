@@ -89,36 +89,41 @@ func projectStateFromRows(rows []store.ProjectStateEntry) ProjectState {
 // as problems, for a 422 response. cancelled requires a reason, from any
 // non-terminal state. Every other move must be exactly the next state in
 // the fixed sequence.
-func (e *Engine) TransitionProjectState(ctx context.Context, id, to, actor, reason string) (ProjectState, error) {
+// checkTransition is every rule a move of a project to state to must
+// pass, without making it: the state machine, the reason a cancellation
+// needs, and no blocking check before a handoff. It returns the
+// project's state history. An agent's proposal is checked by it when
+// proposed, and the move again when accepted.
+func (e *Engine) checkTransition(ctx context.Context, id, to, actor, reason string) ([]store.ProjectStateEntry, error) {
 	if !allProjectStates[to] {
-		return ProjectState{}, &ValidationError{Problems: []Problem{{Message: fmt.Sprintf("%q is not a project state", to)}}}
+		return nil, &ValidationError{Problems: []Problem{{Message: fmt.Sprintf("%q is not a project state", to)}}}
 	}
 	if _, found, err := e.manifests.GetCurrent(ctx, "Project", id); err != nil {
-		return ProjectState{}, err
+		return nil, err
 	} else if !found {
-		return ProjectState{}, fmt.Errorf("%w: Project/%s", ErrNotFound, id)
+		return nil, fmt.Errorf("%w: Project/%s", ErrNotFound, id)
 	}
 	if err := e.guardStored(ctx, "Project", id); err != nil {
-		return ProjectState{}, err
+		return nil, err
 	}
 	if p, err := e.checkActor(ctx, actor); err != nil {
-		return ProjectState{}, err
+		return nil, err
 	} else if p != nil {
-		return ProjectState{}, &ValidationError{Problems: []Problem{*p}}
+		return nil, &ValidationError{Problems: []Problem{*p}}
 	}
 
 	rows, err := e.ops.ListProjectStateHistory(ctx, id)
 	if err != nil {
-		return ProjectState{}, err
+		return nil, err
 	}
 	current := projectStateFromRows(rows).State
 
 	if to == ProjectStateCancelled {
 		if terminalStates[current] {
-			return ProjectState{}, &ValidationError{Problems: []Problem{{Message: fmt.Sprintf("%s cannot move to cancelled", current)}}}
+			return nil, &ValidationError{Problems: []Problem{{Message: fmt.Sprintf("%s cannot move to cancelled", current)}}}
 		}
 		if reason == "" {
-			return ProjectState{}, &ValidationError{Problems: []Problem{{Path: "/reason", Message: "reason is required to cancel"}}}
+			return nil, &ValidationError{Problems: []Problem{{Path: "/reason", Message: "reason is required to cancel"}}}
 		}
 	} else {
 		allowed := false
@@ -129,7 +134,7 @@ func (e *Engine) TransitionProjectState(ctx context.Context, id, to, actor, reas
 			}
 		}
 		if !allowed {
-			return ProjectState{}, &ValidationError{Problems: []Problem{{Message: fmt.Sprintf("%s cannot move to %s", current, to)}}}
+			return nil, &ValidationError{Problems: []Problem{{Message: fmt.Sprintf("%s cannot move to %s", current, to)}}}
 		}
 	}
 
@@ -137,7 +142,7 @@ func (e *Engine) TransitionProjectState(ctx context.Context, id, to, actor, reas
 	if current == ProjectStateDraft && to == ProjectStateHandedOff {
 		checks, err := e.ProjectChecks(ctx, id, false)
 		if err != nil {
-			return ProjectState{}, err
+			return nil, err
 		}
 		if checks.Blocking > 0 {
 			var problems []Problem
@@ -146,8 +151,20 @@ func (e *Engine) TransitionProjectState(ctx context.Context, id, to, actor, reas
 					problems = append(problems, Problem{Path: item.Section, Message: item.Message})
 				}
 			}
-			return ProjectState{}, &ValidationError{Problems: problems}
+			return nil, &ValidationError{Problems: problems}
 		}
+	}
+
+	return rows, nil
+}
+
+func (e *Engine) TransitionProjectState(ctx context.Context, id, to, actor, reason string) (ProjectState, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return ProjectState{}, err
+	}
+	rows, err := e.checkTransition(ctx, id, to, actor, reason)
+	if err != nil {
+		return ProjectState{}, err
 	}
 
 	entry := store.ProjectStateEntry{ProjectID: id, State: to, Actor: actor, Reason: reason, On: timeNow().UTC()}
@@ -225,6 +242,9 @@ func (e *Engine) HandoffGate(ctx context.Context, projectID string) (snapshot in
 // bundle, then records the state transition with the version and the
 // bundle's location. Refused when nowhere keeps bundles.
 func (e *Engine) Handoff(ctx context.Context, projectID, actor string, req HandoffRequest) (HandoffResult, error) {
+	if err := refuseAgent(ctx); err != nil {
+		return HandoffResult{}, err
+	}
 	if e.bundles == nil {
 		return HandoffResult{}, fmt.Errorf("handoff needs a bundle store")
 	}
