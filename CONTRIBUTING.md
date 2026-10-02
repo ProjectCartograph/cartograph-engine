@@ -81,6 +81,7 @@ has none. In this repository:
 - `adr`: docs/adr
 - `api`: internal/api, the HTTP adapter
 - `arch`: internal/arch, the dependency rule
+- `auth`: internal/auth, the identity ports and their adapters
 - `chart`: deploy/helm
 - `cli`: cmd/cartograph
 - `client`: pkg/client
