@@ -77,6 +77,15 @@ that keeps the shared drafts implements `store.DocStore` and runs
 `RunDocStore`, which races creates, appends and compaction the way two
 replicas would.
 
+A store that reads across a network should also answer for sets
+(`store.SetReader`: every manifest of a kind, and who references every
+manifest of a kind, in one call each) and know a manifest's latest
+version number without reading its history (`store.VersionCounter`).
+The engine uses them where it would otherwise loop, and loops when they
+are missing, so they are a matter of speed, never of correctness
+(ADR 0012). The same conformance suite checks that their answers match
+the per-manifest ones.
+
 Select it in `compose` in `cmd/cartograph/store.go`. That function is
 the one place a path or a URL becomes an adapter. The Postgres adapter
 (`internal/store/postgres`) is the worked example. `CARTOGRAPH_STORE`

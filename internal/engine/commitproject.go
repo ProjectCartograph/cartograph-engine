@@ -29,20 +29,22 @@ func (e *Engine) CommitProject(ctx context.Context, id string, yamlBytes []byte,
 		return Version{}, err
 	}
 
-	current, found, err := e.manifests.GetCurrent(ctx, "Project", id)
+	// The next number follows the highest saved version. The current
+	// manifest may be a working copy, which has no number of its own.
+	latest, err := latestNumber(ctx, e.manifests, "Project", id)
 	if err != nil {
 		return Version{}, err
 	}
-	number := 1
-	if found {
-		number = current.Number + 1
-	}
-	v := Version{Kind: "Project", ID: id, Number: number, YAML: yamlBytes, Actor: actor, Reason: reason, On: timeNow().UTC()}
+	number := latest + 1
+	v := Version{Kind: "Project", ID: id, Number: number, YAML: yamlBytes, Actor: actor, Reason: reason, On: timeNow().UTC(), Doc: e.storedDoc("Project", doc)}
 	refs := extractRefs(doc, e.refRules["Project"])
 	storeRefs := toStoreRefs(refs)
 
 	err = e.manifests.WithinTransaction(ctx, func(ctx context.Context, tx store.ManifestStore) error {
 		if err := tx.PutVersion(ctx, v); err != nil {
+			return err
+		}
+		if err := e.recordSeries(ctx, tx, v, doc); err != nil {
 			return err
 		}
 		if err := tx.IndexReferences(ctx, "Project", id, storeRefs); err != nil {

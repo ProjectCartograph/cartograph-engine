@@ -53,19 +53,13 @@ func (e *Engine) teams(ctx context.Context) (*teamTree, error) {
 	if e.teamCache.tree != nil && timeNow().Sub(e.teamCache.at) < teamCacheFor {
 		return e.teamCache.tree, nil
 	}
-	sums, err := e.manifests.ListSummaries(ctx, "Team", "", nil)
+	// Every team in one read.
+	versions, err := currentOfKind(ctx, e.manifests, "Team")
 	if err != nil {
 		return nil, err
 	}
 	t := &teamTree{name: map[string]string{}, parent: map[string]string{}, byName: map[string]string{}}
-	for _, s := range sums {
-		v, found, err := e.manifests.GetCurrent(ctx, "Team", s.ID)
-		if err != nil {
-			return nil, err
-		}
-		if !found {
-			continue
-		}
+	for _, v := range versions {
 		doc, err := e.codec.Decode(v.YAML)
 		if err != nil {
 			continue
@@ -73,12 +67,13 @@ func (e *Engine) teams(ctx context.Context) (*teamTree, error) {
 		spec, _ := doc["spec"].(map[string]any)
 		name, _ := spec["name"].(string)
 		if name == "" {
-			name = s.Name
+			meta, _ := doc["metadata"].(map[string]any)
+			name, _ = meta["name"].(string)
 		}
-		t.name[s.ID] = name
-		t.byName[name] = s.ID
+		t.name[v.ID] = name
+		t.byName[name] = v.ID
 		if p, _ := spec["parent"].(string); p != "" {
-			t.parent[s.ID] = p
+			t.parent[v.ID] = p
 		}
 	}
 	e.teamCache.tree, e.teamCache.at = t, timeNow()

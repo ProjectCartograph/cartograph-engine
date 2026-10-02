@@ -200,22 +200,32 @@ type goalDoc struct {
 }
 
 // GoalTree computes the goal tree from every current Goal manifest plus the
-// reference index (which counts as aligned to a goal).
+// reference index (which counts as aligned to a goal). It reads goals,
+// gaps, indicators and references once each, however many goals there
+// are (docs/adr/0012).
 func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
-	ids, err := e.manifests.ListIDs(ctx, "Goal")
+	goalVersions, err := currentOfKind(ctx, e.manifests, "Goal")
 	if err != nil {
 		return GoalTree{}, err
+	}
+	ids := make([]string, 0, len(goalVersions))
+	goals := make(map[string]map[string]any, len(goalVersions))
+	texts := make(map[string][]byte, len(goalVersions))
+	for _, v := range goalVersions {
+		var raw map[string]any
+		if err := e.codec.DecodeInto(v.YAML, &raw); err != nil {
+			return GoalTree{}, fmt.Errorf("parse Goal/%s: %w", v.ID, err)
+		}
+		ids = append(ids, v.ID)
+		goals[v.ID] = raw
+		texts[v.ID] = v.YAML
 	}
 
 	// Gaps name the outcomes that would close them; read back here so a
 	// goal never has to point below itself (D9, D24).
 	gapsByGoal := map[string][]GoalGap{}
-	if gapIDs, err := e.manifests.ListIDs(ctx, "Gap"); err == nil {
-		for _, gid := range gapIDs {
-			gv, gfound, err := e.manifests.GetCurrent(ctx, "Gap", gid)
-			if err != nil || !gfound {
-				continue
-			}
+	if gapVersions, err := currentOfKind(ctx, e.manifests, "Gap"); err == nil {
+		for _, gv := range gapVersions {
 			var gdoc struct {
 				Metadata struct {
 					Name string `yaml:"name"`
@@ -230,31 +240,39 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 				continue
 			}
 			for _, o := range gdoc.Spec.Outcomes {
-				gapsByGoal[o] = append(gapsByGoal[o], GoalGap{ID: gid, Name: gdoc.Metadata.Name,
+				gapsByGoal[o] = append(gapsByGoal[o], GoalGap{ID: gv.ID, Name: gdoc.Metadata.Name,
 					Current: gdoc.Spec.Current, Desired: gdoc.Spec.Desired})
 			}
 		}
 	}
 
+	referencing, err := referencingKind(ctx, e.manifests, "Goal", ids)
+	if err != nil {
+		return GoalTree{}, err
+	}
+	kpiSpecs := map[string]map[string]any{}
+	if kpiVersions, err := currentOfKind(ctx, e.manifests, "KPI"); err == nil {
+		for _, kv := range kpiVersions {
+			var kdoc map[string]any
+			if e.codec.DecodeInto(kv.YAML, &kdoc) != nil {
+				continue
+			}
+			if sp, ok := kdoc["spec"].(map[string]any); ok {
+				kpiSpecs[kv.ID] = sp
+			}
+		}
+	}
+	read := e.loadedGoals(ctx, goals)
+
 	nodesByID := make(map[string]*GoalNode, len(ids))
 	for _, id := range ids {
-		v, found, err := e.manifests.GetCurrent(ctx, "Goal", id)
-		if err != nil {
-			return GoalTree{}, err
-		}
-		if !found {
-			continue
-		}
 		var doc goalDoc
-		if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
+		if err := e.codec.DecodeInto(texts[id], &doc); err != nil {
 			return GoalTree{}, fmt.Errorf("parse Goal/%s: %w", id, err)
 		}
-		refs, err := e.manifests.ListReferencing(ctx, "Goal", id)
-		if err != nil {
-			return GoalTree{}, err
-		}
 		aligned := GoalAligned{}
-		for _, r := range refs {
+		var kpis []map[string]any
+		for _, r := range referencing[id] {
 			switch r.Kind {
 			case "Project":
 				aligned.Projects++
@@ -264,20 +282,17 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 				aligned.Operations++
 			case "KPI":
 				aligned.KPIs++
+				if sp, ok := kpiSpecs[r.ID]; ok {
+					kpis = append(kpis, sp)
+				}
 			}
 		}
-		var raw map[string]any
-		_ = e.codec.DecodeInto(v.YAML, &raw)
-		rawSpec, _ := raw["spec"].(map[string]any)
+		rawSpec, _ := goals[id]["spec"].(map[string]any)
 		if rawSpec == nil {
 			rawSpec = map[string]any{}
 		}
-		kpis, err := e.alignedKPISpecs(ctx, id)
-		if err != nil {
-			return GoalTree{}, err
-		}
-		horizon := e.effectiveHorizon(ctx, rawSpec)
-		smart, _ := e.goalSmart(ctx, rawSpec, kpis, horizon)
+		horizon := e.effectiveHorizon(read, rawSpec)
+		smart, _ := e.goalSmart(read, rawSpec, kpis, horizon)
 		owner, _ := rawSpec["owner"].(string)
 		nodesByID[id] = &GoalNode{
 			Smart:      smart,
@@ -383,8 +398,9 @@ func (e *Engine) GoalChecks(ctx context.Context, id string) ([]GoalCheck, error)
 	if err != nil {
 		return nil, err
 	}
-	horizon := e.effectiveHorizon(ctx, spec)
-	_, checks := e.goalSmart(ctx, spec, kpis, horizon)
+	read := e.storedGoals(ctx)
+	horizon := e.effectiveHorizon(read, spec)
+	_, checks := e.goalSmart(read, spec, kpis, horizon)
 	checks = append(checks, e.contextChecks(ctx, spec, horizon)...)
 
 	if krs, _ := spec["keyResults"].([]any); len(krs) > 3 {
@@ -494,7 +510,7 @@ func (e *Engine) contextChecks(ctx context.Context, spec map[string]any, horizon
 		if parent, _ := spec["parent"].(string); parent != "" {
 			parentSpec["parent"] = parent
 		}
-		up := e.effectiveHorizon(ctx, parentSpec)
+		up := e.effectiveHorizon(e.storedGoals(ctx), parentSpec)
 		if up != nil && (own.Start < up.Start || own.End > up.End) {
 			out = append(out, GoalCheck{ID: "horizon", State: goalCheckWarn,
 				Message: "The horizon runs outside the one above it, " + span(up) + ".", Fix: &GoalCheckFix{Section: "horizon"}})

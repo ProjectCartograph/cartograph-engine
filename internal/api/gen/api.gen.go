@@ -188,19 +188,19 @@ func (e Role) Valid() bool {
 
 // Defines values for SessionAccessScopes.
 const (
-	All   SessionAccessScopes = "all"
-	None  SessionAccessScopes = "none"
-	Teams SessionAccessScopes = "teams"
+	SessionAccessScopesAll   SessionAccessScopes = "all"
+	SessionAccessScopesNone  SessionAccessScopes = "none"
+	SessionAccessScopesTeams SessionAccessScopes = "teams"
 )
 
 // Valid indicates whether the value is a known member of the SessionAccessScopes enum.
 func (e SessionAccessScopes) Valid() bool {
 	switch e {
-	case All:
+	case SessionAccessScopesAll:
 		return true
-	case None:
+	case SessionAccessScopesNone:
 		return true
-	case Teams:
+	case SessionAccessScopesTeams:
 		return true
 	default:
 		return false
@@ -216,6 +216,48 @@ const (
 func (e ListManifestsParamsExpand) Valid() bool {
 	switch e {
 	case Spec:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetReportParamsFormat.
+const (
+	Csv  GetReportParamsFormat = "csv"
+	Json GetReportParamsFormat = "json"
+)
+
+// Valid indicates whether the value is a known member of the GetReportParamsFormat enum.
+func (e GetReportParamsFormat) Valid() bool {
+	switch e {
+	case Csv:
+		return true
+	case Json:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetReportParamsName.
+const (
+	GetReportParamsNameAlignment   GetReportParamsName = "alignment"
+	GetReportParamsNameKpiReadings GetReportParamsName = "kpi-readings"
+	GetReportParamsNameProjects    GetReportParamsName = "projects"
+	GetReportParamsNameTeams       GetReportParamsName = "teams"
+)
+
+// Valid indicates whether the value is a known member of the GetReportParamsName enum.
+func (e GetReportParamsName) Valid() bool {
+	switch e {
+	case GetReportParamsNameAlignment:
+		return true
+	case GetReportParamsNameKpiReadings:
+		return true
+	case GetReportParamsNameProjects:
+		return true
+	case GetReportParamsNameTeams:
 		return true
 	default:
 		return false
@@ -591,8 +633,24 @@ type References struct {
 	Outgoing []Ref     `json:"outgoing"`
 }
 
+// Report defines model for Report.
+type Report struct {
+	Columns []string `json:"columns"`
+	Name    string   `json:"name"`
+
+	// Rows One array per row, its values in the order of columns.
+	Rows [][]interface{} `json:"rows"`
+}
+
 // Role A role on the access list (TAXONOMY.md D27). A reader sees everything and changes nothing; a contributor changes the work of their teams and the teams beneath them and keeps the shared registers; a strategy editor shapes the goals and the vision and mission; an administrator does everything, for every team, and manages access.
 type Role string
+
+// SeriesAppend defines model for SeriesAppend.
+type SeriesAppend struct {
+	// Item The item, as the series' schema has it: for a reading, period and value, and provisional and note when they apply.
+	Item   map[string]interface{} `json:"item"`
+	Reason string                 `json:"reason"`
+}
 
 // Session defines model for Session.
 type Session struct {
@@ -837,6 +895,18 @@ type PutWorkingJSONBody struct {
 	Yaml string `json:"yaml"`
 }
 
+// GetReportParams defines parameters for GetReport.
+type GetReportParams struct {
+	// Format json (the default) or csv, for a spreadsheet.
+	Format *GetReportParamsFormat `form:"format,omitempty" json:"format,omitempty"`
+}
+
+// GetReportParamsFormat defines parameters for GetReport.
+type GetReportParamsFormat string
+
+// GetReportParamsName defines parameters for GetReport.
+type GetReportParamsName string
+
 // ListSnapshotsParams defines parameters for ListSnapshots.
 type ListSnapshotsParams struct {
 	// Limit Maximum number of snapshots to return
@@ -860,6 +930,9 @@ type DeleteManifestJSONRequestBody = DeleteRequest
 
 // PutManifestJSONRequestBody defines body for PutManifest for application/json ContentType.
 type PutManifestJSONRequestBody = WriteRequest
+
+// AppendSeriesItemJSONRequestBody defines body for AppendSeriesItem for application/json ContentType.
+type AppendSeriesItemJSONRequestBody = SeriesAppend
 
 // PostSnapshotJSONRequestBody defines body for PostSnapshot for application/json ContentType.
 type PostSnapshotJSONRequestBody PostSnapshotJSONBody
@@ -1024,6 +1097,9 @@ type ServerInterface interface {
 	// GetReferences What a manifest points to, and what points back at it
 	// (GET /manifests/{kind}/{id}/references)
 	GetReferences(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
+	// AppendSeriesItem Record one item of a series (an array the kind's schema marks x-cartograph-series, such as a KPI's readings) and commit the manifest with it: a new key is added in key order, an existing key's item is replaced, which is how a provisional reading is restated. The item is the only thing sent, so recording costs the same however long the series is. Builds on the latest committed version, never on a working copy, and validates the whole manifest as a save does.
+	// (POST /manifests/{kind}/{id}/series/{series})
+	AppendSeriesItem(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam, series string)
 	// PostSnapshot Create an explicit snapshot (version) with a reason
 	// (POST /manifests/{kind}/{id}/snapshots)
 	PostSnapshot(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
@@ -1045,6 +1121,9 @@ type ServerInterface interface {
 	// GetPresenceDocument The document that carries presence for screens not about one manifest
 	// (GET /presence)
 	GetPresenceDocument(w http.ResponseWriter, r *http.Request)
+	// GetReport A report over the current record, answered by the deployment's reporter (docs/adr/0014): projects (with team, state and the goals they serve), kpi-readings (every reading in force, with who recorded it and when), alignment (what serves each goal) and teams (each team with every team above it). Every reporter gives the same columns and rows. 404 when the deployment turned reporting off. Every listed person reads every report.
+	// (GET /reports/{name})
+	GetReport(w http.ResponseWriter, r *http.Request, name GetReportParamsName, params GetReportParams)
 	// GetSchema The JSON Schema document for a kind
 	// (GET /schemas/{kind})
 	GetSchema(w http.ResponseWriter, r *http.Request, kind KindParam)
@@ -1949,6 +2028,50 @@ func (siw *ServerInterfaceWrapper) GetReferences(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// AppendSeriesItem operation middleware
+func (siw *ServerInterfaceWrapper) AppendSeriesItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "series" -------------
+	var series string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "series", r.PathValue("series"), &series, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "series", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AppendSeriesItem(w, r, kind, id, series)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // PostSnapshot operation middleware
 func (siw *ServerInterfaceWrapper) PostSnapshot(w http.ResponseWriter, r *http.Request) {
 
@@ -2173,6 +2296,48 @@ func (siw *ServerInterfaceWrapper) GetPresenceDocument(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetPresenceDocument(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetReport operation middleware
+func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "name" -------------
+	var name GetReportParamsName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetReportParams
+
+	// ------------- Optional query parameter "format" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "format", r.URL.Query(), &params.Format, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "format"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "format", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetReport(w, r, name, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2536,6 +2701,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/flows/{kind}", wrapper.GetFlow)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/schemas/{kind}", wrapper.GetSchema)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}", wrapper.ListManifests)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/{kind}/{id}/series/{series}", wrapper.AppendSeriesItem)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/reports/{name}", wrapper.GetReport)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/references", wrapper.GetReferences)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/document", wrapper.GetSharedDocument)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/presence", wrapper.GetPresenceDocument)
@@ -4469,6 +4636,115 @@ func (response GetReferences404JSONResponse) VisitGetReferencesResponse(w http.R
 	return err
 }
 
+type AppendSeriesItemRequestObject struct {
+	Kind   KindParam `json:"kind"`
+	Id     IdParam   `json:"id"`
+	Series string    `json:"series"`
+	Body   *AppendSeriesItemJSONRequestBody
+}
+
+type AppendSeriesItemResponseObject interface {
+	VisitAppendSeriesItemResponse(w http.ResponseWriter) error
+}
+
+type AppendSeriesItem200JSONResponse Version
+
+func (response AppendSeriesItem200JSONResponse) VisitAppendSeriesItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AppendSeriesItem400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AppendSeriesItem400JSONResponse) VisitAppendSeriesItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AppendSeriesItem401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response AppendSeriesItem401JSONResponse) VisitAppendSeriesItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AppendSeriesItem403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response AppendSeriesItem403JSONResponse) VisitAppendSeriesItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AppendSeriesItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AppendSeriesItem404JSONResponse) VisitAppendSeriesItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AppendSeriesItem409JSONResponse struct{ ConflictJSONResponse }
+
+func (response AppendSeriesItem409JSONResponse) VisitAppendSeriesItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AppendSeriesItem422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response AppendSeriesItem422JSONResponse) VisitAppendSeriesItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PostSnapshotRequestObject struct {
 	Kind KindParam `json:"kind"`
 	Id   IdParam   `json:"id"`
@@ -4951,6 +5227,91 @@ func (response GetPresenceDocument403JSONResponse) VisitGetPresenceDocumentRespo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReportRequestObject struct {
+	Name   GetReportParamsName `json:"name"`
+	Params GetReportParams
+}
+
+type GetReportResponseObject interface {
+	VisitGetReportResponse(w http.ResponseWriter) error
+}
+
+type GetReport200JSONResponse Report
+
+func (response GetReport200JSONResponse) VisitGetReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReport200TextcsvResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response GetReport200TextcsvResponse) VisitGetReportResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "text/csv")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetReport401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetReport401JSONResponse) VisitGetReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReport403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetReport403JSONResponse) VisitGetReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReport404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetReport404JSONResponse) VisitGetReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5700,6 +6061,9 @@ type StrictServerInterface interface {
 	// GetReferences What a manifest points to, and what points back at it
 	// (GET /manifests/{kind}/{id}/references)
 	GetReferences(ctx context.Context, request GetReferencesRequestObject) (GetReferencesResponseObject, error)
+	// AppendSeriesItem Record one item of a series (an array the kind's schema marks x-cartograph-series, such as a KPI's readings) and commit the manifest with it: a new key is added in key order, an existing key's item is replaced, which is how a provisional reading is restated. The item is the only thing sent, so recording costs the same however long the series is. Builds on the latest committed version, never on a working copy, and validates the whole manifest as a save does.
+	// (POST /manifests/{kind}/{id}/series/{series})
+	AppendSeriesItem(ctx context.Context, request AppendSeriesItemRequestObject) (AppendSeriesItemResponseObject, error)
 	// PostSnapshot Create an explicit snapshot (version) with a reason
 	// (POST /manifests/{kind}/{id}/snapshots)
 	PostSnapshot(ctx context.Context, request PostSnapshotRequestObject) (PostSnapshotResponseObject, error)
@@ -5721,6 +6085,9 @@ type StrictServerInterface interface {
 	// GetPresenceDocument The document that carries presence for screens not about one manifest
 	// (GET /presence)
 	GetPresenceDocument(ctx context.Context, request GetPresenceDocumentRequestObject) (GetPresenceDocumentResponseObject, error)
+	// GetReport A report over the current record, answered by the deployment's reporter (docs/adr/0014): projects (with team, state and the goals they serve), kpi-readings (every reading in force, with who recorded it and when), alignment (what serves each goal) and teams (each team with every team above it). Every reporter gives the same columns and rows. 404 when the deployment turned reporting off. Every listed person reads every report.
+	// (GET /reports/{name})
+	GetReport(ctx context.Context, request GetReportRequestObject) (GetReportResponseObject, error)
 	// GetSchema The JSON Schema document for a kind
 	// (GET /schemas/{kind})
 	GetSchema(ctx context.Context, request GetSchemaRequestObject) (GetSchemaResponseObject, error)
@@ -6559,6 +6926,41 @@ func (sh *strictHandler) GetReferences(w http.ResponseWriter, r *http.Request, k
 	}
 }
 
+// AppendSeriesItem operation middleware
+func (sh *strictHandler) AppendSeriesItem(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam, series string) {
+	var request AppendSeriesItemRequestObject
+
+	request.Kind = kind
+	request.Id = id
+	request.Series = series
+
+	var body AppendSeriesItemJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AppendSeriesItem(ctx, request.(AppendSeriesItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AppendSeriesItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AppendSeriesItemResponseObject); ok {
+		if err := validResponse.VisitAppendSeriesItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // PostSnapshot operation middleware
 func (sh *strictHandler) PostSnapshot(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam) {
 	var request PostSnapshotRequestObject
@@ -6753,6 +7155,33 @@ func (sh *strictHandler) GetPresenceDocument(w http.ResponseWriter, r *http.Requ
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetPresenceDocumentResponseObject); ok {
 		if err := validResponse.VisitGetPresenceDocumentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetReport operation middleware
+func (sh *strictHandler) GetReport(w http.ResponseWriter, r *http.Request, name GetReportParamsName, params GetReportParams) {
+	var request GetReportRequestObject
+
+	request.Name = name
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetReport(ctx, request.(GetReportRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetReport")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetReportResponseObject); ok {
+		if err := validResponse.VisitGetReportResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -39,6 +39,8 @@ type Engine struct {
 	teamCache teamCache           // the team tree, for team chains
 	schemas   *schemaSet
 	refRules  map[string][]refRule
+	// seriesRules are the series each kind's schema marks.
+	seriesRules map[string][]seriesRule
 }
 
 // Option configures an Engine beyond its two required stores.
@@ -76,10 +78,12 @@ func New(manifests store.ManifestStore, ops store.OperationalStore, opts ...Opti
 		return nil, err
 	}
 	rules := map[string][]refRule{}
+	series := map[string][]seriesRule{}
 	for _, spec := range kinds.All {
 		rules[spec.Name] = collectRefRules(ss.raw, spec.SchemaFile)
+		series[spec.Name] = collectSeriesRules(ss.raw, spec.SchemaFile)
 	}
-	e := &Engine{manifests: manifests, ops: ops, schemas: ss, refRules: rules}
+	e := &Engine{manifests: manifests, ops: ops, schemas: ss, refRules: rules, seriesRules: series}
 	if s, ok := manifests.(store.StateStore); ok {
 		e.state = s
 	}
@@ -256,15 +260,12 @@ func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, 
 
 	// Compute next version number: use highest snapshot number (from ListVersions), not working copy number
 	// Working copy has Number=0; snapshots have Number≥1. Always use highest snapshot + 1.
-	versions, err := e.manifests.ListVersions(ctx, kind, id)
+	latest, err := latestNumber(ctx, e.manifests, kind, id)
 	if err != nil {
 		return Version{}, err
 	}
-	number := 1
-	if len(versions) > 0 {
-		number = versions[len(versions)-1].Number + 1
-	}
-	v := Version{Kind: kind, ID: id, Number: number, YAML: yamlBytes, Actor: actor, Reason: reason, On: timeNow().UTC()}
+	number := latest + 1
+	v := Version{Kind: kind, ID: id, Number: number, YAML: yamlBytes, Actor: actor, Reason: reason, On: timeNow().UTC(), Doc: e.storedDoc(kind, doc)}
 	refs := extractRefs(doc, e.refRules[kind])
 	storeRefs := make([]store.Ref, len(refs))
 	for i, r := range refs {
@@ -273,6 +274,9 @@ func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, 
 
 	err = e.manifests.WithinTransaction(ctx, func(ctx context.Context, tx store.ManifestStore) error {
 		if err := tx.PutVersion(ctx, v); err != nil {
+			return err
+		}
+		if err := e.recordSeries(ctx, tx, v, doc); err != nil {
 			return err
 		}
 		return tx.IndexReferences(ctx, kind, id, storeRefs)
@@ -399,12 +403,21 @@ func (e *Engine) Versions(ctx context.Context, kind, id string) ([]Version, erro
 	if _, ok := kinds.ByName(kind); !ok {
 		return nil, fmt.Errorf("%w: %s", ErrUnknownKind, kind)
 	}
-	return e.manifests.ListVersions(ctx, kind, id)
+	vs, err := e.manifests.ListVersions(ctx, kind, id)
+	if err != nil {
+		return nil, err
+	}
+	return e.withText(ctx, vs...)
 }
 
 // ListAllVersions returns every version across all kinds, newest first, with pagination.
 func (e *Engine) ListAllVersions(ctx context.Context, limit int, cursor string) ([]store.Version, string, error) {
-	return e.manifests.ListAllVersions(ctx, limit, cursor)
+	vs, next, err := e.manifests.ListAllVersions(ctx, limit, cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	vs, err = e.withText(ctx, vs...)
+	return vs, next, err
 }
 
 // GetVersion returns one specific historical version.
@@ -419,7 +432,11 @@ func (e *Engine) GetVersion(ctx context.Context, kind, id string, number int) (V
 	if !found {
 		return Version{}, fmt.Errorf("%w: %s/%s#%d", ErrNotFound, kind, id, number)
 	}
-	return v, nil
+	vs, err := e.withText(ctx, v)
+	if err != nil {
+		return Version{}, err
+	}
+	return vs[0], nil
 }
 
 // Diff computes the structural difference between two versions of a
@@ -490,7 +507,7 @@ func (e *Engine) PutWorking(ctx context.Context, kind, id string, yamlBytes []by
 		return err
 	}
 	// Write the working copy
-	if err := e.manifests.PutWorking(ctx, kind, id, yamlBytes); err != nil {
+	if err := e.putWorking(ctx, kind, id, yamlBytes); err != nil {
 		return err
 	}
 
@@ -561,7 +578,7 @@ func (e *Engine) indexWorking(ctx context.Context, kind, id string, yamlBytes []
 	}); ok {
 		return indexer.IndexWorking(ctx, kind, id, yamlBytes)
 	}
-	return e.manifests.PutWorking(ctx, kind, id, yamlBytes)
+	return e.putWorking(ctx, kind, id, yamlBytes)
 }
 
 // Reindex walks every current manifest and indexes its outgoing references.

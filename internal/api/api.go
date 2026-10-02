@@ -23,6 +23,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/render"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/reporting"
 )
 
 // Server implements apigen.StrictServerInterface over an *engine.Engine.
@@ -31,6 +32,9 @@ type Server struct {
 	Engine  *engine.Engine
 	Printer printer.Printer
 	Authz   auth.Authorizer
+	// Reports answers /reports; nil when the deployment turned
+	// reporting off (docs/adr/0014).
+	Reports reporting.Reporter
 }
 
 var _ apigen.StrictServerInterface = (*Server)(nil)
@@ -41,6 +45,9 @@ type Deps struct {
 	// Authorizer answers GET /session's canWrite; the middleware still
 	// decides every request. AllowAll when nil.
 	Authorizer auth.Authorizer
+	// Reports answers /reports. Nil turns reporting off: the reports
+	// answer 404.
+	Reports reporting.Reporter
 }
 
 // Handler returns the complete net/http handler for the API, mounted under
@@ -61,7 +68,7 @@ func New(e *engine.Engine, deps Deps) http.Handler {
 	if z == nil {
 		z = auth.AllowAll{}
 	}
-	strict := apigen.NewStrictHandlerWithOptions(&Server{Engine: e, Printer: p, Authz: z}, nil,
+	strict := apigen.NewStrictHandlerWithOptions(&Server{Engine: e, Printer: p, Authz: z, Reports: deps.Reports}, nil,
 		apigen.StrictHTTPServerOptions{ResponseErrorHandlerFunc: writeError})
 	return apigen.Handler(strict)
 }
@@ -818,16 +825,15 @@ func (s *Server) ListManifests(ctx context.Context, req apigen.ListManifestsRequ
 			f.Refs = append(f.Refs, engine.Ref{Kind: kind, ID: id})
 		}
 	}
-	summaries, err := s.Engine.List(ctx, req.Kind, f, false)
-	if err != nil {
-		if errors.Is(err, engine.ErrUnknownKind) {
-			return apigen.ListManifests404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
-		}
-		return nil, err
-	}
-
 	expand := req.Params.Expand != nil && *req.Params.Expand == apigen.Spec
 	if req.Params.Limit == nil && req.Params.Cursor == nil {
+		summaries, err := s.Engine.List(ctx, req.Kind, f, false)
+		if err != nil {
+			if errors.Is(err, engine.ErrUnknownKind) {
+				return apigen.ListManifests404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+			}
+			return nil, err
+		}
 		out, err := s.withProjectState(ctx, req.Kind, toSummaries(summaries))
 		if err != nil {
 			return nil, err
@@ -842,7 +848,19 @@ func (s *Server) ListManifests(ctx context.Context, req apigen.ListManifestsRequ
 		return resp, nil
 	}
 
-	page, next := paginate(summaries, req.Params.Limit, req.Params.Cursor)
+	limit, after := pageParams(req.Params.Limit, req.Params.Cursor)
+	page, more, err := s.Engine.ListPage(ctx, req.Kind, f, after, limit)
+	if err != nil {
+		if errors.Is(err, engine.ErrUnknownKind) {
+			return apigen.ListManifests404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+		}
+		return nil, err
+	}
+	var next *string
+	if more && len(page) > 0 {
+		c := encodeCursor(page[len(page)-1].ID)
+		next = &c
+	}
 	out, err := s.withProjectState(ctx, req.Kind, toSummaries(page))
 	if err != nil {
 		return nil, err
@@ -869,69 +887,45 @@ func (s *Server) withProjectState(ctx context.Context, kind string, out []apigen
 	if kind != "Project" {
 		return out, nil
 	}
+	ids := make([]string, 0, len(out))
+	for _, sum := range out {
+		if sum.Draft == nil || !*sum.Draft {
+			ids = append(ids, sum.Id)
+		}
+	}
+	// One read for the page, not one per project.
+	states, err := s.Engine.ProjectStates(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
 	for i := range out {
-		if out[i].Draft != nil && *out[i].Draft {
-			draftState := "draft"
-			out[i].State = &draftState
-			continue
+		state := "draft"
+		if st, ok := states[out[i].Id]; ok {
+			state = st
 		}
-		st, err := s.Engine.GetProjectState(ctx, out[i].Id)
-		if err != nil {
-			if errors.Is(err, engine.ErrNotFound) {
-				continue
-			}
-			return nil, err
-		}
-		state := st.State
 		out[i].State = &state
 	}
 	return out, nil
 }
 
-// paginate slices a full, id-ordered summary list into one page. The cursor
-// is opaque to callers: it is the base64 encoding of the id of the last
-// item on the previous page, so paging picks up right after it. limit
-// defaults to 50 and is clamped to [1, 200]. A cursor that fails to decode
-// (malformed, or from a different list) is treated as no cursor, starting
-// from the first page, rather than an error.
-func paginate(all []engine.Summary, limitParam *int, cursorParam *string) (page []engine.Summary, next *string) {
-	limit := 50
+// pageParams reads a page request. The cursor is opaque to callers: it
+// is the base64 encoding of the id of the last item on the previous
+// page, so paging picks up right after it. limit defaults to 50 and is
+// clamped to [1, 200]. A cursor that fails to decode (malformed, or from
+// a different list) is treated as no cursor, starting from the first
+// page, rather than an error.
+func pageParams(limitParam *int, cursorParam *string) (limit int, afterID string) {
+	limit = 50
 	if limitParam != nil {
 		limit = *limitParam
 	}
-	if limit < 1 {
-		limit = 1
-	}
-	if limit > 200 {
-		limit = 200
-	}
-
-	start := 0
+	limit = max(1, min(limit, 200))
 	if cursorParam != nil && *cursorParam != "" {
-		if afterID, err := decodeCursor(*cursorParam); err == nil {
-			start = len(all)
-			for i, s := range all {
-				if s.ID > afterID {
-					start = i
-					break
-				}
-			}
+		if id, err := decodeCursor(*cursorParam); err == nil {
+			afterID = id
 		}
 	}
-
-	end := start + limit
-	if end > len(all) {
-		end = len(all)
-	}
-	if start > len(all) {
-		start = len(all)
-	}
-	page = all[start:end]
-	if end < len(all) {
-		c := encodeCursor(page[len(page)-1].ID)
-		next = &c
-	}
-	return page, next
+	return limit, afterID
 }
 
 func encodeCursor(id string) string {
@@ -1120,17 +1114,24 @@ func toProblemList(problems []engine.Problem) apigen.ProblemList {
 // can summarise what every record holds in one request. A record that
 // cannot be read keeps its summary without a spec.
 func (s *Server) withSpecs(ctx context.Context, kind string, out []apigen.Summary) {
-	for i := range out {
-		v, err := s.Engine.Get(ctx, kind, out[i].Id)
-		if err != nil {
-			continue
-		}
+	ids := make([]string, len(out))
+	at := make(map[string]int, len(out))
+	for i, sum := range out {
+		ids[i] = sum.Id
+		at[sum.Id] = i
+	}
+	// One read for the page, not one per manifest.
+	versions, err := s.Engine.GetMany(ctx, kind, ids)
+	if err != nil {
+		return
+	}
+	for _, v := range versions {
 		var doc manifestDoc
 		if s.Engine.Codec().DecodeInto(v.YAML, &doc) != nil || doc.Spec == nil {
 			continue
 		}
 		spec := doc.Spec
-		out[i].Spec = &spec
+		out[at[v.ID]].Spec = &spec
 	}
 }
 

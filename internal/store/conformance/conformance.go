@@ -5,7 +5,10 @@ package conformance
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -285,6 +288,223 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 			t.Fatalf("expected updated working copy, got %+v", cur)
 		}
 	})
+
+	t.Run("series items merge into their value at any time", func(t *testing.T) {
+		s := newStore(t)
+		ss, ok := s.(store.SeriesStore)
+		if !ok {
+			t.Skip("the adapter keeps no series items")
+		}
+		t0 := time.Date(2026, 1, 31, 12, 0, 0, 0, time.UTC)
+		item := func(id, key, value string, at time.Time) store.SeriesItem {
+			it := store.SeriesItem{Kind: "KPIReadings", ID: id, Series: "/spec/readings", Key: key, RecordedAt: at, RecordedBy: "a@example.org", Reason: "r"}
+			if value != "" {
+				it.Item = []byte(`{"period":"` + key + `","value":` + value + `}`)
+			}
+			return it
+		}
+		must(t, ss.RecordSeries(ctx, []store.SeriesItem{
+			item("r1", "2026-01", "40", t0),
+			item("r1", "2026-02", "41", t0.Add(time.Hour)),
+			item("r2", "2026-01", "7", t0),
+		}))
+		must(t, ss.RecordSeries(ctx, []store.SeriesItem{
+			item("r1", "2026-01", "39", t0.Add(2*time.Hour)), // a restatement
+			item("r1", "2026-02", "", t0.Add(3*time.Hour)),   // a removal
+		}))
+		values := func(at time.Time, ids []string) map[string]string {
+			got, err := ss.SeriesAsOf(ctx, "KPIReadings", "/spec/readings", ids, at)
+			must(t, err)
+			out := map[string]string{}
+			for id, items := range got {
+				for _, it := range items {
+					out[id+" "+it.Key] = string(it.Item)
+				}
+			}
+			return out
+		}
+		at := func(h int) time.Time { return t0.Add(time.Duration(h) * time.Hour) }
+		cases := []struct {
+			at   time.Time
+			ids  []string
+			want map[string]string
+		}{
+			{at(0), nil, map[string]string{"r1 2026-01": `{"period":"2026-01","value":40}`, "r2 2026-01": `{"period":"2026-01","value":7}`}},
+			{at(1), []string{"r1"}, map[string]string{"r1 2026-01": `{"period":"2026-01","value":40}`, "r1 2026-02": `{"period":"2026-02","value":41}`}},
+			{at(2), []string{"r1"}, map[string]string{"r1 2026-01": `{"period":"2026-01","value":39}`, "r1 2026-02": `{"period":"2026-02","value":41}`}},
+			{at(3), []string{"r1"}, map[string]string{"r1 2026-01": `{"period":"2026-01","value":39}`}},
+			{t0.Add(-time.Second), nil, map[string]string{}},
+		}
+		for _, c := range cases {
+			got := values(c.at, c.ids)
+			if len(got) != len(c.want) {
+				t.Fatalf("as of %s %v: %v, want %v", c.at, c.ids, got, c.want)
+			}
+			for k, v := range c.want {
+				if !sameJSON(got[k], v) {
+					t.Fatalf("as of %s: %s is %s, want %s", c.at, k, got[k], v)
+				}
+			}
+		}
+	})
+
+	t.Run("every save writes its event, in order", func(t *testing.T) {
+		s := newStore(t)
+		el, ok := s.(store.EventLog)
+		if !ok {
+			t.Skip("the adapter keeps no event log")
+		}
+		before, err := el.Events(ctx, 0, 1000)
+		must(t, err)
+		cursor := int64(0)
+		if len(before) > 0 {
+			cursor = before[len(before)-1].Seq
+		}
+		now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+		must(t, s.PutVersion(ctx, store.Version{Kind: "Goal", ID: "g1", Number: 1, YAML: []byte("metadata:\n  id: g1\n"), Actor: "a@example.org", Reason: "r", On: now}))
+		must(t, s.PutVersion(ctx, store.Version{Kind: "Goal", ID: "g1", Number: 2, YAML: []byte("metadata:\n  id: g1\n"), Actor: "b@example.org", Reason: "r", On: now}))
+		if ss, ok := s.(store.SeriesStore); ok {
+			must(t, ss.RecordSeries(ctx, []store.SeriesItem{{Kind: "KPIReadings", ID: "r1", Series: "/spec/readings", Key: "2026-01", Item: []byte(`{"period":"2026-01","value":1}`), RecordedAt: now, RecordedBy: "c@example.org"}}))
+		}
+		// A transaction rolled back writes no event.
+		_ = s.WithinTransaction(ctx, func(ctx context.Context, tx store.ManifestStore) error {
+			must(t, tx.PutVersion(ctx, store.Version{Kind: "Goal", ID: "g2", Number: 1, YAML: []byte("metadata:\n  id: g2\n"), Actor: "a", Reason: "r", On: now}))
+			return errRollback
+		})
+		got, err := el.Events(ctx, cursor, 1000)
+		must(t, err)
+		want := []string{"version Goal/g1 1 a@example.org", "version Goal/g1 2 b@example.org"}
+		if _, ok := s.(store.SeriesStore); ok {
+			want = append(want, "series KPIReadings/r1 2026-01 c@example.org")
+		}
+		if len(got) != len(want) {
+			t.Fatalf("events after %d: %+v, want %v", cursor, got, want)
+		}
+		for i, e := range got {
+			line := fmt.Sprintf("%s %s/%s %d %s", e.Type, e.Kind, e.ID, e.Number, e.Actor)
+			if e.Type == "series" {
+				line = fmt.Sprintf("%s %s/%s %s %s", e.Type, e.Kind, e.ID, e.Detail, e.Actor)
+			}
+			if line != want[i] {
+				t.Errorf("event %d is %q, want %q", i, line, want[i])
+			}
+			if i > 0 && e.Seq <= got[i-1].Seq {
+				t.Errorf("event %d does not follow the one before", i)
+			}
+		}
+		// Reading from the last one gives nothing more.
+		if more, _ := el.Events(ctx, got[len(got)-1].Seq, 10); len(more) != 0 {
+			t.Errorf("events after the last: %+v", more)
+		}
+	})
+
+	t.Run("pages of summaries are the list in pieces", func(t *testing.T) {
+		s := newStore(t)
+		p, ok := s.(store.SummaryPager)
+		if !ok {
+			t.Skip("the adapter lists a kind whole")
+		}
+		for _, id := range []string{"e", "a", "d", "b", "c"} {
+			must(t, s.PutVersion(ctx, store.Version{Kind: "Team", ID: id, Number: 1, YAML: []byte("metadata:\n  id: " + id + "\n  name: Team " + id + "\n")}))
+		}
+		for _, q := range []string{"", "team"} {
+			all, err := s.ListSummaries(ctx, "Team", q, nil)
+			must(t, err)
+			var paged []store.Summary
+			after := ""
+			for {
+				page, err := p.ListSummariesAfter(ctx, "Team", q, nil, after, 2)
+				must(t, err)
+				paged = append(paged, page...)
+				if len(page) < 2 {
+					break
+				}
+				after = page[len(page)-1].ID
+			}
+			if len(paged) != len(all) {
+				t.Fatalf("query %q: pages gave %d, the list %d", q, len(paged), len(all))
+			}
+			for i := range all {
+				if paged[i].ID != all[i].ID {
+					t.Fatalf("query %q: page item %d is %s, list has %s", q, i, paged[i].ID, all[i].ID)
+				}
+			}
+		}
+	})
+
+	t.Run("set reads answer as the per-manifest reads do", func(t *testing.T) {
+		s := newStore(t)
+		sr, isSet := s.(store.SetReader)
+		vc, isCounter := s.(store.VersionCounter)
+		if !isSet && !isCounter {
+			t.Skip("the adapter reads one manifest at a time")
+		}
+		now := time.Now().UTC()
+		put := func(kind, id string, n int, name string) {
+			text := []byte("metadata:\n  id: " + id + "\n  name: " + name + "\n")
+			doc := []byte(`{"metadata":{"id":"` + id + `","name":"` + name + `"}}`)
+			must(t, s.PutVersion(ctx, store.Version{Kind: kind, ID: id, Number: n, YAML: text, Actor: "a", Reason: "r", On: now, Doc: doc}))
+		}
+		put("Goal", "g1", 1, "One")
+		put("Goal", "g1", 2, "One again")
+		put("Goal", "g2", 1, "Two")
+		put("Project", "p1", 1, "Project")
+		put("KPI", "k1", 1, "Indicator")
+		must(t, s.PutWorking(ctx, "Goal", "g2", []byte("metadata:\n  id: g2\n  name: Two, unsaved\n")))
+		must(t, s.PutWorking(ctx, "Goal", "g3", []byte("metadata:\n  id: g3\n  name: Three, never saved\n")))
+		must(t, s.IndexReferences(ctx, "Project", "p1", []store.Ref{{Path: "/spec/goal", ToKind: "Goal", ToID: "g1"}}))
+		must(t, s.IndexReferences(ctx, "KPI", "k1", []store.Ref{{Path: "/spec/goal", ToKind: "Goal", ToID: "g1"}, {Path: "/spec/also", ToKind: "Goal", ToID: "g2"}}))
+
+		if isCounter {
+			for id, want := range map[string]int{"g1": 2, "g2": 1, "g3": 0, "missing": 0} {
+				got, err := vc.LatestNumber(ctx, "Goal", id)
+				must(t, err)
+				if got != want {
+					t.Errorf("LatestNumber(Goal/%s) = %d, want %d", id, got, want)
+				}
+			}
+		}
+		if !isSet {
+			return
+		}
+		all, err := sr.CurrentOfKind(ctx, "Goal")
+		must(t, err)
+		ids, err := s.ListIDs(ctx, "Goal")
+		must(t, err)
+		if len(all) != len(ids) {
+			t.Fatalf("CurrentOfKind gave %d manifests, ListIDs %d", len(all), len(ids))
+		}
+		for i, v := range all {
+			if v.ID != ids[i] {
+				t.Fatalf("CurrentOfKind is not in id order: %s at %d, want %s", v.ID, i, ids[i])
+			}
+			one, _, err := s.GetCurrent(ctx, "Goal", v.ID)
+			must(t, err)
+			if v.Number != one.Number || string(v.YAML) != string(one.YAML) {
+				t.Errorf("CurrentOfKind(Goal/%s) = %d %q, GetCurrent = %d %q", v.ID, v.Number, v.YAML, one.Number, one.YAML)
+			}
+		}
+		some, err := sr.CurrentMany(ctx, "Goal", []string{"g3", "missing", "g1"})
+		must(t, err)
+		if len(some) != 2 || some[0].ID != "g1" || some[1].ID != "g3" || some[1].Number != 0 {
+			t.Fatalf("CurrentMany(g3, missing, g1) = %+v, want g1 then g3's working copy", some)
+		}
+		byGoal, err := sr.ReferencingKind(ctx, "Goal")
+		must(t, err)
+		for _, id := range []string{"g1", "g2", "g3"} {
+			one, err := s.ListReferencing(ctx, "Goal", id)
+			must(t, err)
+			got := byGoal[id]
+			if len(got) != len(one) {
+				t.Fatalf("ReferencingKind(Goal)[%s] has %d, ListReferencing %d", id, len(got), len(one))
+			}
+			for i := range one {
+				if got[i].Kind != one[i].Kind || got[i].ID != one[i].ID || got[i].Version != one[i].Version || got[i].Name != one[i].Name {
+					t.Errorf("ReferencingKind(Goal)[%s][%d] = %+v, ListReferencing = %+v", id, i, got[i], one[i])
+				}
+			}
+		}
+	})
 }
 
 // RunOperationalStore exercises every store.OperationalStore method.
@@ -324,6 +544,26 @@ func RunOperationalStore(t *testing.T, newStore func(t *testing.T) store.Operati
 		}
 	})
 
+	t.Run("current states answer as the histories do", func(t *testing.T) {
+		s := newStore(t)
+		sr, ok := s.(store.StateSetReader)
+		if !ok {
+			t.Skip("the adapter reads one project at a time")
+		}
+		at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		for i, st := range []string{"defined", "handed off"} {
+			must(t, s.PutProjectStateTransition(ctx, store.ProjectStateEntry{ProjectID: "p1", State: st, Actor: "a", On: at.Add(time.Duration(i) * time.Hour)}))
+		}
+		// Two moves at the same instant: the later one written is current.
+		must(t, s.PutProjectStateTransition(ctx, store.ProjectStateEntry{ProjectID: "p2", State: "defined", Actor: "a", On: at}))
+		must(t, s.PutProjectStateTransition(ctx, store.ProjectStateEntry{ProjectID: "p2", State: "cancelled", Actor: "a", On: at}))
+		got, err := sr.CurrentStates(ctx, []string{"p1", "p2", "never-moved"})
+		must(t, err)
+		want := map[string]string{"p1": "handed off", "p2": "cancelled"}
+		if len(got) != len(want) || got["p1"] != want["p1"] || got["p2"] != want["p2"] {
+			t.Fatalf("CurrentStates = %v, want %v", got, want)
+		}
+	})
 }
 
 // RunVaultIndex exercises every store.VaultIndex method against a freshly
@@ -429,4 +669,15 @@ func must(t *testing.T, err error) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+var errRollback = errors.New("roll back")
+
+// sameJSON reports whether two JSON texts hold the same value.
+func sameJSON(a, b string) bool {
+	var x, y any
+	if json.Unmarshal([]byte(a), &x) != nil || json.Unmarshal([]byte(b), &y) != nil {
+		return false
+	}
+	return reflect.DeepEqual(x, y)
 }

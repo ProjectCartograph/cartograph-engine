@@ -37,7 +37,7 @@ func TestSyncSocketThroughTheServeStack(t *testing.T) {
 	var ready atomic.Bool
 	ready.Store(true)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	mux, _ := routes(comp.Engine, comp.Fanout, auth.NoAuthentication{}, auth.AllowAll{}, printer.None{}, &ready)
+	mux, _ := routes(comp.Engine, comp.Fanout, auth.NoAuthentication{}, auth.AllowAll{}, printer.None{}, comp.Reports, &ready)
 	srv := httptest.NewServer(requestLog(logger, newMetrics(), mux))
 	defer srv.Close()
 
@@ -84,7 +84,7 @@ func TestMetricsExposeTheScalingSignals(t *testing.T) {
 	defer comp.Close()
 	var ready atomic.Bool
 	mtr := newMetrics()
-	mux, syncSrv := routes(comp.Engine, comp.Fanout, auth.NoAuthentication{}, auth.AllowAll{}, printer.None{}, &ready)
+	mux, syncSrv := routes(comp.Engine, comp.Fanout, auth.NoAuthentication{}, auth.AllowAll{}, printer.None{}, comp.Reports, &ready)
 	mtr.watchShared(comp.Engine.Shared())
 	mtr.watchSync(syncSrv)
 	mtr.watchFanout(comp.Counted)

@@ -19,6 +19,12 @@ type Version struct {
 	Actor  string
 	Reason string
 	On     time.Time
+
+	// Doc is the same manifest as a JSON document, decoded by the engine
+	// at every save. YAML stays what the person wrote; Doc is what an
+	// adapter that keeps documents stores, indexes and queries. An
+	// adapter may ignore it, and need not return it.
+	Doc []byte
 }
 
 // Summary is the list-view projection of a manifest's current version.

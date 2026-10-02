@@ -51,6 +51,8 @@ func main() {
 		err = runUnapplied(os.Args[2:])
 	case "excluded":
 		err = runExcluded(os.Args[2:])
+	case "report":
+		err = runReport(os.Args[2:])
 	case "access":
 		err = runAccess(os.Args[2:])
 	case "ready":
@@ -77,7 +79,7 @@ func usage() {
 
 Every command's output is a function of the vault's files and the snapshot log only.
 
-Commands: serve, ready, validate, check, list, snapshot, render, handoff, export, diff, import, apply, exclude, recover, unapplied, excluded, access
+Commands: serve, ready, validate, check, list, snapshot, render, handoff, export, diff, import, apply, exclude, recover, unapplied, excluded, report, access
 
 Usage:
   cartograph serve [<vault-dir>] [-addr :8080] [-import <dir>]   (every flag also reads CARTOGRAPH_*; see serve -h)
@@ -96,6 +98,7 @@ Usage:
   cartograph recover <Kind/id> <vault-dir> --reason "..."
   cartograph unapplied <vault-dir>
   cartograph excluded <vault-dir>
+  cartograph report <projects|kpi-readings|alignment|teams> <vault, file or postgres:// URL> [-format csv|json]
   cartograph access apply <access file> -store <vault, file or postgres:// URL>
   cartograph access grant <email> -roles administrator [-teams id,...] -store <...>
   cartograph version

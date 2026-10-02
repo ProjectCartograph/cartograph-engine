@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
@@ -22,37 +23,66 @@ type ManifestStore struct {
 	q    querier
 }
 
-var _ store.ManifestStore = (*ManifestStore)(nil)
+var (
+	_ store.ManifestStore = (*ManifestStore)(nil)
+	_ store.SummaryPager  = (*ManifestStore)(nil)
+)
 
 // NewManifestStore returns a ManifestStore over a pool Open returned.
 func NewManifestStore(pool *pgxpool.Pool) *ManifestStore {
 	return &ManifestStore{pool: pool, q: pool}
 }
 
-// PutVersion inserts v only when its number is one more than the
-// highest recorded, in one statement. Two writers racing for the same
-// number both pass that test, and the primary key refuses the second.
+// Two SQLSTATEs mean a version that is not the next one: the version
+// trigger's own (migrations/0003_documents.sql), and a unique violation
+// when two writers race for the first version of a new manifest.
+const (
+	errNotNext   = "CG001"
+	errDuplicate = "23505"
+)
+
+// PutVersion appends v with its document. The trigger on
+// manifest_versions accepts it only as one more than the manifest's
+// current version, with the manifest's row locked, and moves the row on.
 func (m *ManifestStore) PutVersion(ctx context.Context, v store.Version) error {
-	tag, err := m.q.Exec(ctx, `
-		INSERT INTO manifest_versions (kind, id, number, name, yaml, actor, reason, on_ts)
-		SELECT $1, $2, $3, $4, $5, $6, $7, $8
-		WHERE $3 = 1 + COALESCE((SELECT max(number) FROM manifest_versions WHERE kind = $1 AND id = $2), 0)`,
-		v.Kind, v.ID, v.Number, manifestmeta.Name(v.YAML), string(v.YAML), v.Actor, v.Reason, stamp(v.On))
-	if err != nil {
-		return fmt.Errorf("put version %s/%s %d: %w", v.Kind, v.ID, v.Number, err)
-	}
-	if tag.RowsAffected() != 1 {
+	_, err := m.q.Exec(ctx, `
+		INSERT INTO manifest_versions (kind, id, number, name, yaml, actor, reason, on_ts, doc)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		v.Kind, v.ID, v.Number, manifestmeta.Name(v.YAML), string(v.YAML), v.Actor, v.Reason, stamp(v.On), docOf(v.Doc, v.YAML))
+	var pgErr *pgconn.PgError
+	switch {
+	case errors.As(err, &pgErr) && (pgErr.Code == errNotNext || pgErr.Code == errDuplicate):
 		return fmt.Errorf("put version %s/%s: %d is not one more than the current version", v.Kind, v.ID, v.Number)
+	case err != nil:
+		return fmt.Errorf("put version %s/%s %d: %w", v.Kind, v.ID, v.Number, err)
 	}
 	return nil
 }
 
+// docOf is the document to store: the engine's where it gave one, else
+// one read from the text, else none (jsonb null), which the engine's
+// repair fills later.
+func docOf(doc, text []byte) any {
+	if doc == nil {
+		doc = manifestmeta.Doc(text)
+	}
+	if doc == nil {
+		return nil
+	}
+	return string(doc)
+}
+
 // PutWorking replaces a manifest's working copy.
 func (m *ManifestStore) PutWorking(ctx context.Context, kind, id string, yamlBytes []byte) error {
+	return m.PutWorkingDoc(ctx, kind, id, yamlBytes, nil)
+}
+
+// PutWorkingDoc replaces a manifest's working copy, with its document.
+func (m *ManifestStore) PutWorkingDoc(ctx context.Context, kind, id string, text, doc []byte) error {
 	_, err := m.q.Exec(ctx, `
-		INSERT INTO working_copies (kind, id, name, yaml, on_ts) VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (kind, id) DO UPDATE SET name = excluded.name, yaml = excluded.yaml, on_ts = excluded.on_ts`,
-		kind, id, manifestmeta.Name(yamlBytes), string(yamlBytes), stamp(time.Time{}))
+		INSERT INTO working_copies (kind, id, name, yaml, on_ts, doc) VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (kind, id) DO UPDATE SET name = excluded.name, yaml = excluded.yaml, on_ts = excluded.on_ts, doc = excluded.doc`,
+		kind, id, manifestmeta.Name(text), string(text), stamp(time.Time{}), docOf(doc, text))
 	if err != nil {
 		return fmt.Errorf("put working copy %s/%s: %w", kind, id, err)
 	}
@@ -72,29 +102,24 @@ func (m *ManifestStore) GetWorking(ctx context.Context, kind, id string) ([]byte
 	return []byte(text), true, nil
 }
 
-// GetCurrent returns the working copy when there is one, as version 0,
-// and the highest version otherwise: the same answer the SQLite adapter
-// gives.
-func (m *ManifestStore) GetCurrent(ctx context.Context, kind, id string) (store.Version, bool, error) {
-	var text string
-	var on time.Time
-	err := m.q.QueryRow(ctx, `SELECT yaml, on_ts FROM working_copies WHERE kind = $1 AND id = $2`, kind, id).Scan(&text, &on)
-	switch {
-	case err == nil:
-		return store.Version{Kind: kind, ID: id, YAML: []byte(text), Actor: "local", Reason: "working copy", On: on.UTC()}, true, nil
-	case !errors.Is(err, pgx.ErrNoRows):
-		return store.Version{}, false, fmt.Errorf("get current %s/%s: %w", kind, id, err)
-	}
-	return m.oneVersion(ctx, `
-		SELECT kind, id, number, yaml, actor, reason, on_ts FROM manifest_versions
-		WHERE kind = $1 AND id = $2 ORDER BY number DESC LIMIT 1`, kind, id)
-}
+// currentSQL selects what GetCurrent returns, for the manifests a WHERE
+// clause on m names: the working copy where there is one, as version 0,
+// else the highest version, found through the manifest's own row.
+const currentSQL = `
+	SELECT m.kind, m.id,
+	       CASE WHEN w.kind IS NULL THEN v.number ELSE 0 END,
+	       coalesce(w.yaml, v.yaml),
+	       CASE WHEN w.kind IS NULL THEN v.actor ELSE 'local' END,
+	       CASE WHEN w.kind IS NULL THEN v.reason ELSE 'working copy' END,
+	       coalesce(w.on_ts, v.on_ts)
+	FROM manifests m
+	LEFT JOIN working_copies w ON m.has_working AND w.kind = m.kind AND w.id = m.id
+	LEFT JOIN manifest_versions v ON v.kind = m.kind AND v.id = m.id AND v.number = m.version`
 
-// GetVersion returns one version, if it exists.
-func (m *ManifestStore) GetVersion(ctx context.Context, kind, id string, number int) (store.Version, bool, error) {
-	return m.oneVersion(ctx, `
-		SELECT kind, id, number, yaml, actor, reason, on_ts FROM manifest_versions
-		WHERE kind = $1 AND id = $2 AND number = $3`, kind, id, number)
+// GetCurrent returns the working copy when there is one, as version 0,
+// and the highest version otherwise.
+func (m *ManifestStore) GetCurrent(ctx context.Context, kind, id string) (store.Version, bool, error) {
+	return m.oneVersion(ctx, currentSQL+` WHERE m.kind = $1 AND m.id = $2`, kind, id)
 }
 
 func (m *ManifestStore) oneVersion(ctx context.Context, sql string, args ...any) (store.Version, bool, error) {
@@ -128,20 +153,8 @@ func collectVersions(rows pgx.Rows) ([]store.Version, error) {
 	return out, nil
 }
 
-// ListVersions returns every version of a manifest, oldest first.
-func (m *ManifestStore) ListVersions(ctx context.Context, kind, id string) ([]store.Version, error) {
-	rows, err := m.q.Query(ctx, `
-		SELECT kind, id, number, yaml, actor, reason, on_ts FROM manifest_versions
-		WHERE kind = $1 AND id = $2 ORDER BY number`, kind, id)
-	if err != nil {
-		return nil, fmt.Errorf("list versions %s/%s: %w", kind, id, err)
-	}
-	return collectVersions(rows)
-}
-
 // ListAllVersions pages through every version, newest first. The cursor
-// is the last row's sort key, "on,kind,id,number", the format the other
-// adapters use.
+// is the last row's sort key, "on,kind,id,number".
 func (m *ManifestStore) ListAllVersions(ctx context.Context, limit int, cursor string) ([]store.Version, string, error) {
 	if limit <= 0 {
 		limit = 20
@@ -149,7 +162,7 @@ func (m *ManifestStore) ListAllVersions(ctx context.Context, limit int, cursor s
 	if limit > 100 {
 		limit = 100
 	}
-	sql := `SELECT kind, id, number, yaml, actor, reason, on_ts FROM manifest_versions`
+	sql := `SELECT ` + historyCols + ` FROM manifest_versions`
 	args := []any{}
 	if parts := strings.Split(cursor, ","); len(parts) == 4 {
 		on, err := time.Parse(time.RFC3339Nano, parts[0])
@@ -160,9 +173,11 @@ func (m *ManifestStore) ListAllVersions(ctx context.Context, limit int, cursor s
 		if err != nil {
 			return nil, "", fmt.Errorf("list all versions: cursor %q: %w", cursor, err)
 		}
-		// The rows after the cursor in the order below, which mixes
-		// directions, so a plain row comparison would not do.
-		sql += ` WHERE on_ts < $1 OR (on_ts = $1 AND (kind > $2 OR (kind = $2 AND (id > $3 OR (id = $3 AND number < $4)))))`
+		// The rows after the cursor in the order below. The order mixes
+		// directions, so no single row comparison says it; the plain bound
+		// on on_ts lets manifest_versions_on_ts seek to the cursor, leaving
+		// only rows saved at the same instant to the rest.
+		sql += ` WHERE on_ts <= $1 AND (on_ts < $1 OR (kind > $2 OR (kind = $2 AND (id > $3 OR (id = $3 AND number < $4)))))`
 		args = append(args, on, parts[1], parts[2], n)
 	}
 	sql += fmt.Sprintf(` ORDER BY on_ts DESC, kind, id, number DESC LIMIT %d`, limit+1)
@@ -170,9 +185,26 @@ func (m *ManifestStore) ListAllVersions(ctx context.Context, limit int, cursor s
 	if err != nil {
 		return nil, "", fmt.Errorf("list all versions: %w", err)
 	}
-	out, err := collectVersions(rows)
+	raw, err := scanStored(rows)
 	if err != nil {
 		return nil, "", err
+	}
+	out := make([]store.Version, len(raw))
+	for i, r := range raw {
+		if r.patch == nil {
+			vs, err := rebuild([]stored{r})
+			if err != nil {
+				return nil, "", err
+			}
+			out[i] = vs[0]
+			continue
+		}
+		// A patch needs the versions before it, back to a keyframe.
+		v, _, err := m.GetVersion(ctx, r.v.Kind, r.v.ID, r.v.Number)
+		if err != nil {
+			return nil, "", err
+		}
+		out[i] = v
 	}
 	next := ""
 	if len(out) > limit {
@@ -183,31 +215,45 @@ func (m *ManifestStore) ListAllVersions(ctx context.Context, limit int, cursor s
 	return out, next, nil
 }
 
-// current is every manifest's current content, one row per manifest:
-// the highest version where there is one, else the working copy. That
-// is the preference the SQLite and memory adapters show in a list.
-const current = `(
-	SELECT DISTINCT ON (kind, id) kind, id, name, version, on_ts, yaml FROM (
-		SELECT kind, id, name, number AS version, on_ts, yaml, 0 AS pref FROM manifest_versions
-		UNION ALL
-		SELECT kind, id, name, 0, on_ts, yaml, 1 FROM working_copies
-	) c
-	ORDER BY kind, id, pref, version DESC
-)`
+// summarySQL selects a manifest's list entry from its row: its version
+// where it has one, else its working copy as version 0.
+const summarySQL = `
+	SELECT m.kind, m.id, m.title, m.version,
+	       CASE WHEN m.version > 0 THEN m.updated_on ELSE m.working_on END,
+	       m.labels
+	FROM manifests m`
 
-// ListSummaries returns the current content of every manifest of a kind
+// ListSummaries returns the current entry of every manifest of a kind
 // that matches the query and every reference filter.
 func (m *ManifestStore) ListSummaries(ctx context.Context, kind, query string, refs []store.RefFilter) ([]store.Summary, error) {
+	return m.ListSummariesAfter(ctx, kind, query, refs, "", 0)
+}
+
+// ListSummariesAfter is ListSummaries from the id after afterID, at most
+// limit rows (0 for all): a seek in the primary key, then the page.
+func (m *ManifestStore) ListSummariesAfter(ctx context.Context, kind, query string, refs []store.RefFilter, afterID string, limit int) ([]store.Summary, error) {
 	var b strings.Builder
-	b.WriteString(`SELECT kind, id, name, version, on_ts, yaml FROM ` + current + ` cur
-		WHERE kind = $1 AND ($2 = '' OR strpos(lower(id), $2) > 0 OR strpos(lower(name), $2) > 0)`)
-	args := []any{kind, strings.ToLower(strings.TrimSpace(query))}
+	b.WriteString(summarySQL + ` WHERE m.kind = $1`)
+	args := []any{kind}
+	if q := strings.ToLower(strings.TrimSpace(query)); q != "" {
+		// LIKE, with the query's own wildcards escaped, is what the
+		// trigram indexes answer.
+		args = append(args, "%"+likeEscaper.Replace(q)+"%")
+		fmt.Fprintf(&b, ` AND (lower(m.id) LIKE $%d OR lower(m.title) LIKE $%d)`, len(args), len(args))
+	}
 	for _, f := range refs {
 		args = append(args, f.Kind, f.ID)
 		fmt.Fprintf(&b, ` AND EXISTS (SELECT 1 FROM manifest_references r
-			WHERE r.from_kind = cur.kind AND r.from_id = cur.id AND r.to_kind = $%d AND r.to_id = $%d)`, len(args)-1, len(args))
+			WHERE r.from_kind = m.kind AND r.from_id = m.id AND r.to_kind = $%d AND r.to_id = $%d)`, len(args)-1, len(args))
 	}
-	b.WriteString(` ORDER BY id`)
+	if afterID != "" {
+		args = append(args, afterID)
+		fmt.Fprintf(&b, ` AND m.id > $%d`, len(args))
+	}
+	b.WriteString(` ORDER BY m.id`)
+	if limit > 0 {
+		fmt.Fprintf(&b, ` LIMIT %d`, limit)
+	}
 	rows, err := m.q.Query(ctx, b.String(), args...)
 	if err != nil {
 		return nil, fmt.Errorf("list summaries %s: %w", kind, err)
@@ -215,17 +261,16 @@ func (m *ManifestStore) ListSummaries(ctx context.Context, kind, query string, r
 	return collectSummaries(rows)
 }
 
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
 func collectSummaries(rows pgx.Rows) ([]store.Summary, error) {
 	defer rows.Close()
 	out := []store.Summary{}
 	for rows.Next() {
-		var s store.Summary
-		var text string
-		if err := rows.Scan(&s.Kind, &s.ID, &s.Name, &s.Version, &s.UpdatedOn, &text); err != nil {
-			return nil, fmt.Errorf("read summary: %w", err)
+		s, err := scanSummary(rows)
+		if err != nil {
+			return nil, err
 		}
-		s.UpdatedOn = s.UpdatedOn.UTC()
-		s.Labels = manifestmeta.Labels([]byte(text))
 		out = append(out, s)
 	}
 	if err := rows.Err(); err != nil {
@@ -234,14 +279,28 @@ func collectSummaries(rows pgx.Rows) ([]store.Summary, error) {
 	return out, nil
 }
 
+// scanSummary reads the columns summarySQL selects, after any the
+// caller selected before them.
+func scanSummary(rows pgx.Rows, before ...any) (store.Summary, error) {
+	var s store.Summary
+	var on *time.Time
+	var labels map[string]string
+	if err := rows.Scan(append(before, &s.Kind, &s.ID, &s.Name, &s.Version, &on, &labels)...); err != nil {
+		return store.Summary{}, fmt.Errorf("read summary: %w", err)
+	}
+	if on != nil {
+		s.UpdatedOn = on.UTC()
+	}
+	if len(labels) > 0 {
+		s.Labels = labels
+	}
+	return s, nil
+}
+
 // ListIDs returns the id of every manifest of a kind, versioned or only
 // saved as a working copy.
 func (m *ManifestStore) ListIDs(ctx context.Context, kind string) ([]string, error) {
-	rows, err := m.q.Query(ctx, `
-		SELECT id FROM manifest_versions WHERE kind = $1
-		UNION
-		SELECT id FROM working_copies WHERE kind = $1
-		ORDER BY id`, kind)
+	rows, err := m.q.Query(ctx, `SELECT id FROM manifests WHERE kind = $1 ORDER BY id`, kind)
 	if err != nil {
 		return nil, fmt.Errorf("list ids %s: %w", kind, err)
 	}
@@ -257,12 +316,7 @@ func (m *ManifestStore) ListIDs(ctx context.Context, kind string) ([]string, err
 
 // Counts returns how many manifests each kind has.
 func (m *ManifestStore) Counts(ctx context.Context) (map[string]int, error) {
-	rows, err := m.q.Query(ctx, `
-		SELECT kind, count(*) FROM (
-			SELECT kind, id FROM manifest_versions
-			UNION
-			SELECT kind, id FROM working_copies
-		) m GROUP BY kind`)
+	rows, err := m.q.Query(ctx, `SELECT kind, count(*) FROM manifests GROUP BY kind`)
 	if err != nil {
 		return nil, fmt.Errorf("count manifests: %w", err)
 	}
@@ -279,19 +333,25 @@ func (m *ManifestStore) Counts(ctx context.Context) (map[string]int, error) {
 	return out, rows.Err()
 }
 
-// IndexReferences replaces a manifest's recorded outgoing references.
+// IndexReferences replaces a manifest's recorded outgoing references:
+// one delete and one insert over arrays, sent together in one round trip.
 func (m *ManifestStore) IndexReferences(ctx context.Context, fromKind, fromID string, refs []store.Ref) error {
+	paths := make([]string, len(refs))
+	kinds := make([]string, len(refs))
+	ids := make([]string, len(refs))
+	for i, r := range refs {
+		paths[i], kinds[i], ids[i] = r.Path, r.ToKind, r.ToID
+	}
 	return m.inTx(ctx, func(q querier) error {
-		if _, err := q.Exec(ctx, `DELETE FROM manifest_references WHERE from_kind = $1 AND from_id = $2`, fromKind, fromID); err != nil {
-			return err
-		}
-		for _, r := range refs {
-			if _, err := q.Exec(ctx, `
-				INSERT INTO manifest_references (from_kind, from_id, path, to_kind, to_id) VALUES ($1, $2, $3, $4, $5)
-				ON CONFLICT (from_kind, from_id, path) DO UPDATE SET to_kind = excluded.to_kind, to_id = excluded.to_id`,
-				fromKind, fromID, r.Path, r.ToKind, r.ToID); err != nil {
-				return err
-			}
+		b := &pgx.Batch{}
+		b.Queue(`DELETE FROM manifest_references WHERE from_kind = $1 AND from_id = $2`, fromKind, fromID)
+		b.Queue(`
+			INSERT INTO manifest_references (from_kind, from_id, path, to_kind, to_id)
+			SELECT $1, $2, p, k, i FROM unnest($3::text[], $4::text[], $5::text[]) AS u(p, k, i)
+			ON CONFLICT (from_kind, from_id, path) DO UPDATE SET to_kind = excluded.to_kind, to_id = excluded.to_id`,
+			fromKind, fromID, paths, kinds, ids)
+		if err := q.SendBatch(ctx, b).Close(); err != nil {
+			return fmt.Errorf("index references from %s/%s: %w", fromKind, fromID, err)
 		}
 		return nil
 	})
@@ -318,11 +378,9 @@ func (m *ManifestStore) ListReferencedBy(ctx context.Context, fromKind, fromID s
 // ListReferencing returns the current summary of every manifest that
 // references toKind/toID.
 func (m *ManifestStore) ListReferencing(ctx context.Context, toKind, toID string) ([]store.Summary, error) {
-	rows, err := m.q.Query(ctx, `
-		SELECT kind, id, name, version, on_ts, yaml FROM `+current+` cur
-		WHERE EXISTS (SELECT 1 FROM manifest_references r
-			WHERE r.from_kind = cur.kind AND r.from_id = cur.id AND r.to_kind = $1 AND r.to_id = $2)
-		ORDER BY kind, id`, toKind, toID)
+	rows, err := m.q.Query(ctx, summarySQL+`
+		WHERE (m.kind, m.id) IN (SELECT from_kind, from_id FROM manifest_references WHERE to_kind = $1 AND to_id = $2)
+		ORDER BY m.kind, m.id`, toKind, toID)
 	if err != nil {
 		return nil, fmt.Errorf("list references to %s/%s: %w", toKind, toID, err)
 	}

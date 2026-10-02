@@ -30,6 +30,8 @@ prints the same table.
 | `CARTOGRAPH_METRICS_ADDR` | `-metrics-addr` | empty (off) | Serve Prometheus `/metrics` on this address, a listener of its own kept off the address users reach, for example `:9090` |
 | `CARTOGRAPH_SYNC_PING` | `-sync-ping` | `20s` | How often the sync socket pings an idle peer; `0` turns pings off. Keep it below the shortest idle timeout between users and the replica (60 s for nginx and an AWS load balancer by default) |
 | `CARTOGRAPH_DOC_CACHE` | `-doc-cache` | `1000` | Shared documents a replica keeps in memory, least recently used dropped first. A cache only: the store holds every change |
+| `CARTOGRAPH_COMPACT_AFTER` | `-compact-after` | `24h` | With a Postgres store, how old a version (never a manifest's latest) must be before it is kept as a patch against the one before it instead of whole. It is also how long a rolling upgrade from 2.2 has to finish, since a 2.2 replica cannot read a compacted version. `0` turns compaction off |
+| `CARTOGRAPH_REPORTS` | `-reports` | `computed` | Reporting (ADR 0014): `computed` from the engine on any store, `postgres` as views in a Postgres store, or `off` |
 | `CARTOGRAPH_DRAIN_DELAY` | `-drain-delay` | `0` | After SIGTERM, how long the replica keeps serving with `/readyz` at 503 so load balancers stop sending it work. Set it to at least the load balancer's health-check interval |
 | `CARTOGRAPH_WATCH` | `-watch` | `true` | Reload manifests when their files change. Turn off on a read-only or network filesystem where inotify misbehaves |
 | `CARTOGRAPH_CHROMIUM` | `-chromium` | empty | Browser to print PDFs with. Empty means the vault's `Settings.spec.chromium`, then `CHROMIUM`, then the PATH |
@@ -294,6 +296,72 @@ cartograph serve
 
 A backup is the database's own (`pg_dump`, or the provider's
 snapshots). `cartograph export` writes the manifests as files as well.
+
+### How the database keeps manifests
+
+Each manifest is a document, `jsonb`, whatever codec the deployment
+writes (ADR 0012). `manifests` has one row per manifest: its current
+version, name, labels, team, and document, and its working copy's
+document when one is pending. Earlier versions are kept as a keyframe
+every 16 versions and a JSON Patch for each one between, once they are
+older than `CARTOGRAPH_COMPACT_AFTER` (ADR 0013). A series, such as a
+KPI's readings, is also kept one row per item in `series_items`, with
+who recorded it and when. `events` lists every save, state change and
+reading in order. References, project state, the access list and the
+shared drafts are tables of their own. Every read the interface makes is
+an index lookup bounded by what it returns.
+
+## Reports
+
+Reporting is optional and replaceable (ADR 0014). `CARTOGRAPH_REPORTS`
+chooses it: `computed` (the default) works each report out when asked,
+the same on every store, a vault included; `postgres` answers from
+views in a Postgres store's own database, for SQL and BI tools; `off`
+leaves reporting out, for a deployment with a warehouse of its own,
+which can follow the event log. The four standard reports:
+
+| Report | One row per |
+|---|---|
+| `projects` | project: its team, state, version, and the goals it serves |
+| `kpi-readings` | reading in force: its KPI, period, value, whether provisional, and who recorded it when |
+| `alignment` | manifest that references a goal |
+| `teams` | team, with every team above it |
+
+```
+GET /api/v1/reports/kpi-readings?format=csv
+cartograph report projects ./vault -format csv
+```
+
+With `CARTOGRAPH_REPORTS=postgres` each report is a view,
+`report_projects`, `report_kpi_readings`, `report_alignment` and
+`report_teams`, created when the replicas start; a test holds every view
+to the computed rows. The documents can be queried too, read-only:
+
+```sql
+-- Goals at the outcome level, through the GIN index on doc
+SELECT id, title FROM manifests
+WHERE kind = 'Goal' AND doc @> '{"spec": {"level": "outcome"}}';
+```
+
+Write only through Cartograph. A row written around it skips
+validation, the reference index, the series and the history.
+
+Recording one reading is `POST /api/v1/manifests/KPIReadings/{id}/series/readings`
+with the reading and a reason: it costs the same however long the
+series is, and recording a period again restates it.
+
+### Upgrading from 2.2
+
+The new tables are added while the replicas run. The new release keeps
+writing the text the earlier one reads, and triggers in the database
+keep `manifests` and `events` right whichever release wrote, so a
+rolling upgrade needs no stop. In the background, at start and then
+every minute, a new replica gives a document to every manifest an
+earlier one stored as YAML (the log says `repaired documents`) and
+records the series items the rows lack (`recorded series items`).
+Compaction starts on versions older than `CARTOGRAPH_COMPACT_AFTER`,
+24 hours by default, and a 2.2 replica cannot read a compacted version,
+so finish the rollout within that time.
 
 ## Large-scale, highly available
 

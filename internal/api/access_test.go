@@ -67,7 +67,7 @@ func TestTheSessionSaysWhatTheAccessListGives(t *testing.T) {
 	if !slices.Equal(s.Access.Roles, []apigen.Role{apigen.Contributor}) || !slices.Equal(s.Access.Teams, []string{"curriculum"}) || !slices.Equal(s.Access.Reach, []string{"curriculum", "early-grades"}) {
 		t.Fatalf("access: %+v", *s.Access)
 	}
-	if s.Access.Scopes["Project"] != apigen.Teams || s.Access.Scopes["Gap"] != apigen.All || s.Access.Scopes["Goal"] != apigen.None || !s.CanWrite {
+	if s.Access.Scopes["Project"] != apigen.SessionAccessScopesTeams || s.Access.Scopes["Gap"] != apigen.SessionAccessScopesAll || s.Access.Scopes["Goal"] != apigen.SessionAccessScopesNone || !s.CanWrite {
 		t.Fatalf("scopes: %v (canWrite %v)", s.Access.Scopes, s.CanWrite)
 	}
 

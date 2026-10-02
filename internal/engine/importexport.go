@@ -134,16 +134,15 @@ func (e *Engine) ImportDir(ctx context.Context, dir, actor, reason string) (Repo
 			// The next number follows the highest saved version, as Commit
 			// does: the current manifest may be a working copy, which has
 			// no number of its own.
-			versions, err := tx.ListVersions(ctx, f.kind, f.id)
+			latest, err := latestNumber(ctx, tx, f.kind, f.id)
 			if err != nil {
 				return err
 			}
-			number := 1
-			if len(versions) > 0 {
-				number = versions[len(versions)-1].Number + 1
-			}
-			v := Version{Kind: f.kind, ID: f.id, Number: number, YAML: f.yaml, Actor: actor, Reason: reason, On: timeNow().UTC()}
+			v := Version{Kind: f.kind, ID: f.id, Number: latest + 1, YAML: f.yaml, Actor: actor, Reason: reason, On: timeNow().UTC(), Doc: e.storedDoc(f.kind, f.doc)}
 			if err := tx.PutVersion(ctx, v); err != nil {
+				return fmt.Errorf("commit %s/%s: %w", f.kind, f.id, err)
+			}
+			if err := e.recordSeries(ctx, tx, v, f.doc); err != nil {
 				return fmt.Errorf("commit %s/%s: %w", f.kind, f.id, err)
 			}
 			refs := extractRefs(f.doc, e.refRules[f.kind])
@@ -154,7 +153,7 @@ func (e *Engine) ImportDir(ctx context.Context, dir, actor, reason string) (Repo
 			if err := tx.IndexReferences(ctx, f.kind, f.id, storeRefs); err != nil {
 				return err
 			}
-			report.Imported = append(report.Imported, ImportedItem{Kind: f.kind, ID: f.id, Version: number})
+			report.Imported = append(report.Imported, ImportedItem{Kind: f.kind, ID: f.id, Version: v.Number})
 		}
 		return nil
 	})

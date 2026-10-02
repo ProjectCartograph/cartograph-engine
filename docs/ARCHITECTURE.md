@@ -243,6 +243,21 @@ The ports are small and typed on plain values (`[]byte` of YAML, strings,
 times). An adapter never sees an engine type, so it could move to
 another module without the engine noticing.
 
+The ports do not assume calls are free. Wherever the engine needs many
+manifests at once (a goal tree, a rule that reads a whole kind, a page
+of a list), it asks for the set in one call, through optional
+interfaces beside `ManifestStore` (`store.SetReader` and its kin), and
+loops only over a store that lacks them. So each adapter is built for
+its own engine: the vault answers from memory, Postgres from one query
+over a row per manifest (ADR 0012).
+
+Each thing a store keeps is copy-on-write or merge-on-read, and ADR
+0013 says which and why: the current definitions are written whole at a
+save, because everything reads them; history, series items, events and
+reports are appended or computed and combined when read, because they
+are read far less than they are written. Every backend offers every
+function, the vault included, and the build stays one static binary.
+
 `StateStore` and `BundleStore` are optional. The engine attaches them when
 the manifest store happens to implement them (the vault does) or when the
 composition root passes them as options. A store without an apply gate,
@@ -372,10 +387,10 @@ A change that needs a new edge gets a new port, not an exception
 | `internal/kinds`, `internal/kinds/<kind>` | The registry of kinds and each kind's rules beyond its schema | `kinds/kit` |
 | `internal/kinds/kit` | The small types rules need (`Problem`, `Lookup`) so kind packages never import the engine | nothing |
 | `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, the shared drafts (`Shared`, and `Shape`, which maps a kind's schema onto the document), the access list and the team checks at every write, the event bus | `store`, `codec`, `crdt`, `fanout`, `identity`, `kinds`, `kinds/kit`, `contract`, `sentence`; a JSON Schema validator |
-| `internal/store` | The port definitions (`ManifestStore`, `OperationalStore`, `StateStore`, `BundleStore`, `VaultIndex`, `DocStore`, `AccessStore`) and the record shapes | nothing |
+| `internal/store` | The port definitions (`ManifestStore`, `OperationalStore`, `StateStore`, `BundleStore`, `VaultIndex`, `DocStore`, `AccessStore`, `SeriesStore`, `EventLog`, and the optional set reads) and the record shapes | nothing |
 | `internal/store/vault` | Files are the truth; journalled writes; watcher; apply gate; bundles. Its index is a `store.VaultIndex` the root opens for it | `store`, `store/manifestmeta`, `yamlfmt`, `fsnotify`, `yaml.v3` |
 | `internal/store/sqlite` | SQLite adapter: manifest store, operational store, journal, document store, access list, vault index | `store`, `store/manifestmeta`, `modernc.org/sqlite` |
-| `internal/store/postgres` | Postgres adapter for a stateless deployment: manifest store, operational store, bundle store, document store, access list; migrations applied on open | `store`, `store/manifestmeta`, `pgx` |
+| `internal/store/postgres` | Postgres adapter for a stateless deployment: manifests as `jsonb` documents with a row per manifest (ADR 0012), operational store, bundle store, document store, access list; migrations applied on open | `store`, `store/manifestmeta`, `pgx` |
 | `internal/store/memory` | In-memory adapter for tests and the conformance suite: manifest store, operational store, bundle store, document store, access list | `store`, `store/manifestmeta` |
 | `internal/store/manifestmeta` | Reads the envelope (kind, id, name, labels) from manifest text for the store adapters | `yaml.v3` |
 | `internal/store/conformance` | The one suite every adapter of a store port must pass, `RunDocStore` and `RunAccessStore` included | `store` |
@@ -389,6 +404,7 @@ A change that needs a new edge gets a new port, not an exception
 | `internal/identity` | The HTTP-free identity types: principal, action and change, grants, roles, the authorizer | nothing |
 | `internal/auth`, `auth/proxy`, `auth/roles`, `auth/access` | Identity and policy ports, the two middlewares; the proxy-header authenticator, the role policy, and the access policy by role and team | `net/http`, `identity` / `auth` |
 | `internal/render` | HTML documents (charters) from engine data; reads through the engine and decodes through its codec | `engine` |
+| `internal/reporting`, `reporting/computed`, `reporting/postgres`, `reporting/conformance` | The reporting port, outside the core (ADR 0014): reports computed from the engine's reads, or answered by views in a Postgres store's database, and the suite that holds one to the other | nothing / `engine` (computed), `pgx` (postgres) |
 | `internal/api`, `api/gen` | The generated strict server and the thin handlers | `engine`, `store`, `codec`, `auth`, `printer`, `render` |
 | `internal/syncserver` | The sync socket: the automerge-repo network protocol, version 1, over a WebSocket, turned into calls on `engine.Shared` | `engine`, `crdt`, `fanout`, `auth`; `coder/websocket`, a CBOR codec, `net/http` |
 | `internal/spa` | The embedded web build, a pinned `cartograph-ui` release | `net/http` |
@@ -840,8 +856,9 @@ In rough order of expected need.
 - Permissions per manifest (an access list on one project), if an
   organisation needs more than roles and teams (TAXONOMY.md D27 says
   why it was not adopted).
-- The events endpoint of the HTTP transport, so `Subscribe` works over
-  `remote` as it does in process.
+- The events endpoint and the MCP adapter. The event log itself exists
+  on every store (ADR 0013); the next release serves it, to agents and
+  to `remote`'s `Subscribe`.
 - The terminal interface (`UI_CONTRACT.md`).
 - Presence and live editing in a terminal interface: an automerge-repo
   peer on the sync socket, as the web interface has (`MULTIPLAYER.md`).

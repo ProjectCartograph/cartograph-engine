@@ -21,6 +21,9 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0009](0009-operating-at-scale.md) | Operating at scale: probes, shutdown, metrics, and a chart | Accepted |
 | [0010](0010-prefer-the-standard-library.md) | Prefer the standard library; every dependency earns its place | Accepted |
 | [0011](0011-access-by-role-and-team.md) | Access by role and team, enrolled from the directory | Accepted |
+| [0012](0012-postgres-keeps-manifests-as-documents.md) | Postgres keeps manifests as documents; store ports ask for sets | Accepted |
+| [0013](0013-copy-on-write-or-merge-on-read.md) | Each stored thing is copy-on-write or merge-on-read, on every backend | Accepted |
+| [0014](0014-reporting-is-a-port-not-the-core.md) | Reporting is a port, not the core | Accepted |
 
 ## Writing one
 

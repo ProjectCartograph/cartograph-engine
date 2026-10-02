@@ -35,7 +35,7 @@
         },
         "readings": {
           "type": "array",
-          "description": "One entry per period that has been read. Which periods exist is derived from the KPI's ReportingCycle, so a period with no entry is simply one nobody has read yet, which is a state worth seeing rather than a zero.",
+          "description": "One entry per period that has been read. Which periods exist is derived from the KPI's ReportingCycle, so a period with no entry is simply one nobody has read yet, which is a state worth seeing rather than a zero. Kept, besides, as one record per reading, keyed by period, so recording one costs the same however long the series is and a period can be read as it stood at any time (docs/adr/0013).",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -62,7 +62,8 @@
                 "description": "Why this number is what it is, when it needs saying: a strike, a change of method, a period nobody could collect."
               }
             }
-          }
+          },
+          "x-cartograph-series": "period"
         }
       }
     }

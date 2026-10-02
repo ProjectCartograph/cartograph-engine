@@ -15,7 +15,7 @@ ADR 0008). What is left is printing without Chromium.
 
 | State | Where it lives with a vault | Port | With a Postgres store |
 |---|---|---|---|
-| Manifest versions, working copies, references, exclusions | Files under the vault directory plus `.cartograph/index.sqlite` | `store.ManifestStore`, `store.VaultIndex` | Rows for versions and working copies (`store/postgres`); the database is the store and there is no apply gate |
+| Manifest versions, working copies, references, exclusions | Files under the vault directory plus `.cartograph/index.sqlite` | `store.ManifestStore`, `store.VaultIndex` | A row per manifest with its current document (`jsonb`), and a row per version and working copy (`store/postgres`, ADR 0012); the database is the store and there is no apply gate |
 | Project state history | The same SQLite file | `store.OperationalStore` | Rows |
 | The access list (people, their roles and teams) | The same SQLite file (`people`) | `store.AccessStore` | Rows (`people`) |
 | The team tree, for team checks | Memory, inside the engine, per replica, for 30 seconds | none: a cache | The same cache; a team change reaches every replica within 30 seconds |

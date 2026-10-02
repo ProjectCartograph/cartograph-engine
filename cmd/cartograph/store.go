@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/codec"
 	codecjson "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/json"
@@ -18,6 +19,9 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 	fanoutmemory "github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout/memory"
 	fanoutpostgres "github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout/postgres"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/reporting"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/reporting/computed"
+	reportingpostgres "github.com/ProjectCartograph/cartograph-engine/v2/internal/reporting/postgres"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/postgres"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/sqlite"
@@ -51,7 +55,10 @@ type composition struct {
 	// Authz is the access policy when storeOptions asked for access by
 	// role and team; nil otherwise.
 	Authz auth.Authorizer
-	Close func() error
+	// Reports is the reporter storeOptions.Reports chose; nil when
+	// reporting is off.
+	Reports reporting.Reporter
+	Close   func() error
 }
 
 // storeOptions say what to open. Target is a vault directory, a SQLite
@@ -68,6 +75,12 @@ type storeOptions struct {
 	// DocCache bounds the shared documents kept in memory; 0 is the
 	// engine's default.
 	DocCache int
+	// CompactAfter, when not 0, has a Postgres store compact history
+	// older than this in the background. Only serve sets it.
+	CompactAfter time.Duration
+	// Reports is the reporting adapter: "computed" (the default),
+	// "postgres" (views, beside a Postgres store) or "off".
+	Reports string
 	// Access, when set, is access by role and team (docs/adr/0011): the
 	// store's access list, this mapping, and the access policy.
 	Access *engine.Directory
@@ -137,7 +150,23 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 			return nil, fmt.Errorf("build engine: %w", err)
 		}
 		bind(e)
-		return &composition{Engine: e, Docs: docs, Fanout: counted, Counted: counted, Authz: authz, FanoutAdapter: fanoutName, Close: func() error {
+		var reports reporting.Reporter
+		switch o.Reports {
+		case "postgres":
+			if reports, err = reportingpostgres.Open(ctx, pool); err != nil {
+				bus.Close()
+				pool.Close()
+				return nil, err
+			}
+		case "off":
+		default:
+			reports = computed.Reporter{E: e}
+		}
+		stopRepair := repairDocs(ctx, e)
+		stopCompact := compactHistory(ctx, postgres.NewManifestStore(pool), o.CompactAfter)
+		return &composition{Engine: e, Docs: docs, Fanout: counted, Counted: counted, Authz: authz, FanoutAdapter: fanoutName, Reports: reports, Close: func() error {
+			stopCompact()
+			stopRepair()
 			err := bus.Close()
 			pool.Close()
 			return err
@@ -167,7 +196,11 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 			v.Close()
 			return nil, fmt.Errorf("reindex: %w", err)
 		}
-		return &composition{Engine: e, Docs: v.Index().Docs(), Fanout: counted, Counted: counted, Authz: authz, FanoutAdapter: fanoutName, Close: func() error {
+		// A file edited by hand becomes a version with no series items;
+		// the repair records them, as it does for a database.
+		stopRepair := repairDocs(ctx, e)
+		return &composition{Engine: e, Docs: v.Index().Docs(), Fanout: counted, Counted: counted, Authz: authz, FanoutAdapter: fanoutName, Reports: localReports(o, e), Close: func() error {
+			stopRepair()
 			bus.Close()
 			return v.Close()
 		}}, nil
@@ -188,7 +221,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		return nil, fmt.Errorf("build engine: %w", err)
 	}
 	bind(e)
-	return &composition{Engine: e, Docs: docs, Fanout: counted, Counted: counted, Authz: authz, FanoutAdapter: fanoutName, Close: func() error {
+	return &composition{Engine: e, Docs: docs, Fanout: counted, Counted: counted, Authz: authz, FanoutAdapter: fanoutName, Reports: localReports(o, e), Close: func() error {
 		bus.Close()
 		return db.Close()
 	}}, nil
@@ -223,4 +256,129 @@ func accessControl(o storeOptions, list store.AccessStore) ([]engine.Option, aut
 	var e *engine.Engine
 	policy := access.Policy{Grants: func(ctx context.Context, p auth.Principal) (auth.Grants, error) { return e.Grants(ctx, p) }}
 	return []engine.Option{engine.WithAccess(list, *o.Access), engine.WithAuthorizer(policy)}, policy, func(built *engine.Engine) { e = built }
+}
+
+// repairEvery is how often a replica looks for manifests stored as text
+// alone, which a replica of the previous release writes during a
+// rolling upgrade (docs/adr/0012). Once there are none, a look is one
+// read of an empty partial index.
+const repairEvery = time.Minute
+
+// repairDocs gives every manifest stored as text alone its document, and
+// brings series items in line with the versions they belong to, at once
+// and then every repairEvery, in the background, until the returned stop
+// is called. After the first pass, it follows the event log to the
+// manifests saved since, so a pass costs what changed.
+func repairDocs(ctx context.Context, e *engine.Engine) (stop func()) {
+	seriesKinds := map[string]bool{}
+	for _, k := range e.SeriesKinds() {
+		seriesKinds[k] = true
+	}
+	var cursor int64
+	first := true
+	repair := func() {
+		if n, err := e.RepairDocs(ctx); err != nil {
+			slog.Warn("repair documents", "err", err)
+		} else if n > 0 {
+			slog.Info("repaired documents", "count", n)
+		}
+		var ids map[string][]string // nil: every manifest, the first time
+		if !first {
+			ids = map[string][]string{}
+		}
+		for {
+			events, err := e.Events(ctx, cursor, 1000)
+			if err != nil {
+				slog.Warn("repair series", "err", err)
+				return
+			}
+			for _, ev := range events {
+				if !first && ev.Type == "version" && seriesKinds[ev.Kind] {
+					ids[ev.Kind] = append(ids[ev.Kind], ev.ID)
+				}
+				cursor = ev.Seq
+			}
+			if len(events) < 1000 {
+				break
+			}
+		}
+		if ids == nil || len(ids) > 0 {
+			if n, err := e.ReconcileSeries(ctx, ids); err != nil {
+				slog.Warn("repair series", "err", err)
+				return
+			} else if n > 0 {
+				slog.Info("recorded series items", "count", n)
+			}
+		}
+		first = false
+	}
+	done := make(chan struct{})
+	go func() {
+		// The first pass runs beside serving, not before it: a replica
+		// reads text where a document is missing, and decoding a large
+		// history takes long enough to fail a readiness probe.
+		repair()
+		t := time.NewTicker(repairEvery)
+		defer t.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				repair()
+			}
+		}
+	}()
+	var once sync.Once
+	return func() { once.Do(func() { close(done) }) }
+}
+
+// compactEvery is how often a replica looks for history to compact.
+// Replicas take turns: one compacts while the others skip.
+const compactEvery = 10 * time.Minute
+
+// compactHistory keeps versions older than after as patches, in the
+// background, until the returned stop is called. after 0 is off.
+func compactHistory(ctx context.Context, m *postgres.ManifestStore, after time.Duration) (stop func()) {
+	if after == 0 {
+		return func() {}
+	}
+	done := make(chan struct{})
+	go func() {
+		t := time.NewTicker(compactEvery)
+		defer t.Stop()
+		for {
+			for {
+				n, err := m.CompactHistory(ctx, time.Now().Add(-after), 200)
+				if err != nil {
+					slog.Warn("compact history", "err", err)
+				} else if n > 0 {
+					slog.Info("compacted history", "versions", n)
+				}
+				if err != nil || n == 0 {
+					break
+				}
+			}
+			select {
+			case <-done:
+				return
+			case <-ctx.Done():
+				return
+			case <-t.C:
+			}
+		}
+	}()
+	var once sync.Once
+	return func() { once.Do(func() { close(done) }) }
+}
+
+// localReports is the reporter for a store that is not Postgres: the
+// computed reports, or none.
+func localReports(o storeOptions, e *engine.Engine) reporting.Reporter {
+	if o.Reports == "off" {
+		return nil
+	}
+	return computed.Reporter{E: e}
 }

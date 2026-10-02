@@ -25,6 +25,8 @@ type ManifestStore struct {
 	refs       map[manifestKey][]store.Ref     // current outgoing references, replaced whole on each IndexReferences
 	working    map[manifestKey][]byte          // working copies (autosave), keyed by kind/id
 	exclusions map[manifestKey]store.Exclusion // excluded manifests, keyed by kind/id
+	series     []store.SeriesItem              // append-only (docs/adr/0013)
+	events     []store.Event                   // append-only; Seq is the index plus one
 }
 
 func NewManifestStore() *ManifestStore {
@@ -58,7 +60,13 @@ func (m *ManifestStore) putLocked(v store.Version) error {
 		return &store.NotFoundError{Kind: v.Kind, ID: v.ID}
 	}
 	m.versions[k] = append(existing, v)
+	m.eventLocked(store.Event{At: v.On, Type: "version", Kind: v.Kind, ID: v.ID, Number: v.Number, Actor: v.Actor})
 	return nil
+}
+
+func (m *ManifestStore) eventLocked(e store.Event) {
+	e.Seq = int64(len(m.events) + 1)
+	m.events = append(m.events, e)
 }
 
 func (m *ManifestStore) GetCurrent(_ context.Context, kind, id string) (store.Version, bool, error) {
@@ -388,12 +396,14 @@ func (m *ManifestStore) WithinTransaction(ctx context.Context, fn func(ctx conte
 		copy(cp, rs)
 		refsSnapshot[k] = cp
 	}
+	seriesLen, eventsLen := len(m.series), len(m.events)
 	m.mu.Unlock()
 
 	if err := fn(ctx, m); err != nil {
 		m.mu.Lock()
 		m.versions = versionsSnapshot
 		m.refs = refsSnapshot
+		m.series, m.events = m.series[:seriesLen], m.events[:eventsLen]
 		m.mu.Unlock()
 		return err
 	}
@@ -402,6 +412,7 @@ func (m *ManifestStore) WithinTransaction(ctx context.Context, fn func(ctx conte
 
 // OperationalStore is the in-memory adapter for store.OperationalStore.
 type OperationalStore struct {
+	log           *ManifestStore // where its events go; nil writes none
 	mu            sync.Mutex
 	projectStates map[string][]store.ProjectStateEntry // append-only, index 0 is the first transition
 }
@@ -416,7 +427,19 @@ func (o *OperationalStore) PutProjectStateTransition(_ context.Context, e store.
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.projectStates[e.ProjectID] = append(o.projectStates[e.ProjectID], e)
+	if o.log != nil {
+		o.log.mu.Lock()
+		o.log.eventLocked(store.Event{At: e.On, Type: "state", Kind: "Project", ID: e.ProjectID, Detail: e.State, Actor: e.Actor})
+		o.log.mu.Unlock()
+	}
 	return nil
+}
+
+// LogTo has the store write its events to m's event log, as a database
+// keeps one log for every table.
+func (o *OperationalStore) LogTo(m *ManifestStore) *OperationalStore {
+	o.log = m
+	return o
 }
 
 func (o *OperationalStore) ListProjectStateHistory(_ context.Context, projectID string) ([]store.ProjectStateEntry, error) {

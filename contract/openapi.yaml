@@ -638,6 +638,93 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /manifests/{kind}/{id}/series/{series}:
+    post:
+      operationId: appendSeriesItem
+      summary: >-
+        Record one item of a series (an array the kind's schema marks
+        x-cartograph-series, such as a KPI's readings) and commit the
+        manifest with it: a new key is added in key order, an existing
+        key's item is replaced, which is how a provisional reading is
+        restated. The item is the only thing sent, so recording costs the
+        same however long the series is. Builds on the latest committed
+        version, never on a working copy, and validates the whole
+        manifest as a save does.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+        - name: series
+          in: path
+          required: true
+          description: The series' property under spec, such as readings.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeriesAppend"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Committed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Version"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+  /reports/{name}:
+    get:
+      operationId: getReport
+      summary: >-
+        A report over the current record, answered by the deployment's
+        reporter (docs/adr/0014): projects (with team, state and the
+        goals they serve), kpi-readings (every reading in force, with who
+        recorded it and when), alignment (what serves each goal) and
+        teams (each team with every team above it). Every reporter gives
+        the same columns and rows. 404 when the deployment turned
+        reporting off. Every listed person reads every report.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [projects, kpi-readings, alignment, teams]
+        - name: format
+          in: query
+          required: false
+          description: json (the default) or csv, for a spreadsheet.
+          schema:
+            type: string
+            enum: [json, csv]
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: The report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+            text/csv:
+              schema:
+                type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
   /manifests/{kind}/{id}/references:
     get:
       operationId: getReferences
@@ -1757,6 +1844,35 @@ components:
           enum: [add, remove, replace]
         from: {}
         to: {}
+
+    SeriesAppend:
+      type: object
+      required: [item, reason]
+      properties:
+        item:
+          type: object
+          description: >-
+            The item, as the series' schema has it: for a reading, period
+            and value, and provisional and note when they apply.
+        reason:
+          type: string
+
+    Report:
+      type: object
+      required: [name, columns, rows]
+      properties:
+        name:
+          type: string
+        columns:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          description: One array per row, its values in the order of columns.
+          items:
+            type: array
+            items: {}
 
     WriteRequest:
       type: object

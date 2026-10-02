@@ -38,7 +38,7 @@ const wazero = "github.com/tetratelabs/wazero"
 const pgx = "github.com/jackc/pgx"
 
 // postgresAdapters are the packages pgx is allowed in.
-var postgresAdapters = []string{"internal/store/postgres", "internal/fanout/postgres"}
+var postgresAdapters = []string{"internal/store/postgres", "internal/fanout/postgres", "internal/reporting/postgres"}
 
 // outer is what only the composition root and the driving adapters
 // beside it may know.
@@ -49,7 +49,7 @@ var outer = []string{"internal/api", "internal/spa", "internal/render", "interna
 // outward.
 var adapters = []string{
 	"internal/store/", "internal/codec/", "internal/printer/", "internal/auth/",
-	"internal/crdt/", "internal/fanout/",
+	"internal/crdt/", "internal/fanout/", "internal/reporting/",
 	"internal/yamlfmt", "pkg/client/",
 }
 
@@ -69,6 +69,7 @@ func adapter(own string) []string {
 		"internal/fanout/memory", "internal/fanout/postgres",
 		"internal/store/conformance", "internal/codec/conformance", "internal/fanout/conformance",
 		"internal/crdt/automerge", "internal/crdt/conformance",
+		"internal/reporting/postgres", "internal/reporting/conformance",
 	}
 	var forbid []string
 	for _, s := range siblings {
@@ -123,7 +124,8 @@ var rules = map[string][]string{
 
 	// The use cases: ports and entities only, never an adapter, never a
 	// driver, never a syntax.
-	"internal/engine": join([]string{"pkg/uiconformance"}, outer, adapters, drivers),
+	// Nor does it know reporting, which is not the core (docs/adr/0014).
+	"internal/engine": join([]string{"pkg/uiconformance", "internal/reporting"}, outer, adapters, drivers),
 
 	// Driven adapters.
 	"internal/store/vault":        adapter("internal/store/vault"),
@@ -160,8 +162,16 @@ var rules = map[string][]string{
 	"internal/spa":        join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
 	// render reads through the engine and decodes through its codec; it
 	// parses no syntax and touches no store.
-	"internal/render": join([]string{"internal/api", "internal/spa", "internal/config", "cmd"}, adapters, drivers),
-	"internal/config": leaf,
+	// Reporting is a port of its own, outside the core (docs/adr/0014):
+	// the engine and the other ports never know it. The computed reporter
+	// is a front door like render, reading through the engine; the
+	// postgres reporter is a driven adapter over the store's database.
+	"internal/reporting":             leaf,
+	"internal/reporting/computed":    join([]string{"internal/api", "internal/spa", "internal/config", "cmd", "internal/reporting/postgres", "internal/reporting/conformance"}, without(adapters, "internal/reporting/"), drivers),
+	"internal/reporting/postgres":    adapter("internal/reporting/postgres"),
+	"internal/reporting/conformance": adapter("internal/reporting/conformance"),
+	"internal/render":                join([]string{"internal/api", "internal/spa", "internal/config", "cmd"}, adapters, drivers),
+	"internal/config":                leaf,
 
 	// The client port's transports, and the reference driver. inproc
 	// reads the actor through the identity port, which is HTTP

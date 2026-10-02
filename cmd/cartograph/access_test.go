@@ -83,7 +83,7 @@ func TestAccessThroughTheServeStack(t *testing.T) {
 	defer comp.Close()
 	var ready atomic.Bool
 	ready.Store(true)
-	mux, _ := routes(comp.Engine, comp.Fanout, proxy.New("X-Forwarded-User"), comp.Authz, printer.None{}, &ready)
+	mux, _ := routes(comp.Engine, comp.Fanout, proxy.New("X-Forwarded-User"), comp.Authz, printer.None{}, comp.Reports, &ready)
 	srv := httptest.NewServer(requestLog(slog.New(slog.NewTextHandler(io.Discard, nil)), nil, mux))
 	defer srv.Close()
 

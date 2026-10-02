@@ -33,18 +33,13 @@ func NewManifestStore(db *sql.DB) *ManifestStore {
 }
 
 func (m *ManifestStore) PutVersion(ctx context.Context, v store.Version) error {
-	// Compute the expected version number from the version log (not from GetCurrent).
-	// GetCurrent includes working copies (Number=0), which would give the wrong expected number.
-	// The engine's Commit already computed the correct version number using ListVersions,
-	// so we trust that. If there's a mismatch, it's a programming error in the engine or a stale index.
-	versions, err := m.ListVersions(ctx, v.Kind, v.ID)
+	// The expected number follows the version log, not GetCurrent, which
+	// returns a working copy as number 0.
+	latest, err := m.LatestNumber(ctx, v.Kind, v.ID)
 	if err != nil {
-		return fmt.Errorf("list versions: %w", err)
+		return fmt.Errorf("latest version: %w", err)
 	}
-	want := 1
-	if len(versions) > 0 {
-		want = versions[len(versions)-1].Number + 1
-	}
+	want := latest + 1
 	if v.Number != want {
 		fmt.Fprintf(os.Stderr, "put version: version number mismatch for %s/%s: expected %d, got %d\n", v.Kind, v.ID, want, v.Number)
 		return fmt.Errorf("put version: expected number %d for %s/%s, got %d", want, v.Kind, v.ID, v.Number)

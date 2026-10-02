@@ -42,24 +42,19 @@ func (l *lookup) Documents(kind string) (map[string]map[string]any, error) {
 			out[id] = doc
 		}
 	}
-	ids, err := l.store.ListIDs(l.ctx, kind)
+	// One read for the whole kind, where the store can answer it so: a
+	// rule that needs every manifest of a kind runs at every save.
+	versions, err := currentOfKind(l.ctx, l.store, kind)
 	if err != nil {
 		return nil, err
 	}
-	for _, id := range ids {
-		if _, already := out[id]; already {
+	for _, v := range versions {
+		if _, already := out[v.ID]; already {
 			continue // the batch overlay wins over what is currently stored
-		}
-		v, found, err := l.store.GetCurrent(l.ctx, kind, id)
-		if err != nil {
-			return nil, err
-		}
-		if !found {
-			continue
 		}
 		var doc map[string]any
 		if err := l.codec.DecodeInto(v.YAML, &doc); err == nil {
-			out[id] = doc
+			out[v.ID] = doc
 		}
 	}
 	return out, nil

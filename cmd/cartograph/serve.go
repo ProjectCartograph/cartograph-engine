@@ -25,6 +25,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer/chromium"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/reporting"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/spa"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/syncserver"
 )
@@ -70,7 +71,7 @@ func runServe(args []string) error {
 	if cfg.Store != "" {
 		target = cfg.Store
 	}
-	opts := storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout, FanoutURL: cfg.FanoutURL, DocCache: cfg.DocCache}
+	opts := storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout, FanoutURL: cfg.FanoutURL, DocCache: cfg.DocCache, CompactAfter: cfg.CompactAfter, Reports: cfg.Reports}
 	if cfg.Authz == "access" {
 		d, err := loadDirectory(cfg.AccessFile)
 		if err != nil {
@@ -149,7 +150,7 @@ func runServe(args []string) error {
 	if cfg.MetricsAddr != "" {
 		mtr = newMetrics()
 	}
-	mux, syncSrv := routes(e, comp.Fanout, authn, authz, pdf, &ready, syncserver.WithPing(cfg.SyncPing))
+	mux, syncSrv := routes(e, comp.Fanout, authn, authz, pdf, comp.Reports, &ready, syncserver.WithPing(cfg.SyncPing))
 	mtr.watchShared(e.Shared())
 	mtr.watchSync(syncSrv)
 	mtr.watchFanout(comp.Counted)
@@ -322,9 +323,9 @@ func withSync(next, sync http.Handler) http.Handler {
 // routes is every route the server answers, behind the same middleware
 // for the API and the sync socket. Split out so a test drives exactly the
 // stack serve runs.
-func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, ready *atomic.Bool, syncOpts ...syncserver.Option) (*http.ServeMux, *syncserver.Server) {
+func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, reports reporting.Reporter, ready *atomic.Bool, syncOpts ...syncserver.Option) (*http.ServeMux, *syncserver.Server) {
 	mux := http.NewServeMux()
-	var inner http.Handler = api.New(e, api.Deps{Printer: pdf, Authorizer: authz})
+	var inner http.Handler = api.New(e, api.Deps{Printer: pdf, Authorizer: authz, Reports: reports})
 	var syncSrv *syncserver.Server
 	if sh := e.Shared(); sh != nil {
 		// The sync socket sits inside the same authentication and

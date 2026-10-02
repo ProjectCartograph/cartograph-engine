@@ -133,22 +133,73 @@ func horizonOf(spec map[string]any) *Horizon {
 	return &Horizon{Start: s, End: e}
 }
 
+// goalReader is where the goal code reads the goals around the one it is
+// judging: from the store, one at a time, for a single goal; or from
+// documents already read in bulk, for the whole tree.
+type goalReader struct {
+	// spec returns a goal's spec, or false when there is no such goal.
+	spec func(id string) (map[string]any, bool)
+	// settings returns the vault's settings, read at most once.
+	settings func() (Settings, error)
+}
+
+// storedGoals reads goals from the store as they are asked for.
+func (e *Engine) storedGoals(ctx context.Context) goalReader {
+	return goalReader{
+		spec: func(id string) (map[string]any, bool) {
+			v, found, err := e.manifests.GetCurrent(ctx, "Goal", id)
+			if err != nil || !found {
+				return nil, false
+			}
+			var doc map[string]any
+			if e.codec.DecodeInto(v.YAML, &doc) != nil {
+				return nil, false
+			}
+			sp, _ := doc["spec"].(map[string]any)
+			return sp, sp != nil
+		},
+		settings: e.onceSettings(ctx),
+	}
+}
+
+// loadedGoals answers from goals already read, by id.
+func (e *Engine) loadedGoals(ctx context.Context, goals map[string]map[string]any) goalReader {
+	return goalReader{
+		spec: func(id string) (map[string]any, bool) {
+			sp, _ := goals[id]["spec"].(map[string]any)
+			return sp, sp != nil
+		},
+		settings: e.onceSettings(ctx),
+	}
+}
+
+// onceSettings reads the settings on first use and keeps the answer.
+func (e *Engine) onceSettings(ctx context.Context) func() (Settings, error) {
+	var (
+		read bool
+		s    Settings
+		err  error
+	)
+	return func() (Settings, error) {
+		if !read {
+			s, err = e.GetSettings(ctx)
+			read = true
+		}
+		return s, err
+	}
+}
+
 // effectiveHorizon is the aim's own horizon, or the nearest ancestor's.
-func (e *Engine) effectiveHorizon(ctx context.Context, spec map[string]any) *Horizon {
+func (e *Engine) effectiveHorizon(read goalReader, spec map[string]any) *Horizon {
 	if h := horizonOf(spec); h != nil {
 		return h
 	}
 	parent, _ := spec["parent"].(string)
 	for i := 0; parent != "" && i < 4; i++ {
-		v, found, err := e.manifests.GetCurrent(ctx, "Goal", parent)
-		if err != nil || !found {
+		ps, found := read.spec(parent)
+		if !found {
 			return nil
 		}
-		var doc map[string]any
-		if e.codec.DecodeInto(v.YAML, &doc) != nil {
-			return nil
-		}
-		ps, _ := doc["spec"].(map[string]any)
 		if h := horizonOf(ps); h != nil {
 			h.Inherited = true
 			return h
@@ -172,7 +223,7 @@ func span(h *Horizon) string {
 
 // goalSmart reads the five letters for one record and the check line for
 // each. kpis are the specs of the indicators aligned to it.
-func (e *Engine) goalSmart(ctx context.Context, spec map[string]any, kpis []map[string]any, horizon *Horizon) (Smart, []GoalCheck) {
+func (e *Engine) goalSmart(read goalReader, spec map[string]any, kpis []map[string]any, horizon *Horizon) (Smart, []GoalCheck) {
 	var s Smart
 	var checks []GoalCheck
 	add := func(id string, ok bool, section, okMsg, warnMsg string) {
@@ -265,16 +316,16 @@ func (e *Engine) goalSmart(ctx context.Context, spec map[string]any, kpis []map[
 	var relevantWarn string
 	switch level {
 	case "goal":
-		settings, err := e.GetSettings(ctx)
+		settings, err := read.settings()
 		placed = err == nil && settings.Purpose != nil &&
 			(strings.TrimSpace(settings.Purpose.Vision) != "" || strings.TrimSpace(settings.Purpose.Mission) != "")
 		relevantWarn = "Relevant: no vision or mission to judge it against."
 	default:
 		want := map[string]string{"objective": "goal", "outcome": "objective"}[level]
 		if parentID != "" {
-			if pv, found, err := e.manifests.GetCurrent(ctx, "Goal", parentID); err == nil && found {
-				var pdoc goalDoc
-				placed = e.codec.DecodeInto(pv.YAML, &pdoc) == nil && pdoc.Spec.Level == want
+			if ps, found := read.spec(parentID); found {
+				level, _ := ps["level"].(string)
+				placed = level == want
 			}
 		}
 		relevantWarn = fmt.Sprintf("Relevant: no %s above it yet.", want)

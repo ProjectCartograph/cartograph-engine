@@ -69,7 +69,7 @@ func (s *Server) GetSession(ctx context.Context, _ apigen.GetSessionRequestObjec
 		// canWrite is whether they may write anything at all.
 		out.CanWrite = false
 		for _, sc := range out.Access.Scopes {
-			if sc != apigen.None {
+			if sc != apigen.SessionAccessScopesNone {
 				out.CanWrite = true
 			}
 		}

@@ -65,6 +65,19 @@ type Config struct {
 	// CARTOGRAPH_DOC_CACHE, default 1000.
 	DocCache int
 
+	// CompactAfter is how old a version must be, beside not being its
+	// manifest's latest, before a Postgres store keeps it as a patch
+	// instead of whole (docs/adr/0013). It is the time a rolling upgrade
+	// from 2.2 has to finish: a 2.2 replica cannot read a compacted
+	// version. CARTOGRAPH_COMPACT_AFTER, default 24h; 0 turns it off.
+	CompactAfter time.Duration
+
+	// Reports is the reporting adapter (docs/adr/0014): "computed" from
+	// the engine's reads on any store, "postgres" as views beside a
+	// Postgres store, or "off" for a deployment that reports elsewhere.
+	// CARTOGRAPH_REPORTS, default computed.
+	Reports string
+
 	// DrainDelay is how long, after SIGTERM, the server keeps serving
 	// while /readyz answers 503, so load balancers stop sending it work
 	// before it stops accepting any. CARTOGRAPH_DRAIN_DELAY, default 0.
@@ -146,6 +159,8 @@ func Defaults() Config {
 		ShutdownTimeout: 10 * time.Second,
 		SyncPing:        20 * time.Second,
 		DocCache:        1000,
+		CompactAfter:    24 * time.Hour,
+		Reports:         "computed",
 		Auth:            "none",
 		AuthProxyHeader: "X-Forwarded-User",
 		Authz:           "allow",
@@ -217,6 +232,16 @@ func FromEnv(getenv Getenv) (Config, error) {
 		}
 		c.ShutdownTimeout = d
 	}
+	if v := getenv("CARTOGRAPH_COMPACT_AFTER"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			return c, fmt.Errorf("CARTOGRAPH_COMPACT_AFTER: %w", err)
+		}
+		c.CompactAfter = d
+	}
+	if v := getenv("CARTOGRAPH_REPORTS"); v != "" {
+		c.Reports = v
+	}
 	if v := getenv("CARTOGRAPH_AUTH"); v != "" {
 		c.Auth = v
 	}
@@ -261,6 +286,8 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.Chromium, "chromium", c.Chromium, "browser to print PDFs with (CARTOGRAPH_CHROMIUM)")
 	fs.StringVar(&c.LogFormat, "log-format", c.LogFormat, "text or json (CARTOGRAPH_LOG_FORMAT)")
 	fs.StringVar(&c.LogLevel, "log-level", c.LogLevel, "debug, info, warn or error (CARTOGRAPH_LOG_LEVEL)")
+	fs.StringVar(&c.Reports, "reports", c.Reports, "reporting: computed, postgres (views, with a Postgres store) or off (CARTOGRAPH_REPORTS)")
+	fs.DurationVar(&c.CompactAfter, "compact-after", c.CompactAfter, "age at which a Postgres store keeps an old version as a patch; 0 is off (CARTOGRAPH_COMPACT_AFTER)")
 	fs.DurationVar(&c.ShutdownTimeout, "shutdown-timeout", c.ShutdownTimeout, "grace period for in-flight requests on shutdown (CARTOGRAPH_SHUTDOWN_TIMEOUT)")
 	fs.StringVar(&c.Auth, "auth", c.Auth, "none or proxy (CARTOGRAPH_AUTH)")
 	fs.StringVar(&c.AuthProxyHeader, "auth-proxy-header", c.AuthProxyHeader, "header carrying the identity when auth is proxy (CARTOGRAPH_AUTH_PROXY_HEADER)")
@@ -333,6 +360,18 @@ func (c Config) Validate() error {
 	}
 	if c.SyncPing < 0 || (c.SyncPing > 0 && c.SyncPing < time.Second) {
 		return fmt.Errorf("sync ping %s: want 0 (off) or at least 1s", c.SyncPing)
+	}
+	switch c.Reports {
+	case "computed", "off":
+	case "postgres":
+		if !IsPostgresURL(c.Store) {
+			return fmt.Errorf("reports postgres: the views are in the Postgres store; set CARTOGRAPH_STORE")
+		}
+	default:
+		return fmt.Errorf("reports %q: want computed, postgres or off", c.Reports)
+	}
+	if c.CompactAfter != 0 && c.CompactAfter < time.Hour {
+		return fmt.Errorf("compact after %s: want 0 (off) or at least 1h, the time a rolling upgrade has", c.CompactAfter)
 	}
 	if c.DocCache < 1 {
 		return fmt.Errorf("doc cache %d: want at least 1", c.DocCache)

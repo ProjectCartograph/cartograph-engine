@@ -304,6 +304,14 @@ series is honest; what it holds is not one reading.
 quarterly for five years is 400 files saying four things each. A series is
 one thing that grows, and it belongs in one file.
 
+**One series, kept twice over (2.3).** The series stays one thing a
+person reads and edits whole. Each reading is also kept as its own
+record, keyed by period, of who recorded what and when (ADR 0013), so
+recording one costs the same however long the series is, a restated
+figure keeps the one it replaced, and a period can be read as it stood
+on any date. That is storage, not a second noun: the manifest is still
+the series.
+
 **Which periods exist is derived, not stored.** The KPI names a
 `ReportingCycle`, and the cycle's `periodMonths` and `startMonth` say what
 the periods are. Storing them again on the readings would be a second place
