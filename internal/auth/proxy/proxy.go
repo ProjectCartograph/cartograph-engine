@@ -56,8 +56,10 @@ func (a *Authenticator) Authenticate(r *http.Request) (auth.Principal, error) {
 	if p.Name == "" {
 		p.Name = subject
 	}
-	if groups := r.Header.Get(a.GroupsHeader); groups != "" {
-		for _, g := range strings.Split(groups, ",") {
+	// A list header may arrive as one comma-separated line or as several
+	// lines, and any proxy on the way may split it (RFC 9110, 5.3).
+	for _, line := range r.Header.Values(a.GroupsHeader) {
+		for _, g := range strings.Split(line, ",") {
 			if g = strings.TrimSpace(g); g != "" {
 				p.Roles = append(p.Roles, g)
 			}

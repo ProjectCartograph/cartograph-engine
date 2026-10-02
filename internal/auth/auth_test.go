@@ -72,3 +72,18 @@ func TestPrincipalFromAnEmptyContextIsAnonymous(t *testing.T) {
 		t.Fatal("expected anonymous")
 	}
 }
+
+// Groups count whether the proxy joins them on one line or sends a line
+// each, as RFC 9110 allows for a list header.
+func TestProxyReadsGroupsOnSeveralLines(t *testing.T) {
+	next, seen := principalEcho(t)
+	h := auth.Middleware(proxy.New("X-Forwarded-User"), next)
+	req := httptest.NewRequest("GET", "/x", nil)
+	req.Header.Set("X-Forwarded-User", "jo@example.org")
+	req.Header.Add("X-Forwarded-Groups", "staff")
+	req.Header.Add("X-Forwarded-Groups", "curriculum-division, early-grades-team")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	if len(seen.Roles) != 3 || seen.Roles[0] != "staff" || seen.Roles[2] != "early-grades-team" {
+		t.Fatalf("groups: %v", seen.Roles)
+	}
+}
