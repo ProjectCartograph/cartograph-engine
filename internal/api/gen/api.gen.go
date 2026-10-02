@@ -162,6 +162,48 @@ func (e ProjectStateName) Valid() bool {
 	}
 }
 
+// Defines values for ProposalOp.
+const (
+	Append ProposalOp = "append"
+	Save   ProposalOp = "save"
+	State  ProposalOp = "state"
+)
+
+// Valid indicates whether the value is a known member of the ProposalOp enum.
+func (e ProposalOp) Valid() bool {
+	switch e {
+	case Append:
+		return true
+	case Save:
+		return true
+	case State:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProposalStatus.
+const (
+	ProposalStatusAccepted ProposalStatus = "accepted"
+	ProposalStatusDeclined ProposalStatus = "declined"
+	ProposalStatusOpen     ProposalStatus = "open"
+)
+
+// Valid indicates whether the value is a known member of the ProposalStatus enum.
+func (e ProposalStatus) Valid() bool {
+	switch e {
+	case ProposalStatusAccepted:
+		return true
+	case ProposalStatusDeclined:
+		return true
+	case ProposalStatusOpen:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Role.
 const (
 	Administrator  Role = "administrator"
@@ -222,6 +264,30 @@ func (e ListManifestsParamsExpand) Valid() bool {
 	}
 }
 
+// Defines values for ListProposalsParamsStatus.
+const (
+	ListProposalsParamsStatusAccepted ListProposalsParamsStatus = "accepted"
+	ListProposalsParamsStatusAll      ListProposalsParamsStatus = "all"
+	ListProposalsParamsStatusDeclined ListProposalsParamsStatus = "declined"
+	ListProposalsParamsStatusOpen     ListProposalsParamsStatus = "open"
+)
+
+// Valid indicates whether the value is a known member of the ListProposalsParamsStatus enum.
+func (e ListProposalsParamsStatus) Valid() bool {
+	switch e {
+	case ListProposalsParamsStatusAccepted:
+		return true
+	case ListProposalsParamsStatusAll:
+		return true
+	case ListProposalsParamsStatusDeclined:
+		return true
+	case ListProposalsParamsStatusOpen:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetReportParamsFormat.
 const (
 	Csv  GetReportParamsFormat = "csv"
@@ -262,6 +328,35 @@ func (e GetReportParamsName) Valid() bool {
 	default:
 		return false
 	}
+}
+
+// AgentGrant One agent a person let act for them (docs/adr/0016). Its token is never kept.
+type AgentGrant struct {
+	CreatedAt time.Time `json:"createdAt"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	Id        string    `json:"id"`
+
+	// Label The agent's name, as it was shown when its person consented.
+	Label     string     `json:"label"`
+	LastUsed  *time.Time `json:"lastUsed,omitempty"`
+	Person    string     `json:"person"`
+	RevokedAt *time.Time `json:"revokedAt,omitempty"`
+}
+
+// AgentToken defines model for AgentToken.
+type AgentToken struct {
+	// Grant One agent a person let act for them (docs/adr/0016). Its token is never kept.
+	Grant AgentGrant `json:"grant"`
+
+	// Token The bearer token, shown once.
+	Token string `json:"token"`
+}
+
+// AgentTokenRequest defines model for AgentTokenRequest.
+type AgentTokenRequest struct {
+	// Days How long the token lasts; 90 days when omitted.
+	Days  *int   `json:"days,omitempty"`
+	Label string `json:"label"`
 }
 
 // ApplyRequest defines model for ApplyRequest.
@@ -492,6 +587,9 @@ type Person struct {
 	AddedBy string    `json:"addedBy"`
 	AddedOn time.Time `json:"addedOn"`
 
+	// AgentsOff An administrator turned this person's agents off.
+	AgentsOff *bool `json:"agentsOff,omitempty"`
+
 	// DirectoryRoles The roles the person's directory groups gave at their last sign-in.
 	DirectoryRoles []Role `json:"directoryRoles"`
 
@@ -514,7 +612,9 @@ type Person struct {
 
 // PersonGrant defines model for PersonGrant.
 type PersonGrant struct {
-	Roles []Role `json:"roles"`
+	// AgentsOff Turn this person's agents off whatever their roles allow (docs/adr/0016). False when left out.
+	AgentsOff *bool  `json:"agentsOff,omitempty"`
+	Roles     []Role `json:"roles"`
 
 	// Teams Team ids.
 	Teams []string `json:"teams"`
@@ -612,6 +712,50 @@ type ProjectStateTransitionRequest struct {
 	To     ProjectStateName `json:"to"`
 }
 
+// Proposal Something an agent proposed for its person to confirm (docs/adr/0016).
+type Proposal struct {
+	// Agent The agent that proposed it, as it names itself.
+	Agent string    `json:"agent"`
+	At    time.Time `json:"at"`
+
+	// Base The manifest's latest version when it was proposed.
+	Base      int        `json:"base"`
+	DecidedAt *time.Time `json:"decidedAt,omitempty"`
+	DecidedBy *string    `json:"decidedBy,omitempty"`
+
+	// For The person it acts for, who alone may accept it.
+	For  string                  `json:"for"`
+	Id   string                  `json:"id"`
+	Item *map[string]interface{} `json:"item,omitempty"`
+	Kind string                  `json:"kind"`
+
+	// Manifest The proposed manifest, for save.
+	Manifest   *map[string]interface{} `json:"manifest,omitempty"`
+	ManifestId string                  `json:"manifestId"`
+
+	// Op save commits the proposed manifest; append records one item of a series (series, item); state moves a project (state).
+	Op     ProposalOp     `json:"op"`
+	Reason string         `json:"reason"`
+	Series *string        `json:"series,omitempty"`
+	State  *string        `json:"state,omitempty"`
+	Status ProposalStatus `json:"status"`
+
+	// Version The version accepting it made, when it made one.
+	Version *int `json:"version,omitempty"`
+}
+
+// ProposalOp save commits the proposed manifest; append records one item of a series (series, item); state moves a project (state).
+type ProposalOp string
+
+// ProposalStatus defines model for Proposal.Status.
+type ProposalStatus string
+
+// ProposalDecision defines model for ProposalDecision.
+type ProposalDecision struct {
+	// Reason Why, recorded with the decision.
+	Reason *string `json:"reason,omitempty"`
+}
+
 // RecoverRequest defines model for RecoverRequest.
 type RecoverRequest struct {
 	// Ref Reference to recover (Kind/id)
@@ -672,6 +816,9 @@ type Session struct {
 
 // SessionAccess What the access list gives the principal (docs/adr/0011), present when the deployment keeps one. An interface offers editing from it; the engine decides again on every write.
 type SessionAccess struct {
+	// Agents Whether the principal may act through an agent over MCP (docs/adr/0016): their roles allow it and an administrator has not turned theirs off.
+	Agents *bool `json:"agents,omitempty"`
+
 	// Listed Whether the principal is on the access list. Someone who is not may sign in to the proxy but sees nothing.
 	Listed bool `json:"listed"`
 
@@ -812,11 +959,17 @@ type WriteRequest struct {
 	Yaml     *string                 `json:"yaml,omitempty"`
 }
 
+// GrantParam defines model for GrantParam.
+type GrantParam = string
+
 // IdParam defines model for IdParam.
 type IdParam = string
 
 // KindParam defines model for KindParam.
 type KindParam = string
+
+// ProposalParam defines model for ProposalParam.
+type ProposalParam = string
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ProblemList
@@ -835,6 +988,11 @@ type Unauthenticated = ProblemList
 
 // Unprocessable defines model for Unprocessable.
 type Unprocessable = ProblemList
+
+// ListAgentGrantsParams defines parameters for ListAgentGrants.
+type ListAgentGrantsParams struct {
+	Person *string `form:"person,omitempty" json:"person,omitempty"`
+}
 
 // GetProjectCharterHtmlParams defines parameters for GetProjectCharterHtml.
 type GetProjectCharterHtmlParams struct {
@@ -895,6 +1053,18 @@ type PutWorkingJSONBody struct {
 	Yaml string `json:"yaml"`
 }
 
+// ListProposalsParams defines parameters for ListProposals.
+type ListProposalsParams struct {
+	Kind *string `form:"kind,omitempty" json:"kind,omitempty"`
+	Id   *string `form:"id,omitempty" json:"id,omitempty"`
+
+	// Status open (the default), accepted, declined, or all.
+	Status *ListProposalsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// ListProposalsParamsStatus defines parameters for ListProposals.
+type ListProposalsParamsStatus string
+
 // GetReportParams defines parameters for GetReport.
 type GetReportParams struct {
 	// Format json (the default) or csv, for a spreadsheet.
@@ -919,6 +1089,9 @@ type ListSnapshotsParams struct {
 // GrantPersonJSONRequestBody defines body for GrantPerson for application/json ContentType.
 type GrantPersonJSONRequestBody = PersonGrant
 
+// CreateAgentTokenJSONRequestBody defines body for CreateAgentToken for application/json ContentType.
+type CreateAgentTokenJSONRequestBody = AgentTokenRequest
+
 // DeleteGoalJSONRequestBody defines body for DeleteGoal for application/json ContentType.
 type DeleteGoalJSONRequestBody = DeleteGoalRequest
 
@@ -939,6 +1112,12 @@ type PostSnapshotJSONRequestBody PostSnapshotJSONBody
 
 // PutWorkingJSONRequestBody defines body for PutWorking for application/json ContentType.
 type PutWorkingJSONRequestBody PutWorkingJSONBody
+
+// AcceptProposalJSONRequestBody defines body for AcceptProposal for application/json ContentType.
+type AcceptProposalJSONRequestBody = ProposalDecision
+
+// DeclineProposalJSONRequestBody defines body for DeclineProposal for application/json ContentType.
+type DeclineProposalJSONRequestBody = ProposalDecision
 
 // ValidateManifestJSONRequestBody defines body for ValidateManifest for application/json ContentType.
 type ValidateManifestJSONRequestBody = ValidateRequest
@@ -1022,6 +1201,15 @@ type ServerInterface interface {
 	// GrantPerson List a person, or change what an administrator grants them
 	// (PUT /access/people/{email})
 	GrantPerson(w http.ResponseWriter, r *http.Request, email string)
+	// ListAgentGrants The agents people let act for them (docs/adr/0016): the caller's own, or, for an administrator, one person's (person) or everyone's (person=*). Empty where no grants are kept, as when the deployment's own stack authorizes agents.
+	// (GET /agents)
+	ListAgentGrants(w http.ResponseWriter, r *http.Request, params ListAgentGrantsParams)
+	// CreateAgentToken Lets an agent act for the caller by a token to paste into its client, for a client that cannot sign in through the browser. The token is shown once. Only where Cartograph is the authorization server for agents (CARTOGRAPH_MCP_AUTH=cartograph).
+	// (POST /agents)
+	CreateAgentToken(w http.ResponseWriter, r *http.Request)
+	// RevokeAgentGrant Disconnects an agent at once: the caller's own, or anyone's for an administrator.
+	// (DELETE /agents/{grant})
+	RevokeAgentGrant(w http.ResponseWriter, r *http.Request, grant GrantParam)
 	// ListFlows The kinds that have a flow (a stepped definition, contract/flows). A kind without one is a sheet: one step, every field.
 	// (GET /flows)
 	ListFlows(w http.ResponseWriter, r *http.Request)
@@ -1121,6 +1309,15 @@ type ServerInterface interface {
 	// GetPresenceDocument The document that carries presence for screens not about one manifest
 	// (GET /presence)
 	GetPresenceDocument(w http.ResponseWriter, r *http.Request)
+	// ListProposals What agents have proposed (docs/adr/0016). An agent reads and edits drafts, and proposes what makes the record (a version, a reading, a state change); the person it acts for accepts or declines. By default, the open proposals made for the caller; with kind and id, every proposal on that manifest, for everyone who may read it.
+	// (GET /proposals)
+	ListProposals(w http.ResponseWriter, r *http.Request, params ListProposalsParams)
+	// AcceptProposal Accept a proposal and make the record as the caller: commit its manifest, record its reading, or move its project. Only the person the proposal was made for may accept it, never an agent. Refused with 409 when the manifest has changed since the agent proposed, so the person reviews it again.
+	// (POST /proposals/{proposal}/accept)
+	AcceptProposal(w http.ResponseWriter, r *http.Request, proposal ProposalParam)
+	// DeclineProposal Decline a proposal. Only the person it was made for may.
+	// (POST /proposals/{proposal}/decline)
+	DeclineProposal(w http.ResponseWriter, r *http.Request, proposal ProposalParam)
 	// GetReport A report over the current record, answered by the deployment's reporter (docs/adr/0014): projects (with team, state and the goals they serve), kpi-readings (every reading in force, with who recorded it and when), alignment (what serves each goal) and teams (each team with every team above it). Every reporter gives the same columns and rows. 404 when the deployment turned reporting off. Every listed person reads every report.
 	// (GET /reports/{name})
 	GetReport(w http.ResponseWriter, r *http.Request, name GetReportParamsName, params GetReportParams)
@@ -1225,6 +1422,79 @@ func (siw *ServerInterfaceWrapper) GrantPerson(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GrantPerson(w, r, email)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAgentGrants operation middleware
+func (siw *ServerInterfaceWrapper) ListAgentGrants(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAgentGrantsParams
+
+	// ------------- Optional query parameter "person" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "person", r.URL.Query(), &params.Person, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "person"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "person", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAgentGrants(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateAgentToken operation middleware
+func (siw *ServerInterfaceWrapper) CreateAgentToken(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateAgentToken(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevokeAgentGrant operation middleware
+func (siw *ServerInterfaceWrapper) RevokeAgentGrant(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "grant" -------------
+	var grant GrantParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "grant", r.PathValue("grant"), &grant, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "grant", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeAgentGrant(w, r, grant)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2305,6 +2575,117 @@ func (siw *ServerInterfaceWrapper) GetPresenceDocument(w http.ResponseWriter, r 
 	handler.ServeHTTP(w, r)
 }
 
+// ListProposals operation middleware
+func (siw *ServerInterfaceWrapper) ListProposals(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListProposalsParams
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "id", r.URL.Query(), &params.Id, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListProposals(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AcceptProposal operation middleware
+func (siw *ServerInterfaceWrapper) AcceptProposal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "proposal" -------------
+	var proposal ProposalParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "proposal", r.PathValue("proposal"), &proposal, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "proposal", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AcceptProposal(w, r, proposal)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeclineProposal operation middleware
+func (siw *ServerInterfaceWrapper) DeclineProposal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "proposal" -------------
+	var proposal ProposalParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "proposal", r.PathValue("proposal"), &proposal, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "proposal", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeclineProposal(w, r, proposal)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetReport operation middleware
 func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Request) {
 
@@ -2707,6 +3088,12 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/document", wrapper.GetSharedDocument)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/presence", wrapper.GetPresenceDocument)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/session", wrapper.GetSession)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/agents", wrapper.ListAgentGrants)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/agents", wrapper.CreateAgentToken)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/agents/{grant}", wrapper.RevokeAgentGrant)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/proposals", wrapper.ListProposals)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/proposals/{proposal}/accept", wrapper.AcceptProposal)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/proposals/{proposal}/decline", wrapper.DeclineProposal)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/access/people", wrapper.ListPeople)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/access/people/{email}", wrapper.RemovePerson)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/access/people/{email}", wrapper.GrantPerson)
@@ -2967,6 +3354,192 @@ func (response GrantPerson422JSONResponse) VisitGrantPersonResponse(w http.Respo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAgentGrantsRequestObject struct {
+	Params ListAgentGrantsParams
+}
+
+type ListAgentGrantsResponseObject interface {
+	VisitListAgentGrantsResponse(w http.ResponseWriter) error
+}
+
+type ListAgentGrants200JSONResponse []AgentGrant
+
+func (response ListAgentGrants200JSONResponse) VisitListAgentGrantsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAgentGrants401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListAgentGrants401JSONResponse) VisitListAgentGrantsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAgentGrants403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListAgentGrants403JSONResponse) VisitListAgentGrantsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAgentTokenRequestObject struct {
+	Body *CreateAgentTokenJSONRequestBody
+}
+
+type CreateAgentTokenResponseObject interface {
+	VisitCreateAgentTokenResponse(w http.ResponseWriter) error
+}
+
+type CreateAgentToken201JSONResponse AgentToken
+
+func (response CreateAgentToken201JSONResponse) VisitCreateAgentTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAgentToken401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CreateAgentToken401JSONResponse) VisitCreateAgentTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAgentToken403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateAgentToken403JSONResponse) VisitCreateAgentTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAgentToken404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateAgentToken404JSONResponse) VisitCreateAgentTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAgentToken422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response CreateAgentToken422JSONResponse) VisitCreateAgentTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeAgentGrantRequestObject struct {
+	Grant GrantParam `json:"grant"`
+}
+
+type RevokeAgentGrantResponseObject interface {
+	VisitRevokeAgentGrantResponse(w http.ResponseWriter) error
+}
+
+type RevokeAgentGrant204Response struct {
+}
+
+func (response RevokeAgentGrant204Response) VisitRevokeAgentGrantResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RevokeAgentGrant401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response RevokeAgentGrant401JSONResponse) VisitRevokeAgentGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeAgentGrant403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response RevokeAgentGrant403JSONResponse) VisitRevokeAgentGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeAgentGrant404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RevokeAgentGrant404JSONResponse) VisitRevokeAgentGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5231,6 +5804,228 @@ func (response GetPresenceDocument403JSONResponse) VisitGetPresenceDocumentRespo
 	return err
 }
 
+type ListProposalsRequestObject struct {
+	Params ListProposalsParams
+}
+
+type ListProposalsResponseObject interface {
+	VisitListProposalsResponse(w http.ResponseWriter) error
+}
+
+type ListProposals200JSONResponse []Proposal
+
+func (response ListProposals200JSONResponse) VisitListProposalsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProposals401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListProposals401JSONResponse) VisitListProposalsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProposals403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListProposals403JSONResponse) VisitListProposalsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptProposalRequestObject struct {
+	Proposal ProposalParam `json:"proposal"`
+	Body     *AcceptProposalJSONRequestBody
+}
+
+type AcceptProposalResponseObject interface {
+	VisitAcceptProposalResponse(w http.ResponseWriter) error
+}
+
+type AcceptProposal200JSONResponse Proposal
+
+func (response AcceptProposal200JSONResponse) VisitAcceptProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptProposal401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response AcceptProposal401JSONResponse) VisitAcceptProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptProposal403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response AcceptProposal403JSONResponse) VisitAcceptProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptProposal404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AcceptProposal404JSONResponse) VisitAcceptProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptProposal409JSONResponse ProblemList
+
+func (response AcceptProposal409JSONResponse) VisitAcceptProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptProposal422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response AcceptProposal422JSONResponse) VisitAcceptProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeclineProposalRequestObject struct {
+	Proposal ProposalParam `json:"proposal"`
+	Body     *DeclineProposalJSONRequestBody
+}
+
+type DeclineProposalResponseObject interface {
+	VisitDeclineProposalResponse(w http.ResponseWriter) error
+}
+
+type DeclineProposal200JSONResponse Proposal
+
+func (response DeclineProposal200JSONResponse) VisitDeclineProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeclineProposal401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response DeclineProposal401JSONResponse) VisitDeclineProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeclineProposal403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeclineProposal403JSONResponse) VisitDeclineProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeclineProposal404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeclineProposal404JSONResponse) VisitDeclineProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeclineProposal409JSONResponse ProblemList
+
+func (response DeclineProposal409JSONResponse) VisitDeclineProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetReportRequestObject struct {
 	Name   GetReportParamsName `json:"name"`
 	Params GetReportParams
@@ -5986,6 +6781,15 @@ type StrictServerInterface interface {
 	// GrantPerson List a person, or change what an administrator grants them
 	// (PUT /access/people/{email})
 	GrantPerson(ctx context.Context, request GrantPersonRequestObject) (GrantPersonResponseObject, error)
+	// ListAgentGrants The agents people let act for them (docs/adr/0016): the caller's own, or, for an administrator, one person's (person) or everyone's (person=*). Empty where no grants are kept, as when the deployment's own stack authorizes agents.
+	// (GET /agents)
+	ListAgentGrants(ctx context.Context, request ListAgentGrantsRequestObject) (ListAgentGrantsResponseObject, error)
+	// CreateAgentToken Lets an agent act for the caller by a token to paste into its client, for a client that cannot sign in through the browser. The token is shown once. Only where Cartograph is the authorization server for agents (CARTOGRAPH_MCP_AUTH=cartograph).
+	// (POST /agents)
+	CreateAgentToken(ctx context.Context, request CreateAgentTokenRequestObject) (CreateAgentTokenResponseObject, error)
+	// RevokeAgentGrant Disconnects an agent at once: the caller's own, or anyone's for an administrator.
+	// (DELETE /agents/{grant})
+	RevokeAgentGrant(ctx context.Context, request RevokeAgentGrantRequestObject) (RevokeAgentGrantResponseObject, error)
 	// ListFlows The kinds that have a flow (a stepped definition, contract/flows). A kind without one is a sheet: one step, every field.
 	// (GET /flows)
 	ListFlows(ctx context.Context, request ListFlowsRequestObject) (ListFlowsResponseObject, error)
@@ -6085,6 +6889,15 @@ type StrictServerInterface interface {
 	// GetPresenceDocument The document that carries presence for screens not about one manifest
 	// (GET /presence)
 	GetPresenceDocument(ctx context.Context, request GetPresenceDocumentRequestObject) (GetPresenceDocumentResponseObject, error)
+	// ListProposals What agents have proposed (docs/adr/0016). An agent reads and edits drafts, and proposes what makes the record (a version, a reading, a state change); the person it acts for accepts or declines. By default, the open proposals made for the caller; with kind and id, every proposal on that manifest, for everyone who may read it.
+	// (GET /proposals)
+	ListProposals(ctx context.Context, request ListProposalsRequestObject) (ListProposalsResponseObject, error)
+	// AcceptProposal Accept a proposal and make the record as the caller: commit its manifest, record its reading, or move its project. Only the person the proposal was made for may accept it, never an agent. Refused with 409 when the manifest has changed since the agent proposed, so the person reviews it again.
+	// (POST /proposals/{proposal}/accept)
+	AcceptProposal(ctx context.Context, request AcceptProposalRequestObject) (AcceptProposalResponseObject, error)
+	// DeclineProposal Decline a proposal. Only the person it was made for may.
+	// (POST /proposals/{proposal}/decline)
+	DeclineProposal(ctx context.Context, request DeclineProposalRequestObject) (DeclineProposalResponseObject, error)
 	// GetReport A report over the current record, answered by the deployment's reporter (docs/adr/0014): projects (with team, state and the goals they serve), kpi-readings (every reading in force, with who recorded it and when), alignment (what serves each goal) and teams (each team with every team above it). Every reporter gives the same columns and rows. 404 when the deployment turned reporting off. Every listed person reads every report.
 	// (GET /reports/{name})
 	GetReport(ctx context.Context, request GetReportRequestObject) (GetReportResponseObject, error)
@@ -6238,6 +7051,89 @@ func (sh *strictHandler) GrantPerson(w http.ResponseWriter, r *http.Request, ema
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GrantPersonResponseObject); ok {
 		if err := validResponse.VisitGrantPersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListAgentGrants operation middleware
+func (sh *strictHandler) ListAgentGrants(w http.ResponseWriter, r *http.Request, params ListAgentGrantsParams) {
+	var request ListAgentGrantsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAgentGrants(ctx, request.(ListAgentGrantsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAgentGrants")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListAgentGrantsResponseObject); ok {
+		if err := validResponse.VisitListAgentGrantsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateAgentToken operation middleware
+func (sh *strictHandler) CreateAgentToken(w http.ResponseWriter, r *http.Request) {
+	var request CreateAgentTokenRequestObject
+
+	var body CreateAgentTokenJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateAgentToken(ctx, request.(CreateAgentTokenRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateAgentToken")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateAgentTokenResponseObject); ok {
+		if err := validResponse.VisitCreateAgentTokenResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RevokeAgentGrant operation middleware
+func (sh *strictHandler) RevokeAgentGrant(w http.ResponseWriter, r *http.Request, grant GrantParam) {
+	var request RevokeAgentGrantRequestObject
+
+	request.Grant = grant
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RevokeAgentGrant(ctx, request.(RevokeAgentGrantRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RevokeAgentGrant")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RevokeAgentGrantResponseObject); ok {
+		if err := validResponse.VisitRevokeAgentGrantResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -7155,6 +8051,104 @@ func (sh *strictHandler) GetPresenceDocument(w http.ResponseWriter, r *http.Requ
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetPresenceDocumentResponseObject); ok {
 		if err := validResponse.VisitGetPresenceDocumentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListProposals operation middleware
+func (sh *strictHandler) ListProposals(w http.ResponseWriter, r *http.Request, params ListProposalsParams) {
+	var request ListProposalsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListProposals(ctx, request.(ListProposalsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListProposals")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListProposalsResponseObject); ok {
+		if err := validResponse.VisitListProposalsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AcceptProposal operation middleware
+func (sh *strictHandler) AcceptProposal(w http.ResponseWriter, r *http.Request, proposal ProposalParam) {
+	var request AcceptProposalRequestObject
+
+	request.Proposal = proposal
+
+	var body AcceptProposalJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AcceptProposal(ctx, request.(AcceptProposalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AcceptProposal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AcceptProposalResponseObject); ok {
+		if err := validResponse.VisitAcceptProposalResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeclineProposal operation middleware
+func (sh *strictHandler) DeclineProposal(w http.ResponseWriter, r *http.Request, proposal ProposalParam) {
+	var request DeclineProposalRequestObject
+
+	request.Proposal = proposal
+
+	var body DeclineProposalJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeclineProposal(ctx, request.(DeclineProposalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeclineProposal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeclineProposalResponseObject); ok {
+		if err := validResponse.VisitDeclineProposalResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

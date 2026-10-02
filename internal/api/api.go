@@ -35,6 +35,9 @@ type Server struct {
 	// Reports answers /reports; nil when the deployment turned
 	// reporting off (docs/adr/0014).
 	Reports reporting.Reporter
+	// AgentTokens mints pasteable agent tokens; nil where another stack
+	// authorizes agents.
+	AgentTokens AgentTokens
 }
 
 var _ apigen.StrictServerInterface = (*Server)(nil)
@@ -48,6 +51,9 @@ type Deps struct {
 	// Reports answers /reports. Nil turns reporting off: the reports
 	// answer 404.
 	Reports reporting.Reporter
+	// AgentTokens mints the tokens POST /agents returns: the authorization
+	// server's, when Cartograph is one. Nil answers 404.
+	AgentTokens AgentTokens
 }
 
 // Handler returns the complete net/http handler for the API, mounted under
@@ -68,7 +74,7 @@ func New(e *engine.Engine, deps Deps) http.Handler {
 	if z == nil {
 		z = auth.AllowAll{}
 	}
-	strict := apigen.NewStrictHandlerWithOptions(&Server{Engine: e, Printer: p, Authz: z, Reports: deps.Reports}, nil,
+	strict := apigen.NewStrictHandlerWithOptions(&Server{Engine: e, Printer: p, Authz: z, Reports: deps.Reports, AgentTokens: deps.AgentTokens}, nil,
 		apigen.StrictHTTPServerOptions{ResponseErrorHandlerFunc: writeError})
 	return apigen.Handler(strict)
 }

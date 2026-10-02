@@ -815,6 +815,187 @@ paths:
               schema:
                 $ref: "#/components/schemas/Session"
 
+  /agents:
+    get:
+      operationId: listAgentGrants
+      summary: >-
+        The agents people let act for them (docs/adr/0016): the caller's
+        own, or, for an administrator, one person's (person) or
+        everyone's (person=*). Empty where no grants are kept, as when
+        the deployment's own stack authorizes agents.
+      parameters:
+        - name: person
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: The grants, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgentGrant"
+    post:
+      operationId: createAgentToken
+      summary: >-
+        Lets an agent act for the caller by a token to paste into its
+        client, for a client that cannot sign in through the browser.
+        The token is shown once. Only where Cartograph is the
+        authorization server for agents (CARTOGRAPH_MCP_AUTH=cartograph).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentTokenRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "201":
+          description: The grant, and its token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentToken"
+  /agents/{grant}:
+    delete:
+      operationId: revokeAgentGrant
+      summary: >-
+        Disconnects an agent at once: the caller's own, or anyone's for
+        an administrator.
+      parameters:
+        - $ref: "#/components/parameters/GrantParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "204":
+          description: Revoked
+  /proposals:
+    get:
+      operationId: listProposals
+      summary: >-
+        What agents have proposed (docs/adr/0016). An agent reads and edits
+        drafts, and proposes what makes the record (a version, a reading,
+        a state change); the person it acts for accepts or declines. By
+        default, the open proposals made for the caller; with kind and id,
+        every proposal on that manifest, for everyone who may read it.
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          description: open (the default), accepted, declined, or all.
+          schema:
+            type: string
+            enum: [open, accepted, declined, all]
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: The proposals, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Proposal"
+  /proposals/{proposal}/accept:
+    post:
+      operationId: acceptProposal
+      summary: >-
+        Accept a proposal and make the record as the caller: commit its
+        manifest, record its reading, or move its project. Only the person
+        the proposal was made for may accept it, never an agent. Refused
+        with 409 when the manifest has changed since the agent proposed,
+        so the person reviews it again.
+      parameters:
+        - $ref: "#/components/parameters/ProposalParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalDecision"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Already decided, or the manifest changed since it was proposed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+  /proposals/{proposal}/decline:
+    post:
+      operationId: declineProposal
+      summary: Decline a proposal. Only the person it was made for may.
+      parameters:
+        - $ref: "#/components/parameters/ProposalParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalDecision"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Already decided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "200":
+          description: Declined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
   /access/people:
     get:
       operationId: listPeople
@@ -1326,6 +1507,18 @@ components:
       required: true
       schema:
         type: string
+    GrantParam:
+      name: grant
+      in: path
+      required: true
+      schema:
+        type: string
+    ProposalParam:
+      name: proposal
+      in: path
+      required: true
+      schema:
+        type: string
   responses:
     Unauthenticated:
       description: >-
@@ -1725,6 +1918,12 @@ components:
           additionalProperties:
             type: string
             enum: [none, teams, all]
+        agents:
+          type: boolean
+          description: >-
+            Whether the principal may act through an agent over MCP
+            (docs/adr/0016): their roles allow it and an administrator has
+            not turned theirs off.
     Role:
       type: string
       enum: [reader, contributor, strategyEditor, administrator]
@@ -1747,6 +1946,11 @@ components:
           description: Team ids.
           items:
             type: string
+        agentsOff:
+          type: boolean
+          description: >-
+            Turn this person's agents off whatever their roles allow
+            (docs/adr/0016). False when left out.
     Person:
       type: object
       description: >-
@@ -1754,6 +1958,9 @@ components:
         manifest (TAXONOMY.md D27).
       required: [email, name, roles, teams, directoryRoles, directoryTeams, addedBy, addedOn]
       properties:
+        agentsOff:
+          type: boolean
+          description: An administrator turned this person's agents off.
         email:
           type: string
         name:
@@ -1873,6 +2080,114 @@ components:
           items:
             type: array
             items: {}
+
+    AgentGrant:
+      type: object
+      description: >-
+        One agent a person let act for them (docs/adr/0016). Its token is
+        never kept.
+      required: [id, person, label, createdAt, expiresAt]
+      properties:
+        id:
+          type: string
+        person:
+          type: string
+        label:
+          type: string
+          description: The agent's name, as it was shown when its person consented.
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        lastUsed:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+    AgentTokenRequest:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          maxLength: 64
+        days:
+          type: integer
+          minimum: 1
+          maximum: 365
+          description: How long the token lasts; 90 days when omitted.
+    AgentToken:
+      type: object
+      required: [grant, token]
+      properties:
+        grant:
+          $ref: "#/components/schemas/AgentGrant"
+        token:
+          type: string
+          description: The bearer token, shown once.
+    Proposal:
+      type: object
+      description: >-
+        Something an agent proposed for its person to confirm
+        (docs/adr/0016).
+      required: [id, kind, manifestId, op, reason, agent, for, base, at, status]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        manifestId:
+          type: string
+        op:
+          type: string
+          enum: [save, append, state]
+          description: >-
+            save commits the proposed manifest; append records one item of
+            a series (series, item); state moves a project (state).
+        manifest:
+          type: object
+          description: The proposed manifest, for save.
+        series:
+          type: string
+        item:
+          type: object
+        state:
+          type: string
+        reason:
+          type: string
+        agent:
+          type: string
+          description: The agent that proposed it, as it names itself.
+        for:
+          type: string
+          description: The person it acts for, who alone may accept it.
+        base:
+          type: integer
+          description: The manifest's latest version when it was proposed.
+        at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [open, accepted, declined]
+        decidedBy:
+          type: string
+        decidedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          description: The version accepting it made, when it made one.
+
+    ProposalDecision:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: Why, recorded with the decision.
 
     WriteRequest:
       type: object

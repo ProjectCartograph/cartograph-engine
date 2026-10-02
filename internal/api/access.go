@@ -43,7 +43,8 @@ func (s *Server) GrantPerson(ctx context.Context, req apigen.GrantPersonRequestO
 	for i, r := range req.Body.Roles {
 		roles[i] = string(r)
 	}
-	p, err := s.Engine.GrantPerson(ctx, req.Email, roles, req.Body.Teams, false, actor)
+	agentsOff := req.Body.AgentsOff != nil && *req.Body.AgentsOff
+	p, err := s.Engine.GrantPerson(ctx, req.Email, roles, req.Body.Teams, agentsOff, actor)
 	var invalid *engine.ValidationError
 	switch {
 	case errors.As(err, &invalid):
@@ -81,7 +82,8 @@ func (s *Server) sessionAccess(ctx context.Context, p auth.Principal) (*apigen.S
 	if err != nil {
 		return nil, err
 	}
-	out := &apigen.SessionAccess{Listed: g.Listed, Roles: toRoles(g.Roles), Teams: orEmpty(g.Teams), Scopes: map[string]apigen.SessionAccessScopes{}}
+	agents := g.Agents
+	out := &apigen.SessionAccess{Listed: g.Listed, Roles: toRoles(g.Roles), Teams: orEmpty(g.Teams), Scopes: map[string]apigen.SessionAccessScopes{}, Agents: &agents}
 	if out.Reach, err = s.Engine.TeamsBeneath(ctx, g.Teams); err != nil {
 		return nil, err
 	}
@@ -109,6 +111,10 @@ func toPerson(p store.Person) apigen.Person {
 	if !p.LastSignedIn.IsZero() {
 		t := p.LastSignedIn
 		out.LastSignedIn = &t
+	}
+	if p.AgentsOff {
+		off := true
+		out.AgentsOff = &off
 	}
 	return out
 }
