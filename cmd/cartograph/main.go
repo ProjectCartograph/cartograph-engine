@@ -77,7 +77,7 @@ func usage() {
 
 Every command's output is a function of the vault's files and the snapshot log only.
 
-Commands: serve, ready, validate, check, list, snapshot, render, handoff, export, diff, import, apply, exclude, recover, unapplied, excluded
+Commands: serve, ready, validate, check, list, snapshot, render, handoff, export, diff, import, apply, exclude, recover, unapplied, excluded, access
 
 Usage:
   cartograph serve [<vault-dir>] [-addr :8080] [-import <dir>]   (every flag also reads CARTOGRAPH_*; see serve -h)
@@ -96,6 +96,8 @@ Usage:
   cartograph recover <Kind/id> <vault-dir> --reason "..."
   cartograph unapplied <vault-dir>
   cartograph excluded <vault-dir>
+  cartograph access apply <access file> -store <vault, file or postgres:// URL>
+  cartograph access grant <email> -roles administrator [-teams id,...] -store <...>
   cartograph version
 `)
 }
