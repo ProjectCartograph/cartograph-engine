@@ -1,6 +1,6 @@
 # Stateless operation and serverless deployment
 
-2026-10-02, engine 2.4.0. What holds state in the process, what the
+2026-10-02, engine 2.5.0. What holds state in the process, what the
 ports allow, and how a deployment runs where any replica can serve any
 request and scale to zero.
 

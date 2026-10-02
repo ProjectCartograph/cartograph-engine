@@ -1,6 +1,6 @@
 # Cartograph systems architecture
 
-This describes the tree as built, at engine 2.4.0. Where it shows a
+This describes the tree as built, at engine 2.5.0. Where it shows a
 port with one adapter, that is how things stand today, and nothing
 more. Each decision behind it has its own file in
 [`adr/`](adr/README.md).
