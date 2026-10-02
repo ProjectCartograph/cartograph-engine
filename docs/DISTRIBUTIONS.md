@@ -278,6 +278,13 @@ adapter, pointed at `wss://cartograph.example.org/api/v1/sync`. The
 stock interface's `src/client/live.ts` in `cartograph-ui` is a working
 example, and `MULTIPLAYER.md` covers the document shape and presence.
 
+Close the socket when nobody is at the page, or a forgotten tab keeps a
+replica running and the deployment never scales to zero. The stock
+interface's `src/client/attention.ts` does it in about a hundred lines:
+the page hidden for a minute, or two minutes without input, and it calls
+the adapter's `disconnect()`; the next input calls `connect()` again
+(ADR 0015).
+
 ### 9. Prove it
 
 The interface suite in `pkg/uiconformance` is a set of JSON scenarios.

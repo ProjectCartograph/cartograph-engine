@@ -24,6 +24,7 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0012](0012-postgres-keeps-manifests-as-documents.md) | Postgres keeps manifests as documents; store ports ask for sets | Accepted |
 | [0013](0013-copy-on-write-or-merge-on-read.md) | Each stored thing is copy-on-write or merge-on-read, on every backend | Accepted |
 | [0014](0014-reporting-is-a-port-not-the-core.md) | Reporting is a port, not the core | Accepted |
+| [0015](0015-only-attended-windows-hold-connections.md) | Only an attended window holds a connection | Accepted |
 
 ## Writing one
 

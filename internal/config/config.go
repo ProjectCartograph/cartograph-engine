@@ -59,6 +59,12 @@ type Config struct {
 	// 20s; 0 turns pings off.
 	SyncPing time.Duration
 
+	// SyncIdle closes a sync connection that has changed no document for
+	// this long, so an unattended window holds no replica up and the
+	// deployment can scale to zero (docs/adr/0015). Pings and presence
+	// do not count. CARTOGRAPH_SYNC_IDLE, default 10m; 0 never closes.
+	SyncIdle time.Duration
+
 	// DocCache bounds how many shared documents a replica keeps in
 	// memory; the least recently used are dropped first, and a dropped
 	// one is loaded again from the store when next needed.
@@ -158,6 +164,7 @@ func Defaults() Config {
 		LogLevel:        "info",
 		ShutdownTimeout: 10 * time.Second,
 		SyncPing:        20 * time.Second,
+		SyncIdle:        10 * time.Minute,
 		DocCache:        1000,
 		CompactAfter:    24 * time.Hour,
 		Reports:         "computed",
@@ -193,7 +200,7 @@ func FromEnv(getenv Getenv) (Config, error) {
 	for _, d := range []struct {
 		key string
 		to  *time.Duration
-	}{{"CARTOGRAPH_SYNC_PING", &c.SyncPing}, {"CARTOGRAPH_DRAIN_DELAY", &c.DrainDelay}} {
+	}{{"CARTOGRAPH_SYNC_PING", &c.SyncPing}, {"CARTOGRAPH_SYNC_IDLE", &c.SyncIdle}, {"CARTOGRAPH_DRAIN_DELAY", &c.DrainDelay}} {
 		if v := getenv(d.key); v != "" {
 			p, err := time.ParseDuration(v)
 			if err != nil {
@@ -279,6 +286,7 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.Fanout, "fanout", c.Fanout, "memory or postgres; default postgres with a Postgres store, else memory (CARTOGRAPH_FANOUT)")
 	fs.StringVar(&c.FanoutURL, "fanout-url", c.FanoutURL, "direct postgres:// URL for the fan-out's LISTEN connection; default the store URL (CARTOGRAPH_FANOUT_URL)")
 	fs.StringVar(&c.MetricsAddr, "metrics-addr", c.MetricsAddr, "address to serve Prometheus /metrics on; empty for none (CARTOGRAPH_METRICS_ADDR)")
+	fs.DurationVar(&c.SyncIdle, "sync-idle", c.SyncIdle, "close a sync socket that changed nothing for this long; 0 never (CARTOGRAPH_SYNC_IDLE)")
 	fs.DurationVar(&c.SyncPing, "sync-ping", c.SyncPing, "ping interval for idle sync sockets; 0 for none (CARTOGRAPH_SYNC_PING)")
 	fs.IntVar(&c.DocCache, "doc-cache", c.DocCache, "shared documents kept in memory per replica (CARTOGRAPH_DOC_CACHE)")
 	fs.DurationVar(&c.DrainDelay, "drain-delay", c.DrainDelay, "time to keep serving with /readyz at 503 after SIGTERM (CARTOGRAPH_DRAIN_DELAY)")
@@ -357,6 +365,9 @@ func (c Config) Validate() error {
 	}
 	if c.ShutdownTimeout < 0 {
 		return fmt.Errorf("shutdown timeout must not be negative")
+	}
+	if c.SyncIdle < 0 || (c.SyncIdle > 0 && c.SyncIdle < time.Minute) {
+		return fmt.Errorf("sync idle %s: want 0 (never) or at least 1m", c.SyncIdle)
 	}
 	if c.SyncPing < 0 || (c.SyncPing > 0 && c.SyncPing < time.Second) {
 		return fmt.Errorf("sync ping %s: want 0 (off) or at least 1s", c.SyncPing)

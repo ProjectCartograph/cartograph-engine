@@ -204,6 +204,7 @@ func (m *metrics) watchSync(s *syncserver.Server) {
 	m.gauge("cartograph_sync_documents_open", "Documents at least one peer on this replica has open.", func() float64 { return float64(s.Stats().Documents) })
 	m.counter("cartograph_sync_messages_received_total", "Sync messages received from peers.", func() float64 { return float64(s.Stats().Received) })
 	m.counter("cartograph_sync_messages_sent_total", "Sync messages sent to peers.", func() float64 { return float64(s.Stats().Sent) })
+	m.counter("cartograph_sync_idle_closed_total", "Sync connections closed for changing nothing (CARTOGRAPH_SYNC_IDLE).", func() float64 { return float64(s.Stats().IdleClosed) })
 	m.counter("cartograph_sync_refused_total", "Messages refused: a change from a principal who may only read.", func() float64 { return float64(s.Stats().Refused) })
 }
 

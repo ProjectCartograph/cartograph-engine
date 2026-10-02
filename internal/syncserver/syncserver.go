@@ -86,11 +86,14 @@ type Server struct {
 	ping time.Duration
 	// recheck bounds what a lost fan-out hint costs (WithRecheck).
 	recheck time.Duration
-	mu      sync.Mutex
-	rooms   map[string]*room // by document id
-	conns   map[*conn]struct{}
+	// idle closes a connection that changed nothing for this long
+	// (WithIdle); 0 never does.
+	idle  time.Duration
+	mu    sync.Mutex
+	rooms map[string]*room // by document id
+	conns map[*conn]struct{}
 
-	received, sent, refused atomic.Int64
+	received, sent, refused, idleClosed atomic.Int64
 }
 
 // Option configures a Server.
@@ -100,6 +103,20 @@ type Option func(*Server)
 // not closed by a load balancer's idle timeout (60 s by default behind
 // nginx or an AWS ALB) and a dead one is noticed. 0 turns pings off.
 func WithPing(d time.Duration) Option { return func(s *Server) { s.ping = d } }
+
+// WithIdle closes a connection that has changed no document for d, so an
+// open but unattended window holds no replica up and a deployment can
+// scale to zero (docs/adr/0015). Pings, the server's own rechecks and
+// presence do not count: the server cannot tell a person from a
+// heartbeat, and a change to a document is the one thing only a person
+// makes. An interface reconnects when its person comes back. 0 never
+// closes.
+func WithIdle(d time.Duration) Option { return func(s *Server) { s.idle = d } }
+
+// StatusIdle is the close code for a connection closed as idle, so an
+// interface can tell it from a failure and wait for its person instead
+// of reconnecting at once.
+const StatusIdle = websocket.StatusCode(4000)
 
 // WithRecheck sets how often a connection offers its documents again
 // whether or not a hint arrived: the most a lost hint can delay a change.
@@ -124,6 +141,7 @@ func New(shared *engine.Shared, fan fanout.Bus, authz auth.Authorizer, log *slog
 
 // Stats are counters for monitoring.
 type Stats struct {
+	IdleClosed  int64 // connections closed for changing nothing (WithIdle)
 	Connections int   // peers connected to this replica
 	Documents   int   // documents at least one of them has open
 	Received    int64 // sync messages received
@@ -135,7 +153,7 @@ type Stats struct {
 func (s *Server) Stats() Stats {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return Stats{Connections: len(s.conns), Documents: len(s.rooms), Received: s.received.Load(), Sent: s.sent.Load(), Refused: s.refused.Load()}
+	return Stats{Connections: len(s.conns), Documents: len(s.rooms), Received: s.received.Load(), Sent: s.sent.Load(), Refused: s.refused.Load(), IdleClosed: s.idleClosed.Load()}
 }
 
 // Shutdown closes every connection with "going away", so each peer
@@ -201,9 +219,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if s.ping > 0 {
 		go c.keepalive(ctx, cancel)
 	}
+	c.active.Store(time.Now().UnixNano())
+	if s.idle > 0 {
+		go c.watchIdle(ctx, cancel)
+	}
 	err = c.run(ctx)
 	c.leaveAll()
 	switch {
+	case c.idle.Load():
+		s.idleClosed.Add(1) // closed with its code already
 	case err == nil, errors.Is(err, context.Canceled), websocket.CloseStatus(err) != -1:
 		_ = ws.Close(websocket.StatusNormalClosure, "")
 	default:
@@ -322,6 +346,12 @@ type conn struct {
 	wmu  sync.Mutex // one writer at a time
 	mu   sync.Mutex
 	docs map[string]*peerDoc
+
+	// active is when the peer last changed a document, or joined, in
+	// Unix nanoseconds; idle is set when the connection was closed for
+	// it.
+	active atomic.Int64
+	idle   atomic.Bool
 }
 
 type peerDoc struct {
@@ -344,6 +374,29 @@ func (c *conn) keepalive(ctx context.Context, end context.CancelFunc) {
 			err := c.ws.Ping(pctx)
 			cancel()
 			if err != nil && ctx.Err() == nil {
+				end()
+				return
+			}
+		}
+	}
+}
+
+// watchIdle ends the connection once it has changed no document for the
+// server's idle time.
+func (c *conn) watchIdle(ctx context.Context, end context.CancelFunc) {
+	t := time.NewTicker(max(c.s.idle/8, 10*time.Millisecond))
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-t.C:
+			if now.Sub(time.Unix(0, c.active.Load())) >= c.s.idle {
+				// Close with the code, not by ending ctx: an ended read
+				// context drops the connection without a close frame
+				// (coder/websocket), and the peer would see a failure.
+				c.idle.Store(true)
+				_ = c.ws.Close(StatusIdle, "idle")
 				end()
 				return
 			}
@@ -437,6 +490,7 @@ func (c *conn) sync(ctx context.Context, m message) error {
 	}
 	c.offer(ctx, m.DocumentID)
 	if changed {
+		c.active.Store(time.Now().UnixNano())
 		// Peers on this replica hear at once; the fan-out hint reaches
 		// the rest, and this replica too, where it is a no-op.
 		for _, p := range c.s.peers(m.DocumentID, c) {

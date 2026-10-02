@@ -48,7 +48,10 @@ request and the authorizer decides per request.
   database is the index) and no vault to scan.
 - A deployment can scale to zero. A cold start pays for compiling the
   schemas (under 100 ms) and the Automerge module (about a quarter of a
-  second), once per process.
+  second), once per process. An open window does not keep a replica:
+  the interface closes its sync socket when nobody is at it, and the
+  server closes one that has changed nothing for `CARTOGRAPH_SYNC_IDLE`
+  (ADR 0015).
 - A fan-out message is a hint. A replica that misses one still
   converges, because the sync protocol compares heads on every
   exchange and every connection offers its documents again every 15

@@ -150,7 +150,7 @@ func runServe(args []string) error {
 	if cfg.MetricsAddr != "" {
 		mtr = newMetrics()
 	}
-	mux, syncSrv := routes(e, comp.Fanout, authn, authz, pdf, comp.Reports, &ready, syncserver.WithPing(cfg.SyncPing))
+	mux, syncSrv := routes(e, comp.Fanout, authn, authz, pdf, comp.Reports, &ready, syncserver.WithPing(cfg.SyncPing), syncserver.WithIdle(cfg.SyncIdle))
 	mtr.watchShared(e.Shared())
 	mtr.watchSync(syncSrv)
 	mtr.watchFanout(comp.Counted)

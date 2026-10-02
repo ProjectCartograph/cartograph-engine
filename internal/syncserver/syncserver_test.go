@@ -2,6 +2,7 @@ package syncserver_test
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -114,7 +115,7 @@ func inPostgres(t *testing.T) backend {
 
 // replicas are n engines over one backend: what n stateless processes
 // over one database are.
-func replicas(t *testing.T, n int, authz auth.Authorizer, ports backend) []*httptest.Server {
+func replicas(t *testing.T, n int, authz auth.Authorizer, ports backend, opts ...syncserver.Option) []*httptest.Server {
 	t.Helper()
 	var out []*httptest.Server
 	for i := 0; i < n; i++ {
@@ -133,7 +134,7 @@ func replicas(t *testing.T, n int, authz auth.Authorizer, ports backend) []*http
 		// A second's recheck: a fan-out hint lost while the shared
 		// database is busy (it is, under the whole suite) costs a second
 		// here, as it costs at most the default 15 in service.
-		srv := httptest.NewServer(syncserver.New(e.Shared(), bus, authz, log, syncserver.WithRecheck(time.Second)))
+		srv := httptest.NewServer(syncserver.New(e.Shared(), bus, authz, log, append([]syncserver.Option{syncserver.WithRecheck(time.Second)}, opts...)...))
 		t.Cleanup(func() { srv.Close(); bus.Close() })
 		out = append(out, srv)
 		replicaEngines = append(replicaEngines, e)
@@ -591,5 +592,84 @@ func TestShutdownTellsPeersToGoElsewhere(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("the peer was never told")
+	}
+}
+
+// An open window nobody is using holds no replica up: a peer that only
+// answers pings and sends presence is closed as idle, with the code that
+// tells an interface to wait for its person rather than reconnect.
+func TestAnUnattendedPeerIsClosedAsIdle(t *testing.T) {
+	s, srv := syncServer(t, syncserver.WithPing(50*time.Millisecond), syncserver.WithIdle(300*time.Millisecond))
+	ws := dialJoin(t, srv)
+	defer ws.CloseNow()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	closed := make(chan error, 1)
+	go func() {
+		for {
+			if _, _, err := ws.Read(ctx); err != nil {
+				closed <- err
+				return
+			}
+		}
+	}()
+	// Presence, every 50 ms, as an open screen sends it.
+	go func() {
+		eph, _ := cbor.Marshal(msg{Type: "ephemeral", SenderID: "p", TargetID: "server", DocumentID: "no-such-doc", Data: []byte{1}})
+		for ctx.Err() == nil {
+			_ = ws.Write(ctx, websocket.MessageBinary, eph)
+			time.Sleep(50 * time.Millisecond)
+		}
+	}()
+	select {
+	case err := <-closed:
+		if websocket.CloseStatus(err) != syncserver.StatusIdle {
+			t.Fatalf("closed with %v, want the idle code %d", err, syncserver.StatusIdle)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("a peer that changed nothing for longer than the idle time is still connected")
+	}
+	waitFor(t, "the idle close counted", func() bool { return s.Stats().IdleClosed == 1 && s.Stats().Connections == 0 })
+}
+
+// A person editing stays connected however long they edit, and is closed
+// once they stop.
+func TestAPeerThatEditsStays(t *testing.T) {
+	replicaEngines = nil
+	srvs := replicas(t, 1, nil, inMemory(t), syncserver.WithIdle(400*time.Millisecond))
+	ctx := context.Background()
+	docID, err := replicaEngines[0].Shared().DocumentFor(ctx, "Team", "field-team")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := connect(t, srvs[0], "peer-a", docID)
+	p.until(func() bool { return p.field("spec", "purpose") == "Collect what the depots report" })
+	// An edit every 100 ms for 1.2 s, three idle times; a close meanwhile
+	// fails the read in step.
+	start := time.Now()
+	for i := 0; time.Since(start) < 1200*time.Millisecond; i++ {
+		j, _ := p.doc.JSON()
+		j["spec"].(map[string]any)["purpose"] = fmt.Sprintf("Collect what the depots report, draft %d", i)
+		if _, err := p.doc.Reconcile(j, replicaEngines[0].Shape("Team"), crdt.Change{Message: "edit"}); err != nil {
+			t.Fatal(err)
+		}
+		for next := time.Now().Add(100 * time.Millisecond); time.Now().Before(next); {
+			p.step(20 * time.Millisecond)
+		}
+	}
+	// Stopped: closed as idle within a few idle times.
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case f := <-p.in:
+			if f.err != nil {
+				if websocket.CloseStatus(f.err) != syncserver.StatusIdle {
+					t.Fatalf("closed with %v, want the idle code", f.err)
+				}
+				return
+			}
+		case <-deadline:
+			t.Fatal("still connected long after the edits stopped")
+		}
 	}
 }
