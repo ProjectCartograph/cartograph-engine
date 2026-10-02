@@ -34,6 +34,8 @@ type Engine struct {
 	shared    *Shared             // built when crdt, docs and fan are all set
 	docCache  int                 // the shared-document cache bound; 0 means the default
 	authz     identity.Authorizer // asked again at every write (docs/adr/0011); nil asks nothing
+	access    store.AccessStore   // the access list, when access is by role and team
+	directory Directory           // how directory groups map to roles and teams
 	teamCache teamCache           // the team tree, for team chains
 	schemas   *schemaSet
 	refRules  map[string][]refRule
