@@ -170,3 +170,22 @@ func TestScaleSettings(t *testing.T) {
 		t.Errorf("0 turns pings off: %v %v", c.SyncPing, err)
 	}
 }
+
+func TestAccessSettings(t *testing.T) {
+	c, err := FromEnv(env(map[string]string{"CARTOGRAPH_AUTH": "proxy", "CARTOGRAPH_AUTHZ": "access", "CARTOGRAPH_ACCESS_FILE": "/etc/cartograph/access.yaml"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Authz != "access" || c.AccessFile != "/etc/cartograph/access.yaml" {
+		t.Fatalf("not applied: %+v", c)
+	}
+	for name, vars := range map[string]map[string]string{
+		"access without an authenticator":       {"CARTOGRAPH_AUTHZ": "access"},
+		"an access file for another authorizer": {"CARTOGRAPH_AUTH": "proxy", "CARTOGRAPH_ACCESS_FILE": "access.yaml"},
+		"an unknown authorizer":                 {"CARTOGRAPH_AUTH": "proxy", "CARTOGRAPH_AUTHZ": "acl"},
+	} {
+		if _, err := FromEnv(env(vars)); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}

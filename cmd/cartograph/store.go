@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/access"
 	"log/slog"
 	"os"
 	"sync"
@@ -46,7 +48,10 @@ type composition struct {
 	FanoutAdapter string // "memory" or "postgres", for the log
 	// Counted is Fanout with its publishes counted, for the metrics.
 	Counted *countedBus
-	Close   func() error
+	// Authz is the access policy when storeOptions asked for access by
+	// role and team; nil otherwise.
+	Authz auth.Authorizer
+	Close func() error
 }
 
 // storeOptions say what to open. Target is a vault directory, a SQLite
@@ -63,6 +68,9 @@ type storeOptions struct {
 	// DocCache bounds the shared documents kept in memory; 0 is the
 	// engine's default.
 	DocCache int
+	// Access, when set, is access by role and team (docs/adr/0011): the
+	// store's access list, this mapping, and the access policy.
+	Access *engine.Directory
 }
 
 // openEngine composes an engine for a one-shot command, which needs no
@@ -120,14 +128,16 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		}
 		docs := postgres.NewDocStore(pool)
 		counted := &countedBus{Bus: bus}
+		accessOpts, authz, bind := accessControl(o, postgres.NewAccessStore(pool))
 		e, err := engine.New(postgres.NewManifestStore(pool), postgres.NewOperationalStore(pool),
-			append(shared(docs, counted, o.DocCache), engine.WithCodec(c), engine.WithBundles(postgres.NewBundleStore(pool)))...)
+			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithBundles(postgres.NewBundleStore(pool)))...)
 		if err != nil {
 			bus.Close()
 			pool.Close()
 			return nil, fmt.Errorf("build engine: %w", err)
 		}
-		return &composition{Engine: e, Docs: docs, Fanout: counted, Counted: counted, FanoutAdapter: fanoutName, Close: func() error {
+		bind(e)
+		return &composition{Engine: e, Docs: docs, Fanout: counted, Counted: counted, Authz: authz, FanoutAdapter: fanoutName, Close: func() error {
 			err := bus.Close()
 			pool.Close()
 			return err
@@ -142,12 +152,14 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		}
 		bus := fanoutmemory.New()
 		counted := &countedBus{Bus: bus}
-		e, err := engine.New(v, v.Index().Operational(), append(shared(v.Index().Docs(), counted, o.DocCache), engine.WithCodec(c))...)
+		accessOpts, authz, bind := accessControl(o, v.Index().Access())
+		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c))...)
 		if err != nil {
 			bus.Close()
 			v.Close()
 			return nil, fmt.Errorf("build engine: %w", err)
 		}
+		bind(e)
 		// The reference index is rebuilt whenever the state is loaded,
 		// not only on writes: files edited while nothing was running
 		// carry references the index has never seen.
@@ -155,7 +167,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 			v.Close()
 			return nil, fmt.Errorf("reindex: %w", err)
 		}
-		return &composition{Engine: e, Docs: v.Index().Docs(), Fanout: counted, Counted: counted, FanoutAdapter: fanoutName, Close: func() error {
+		return &composition{Engine: e, Docs: v.Index().Docs(), Fanout: counted, Counted: counted, Authz: authz, FanoutAdapter: fanoutName, Close: func() error {
 			bus.Close()
 			return v.Close()
 		}}, nil
@@ -168,13 +180,15 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 	bus := fanoutmemory.New()
 	docs := sqlite.NewDocStore(db)
 	counted := &countedBus{Bus: bus}
-	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(shared(docs, counted, o.DocCache), engine.WithCodec(c))...)
+	accessOpts, authz, bind := accessControl(o, sqlite.NewAccessStore(db))
+	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c))...)
 	if err != nil {
 		bus.Close()
 		db.Close()
 		return nil, fmt.Errorf("build engine: %w", err)
 	}
-	return &composition{Engine: e, Docs: docs, Fanout: counted, Counted: counted, FanoutAdapter: fanoutName, Close: func() error {
+	bind(e)
+	return &composition{Engine: e, Docs: docs, Fanout: counted, Counted: counted, Authz: authz, FanoutAdapter: fanoutName, Close: func() error {
 		bus.Close()
 		return db.Close()
 	}}, nil
@@ -195,4 +209,18 @@ func shared(docs store.DocStore, bus fanout.Bus, cache int) []engine.Option {
 		return nil
 	}
 	return []engine.Option{engine.WithCRDT(am), engine.WithDocStore(docs), engine.WithFanout(bus), engine.WithDocCache(cache)}
+}
+
+// accessControl is access by role and team (docs/adr/0011), when o asks
+// for it: the store's access list, the mapping, and the access policy,
+// which the HTTP layer and the engine share. The policy reads grants
+// from the engine, which does not exist yet, so the caller binds it once
+// built.
+func accessControl(o storeOptions, list store.AccessStore) ([]engine.Option, auth.Authorizer, func(*engine.Engine)) {
+	if o.Access == nil {
+		return nil, nil, func(*engine.Engine) {}
+	}
+	var e *engine.Engine
+	policy := access.Policy{Grants: func(ctx context.Context, p auth.Principal) (auth.Grants, error) { return e.Grants(ctx, p) }}
+	return []engine.Option{engine.WithAccess(list, *o.Access), engine.WithAuthorizer(policy)}, policy, func(built *engine.Engine) { e = built }
 }

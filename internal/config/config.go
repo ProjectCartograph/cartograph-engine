@@ -102,10 +102,18 @@ type Config struct {
 	AuthProxyHeader string
 
 	// Authz selects the authorizer: "allow" (every principal may do
-	// everything) or "roles" (ReadRoles and WriteRoles decide; an anonymous
-	// principal is refused, so pair it with an authenticator).
+	// everything), "roles" (ReadRoles and WriteRoles decide; an anonymous
+	// principal is refused, so pair it with an authenticator), or
+	// "access" (an access list of people, four roles and teams, with
+	// AccessFile mapping directory groups onto them; docs/adr/0011).
 	// CARTOGRAPH_AUTHZ, default "allow".
 	Authz string
+
+	// AccessFile is the mapping from directory groups to roles and teams
+	// for the access authorizer. CARTOGRAPH_ACCESS_FILE, default empty:
+	// no group grants anything, and only people an administrator lists
+	// may sign in.
+	AccessFile string
 
 	// ReadRoles and WriteRoles are comma-separated role names for the
 	// roles authorizer. CARTOGRAPH_READ_ROLES (empty: any authenticated
@@ -218,6 +226,9 @@ func FromEnv(getenv Getenv) (Config, error) {
 	if v := getenv("CARTOGRAPH_AUTHZ"); v != "" {
 		c.Authz = v
 	}
+	if v := getenv("CARTOGRAPH_ACCESS_FILE"); v != "" {
+		c.AccessFile = v
+	}
 	if v := getenv("CARTOGRAPH_READ_ROLES"); v != "" {
 		c.ReadRoles = v
 	}
@@ -253,7 +264,8 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.DurationVar(&c.ShutdownTimeout, "shutdown-timeout", c.ShutdownTimeout, "grace period for in-flight requests on shutdown (CARTOGRAPH_SHUTDOWN_TIMEOUT)")
 	fs.StringVar(&c.Auth, "auth", c.Auth, "none or proxy (CARTOGRAPH_AUTH)")
 	fs.StringVar(&c.AuthProxyHeader, "auth-proxy-header", c.AuthProxyHeader, "header carrying the identity when auth is proxy (CARTOGRAPH_AUTH_PROXY_HEADER)")
-	fs.StringVar(&c.Authz, "authz", c.Authz, "allow or roles (CARTOGRAPH_AUTHZ)")
+	fs.StringVar(&c.Authz, "authz", c.Authz, "allow, roles or access (CARTOGRAPH_AUTHZ)")
+	fs.StringVar(&c.AccessFile, "access-file", c.AccessFile, "the directory group mapping for authz access (CARTOGRAPH_ACCESS_FILE)")
 	fs.StringVar(&c.ReadRoles, "read-roles", c.ReadRoles, "roles that may read, comma-separated (CARTOGRAPH_READ_ROLES)")
 	fs.StringVar(&c.WriteRoles, "write-roles", c.WriteRoles, "roles that may write, comma-separated (CARTOGRAPH_WRITE_ROLES)")
 	fs.StringVar(&c.Codec, "codec", c.Codec, "manifest syntax, yaml or json (CARTOGRAPH_CODEC)")
@@ -281,12 +293,15 @@ func (c Config) Validate() error {
 		return fmt.Errorf("auth proxy needs a header name")
 	}
 	switch c.Authz {
-	case "allow", "roles":
+	case "allow", "roles", "access":
 	default:
-		return fmt.Errorf("authz %q: want allow or roles", c.Authz)
+		return fmt.Errorf("authz %q: want allow, roles or access", c.Authz)
 	}
-	if c.Authz == "roles" && c.Auth == "none" {
-		return fmt.Errorf("authz roles needs an authenticator: set CARTOGRAPH_AUTH")
+	if (c.Authz == "roles" || c.Authz == "access") && c.Auth == "none" {
+		return fmt.Errorf("authz %s needs an authenticator: set CARTOGRAPH_AUTH", c.Authz)
+	}
+	if c.AccessFile != "" && c.Authz != "access" {
+		return fmt.Errorf("an access file is for authz access: set CARTOGRAPH_AUTHZ=access")
 	}
 	switch c.Codec {
 	case "yaml", "json":

@@ -51,6 +51,8 @@ func main() {
 		err = runUnapplied(os.Args[2:])
 	case "excluded":
 		err = runExcluded(os.Args[2:])
+	case "access":
+		err = runAccess(os.Args[2:])
 	case "ready":
 		err = runReady(os.Args[2:])
 	case "-v", "--version", "version":

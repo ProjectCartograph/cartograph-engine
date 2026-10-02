@@ -70,7 +70,15 @@ func runServe(args []string) error {
 	if cfg.Store != "" {
 		target = cfg.Store
 	}
-	comp, err := compose(ctx, storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout, FanoutURL: cfg.FanoutURL, DocCache: cfg.DocCache})
+	opts := storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout, FanoutURL: cfg.FanoutURL, DocCache: cfg.DocCache}
+	if cfg.Authz == "access" {
+		d, err := loadDirectory(cfg.AccessFile)
+		if err != nil {
+			return err
+		}
+		opts.Access = &d
+	}
+	comp, err := compose(ctx, opts)
 	if err != nil {
 		return err
 	}
@@ -128,8 +136,12 @@ func runServe(args []string) error {
 	// Policy: what a principal may do. The one enforcement point wraps
 	// the whole API, after authentication.
 	var authz auth.Authorizer = auth.AllowAll{}
-	if cfg.Authz == "roles" {
+	switch cfg.Authz {
+	case "roles":
 		authz = roles.Parse(cfg.ReadRoles, cfg.WriteRoles)
+	case "access":
+		// The engine asks the same policy at every write (docs/adr/0011).
+		authz = comp.Authz
 	}
 
 	var ready atomic.Bool
