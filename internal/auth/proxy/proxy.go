@@ -15,23 +15,27 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
 )
 
-// Authenticator reads the identity from Header and the groups, when the
-// proxy forwards them, from GroupsHeader (comma-separated).
+// Authenticator reads the identity from Header and, when the proxy
+// forwards them, the display name, the email address and the groups
+// (comma-separated) from their own headers.
 type Authenticator struct {
 	Header       string
 	NameHeader   string
+	EmailHeader  string
 	GroupsHeader string
 }
 
 var _ auth.Authenticator = (*Authenticator)(nil)
 
 // New returns an Authenticator reading the subject from header, with the
-// conventional companions X-Forwarded-Preferred-Username and
-// X-Forwarded-Groups for the display name and the groups.
+// conventional companions X-Forwarded-Preferred-Username,
+// X-Forwarded-Email and X-Forwarded-Groups, the headers oauth2-proxy
+// sets, for the display name, the address and the groups.
 func New(header string) *Authenticator {
 	return &Authenticator{
 		Header:       header,
 		NameHeader:   "X-Forwarded-Preferred-Username",
+		EmailHeader:  "X-Forwarded-Email",
 		GroupsHeader: "X-Forwarded-Groups",
 	}
 }
@@ -44,7 +48,11 @@ func (a *Authenticator) Authenticate(r *http.Request) (auth.Principal, error) {
 	if subject == "" {
 		return auth.Anonymous, auth.ErrUnauthenticated
 	}
-	p := auth.Principal{Subject: subject, Name: strings.TrimSpace(r.Header.Get(a.NameHeader))}
+	p := auth.Principal{
+		Subject: subject,
+		Name:    strings.TrimSpace(r.Header.Get(a.NameHeader)),
+		Email:   strings.ToLower(strings.TrimSpace(r.Header.Get(a.EmailHeader))),
+	}
 	if p.Name == "" {
 		p.Name = subject
 	}

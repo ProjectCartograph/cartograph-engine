@@ -13,19 +13,22 @@ import (
 
 func TestActionForClassifiesMethodAndPath(t *testing.T) {
 	cases := []struct {
-		method, path, verb, kind, id string
+		method, path, verb, kind, id, resource string
 	}{
-		{"GET", "/manifests/Goal/g1", "read", "Goal", "g1"},
-		{"PUT", "/manifests/Goal/g1", "write", "Goal", "g1"},
-		{"DELETE", "/manifests/Goal/g1", "write", "Goal", "g1"},
-		{"POST", "/manifests/Project/p1/state", "write", "Project", "p1"},
-		{"GET", "/goals/tree", "read", "", ""},
-		{"POST", "/vault/apply", "write", "", ""},
-		{"POST", "/validate/Goal", "read", "Goal", ""},
+		{"GET", "/manifests/Goal/g1", "read", "Goal", "g1", ""},
+		{"PUT", "/manifests/Goal/g1", "write", "Goal", "g1", ""},
+		{"DELETE", "/manifests/Goal/g1", "write", "Goal", "g1", ""},
+		{"POST", "/manifests/Project/p1/state", "write", "Project", "p1", ""},
+		{"GET", "/goals/tree", "read", "", "", ""},
+		{"POST", "/vault/apply", "write", "", "", "vault"},
+		{"POST", "/validate/Goal", "read", "Goal", "", ""},
+		{"GET", "/access/people", "read", "", "", "access"},
+		{"PUT", "/access/people/jo@example.org", "write", "", "", "access"},
+		{"GET", "/session", "read", "", "", "session"},
 	}
 	for _, c := range cases {
 		a := auth.ActionFor(httptest.NewRequest(c.method, c.path, nil))
-		if a.Verb != c.verb || a.Kind != c.kind || a.ID != c.id {
+		if a.Verb != c.verb || a.Kind != c.kind || a.ID != c.id || a.Resource != c.resource || a.Change != nil {
 			t.Errorf("%s %s: got %+v", c.method, c.path, a)
 		}
 	}

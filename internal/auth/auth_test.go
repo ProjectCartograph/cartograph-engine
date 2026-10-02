@@ -38,12 +38,18 @@ func TestProxyReadsTheIdentityHeaders(t *testing.T) {
 	req.Header.Set("X-Forwarded-User", "jo@example.org")
 	req.Header.Set("X-Forwarded-Preferred-Username", "Jo")
 	req.Header.Set("X-Forwarded-Groups", "editors, admins")
+	req.Header.Set("X-Forwarded-Email", " Jo@Example.org ")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status %d", rec.Code)
 	}
 	if seen.Anonymous || seen.Subject != "jo@example.org" || seen.Name != "Jo" || len(seen.Roles) != 2 || seen.Roles[1] != "admins" {
+		t.Fatalf("got %+v", *seen)
+	}
+	// The address is what an access list knows a person by, so it is
+	// compared lower-case, without the spaces a header may carry.
+	if seen.Email != "jo@example.org" {
 		t.Fatalf("got %+v", *seen)
 	}
 	if seen.Actor("operator") != "jo@example.org" {

@@ -14,7 +14,8 @@ const (
 // ActionFor classifies a request: its verb from the method, and the
 // manifest it concerns from the path when the path names one
 // (/manifests/{kind}/{id}...). Everything else (the goal tree, the
-// snapshots list, the state manifest) is an action with no kind.
+// snapshots list, the state manifest) is an action with no kind; the
+// access list, the vault and the session are named as resources.
 func ActionFor(r *http.Request) Action {
 	a := Action{Verb: VerbWrite}
 	switch r.Method {
@@ -31,6 +32,10 @@ func ActionFor(r *http.Request) Action {
 	if len(parts) >= 2 && parts[0] == "validate" {
 		a.Verb = VerbRead // validation changes nothing
 		a.Kind = parts[1]
+	}
+	switch parts[0] {
+	case ResourceAccess, ResourceVault, ResourceSession:
+		a.Resource = parts[0]
 	}
 	return a
 }
