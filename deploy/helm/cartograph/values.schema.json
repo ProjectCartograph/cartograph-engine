@@ -153,7 +153,8 @@
           "type": "string",
           "enum": [
             "allow",
-            "roles"
+            "roles",
+            "access"
           ]
         },
         "readRoles": {
@@ -161,6 +162,76 @@
         },
         "writeRoles": {
           "type": "string"
+        },
+        "access": {
+          "type": "object",
+          "properties": {
+            "mapping": {
+              "type": "object",
+              "properties": {
+                "roles": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "reader": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "contributor": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "strategyEditor": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "administrator": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "teams": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "group"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "group": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "parent": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "existingConfigMap": {
+              "type": "string"
+            },
+            "applyJob": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -194,7 +265,7 @@
         },
         "syncPing": {
           "type": "string",
-          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$"
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+$"
         },
         "docCache": {
           "type": "integer",

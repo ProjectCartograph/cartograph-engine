@@ -1,0 +1,22 @@
+# Access by role and team behind an OIDC proxy, on a Postgres store.
+replicaCount: 2
+store:
+  url: postgres://cartograph:secret@postgres:5432/cartograph
+auth:
+  mode: proxy
+authz:
+  mode: access
+  access:
+    mapping:
+      roles:
+        reader: [all-staff]
+        contributor: [curriculum-division, assessment-unit]
+        administrator: [cartograph-administrators]
+      teams:
+        - group: curriculum-division
+          name: Curriculum division
+        - group: early-grades-team
+          name: Early grades
+          parent: Curriculum division
+        - group: assessment-unit
+          name: Assessment

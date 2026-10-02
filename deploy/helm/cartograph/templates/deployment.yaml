@@ -29,6 +29,10 @@ spec:
         {{- if and .Values.store.url (not .Values.store.existingSecret) }}
         checksum/store: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- end }}
+        {{- if and (eq .Values.authz.mode "access") .Values.authz.access.mapping }}
+        # A new mapping restarts the replicas, which read it at start.
+        checksum/access: {{ toYaml .Values.authz.access.mapping | sha256sum }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -107,6 +111,10 @@ spec:
             - name: CARTOGRAPH_WRITE_ROLES
               value: {{ . | quote }}
             {{- end }}
+            {{- if include "cartograph.accessConfigMap" . }}
+            - name: CARTOGRAPH_ACCESS_FILE
+              value: /etc/cartograph/access.yaml
+            {{- end }}
             - name: CARTOGRAPH_LOG_FORMAT
               value: {{ .Values.config.logFormat | quote }}
             - name: CARTOGRAPH_LOG_LEVEL
@@ -158,9 +166,19 @@ spec:
             - name: vault
               mountPath: /vault
             {{- end }}
+            {{- if include "cartograph.accessConfigMap" . }}
+            - name: access
+              mountPath: /etc/cartograph
+              readOnly: true
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- with include "cartograph.accessConfigMap" . }}
+        - name: access
+          configMap:
+            name: {{ . }}
+        {{- end }}
         {{- if .Values.vault.enabled }}
         - name: vault
           persistentVolumeClaim:

@@ -99,6 +99,12 @@ anything is applied.
 {{- if and (eq .Values.authz.mode "roles") (ne .Values.auth.mode "proxy") }}
 {{- fail "authz.mode=roles needs an authenticator: set auth.mode=proxy" }}
 {{- end }}
+{{- if and (eq .Values.authz.mode "access") (ne .Values.auth.mode "proxy") }}
+{{- fail "authz.mode=access needs an authenticator: set auth.mode=proxy" }}
+{{- end }}
+{{- if and .Values.authz.access.existingConfigMap .Values.authz.access.mapping }}
+{{- fail "authz.access: set mapping or existingConfigMap, not both" }}
+{{- end }}
 {{- if and (eq .Values.store.fanout "postgres") (not $store) }}
 {{- fail "store.fanout=postgres needs a Postgres store" }}
 {{- end }}
@@ -112,4 +118,15 @@ anything is applied.
 {{/* Whether more than one pod may run: the PDB only means something then. */}}
 {{- define "cartograph.multiReplica" -}}
 {{- if or (gt (int .Values.replicaCount) 1) .Values.autoscaling.enabled .Values.keda.enabled }}true{{ end }}
+{{- end }}
+
+{{/*
+The ConfigMap holding the access file, or empty when there is none.
+*/}}
+{{- define "cartograph.accessConfigMap" -}}
+{{- if eq .Values.authz.mode "access" }}
+{{- if .Values.authz.access.existingConfigMap }}{{ .Values.authz.access.existingConfigMap }}
+{{- else if .Values.authz.access.mapping }}{{ printf "%s-access" (include "cartograph.fullname" .) }}
+{{- end }}
+{{- end }}
 {{- end }}

@@ -66,11 +66,31 @@ auth:
   proxyHeader: ""
 
 authz:
-  # allow or roles. roles needs auth.mode=proxy.
+  # allow, roles or access. roles and access need auth.mode=proxy.
   mode: allow
-  # Comma-separated roles.
+  # Comma-separated roles, for roles.
   readRoles: ""
   writeRoles: ""
+  # For access (docs/DEPLOYMENT.md, "Access by role and team"): the
+  # mapping from directory groups to roles and teams, as the access file
+  # holds it. Rendered into a ConfigMap; or name an existing ConfigMap
+  # with an access.yaml key. With a Postgres store, a Job runs
+  # `cartograph access apply` after every install and upgrade, creating
+  # the mapped teams once.
+  access:
+    mapping: {}
+    #   roles:
+    #     reader: [all-staff]
+    #     contributor: [curriculum-division, assessment-unit]
+    #     strategyEditor: [planning-unit]
+    #     administrator: [cartograph-administrators]
+    #   teams:
+    #     - group: curriculum-division
+    #       name: Curriculum division
+    #     - group: assessment-unit
+    #       name: Assessment
+    existingConfigMap: ""
+    applyJob: true
 
 config:
   # text or json

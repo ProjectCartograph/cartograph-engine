@@ -57,7 +57,10 @@ The volume claim is kept when the release is removed.
   `store.fanoutUrl` (or `store.fanoutUrlKey`) to a direct Postgres URL
   for the fan-out's one listening connection per replica.
 - **Identity.** `auth.mode=proxy` behind an authenticating proxy that
-  is the only route to the pods, and `authz` for roles.
+  is the only route to the pods, and `authz` for roles, or
+  `authz.mode=access` with `authz.access.mapping` for access by role
+  and team from directory groups. `cartograph-oidc` puts Dex and
+  oauth2-proxy in front of this chart.
 - **The ingress.** The sync socket at `/api/v1/sync` is a long-lived
   WebSocket. With ingress-nginx, set
   `nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"` and
@@ -90,8 +93,11 @@ The volume claim is kept when the release is removed.
 | `vault.persistence.size` | `1Gi` | |
 | `auth.mode` | `none` | `none` or `proxy` (`CARTOGRAPH_AUTH`) |
 | `auth.proxyHeader` | empty | The identity header (`CARTOGRAPH_AUTH_PROXY_HEADER`). Empty: `X-Forwarded-User` |
-| `authz.mode` | `allow` | `allow` or `roles` (`CARTOGRAPH_AUTHZ`) |
-| `authz.readRoles`, `authz.writeRoles` | empty | Comma-separated roles |
+| `authz.mode` | `allow` | `allow`, `roles` or `access` (`CARTOGRAPH_AUTHZ`) |
+| `authz.readRoles`, `authz.writeRoles` | empty | Comma-separated roles, for `roles` |
+| `authz.access.mapping` | `{}` | For `access`: the directory group mapping, as the access file holds it (`docs/DEPLOYMENT.md`, "Access by role and team"); rendered into a ConfigMap |
+| `authz.access.existingConfigMap` | empty | Instead of a mapping: a ConfigMap with an `access.yaml` key |
+| `authz.access.applyJob` | `true` | With a Postgres store, a post-install and post-upgrade Job that runs `cartograph access apply`, creating the mapped teams once. With a vault there is no Job: run `cartograph access apply /etc/cartograph/access.yaml` in the pod |
 | `config.logFormat` | `json` | `text` or `json` |
 | `config.logLevel` | `info` | `debug`, `info`, `warn` or `error` |
 | `config.codec` | empty | `yaml` or `json`. Empty: the engine's default |

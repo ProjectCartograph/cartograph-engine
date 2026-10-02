@@ -1,0 +1,76 @@
+{{- if and (eq .Values.authz.mode "access") .Values.authz.access.mapping }}
+# The access file (docs/DEPLOYMENT.md, "Access by role and team"): which
+# directory groups grant which roles, and which groups are teams.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cartograph.fullname" . }}-access
+  labels:
+    {{- include "cartograph.labels" . | nindent 4 }}
+data:
+  access.yaml: |
+    {{- toYaml .Values.authz.access.mapping | nindent 4 }}
+{{- end }}
+{{- if and (include "cartograph.accessConfigMap" .) .Values.authz.access.applyJob (include "cartograph.hasStore" .) }}
+---
+# Creates the mapped teams that do not exist yet, once per install and
+# upgrade, from one pod, so two replicas never both create a team. It
+# never changes a team that exists. A vault keeps its one volume to its
+# one pod, so with a vault run `cartograph access apply` in that pod.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cartograph.fullname" . }}-access-apply
+  labels:
+    {{- include "cartograph.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      # Not the replicas' selector labels: the Service and the
+      # disruption budget must not count this pod.
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: access-apply
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "cartograph.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: access-apply
+          image: {{ include "cartograph.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["access", "apply", "/etc/cartograph/access.yaml"]
+          env:
+            - name: CARTOGRAPH_STORE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartograph.storeSecretName" . }}
+                  key: {{ if .Values.store.existingSecret }}{{ .Values.store.urlKey }}{{ else }}url{{ end }}
+            {{- with .Values.config.codec }}
+            - name: CARTOGRAPH_CODEC
+              value: {{ . | quote }}
+            {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: access
+              mountPath: /etc/cartograph
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: access
+          configMap:
+            name: {{ include "cartograph.accessConfigMap" . }}
+{{- end }}

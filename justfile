@@ -217,6 +217,8 @@ helm-lint:
     refuse "needs keda.prometheus.serverAddress" --set store.url=postgres://h/db --set keda.enabled=true
     refuse "must be greater than" --set store.url=postgres://h/db --set terminationGracePeriodSeconds=10
     refuse "needs an authenticator" --set store.url=postgres://h/db --set authz.mode=roles
+    refuse "needs an authenticator" --set store.url=postgres://h/db --set authz.mode=access
+    refuse "not both" --set store.url=postgres://h/db --set auth.mode=proxy --set authz.mode=access --set authz.access.existingConfigMap=x --set authz.access.mapping.roles.reader[0]=all
     refuse "values don't meet the specifications" --set store.url=mysql://h/db
     schemas=(-schema-location default
       -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{{{.Group}}/{{{{.ResourceKind}}_{{{{.ResourceAPIVersion}}.json')
