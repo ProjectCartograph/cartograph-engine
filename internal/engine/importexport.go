@@ -131,13 +131,16 @@ func (e *Engine) ImportDir(ctx context.Context, dir, actor, reason string) (Repo
 	// Phase B: everything validated, write it all in one transaction.
 	err = e.manifests.WithinTransaction(ctx, func(ctx context.Context, tx store.ManifestStore) error {
 		for _, f := range files {
-			current, found, err := tx.GetCurrent(ctx, f.kind, f.id)
+			// The next number follows the highest saved version, as Commit
+			// does: the current manifest may be a working copy, which has
+			// no number of its own.
+			versions, err := tx.ListVersions(ctx, f.kind, f.id)
 			if err != nil {
 				return err
 			}
 			number := 1
-			if found {
-				number = current.Number + 1
+			if len(versions) > 0 {
+				number = versions[len(versions)-1].Number + 1
 			}
 			v := Version{Kind: f.kind, ID: f.id, Number: number, YAML: f.yaml, Actor: actor, Reason: reason, On: timeNow().UTC()}
 			if err := tx.PutVersion(ctx, v); err != nil {
