@@ -1,6 +1,6 @@
 # Cartograph systems architecture
 
-**Describes the tree as built, at engine 2.2.0. Where it describes a
+**Describes the tree as built, at engine 2.2.1. Where it describes a
 port with one adapter, that is the state of things, not a promise. The
 decisions behind it are recorded one per file in
 [`adr/`](adr/README.md).**
