@@ -65,6 +65,27 @@ auth:
   # The header the proxy sets. Empty: X-Forwarded-User.
   proxyHeader: ""
 
+# Agents over MCP at /api/v1/mcp (docs/adr/0016): off unless enabled.
+# An agent acts for its person, reads, drafts and proposes; its person
+# accepts. With authz.mode=access, list in the mapping's agents key the
+# roles that may use one.
+agents:
+  enabled: false
+  # Who authorizes agents. cartograph: Cartograph's own authorization
+  # server, so any MCP client connects through the browser with nothing
+  # registered beforehand; issuer is then Cartograph's public address,
+  # and the proxy in front passes /api/v1/mcp, /oauth/register,
+  # /oauth/token and /.well-known/oauth-* through unchecked. proxy: the
+  # proxy in front checks the tokens of the authorization server issuer
+  # names, as it checks every other request.
+  auth: proxy
+  issuer: ""
+  # For auth cartograph: an existing Secret holding the signing key, at
+  # least 32 bytes, as CARTOGRAPH_AGENT_KEY.
+  keySecret:
+    name: ""
+    key: agent-key
+
 authz:
   # allow, roles or access. roles and access need auth.mode=proxy.
   mode: allow

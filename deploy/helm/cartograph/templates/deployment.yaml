@@ -103,6 +103,21 @@ spec:
             {{- end }}
             - name: CARTOGRAPH_AUTHZ
               value: {{ .Values.authz.mode | quote }}
+            - name: CARTOGRAPH_MCP
+              value: {{ ternary "on" "off" .Values.agents.enabled | quote }}
+            - name: CARTOGRAPH_MCP_AUTH
+              value: {{ .Values.agents.auth | quote }}
+            {{- with .Values.agents.issuer }}
+            - name: CARTOGRAPH_MCP_ISSUER
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if .Values.agents.keySecret.name }}
+            - name: CARTOGRAPH_AGENT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.agents.keySecret.name | quote }}
+                  key: {{ .Values.agents.keySecret.key | quote }}
+            {{- end }}
             {{- with .Values.authz.readRoles }}
             - name: CARTOGRAPH_READ_ROLES
               value: {{ . | quote }}

@@ -220,6 +220,19 @@
                       }
                     }
                   }
+                },
+                "agents": {
+                  "type": "array",
+                  "description": "The roles whose people may use an agent over MCP (docs/adr/0016).",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "reader",
+                      "contributor",
+                      "strategyEditor",
+                      "administrator"
+                    ]
+                  }
                 }
               },
               "additionalProperties": false
@@ -581,6 +594,41 @@
     },
     "priorityClassName": {
       "type": "string"
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Agents over MCP (docs/adr/0016).",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "issuer": {
+          "type": "string",
+          "description": "The authorization server MCP clients sign in with (CARTOGRAPH_MCP_ISSUER)."
+        },
+        "auth": {
+          "type": "string",
+          "enum": [
+            "proxy",
+            "cartograph"
+          ],
+          "description": "Who authorizes agents (CARTOGRAPH_MCP_AUTH)."
+        },
+        "keySecret": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            }
+          },
+          "description": "The Secret holding CARTOGRAPH_AGENT_KEY, for auth cartograph."
+        }
+      }
     }
   }
 }
