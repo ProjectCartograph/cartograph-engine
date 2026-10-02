@@ -65,7 +65,7 @@ func adapter(own string) []string {
 	siblings := []string{
 		"internal/store/vault", "internal/store/sqlite", "internal/store/memory", "internal/store/postgres",
 		"internal/codec/yaml", "internal/codec/json",
-		"internal/printer/chromium", "internal/auth/proxy", "internal/auth/roles",
+		"internal/printer/chromium", "internal/auth/access", "internal/auth/proxy", "internal/auth/roles",
 		"internal/fanout/memory", "internal/fanout/postgres",
 		"internal/store/conformance", "internal/codec/conformance", "internal/fanout/conformance",
 		"internal/crdt/automerge", "internal/crdt/conformance",
@@ -135,6 +135,7 @@ var rules = map[string][]string{
 	"internal/codec/json":         join([]string{"internal/store"}, adapter("internal/codec/json")),
 	"internal/codec/conformance":  join([]string{"internal/store"}, adapter("internal/codec/conformance")),
 	"internal/printer/chromium":   join([]string{"internal/store", "internal/codec"}, adapter("internal/printer/chromium")),
+	"internal/auth/access":        join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/access")),
 	"internal/auth/proxy":         join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/proxy")),
 	"internal/auth/roles":         join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/roles")),
 	"internal/yamlfmt":            join([]string{"internal", "pkg", "cmd"}, without(drivers, "go.yaml.in/yaml")),
