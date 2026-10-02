@@ -11,7 +11,7 @@ set -euo pipefail
 # The types are Angular's. The scopes are this repository's areas
 # (CONTRIBUTING.md lists them); a change across several has none.
 types='build|ci|docs|feat|fix|perf|refactor|test'
-scopes='adr api arch auth chart cli client codec commits compose config contract contributing crdt deployment deps engine fanout flake kinds release render spa store syncserver ui vault'
+scopes='adr api arch auth chart cli client codec commits compose config contract contributing crdt deployment deps engine fanout flake kinds mcp oauth release render spa store syncserver ui vault'
 
 check() {
     local msg="$1" where="$2" bad=0

@@ -98,6 +98,8 @@ has none. In this repository:
 - `fanout`: internal/fanout
 - `flake`: flake.nix
 - `kinds`: internal/kinds
+- `mcp`: internal/mcp, the MCP adapter for agents
+- `oauth`: internal/oauth, the authorization server for agents
 - `release`: VERSION and the pinned interface
 - `render`: internal/render
 - `spa`: internal/spa
