@@ -156,6 +156,7 @@ flowchart LR
         d0["pkg/client.Client<br/>the port every interface uses"]
         d1["HTTP API<br/>internal/api (the remote transport's far end)"]
         d4["Sync socket<br/>internal/syncserver<br/>automerge-repo protocol v1"]
+        d5["MCP, for agents<br/>internal/mcp<br/>read, draft, propose"]
         d2["Command line<br/>cmd/cartograph"]
         d3["Tests<br/>conformance, engine, api"]
         d0 -. inproc .-> E
@@ -213,6 +214,7 @@ flowchart LR
 
     d1 --> E
     d4 --> E
+    d5 --> E
     d2 --> E
     d3 --> E
     E --> p1 & p2 & p3 & p4 & p5 & p7 & p9 & p10 & p11 & p12 & p13 & p14
@@ -403,6 +405,8 @@ A change that needs a new edge gets a new port, not an exception
 | `internal/printer`, `printer/chromium` | PDF port and the headless-browser adapter | nothing / `printer`, `os/exec` |
 | `internal/identity` | The HTTP-free identity types: principal, action and change, grants, roles, the authorizer | nothing |
 | `internal/auth`, `auth/proxy`, `auth/roles`, `auth/access` | Identity and policy ports, the two middlewares; the proxy-header authenticator, the role policy, and the access policy by role and team | `net/http`, `identity` / `auth` |
+| `internal/mcp` | The MCP front door for agents (ADR 0016): sessionless HTTP and stdio, tools that read, draft and propose, guide prompts from the flows | `engine`, `auth`, `reporting`; the MCP SDK |
+| `internal/oauth` | Cartograph's own authorization server for agents, one of two adapters for who authorizes them (ADR 0016): client registration, consent, signed tokens bound to the engine's grants | `identity`, `store` types; a port the engine satisfies |
 | `internal/render` | HTML documents (charters) from engine data; reads through the engine and decodes through its codec | `engine` |
 | `internal/reporting`, `reporting/computed`, `reporting/postgres`, `reporting/conformance` | The reporting port, outside the core (ADR 0014): reports computed from the engine's reads, or answered by views in a Postgres store's database, and the suite that holds one to the other | nothing / `engine` (computed), `pgx` (postgres) |
 | `internal/api`, `api/gen` | The generated strict server and the thin handlers | `engine`, `store`, `codec`, `auth`, `printer`, `render` |
@@ -856,9 +860,10 @@ In rough order of expected need.
 - Permissions per manifest (an access list on one project), if an
   organisation needs more than roles and teams (TAXONOMY.md D27 says
   why it was not adopted).
-- The events endpoint and the MCP adapter. The event log itself exists
-  on every store (ADR 0013); the next release serves it, to agents and
-  to `remote`'s `Subscribe`.
+- The events endpoint of the HTTP transport, so `remote`'s `Subscribe`
+  follows the event log as agents already do over MCP.
+- Service agents with identities of their own (ADR 0016 leaves them
+  open).
 - The terminal interface (`UI_CONTRACT.md`).
 - Presence and live editing in a terminal interface: an automerge-repo
   peer on the sync socket, as the web interface has (`MULTIPLAYER.md`).

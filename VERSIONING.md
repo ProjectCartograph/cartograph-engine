@@ -21,6 +21,7 @@ can depend on. A change to any of it is classified by the rules below.
 | The command line | `cartograph` subcommands, flags, `CARTOGRAPH_*` settings | A subcommand, flag or setting removed or its meaning changed; a default changed | One added | Help text |
 | The vault layout | `<Kind>/<id>.<ext>`, `vault.yaml`, `.cartograph/` | A vault written by one version not opening in a later one | New files a later version writes and an earlier one ignores | The index (always rebuildable) |
 | The Postgres layout | the tables `store/postgres` migrates on start, and the `report_*` views `reporting/postgres` creates when chosen | A database written by one release not opening in a later one; a replica of the previous minor no longer working against it during a rolling upgrade | Tables, columns and indexes added, with the previous minor still working | |
+| The MCP tools | `internal/mcp`: tool and prompt names and their inputs | A tool or an input removed or renamed; a tool allowed to make the record | A tool or optional input added | Descriptions |
 | The images and binaries | `cartograph:<version>`, `cartograph-linux-{amd64,arm64}` | A runtime user, port, volume or entrypoint changed | | |
 
 The sync socket speaks a protocol that is automerge-repo's, not

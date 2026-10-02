@@ -306,6 +306,128 @@ cheapest way to find out a release changed something you relied on.
   `cartograph-oidc/scripts/e2e.py` does this for its distribution and
   is a good template.
 
+## Agents
+
+Agents connect over MCP. Each acts for one person, with that person's
+access; it reads and proposes, and its person decides (ADR 0016). Turn
+them on with `CARTOGRAPH_MCP=on` and name the roles allowed them in the
+mapping (`agents: [contributor]`).
+
+A person adds `https://cartograph.example.org/api/v1/mcp` to their
+client, a browser opens, they sign in and click Allow. Something has to
+run that flow, an OAuth authorization server, and you have two choices.
+
+### Laravel runs it
+
+If Laravel is your whole stack, make it the authorization server too.
+Cartograph then trusts Laravel's answer to "who is this?", as it does
+for a browser, and keeps nothing about tokens.
+
+Install Passport and Laravel MCP, publish Laravel MCP's consent view,
+and register its OAuth routes, which add client registration and the
+discovery documents (see Laravel's MCP documentation, "OAuth
+authentication"):
+
+```php
+// routes/ai.php
+use Laravel\Mcp\Facades\Mcp;
+
+Mcp::oauthRoutes();
+```
+
+Keep each person's groups on their user at sign-in, so a token can
+answer for them later. In step 3's callback, after the groups loop:
+
+```php
+$person = User::updateOrCreate(
+    ['email' => strtolower($user->getEmail())],
+    ['name' => $user->getName(), 'groups' => $groups],
+);
+Auth::login($person);
+```
+
+Then let step 4's check accept a Passport token when there is no
+session:
+
+```php
+Route::get('/auth/check', function () {
+    if ($email = session('cartograph.email')) {
+        return response('', 200, [
+            'X-Forwarded-Email' => $email,
+            'X-Forwarded-Groups' => implode(',', session('cartograph.groups', [])),
+            'X-Forwarded-Preferred-Username' => session('cartograph.name', ''),
+        ]);
+    }
+    // An agent, with a token Laravel issued its person.
+    $user = Auth::guard('api')->user();
+    if (! $user) {
+        return response('', 401);
+    }
+    return response('', 200, [
+        'X-Forwarded-Email' => $user->email,
+        'X-Forwarded-Groups' => implode(',', $user->groups ?? []),
+        'X-Forwarded-Preferred-Username' => $user->name,
+    ]);
+});
+```
+
+In nginx, pass the token to the check, and answer an agent with no
+token the way MCP clients expect, so they know where to sign in:
+
+```nginx
+    location = /_who {
+        # as before, and:
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    location = /api/v1/mcp {
+        # the same auth_request and headers as /api/v1/, and:
+        error_page 401 = @mcp_sign_in;
+        proxy_pass http://cartograph:8080;
+    }
+
+    location @mcp_sign_in {
+        add_header WWW-Authenticate 'Bearer resource_metadata="https://cartograph.example.org/.well-known/oauth-protected-resource/api/v1/mcp"' always;
+        return 401;
+    }
+
+    # Cartograph says where agents sign in: at Laravel.
+    location ^~ /.well-known/oauth-protected-resource {
+        proxy_pass http://cartograph:8080;
+    }
+```
+
+And tell Cartograph where that is:
+
+```sh
+CARTOGRAPH_MCP=on
+CARTOGRAPH_MCP_AUTH=proxy
+CARTOGRAPH_MCP_ISSUER=https://cartograph.example.org
+```
+
+The person's consent, their list of connected agents and revoking them
+are Laravel's, on Laravel's pages. What an agent may do once connected
+is Cartograph's, the same either way.
+
+### Cartograph runs it
+
+If you would rather not run an authorization server, let Cartograph be
+one (`CARTOGRAPH_MCP_AUTH=cartograph`). Its consent page sits behind
+your nginx check like any page, so people still sign in through Laravel
+and Entra ID. Send these paths to Cartograph without the check, since
+Cartograph checks their tokens itself:
+
+```nginx
+    location ~ ^/(api/v1/mcp|oauth/register|oauth/token|\.well-known/oauth-) {
+        proxy_pass http://cartograph:8080;
+    }
+```
+
+and `/oauth/authorize` to Cartograph with the check, as `/api/v1/` is.
+`docs/DEPLOYMENT.md`, "How an agent signs in", has the settings. Connected
+agents are then listed on Cartograph's Access page, in your interface if
+it uses the `/agents` API.
+
 ## Reports and warehouses
 
 `CARTOGRAPH_REPORTS=computed` (the default) serves four reports at

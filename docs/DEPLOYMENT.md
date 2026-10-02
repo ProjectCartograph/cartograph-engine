@@ -33,6 +33,10 @@ prints the same table.
 | `CARTOGRAPH_DOC_CACHE` | `-doc-cache` | `1000` | Shared documents a replica keeps in memory, least recently used dropped first. A cache only: the store holds every change |
 | `CARTOGRAPH_COMPACT_AFTER` | `-compact-after` | `24h` | With a Postgres store, how old a version (never a manifest's latest) must be before it is kept as a patch against the one before it instead of whole. It is also how long a rolling upgrade from 2.2 has to finish, since a 2.2 replica cannot read a compacted version. `0` turns compaction off |
 | `CARTOGRAPH_REPORTS` | `-reports` | `computed` | Reporting (ADR 0014): `computed` from the engine on any store, `postgres` as views in a Postgres store, or `off` |
+| `CARTOGRAPH_MCP` | `-mcp` | `off` | `on` serves agents over MCP at `/api/v1/mcp` (ADR 0016) |
+| `CARTOGRAPH_MCP_AUTH` | `-mcp-auth` | `proxy` | Who authorizes agents: `cartograph`, Cartograph's own authorization server, or `proxy`, whatever authenticates every other request ("Agents" below) |
+| `CARTOGRAPH_MCP_ISSUER` | `-mcp-issuer` | empty | The authorization server MCP clients sign in with, published as protected resource metadata at `/.well-known/oauth-protected-resource`. With `CARTOGRAPH_MCP_AUTH=cartograph`, Cartograph's own public address |
+| `CARTOGRAPH_AGENT_KEY` | none | empty | With `CARTOGRAPH_MCP_AUTH=cartograph`: the secret its tokens are signed with, at least 32 bytes, the same on every replica |
 | `CARTOGRAPH_DRAIN_DELAY` | `-drain-delay` | `0` | After SIGTERM, how long the replica keeps serving with `/readyz` at 503 so load balancers stop sending it work. Set it to at least the load balancer's health-check interval |
 | `CARTOGRAPH_WATCH` | `-watch` | `true` | Reload manifests when their files change. Turn off on a read-only or network filesystem where inotify misbehaves |
 | `CARTOGRAPH_CHROMIUM` | `-chromium` | empty | Browser to print PDFs with. Empty means the vault's `Settings.spec.chromium`, then `CHROMIUM`, then the PATH |
@@ -311,6 +315,80 @@ who recorded it and when. `events` lists every save, state change and
 reading in order. References, project state, the access list and the
 shared drafts are tables of their own. Every read the interface makes is
 an index lookup bounded by what it returns.
+
+## Agents
+
+Agents connect over MCP, off unless `CARTOGRAPH_MCP=on`. An agent acts
+for the person who connected it, with that person's access and no more,
+and it reads and proposes: it may read, validate, run checks and edit
+drafts, where people on the same manifest see it working, but saving a
+version, recording a reading, moving or handing off a project and
+deleting are proposals its person accepts or declines under Proposals in
+the interface (ADR 0016).
+
+With an access list, the mapping's `agents:` key names the roles that
+may use one, and an administrator can turn one person's agents off on
+the Access page:
+
+```yaml
+agents: [contributor, strategyEditor]
+```
+
+### How an agent signs in
+
+A person adds Cartograph's MCP address (`https://cartograph.example.org/api/v1/mcp`)
+to their client. The client opens a browser, the person signs in as
+usual, sees what the agent may do, and clicks Allow. That flow is the
+MCP specification's, and who runs it is your choice:
+
+**Cartograph runs it** (`CARTOGRAPH_MCP_AUTH=cartograph`). Nothing is
+registered anywhere beforehand: a client registers itself with
+Cartograph, by a Client ID Metadata Document or dynamic registration,
+whichever it supports. Sign-in still goes through your identity
+provider, with its MFA and policies, because the consent page sits
+behind your proxy like every other page. The agent then holds a
+one-hour token and a refresh token that Cartograph signs; each grant is
+listed on the Access page, where its person or an administrator
+disconnects it at once. For a client with no browser flow, a person
+creates a token to paste on the same page.
+
+```sh
+CARTOGRAPH_MCP=on
+CARTOGRAPH_MCP_AUTH=cartograph
+CARTOGRAPH_MCP_ISSUER=https://cartograph.example.org
+CARTOGRAPH_AGENT_KEY=...   # openssl rand -base64 48, from a secret store
+```
+
+The proxy passes these paths through unchecked: Cartograph checks the
+token on each, and on `/api/v1/mcp` it reads no header the proxy sets.
+Keep `/oauth/authorize` behind sign-in.
+
+```
+/api/v1/mcp
+/oauth/register
+/oauth/token
+/.well-known/oauth-authorization-server
+/.well-known/oauth-protected-resource
+/.well-known/oauth-protected-resource/api/v1/mcp
+```
+
+An agent's requests carry no directory groups, so its person's roles
+are the ones recorded at their last sign-in, and only for 30 days after
+it. A code or refresh token used twice ends its grant, since one of the
+two was not the agent's.
+
+**Your own stack runs it** (`CARTOGRAPH_MCP_AUTH=proxy`, the default).
+Set `CARTOGRAPH_MCP_ISSUER` to the authorization server, and have the
+proxy check its bearer tokens on `/api/v1/mcp` and pass the same
+identity headers as for a browser (oauth2-proxy: `skip_jwt_bearer_tokens`
+with the issuer in `extra_jwt_issuers`). Leave
+`/.well-known/oauth-protected-resource` public. Choose this when your
+authorization server registers clients itself (Keycloak, Okta, Auth0,
+Laravel Passport) or you want agents governed there. With Dex or Entra
+ID, an administrator registers each client.
+
+For an agent on your own machine, `cartograph mcp ./vault` speaks MCP
+over stdio as the operator, held to the same rules.
 
 ## Reports
 
