@@ -189,3 +189,38 @@ func TestAccessSettings(t *testing.T) {
 		}
 	}
 }
+
+func TestAgentSettings(t *testing.T) {
+	ok := map[string]string{"CARTOGRAPH_AUTH": "proxy", "CARTOGRAPH_AUTHZ": "access", "CARTOGRAPH_MCP": "on",
+		"CARTOGRAPH_MCP_AUTH": "cartograph", "CARTOGRAPH_MCP_ISSUER": "https://cartograph.example.org",
+		"CARTOGRAPH_AGENT_KEY": strings.Repeat("k", 32)}
+	c, err := FromEnv(env(ok))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.MCPAuth != "cartograph" || len(c.AgentKey) != 32 {
+		t.Fatalf("not applied: %+v", c)
+	}
+	if c, _ := FromEnv(env(nil)); c.MCPAuth != "proxy" {
+		t.Fatalf("the default: %q", c.MCPAuth)
+	}
+	with := func(k, v string) map[string]string {
+		m := map[string]string{}
+		for kk, vv := range ok {
+			m[kk] = vv
+		}
+		m[k] = v
+		return m
+	}
+	for name, vars := range map[string]map[string]string{
+		"an unknown mode":            with("CARTOGRAPH_MCP_AUTH", "jwt"),
+		"no public address":          with("CARTOGRAPH_MCP_ISSUER", ""),
+		"an address with a path":     with("CARTOGRAPH_MCP_ISSUER", "https://cartograph.example.org/dex"),
+		"a short key":                with("CARTOGRAPH_AGENT_KEY", "short"),
+		"grants with no access list": with("CARTOGRAPH_AUTHZ", "roles"),
+	} {
+		if _, err := FromEnv(env(vars)); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}
