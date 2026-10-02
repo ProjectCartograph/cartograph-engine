@@ -25,7 +25,7 @@ func NewAccessStore(db *sql.DB) *AccessStore {
 	return &AccessStore{db: db}
 }
 
-const personColumns = `email, name, subject, roles, teams, directory_roles, directory_teams, added_by, added_on, last_signed_in`
+const personColumns = `email, name, subject, roles, teams, directory_roles, directory_teams, added_by, added_on, last_signed_in, agents_off`
 
 func (s *AccessStore) ListPeople(ctx context.Context) ([]store.Person, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT `+personColumns+` FROM people ORDER BY email`)
@@ -57,10 +57,10 @@ func (s *AccessStore) GetPerson(ctx context.Context, email string) (store.Person
 
 func (s *AccessStore) GrantPerson(ctx context.Context, p store.Person) (store.Person, error) {
 	out, err := scanPerson(s.db.QueryRowContext(ctx, `
-		INSERT INTO people (email, roles, teams, added_by, added_on) VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT (email) DO UPDATE SET roles = excluded.roles, teams = excluded.teams
+		INSERT INTO people (email, roles, teams, added_by, added_on, agents_off) VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT (email) DO UPDATE SET roles = excluded.roles, teams = excluded.teams, agents_off = excluded.agents_off
 		RETURNING `+personColumns,
-		p.Email, list(p.Roles), list(p.Teams), p.AddedBy, stamp(p.AddedOn)))
+		p.Email, list(p.Roles), list(p.Teams), p.AddedBy, stamp(p.AddedOn), p.AgentsOff))
 	if err != nil {
 		return store.Person{}, fmt.Errorf("grant %s: %w", p.Email, err)
 	}
@@ -111,7 +111,7 @@ type scanner interface{ Scan(dest ...any) error }
 func scanPerson(r scanner) (store.Person, error) {
 	var p store.Person
 	var roles, teams, dirRoles, dirTeams, addedOn, signedIn string
-	if err := r.Scan(&p.Email, &p.Name, &p.Subject, &roles, &teams, &dirRoles, &dirTeams, &p.AddedBy, &addedOn, &signedIn); err != nil {
+	if err := r.Scan(&p.Email, &p.Name, &p.Subject, &roles, &teams, &dirRoles, &dirTeams, &p.AddedBy, &addedOn, &signedIn, &p.AgentsOff); err != nil {
 		return store.Person{}, err
 	}
 	for _, f := range []struct {

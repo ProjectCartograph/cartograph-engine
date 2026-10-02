@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -286,6 +287,85 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 		must(t, err)
 		if !found || string(cur.YAML) != string(workingYAML2) || cur.Number != 0 {
 			t.Fatalf("expected updated working copy, got %+v", cur)
+		}
+	})
+
+	t.Run("proposals are kept as proposed and decided once", func(t *testing.T) {
+		s := newStore(t)
+		ps, ok := s.(store.ProposalStore)
+		if !ok {
+			t.Skip("the adapter keeps no proposals")
+		}
+		at := time.Date(2026, 10, 3, 9, 0, 0, 0, time.UTC)
+		put := func(id, kind, mid, forWhom string, at time.Time) {
+			must(t, ps.PutProposal(ctx, store.Proposal{ID: id, Kind: kind, ManifestID: mid, Op: store.ProposeSave,
+				Text: []byte("metadata:\n  id: " + mid + "\n"), Base: 2, Reason: "tidy", Agent: "Claude", For: forWhom, At: at, Status: store.ProposalOpen}))
+		}
+		put("p1", "Goal", "g1", "ada@example.org", at)
+		put("p2", "Goal", "g1", "lee@example.org", at.Add(time.Minute))
+		must(t, ps.PutProposal(ctx, store.Proposal{ID: "p3", Kind: "KPIReadings", ManifestID: "r1", Op: store.ProposeAppend,
+			Series: "readings", Item: []byte(`{"period":"2026-09","value":41}`), Base: 4, Agent: "Claude", For: "ada@example.org", At: at.Add(2 * time.Minute), Status: store.ProposalOpen}))
+
+		got, err := ps.GetProposal(ctx, "p3")
+		must(t, err)
+		if got.Op != store.ProposeAppend || got.Series != "readings" || !sameJSON(string(got.Item), `{"period":"2026-09","value":41}`) || got.Base != 4 || !got.At.Equal(at.Add(2*time.Minute)) {
+			t.Fatalf("p3 came back as %+v", got)
+		}
+		if _, err := ps.GetProposal(ctx, "nope"); !errors.Is(err, store.ErrNoProposal) {
+			t.Fatalf("an unknown proposal: %v", err)
+		}
+		ids := func(f store.ProposalFilter) string {
+			list, err := ps.ListProposals(ctx, f)
+			must(t, err)
+			var out []string
+			for _, p := range list {
+				out = append(out, p.ID)
+			}
+			return fmt.Sprint(out)
+		}
+		if got := ids(store.ProposalFilter{For: "ada@example.org"}); got != "[p3 p1]" {
+			t.Fatalf("Ada's, newest first: %s", got)
+		}
+		if got := ids(store.ProposalFilter{Kind: "Goal", ManifestID: "g1"}); got != "[p2 p1]" {
+			t.Fatalf("on Goal/g1: %s", got)
+		}
+
+		// Two decisions at once: one wins.
+		var wg sync.WaitGroup
+		errs := make([]error, 6)
+		for i := range errs {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				status := store.ProposalAccepted
+				if i%2 == 1 {
+					status = store.ProposalDeclined
+				}
+				_, errs[i] = ps.DecideProposal(ctx, "p1", status, "ada@example.org", "ok", at.Add(time.Hour), 3)
+			}(i)
+		}
+		wg.Wait()
+		won := 0
+		for _, err := range errs {
+			switch {
+			case err == nil:
+				won++
+			case !errors.Is(err, store.ErrProposalDecided):
+				t.Fatalf("a losing decision: %v", err)
+			}
+		}
+		if won != 1 {
+			t.Fatalf("%d decisions won", won)
+		}
+		got, _ = ps.GetProposal(ctx, "p1")
+		if got.Status == store.ProposalOpen || got.DecidedBy != "ada@example.org" || !got.DecidedAt.Equal(at.Add(time.Hour)) {
+			t.Fatalf("p1 after its decision: %+v", got)
+		}
+		if got := ids(store.ProposalFilter{For: "ada@example.org", Status: store.ProposalOpen}); got != "[p3]" {
+			t.Fatalf("Ada's open ones: %s", got)
+		}
+		if _, err := ps.DecideProposal(ctx, "nope", store.ProposalDeclined, "x", "", at, 0); !errors.Is(err, store.ErrNoProposal) {
+			t.Fatalf("deciding an unknown proposal: %v", err)
 		}
 	})
 

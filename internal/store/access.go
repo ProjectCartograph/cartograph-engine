@@ -37,6 +37,9 @@ type Person struct {
 	AddedOn time.Time
 	// LastSignedIn is zero until the first sign-in.
 	LastSignedIn time.Time
+	// AgentsOff is an administrator turning this person's agents off,
+	// whatever their roles allow (docs/adr/0016).
+	AgentsOff bool
 }
 
 // EnrolledByDirectory is the AddedBy of a person a sign-in listed.
@@ -64,8 +67,9 @@ type AccessStore interface {
 	// GetPerson returns one person, or ErrNoPerson.
 	GetPerson(ctx context.Context, email string) (Person, error)
 	// GrantPerson lists a person if they are not listed, with AddedBy and
-	// AddedOn from p, and sets the roles and teams an administrator
-	// grants. It leaves everything a sign-in records as it is.
+	// AddedOn from p, and sets the roles, teams and AgentsOff an
+	// administrator grants. It leaves everything a sign-in records as it
+	// is.
 	GrantPerson(ctx context.Context, p Person) (Person, error)
 	// RecordSignIn sets the name, subject, directory roles and teams and
 	// the time of a sign-in, listing the person first when s.Enrol says
@@ -73,4 +77,43 @@ type AccessStore interface {
 	RecordSignIn(ctx context.Context, s SignIn) (Person, error)
 	// DeletePerson removes a person from the list, or returns ErrNoPerson.
 	DeletePerson(ctx context.Context, email string) error
+
+	// Agent grants (docs/adr/0016): a person's consent to one agent
+	// acting for them, kept so it can be listed and revoked. Whatever
+	// token carries a grant is the authorization server's, never stored.
+	PutAgentGrant(ctx context.Context, g AgentGrant) error
+	// GetAgentGrant returns one, or ErrNoAgentGrant.
+	GetAgentGrant(ctx context.Context, id string) (AgentGrant, error)
+	// ListAgentGrants returns a person's grants, or everyone's for "",
+	// newest first.
+	ListAgentGrants(ctx context.Context, email string) ([]AgentGrant, error)
+	// RevokeAgentGrant marks a grant revoked at at; ErrNoAgentGrant when
+	// there is none. Revoking twice keeps the first time.
+	RevokeAgentGrant(ctx context.Context, id string, at time.Time) error
+	// TouchAgentGrant records when a grant was last used.
+	TouchAgentGrant(ctx context.Context, id string, at time.Time) error
+	// RotateAgentGrant moves a grant's generation from from to from+1,
+	// atomically: false when it was not at from (a code or refresh token
+	// used twice), or there is no such grant.
+	RotateAgentGrant(ctx context.Context, id string, from int) (bool, error)
 }
+
+// AgentGrant is one agent a person let act for them: its label, when it
+// was granted, when it expires, when it was last used, and whether it
+// was revoked.
+type AgentGrant struct {
+	ID        string
+	Email     string
+	Label     string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	LastUsed  time.Time
+	RevokedAt time.Time
+	// Generation counts the codes and refresh tokens exchanged for the
+	// grant: each carries the generation it was issued at, so one used
+	// twice is told from the latest.
+	Generation int
+}
+
+// ErrNoAgentGrant is a grant that does not exist.
+var ErrNoAgentGrant = errors.New("no such agent grant")

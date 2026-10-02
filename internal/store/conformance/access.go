@@ -20,6 +20,72 @@ func RunAccessStore(t *testing.T, newStore func(t *testing.T) store.AccessStore)
 	ctx := context.Background()
 	at := time.Date(2026, 10, 1, 9, 30, 0, 0, time.UTC)
 
+	t.Run("an administrator turns a person's agents off, and a sign-in keeps it", func(t *testing.T) {
+		s := newStore(t)
+		if _, err := s.GrantPerson(ctx, store.Person{Email: "ada@example.org", Roles: []string{"reader"}, AddedBy: "admin", AddedOn: at, AgentsOff: true}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.RecordSignIn(ctx, store.SignIn{Email: "ada@example.org", Name: "Ada", At: at}); err != nil {
+			t.Fatal(err)
+		}
+		p, err := s.GetPerson(ctx, "ada@example.org")
+		if err != nil || !p.AgentsOff {
+			t.Fatalf("agents off did not stay: %+v, %v", p, err)
+		}
+		if p, _ = s.GrantPerson(ctx, store.Person{Email: "ada@example.org", Roles: []string{"reader"}, AddedBy: "admin", AddedOn: at}); p.AgentsOff {
+			t.Fatal("agents could not be turned back on")
+		}
+	})
+
+	t.Run("agent grants are listed, used and revoked", func(t *testing.T) {
+		s := newStore(t)
+		put := func(id, email string, at time.Time) {
+			if err := s.PutAgentGrant(ctx, store.AgentGrant{ID: id, Email: email, Label: "Claude", CreatedAt: at, ExpiresAt: at.Add(30 * 24 * time.Hour)}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		put("t1", "ada@example.org", at)
+		put("t2", "ada@example.org", at.Add(time.Hour))
+		put("t3", "lee@example.org", at)
+		mine, err := s.ListAgentGrants(ctx, "ada@example.org")
+		if err != nil || len(mine) != 2 || mine[0].ID != "t2" {
+			t.Fatalf("Ada's tokens, newest first: %+v, %v", mine, err)
+		}
+		if all, _ := s.ListAgentGrants(ctx, ""); len(all) != 3 {
+			t.Fatalf("every token: %d", len(all))
+		}
+		if err := s.TouchAgentGrant(ctx, "t1", at.Add(2*time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.RevokeAgentGrant(ctx, "t1", at.Add(3*time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.RevokeAgentGrant(ctx, "t1", at.Add(4*time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+		got, err := s.GetAgentGrant(ctx, "t1")
+		if err != nil || !got.LastUsed.Equal(at.Add(2*time.Hour)) || !got.RevokedAt.Equal(at.Add(3*time.Hour)) || !got.ExpiresAt.Equal(at.Add(30*24*time.Hour)) {
+			t.Fatalf("t1 after use and revocation: %+v, %v", got, err)
+		}
+		// A refresh is a compare-and-set on the generation: of two uses of
+		// one refresh token, one moves it and the other is told.
+		if ok, err := s.RotateAgentGrant(ctx, "t2", 0); err != nil || !ok {
+			t.Fatalf("the first refresh: %v, %v", ok, err)
+		}
+		if ok, _ := s.RotateAgentGrant(ctx, "t2", 0); ok {
+			t.Fatal("a refresh token used twice moved the generation again")
+		}
+		if got, _ := s.GetAgentGrant(ctx, "t2"); got.Generation != 1 {
+			t.Fatalf("t2 is at generation %d", got.Generation)
+		}
+		if _, err := s.GetAgentGrant(ctx, "nope"); !errors.Is(err, store.ErrNoAgentGrant) {
+			t.Fatalf("an unknown token: %v", err)
+		}
+		if err := s.RevokeAgentGrant(ctx, "nope", at); !errors.Is(err, store.ErrNoAgentGrant) {
+			t.Fatalf("revoking an unknown token: %v", err)
+		}
+	})
+
 	t.Run("an empty list", func(t *testing.T) {
 		s := newStore(t)
 		people, err := s.ListPeople(ctx)

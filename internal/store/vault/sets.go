@@ -139,3 +139,49 @@ func (tx *txStore) SeriesAsOf(ctx context.Context, kind, series string, ids []st
 	}
 	return ss.SeriesAsOf(ctx, kind, series, ids, at)
 }
+
+// The vault keeps proposals in its index.
+
+func (m *ManifestStore) proposals() (store.ProposalStore, error) {
+	ps, ok := m.index.(store.ProposalStore)
+	if !ok {
+		return nil, store.ErrNoProposal
+	}
+	return ps, nil
+}
+
+// PutProposal asks the index.
+func (m *ManifestStore) PutProposal(ctx context.Context, p store.Proposal) error {
+	ps, err := m.proposals()
+	if err != nil {
+		return err
+	}
+	return ps.PutProposal(ctx, p)
+}
+
+// GetProposal asks the index.
+func (m *ManifestStore) GetProposal(ctx context.Context, id string) (store.Proposal, error) {
+	ps, err := m.proposals()
+	if err != nil {
+		return store.Proposal{}, err
+	}
+	return ps.GetProposal(ctx, id)
+}
+
+// ListProposals asks the index.
+func (m *ManifestStore) ListProposals(ctx context.Context, f store.ProposalFilter) ([]store.Proposal, error) {
+	ps, err := m.proposals()
+	if err != nil {
+		return []store.Proposal{}, nil
+	}
+	return ps.ListProposals(ctx, f)
+}
+
+// DecideProposal asks the index.
+func (m *ManifestStore) DecideProposal(ctx context.Context, id, status, by, reason string, at time.Time, version int) (store.Proposal, error) {
+	ps, err := m.proposals()
+	if err != nil {
+		return store.Proposal{}, err
+	}
+	return ps.DecideProposal(ctx, id, status, by, reason, at, version)
+}

@@ -27,7 +27,7 @@ func NewAccessStore(pool *pgxpool.Pool) *AccessStore {
 	return &AccessStore{pool: pool}
 }
 
-const personColumns = `email, name, subject, roles, teams, directory_roles, directory_teams, added_by, added_on, last_signed_in`
+const personColumns = `email, name, subject, roles, teams, directory_roles, directory_teams, added_by, added_on, last_signed_in, agents_off`
 
 func (s *AccessStore) ListPeople(ctx context.Context) ([]store.Person, error) {
 	rows, err := s.pool.Query(ctx, `SELECT `+personColumns+` FROM people ORDER BY email`)
@@ -59,10 +59,10 @@ func (s *AccessStore) GetPerson(ctx context.Context, email string) (store.Person
 
 func (s *AccessStore) GrantPerson(ctx context.Context, p store.Person) (store.Person, error) {
 	out, err := scanPerson(s.pool.QueryRow(ctx, `
-		INSERT INTO people (email, roles, teams, added_by, added_on) VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (email) DO UPDATE SET roles = excluded.roles, teams = excluded.teams
+		INSERT INTO people (email, roles, teams, added_by, added_on, agents_off) VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (email) DO UPDATE SET roles = excluded.roles, teams = excluded.teams, agents_off = excluded.agents_off
 		RETURNING `+personColumns,
-		p.Email, list(p.Roles), list(p.Teams), p.AddedBy, p.AddedOn))
+		p.Email, list(p.Roles), list(p.Teams), p.AddedBy, p.AddedOn, p.AgentsOff))
 	if err != nil {
 		return store.Person{}, fmt.Errorf("grant %s: %w", p.Email, err)
 	}
@@ -111,7 +111,7 @@ func (s *AccessStore) DeletePerson(ctx context.Context, email string) error {
 func scanPerson(r pgx.Row) (store.Person, error) {
 	var p store.Person
 	var signedIn *time.Time
-	if err := r.Scan(&p.Email, &p.Name, &p.Subject, &p.Roles, &p.Teams, &p.DirectoryRoles, &p.DirectoryTeams, &p.AddedBy, &p.AddedOn, &signedIn); err != nil {
+	if err := r.Scan(&p.Email, &p.Name, &p.Subject, &p.Roles, &p.Teams, &p.DirectoryRoles, &p.DirectoryTeams, &p.AddedBy, &p.AddedOn, &signedIn, &p.AgentsOff); err != nil {
 		return store.Person{}, err
 	}
 	if signedIn != nil {

@@ -13,7 +13,8 @@ import (
 // covers the list, which is all the atomicity the port asks for.
 type AccessStore struct {
 	mu     sync.Mutex
-	people map[string]store.Person // by address
+	people map[string]store.Person     // by address
+	grants map[string]store.AgentGrant // by id
 }
 
 var _ store.AccessStore = (*AccessStore)(nil)
@@ -53,6 +54,7 @@ func (s *AccessStore) GrantPerson(_ context.Context, p store.Person) (store.Pers
 	}
 	cur.Roles = slices.Clone(p.Roles)
 	cur.Teams = slices.Clone(p.Teams)
+	cur.AgentsOff = p.AgentsOff
 	s.people[p.Email] = cur
 	return clonePerson(cur), nil
 }

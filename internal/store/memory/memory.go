@@ -27,6 +27,7 @@ type ManifestStore struct {
 	exclusions map[manifestKey]store.Exclusion // excluded manifests, keyed by kind/id
 	series     []store.SeriesItem              // append-only (docs/adr/0013)
 	events     []store.Event                   // append-only; Seq is the index plus one
+	props      proposals
 }
 
 func NewManifestStore() *ManifestStore {
