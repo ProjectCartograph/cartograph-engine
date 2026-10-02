@@ -71,6 +71,7 @@ type VaultIndex interface {
 	Journal() ApplyJournal         // the two-phase apply journal
 	Operational() OperationalStore // project state history (same database)
 	Docs() DocStore                // the shared drafts' CRDT documents (same database)
+	Access() AccessStore           // the access list (same database)
 
 	// File hashes: what the vault compares a file against on open and on a watcher event.
 	GetFileHash(ctx context.Context, kind, id string) (sha256 string, found bool, err error)

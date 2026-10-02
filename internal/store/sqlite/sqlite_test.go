@@ -45,3 +45,9 @@ func TestDocStoreConformance(t *testing.T) {
 		return sqlite.NewDocStore(openTestDB(t))
 	})
 }
+
+func TestAccessStoreConformance(t *testing.T) {
+	conformance.RunAccessStore(t, func(t *testing.T) store.AccessStore {
+		return sqlite.NewAccessStore(openTestDB(t))
+	})
+}

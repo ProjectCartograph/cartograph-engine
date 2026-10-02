@@ -22,6 +22,7 @@ type VaultIndex struct {
 	journal *ApplyJournal
 	ops     *OperationalStore
 	docs    *DocStore
+	access  *AccessStore
 }
 
 // NewVaultIndex builds a VaultIndex over an already-open, already-migrated
@@ -33,6 +34,7 @@ func NewVaultIndex(db *sql.DB) *VaultIndex {
 		journal:       NewApplyJournal(db),
 		ops:           NewOperationalStore(db),
 		docs:          NewDocStore(db),
+		access:        NewAccessStore(db),
 	}
 }
 
@@ -62,6 +64,9 @@ func (v *VaultIndex) Operational() store.OperationalStore { return v.ops }
 
 // Docs returns the shared drafts' documents over the same database.
 func (v *VaultIndex) Docs() store.DocStore { return v.docs }
+
+// Access returns the access list over the same database.
+func (v *VaultIndex) Access() store.AccessStore { return v.access }
 
 // GetFileHash returns the SHA-256 last recorded for kind/id, if any.
 func (v *VaultIndex) GetFileHash(ctx context.Context, kind, id string) (string, bool, error) {

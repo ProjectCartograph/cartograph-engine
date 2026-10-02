@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -113,6 +114,13 @@ func TestDocStoreConformance(t *testing.T) {
 	})
 }
 
+func TestAccessStoreConformance(t *testing.T) {
+	testURL(t)
+	conformance.RunAccessStore(t, func(t *testing.T) store.AccessStore {
+		return postgres.NewAccessStore(openPool(t))
+	})
+}
+
 func TestMigrationsAreIdempotentAndSafeToRace(t *testing.T) {
 	u := freshSchema(t)
 	ctx := context.Background()
@@ -144,8 +152,13 @@ func TestMigrationsAreIdempotentAndSafeToRace(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
-	if n != 1 {
-		t.Fatalf("%d migrations recorded, want 1", n)
+	// Each migration once, however many replicas raced to apply it.
+	files, err := filepath.Glob("migrations/*.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != len(files) {
+		t.Fatalf("%d migrations recorded, want %d", n, len(files))
 	}
 }
 

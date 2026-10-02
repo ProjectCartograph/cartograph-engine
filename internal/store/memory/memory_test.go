@@ -23,3 +23,7 @@ func TestOperationalStoreConformance(t *testing.T) {
 func TestDocStoreConformance(t *testing.T) {
 	conformance.RunDocStore(t, func(t *testing.T) store.DocStore { return memory.NewDocStore() })
 }
+
+func TestAccessStoreConformance(t *testing.T) {
+	conformance.RunAccessStore(t, func(t *testing.T) store.AccessStore { return memory.NewAccessStore() })
+}

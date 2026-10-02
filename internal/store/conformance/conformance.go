@@ -410,10 +410,17 @@ func RunVaultIndex(t *testing.T, newIndex func(t *testing.T) store.VaultIndex) {
 		if idx.Docs() == nil {
 			t.Fatal("expected a non-nil DocStore")
 		}
+		if idx.Access() == nil {
+			t.Fatal("expected a non-nil AccessStore")
+		}
 	})
 
 	t.Run("docs", func(t *testing.T) {
 		RunDocStore(t, func(t *testing.T) store.DocStore { return newIndex(t).Docs() })
+	})
+
+	t.Run("access", func(t *testing.T) {
+		RunAccessStore(t, func(t *testing.T) store.AccessStore { return newIndex(t).Access() })
 	})
 }
 
