@@ -21,8 +21,13 @@ their own agents, and sometimes none of anyone's.
 no socket, so the engine speaks for it: each step (it read a kind's guide,
 read a manifest, saved a draft and how its checks stand, ran checks,
 proposed) is a presence message with an `agent` block
-(`contract/schemas/presence.schema.json`). Nothing is stored; a step lasts
-as presence does, and an interface keeps the steps it has seen.
+(`contract/schemas/presence.schema.json`). Nothing is stored, and an
+interface keeps the steps it has seen. An agent often stops to ask its
+person something, and a step that lasted as presence does, ten seconds,
+would be gone by the time they opened Cartograph to look. So the replica
+that announced an agent's last step repeats it on its person's feed, the
+same step each time, until the agent has been quiet for ten minutes.
+Only the feed: on a draft an agent shows only while it works.
 
 **Each person has their own feed.** Steps go to a live-only document per
 person, `agents:<person>`, which the sync socket opens only for that
@@ -79,4 +84,8 @@ held open while a window is, against ADR 0015.
 - A person sees their agents work, in Cartograph, as it happens.
 - What an agent does reaches no one its person did not choose, beyond
   presence on the drafts it edits.
-- Steps seen before a reload are gone after it; the proposals remain.
+- After a reload, each agent heard from in the last ten minutes is back
+  with its last step, and where that step happened; the steps before it
+  are gone. The proposals remain.
+- An interface tells an agent working (a new step in the last half
+  minute) from one waiting on its person.

@@ -30,6 +30,9 @@ import (
 // working. The sync socket implements it; nil announces nothing.
 type Presence interface {
 	AnnounceAgent(ctx context.Context, docID, actor, name, focus string, agent map[string]any)
+	// KeepAgent announces a step on a person's feed and keeps it shown
+	// while the agent is quiet, as when it waits on them.
+	KeepAgent(ctx context.Context, docID, actor, name string, agent map[string]any)
 }
 
 // Options are what the MCP server works through.
@@ -241,7 +244,7 @@ func (c call) announce(st step) {
 	// The person's own feed, not the presence document everyone joins:
 	// what an agent works on is its person's to see (docs/adr/0018).
 	if docID, err := sh.AgentFeed(c.ctx, personFor(c.who)); err == nil {
-		c.o.Presence.AnnounceAgent(c.ctx, docID, c.actor(), label, "", agent)
+		c.o.Presence.KeepAgent(c.ctx, docID, c.actor(), label, agent)
 	}
 }
 

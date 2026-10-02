@@ -134,7 +134,9 @@ func replicas(t *testing.T, n int, authz auth.Authorizer, ports backend, opts ..
 		// A second's recheck: a fan-out hint lost while the shared
 		// database is busy (it is, under the whole suite) costs a second
 		// here, as it costs at most the default 15 in service.
-		srv := httptest.NewServer(syncserver.New(e.Shared(), bus, authz, log, append([]syncserver.Option{syncserver.WithRecheck(time.Second)}, opts...)...))
+		ss := syncserver.New(e.Shared(), bus, authz, log, append([]syncserver.Option{syncserver.WithRecheck(time.Second)}, opts...)...)
+		replicaServers = append(replicaServers, ss)
+		srv := httptest.NewServer(ss)
 		t.Cleanup(func() { srv.Close(); bus.Close() })
 		out = append(out, srv)
 		replicaEngines = append(replicaEngines, e)
@@ -143,6 +145,9 @@ func replicas(t *testing.T, n int, authz auth.Authorizer, ports backend, opts ..
 }
 
 var replicaEngines []*engine.Engine
+
+// replicaServers are the sync servers behind the last replicas made.
+var replicaServers []*syncserver.Server
 
 var backends = map[string]func(*testing.T) backend{"memory": inMemory, "postgres": inPostgres}
 
@@ -721,5 +726,63 @@ func TestLiveDocumentsHaveSomethingToSync(t *testing.T) {
 			j, _ := p.doc.JSON()
 			return j["live"] == true
 		})
+	}
+}
+
+// An agent waiting on its person still shows on their feed: its last step
+// is repeated, the same step each time, until it has been quiet a while.
+func TestAnAgentsLastStepStaysOnItsFeed(t *testing.T) {
+	replicaEngines, replicaServers = nil, nil
+	srvs := replicas(t, 1, nil, backends["memory"](t),
+		syncserver.WithFollows(func(context.Context, string) bool { return true }),
+		syncserver.WithLinger(400*time.Millisecond, 50*time.Millisecond))
+	ctx := context.Background()
+	feed, err := replicaEngines[0].Shared().AgentFeed(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := connect(t, srvs[0], "operator", feed)
+	p.until(func() bool { j, _ := p.doc.JSON(); return j["live"] == true })
+	replicaServers[0].KeepAgent(ctx, feed, "operator via Claude", "The operator's agent (Claude)", map[string]any{"for": "", "seq": 1.0, "step": "guide", "kind": "Goal"})
+
+	heard := 0
+	deadline := time.Now().Add(300 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		p.step(20 * time.Millisecond)
+		for len(p.eph) > 0 {
+			m := <-p.eph
+			var got struct {
+				Agent struct {
+					Seq  float64 `cbor:"seq"`
+					Step string  `cbor:"step"`
+				} `cbor:"agent"`
+			}
+			if err := cbor.Unmarshal(m.Data, &got); err != nil {
+				t.Fatal(err)
+			}
+			if got.Agent.Seq != 1 || got.Agent.Step != "guide" {
+				t.Fatalf("repeated %+v, want the same step", got.Agent)
+			}
+			heard++
+		}
+	}
+	if heard < 3 {
+		t.Fatalf("heard the step %d times in 300ms, want it repeated", heard)
+	}
+
+	// Quiet past the linger, it is no longer repeated. What was sent
+	// before then is read and dropped first.
+	time.Sleep(250 * time.Millisecond)
+	for end := time.Now().Add(100 * time.Millisecond); time.Now().Before(end); {
+		p.step(10 * time.Millisecond)
+	}
+	for len(p.eph) > 0 {
+		<-p.eph
+	}
+	for end := time.Now().Add(200 * time.Millisecond); time.Now().Before(end); {
+		p.step(20 * time.Millisecond)
+	}
+	if len(p.eph) > 0 {
+		t.Fatalf("still repeated after the agent went quiet")
 	}
 }

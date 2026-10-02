@@ -250,6 +250,19 @@ closes. Receivers forget a session they have not heard from for ten
 seconds. This is the same shape as Yjs's awareness protocol, carried on
 automerge-repo's ephemeral channel.
 
+What is drawn is only what is in front of a person. A pointer, a caret
+and a focus ring are drawn for the sessions on the same view (the same
+route), never for those on another section of the manifest or on
+another screen that shares the presence document. Only the page is
+shared: a pointer over the rail or any panel beside the page is each
+person's own and is not sent. Another section of the same manifest shows
+who is on it as a mark on its step, as a spreadsheet marks the tab
+someone else is on. Pointer movement, the one stream, is sent only while
+someone else is on the same view; alone, a session sends one clearing
+message and then only its heartbeat, so a room of people on different
+screens costs a heartbeat each, not a pointer each. An agent has no view,
+only the field it works on, and is drawn wherever that field is shown.
+
 A session is a browser tab or a terminal, not a person. One principal
 may have several. Presence names the authenticated principal of a live
 session and ends with it. It is not a record of a person, and Cartograph

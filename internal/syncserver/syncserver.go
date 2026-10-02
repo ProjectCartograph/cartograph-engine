@@ -97,6 +97,8 @@ type Server struct {
 	conns map[*conn]struct{}
 
 	received, sent, refused, idleClosed atomic.Int64
+
+	lingerState
 }
 
 // Option configures a Server.
@@ -142,6 +144,9 @@ func New(shared *engine.Shared, fan fanout.Bus, authz auth.Authorizer, log *slog
 	}
 	s := &Server{shared: shared, fan: fan, authz: authz, log: log, peerID: "cartograph-" + shared.Replica(),
 		ping: 20 * time.Second, recheck: defaultRecheck, rooms: map[string]*room{}, conns: map[*conn]struct{}{}}
+	// An agent waiting on its person for up to ten minutes still shows,
+	// repeated at the three seconds presence repeats at.
+	s.lingerFor, s.lingerEvery = 10*time.Minute, 3*time.Second
 	for _, o := range opts {
 		o(s)
 	}

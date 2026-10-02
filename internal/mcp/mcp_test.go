@@ -42,6 +42,10 @@ func (p *presence) AnnounceAgent(_ context.Context, docID, actor, name, focus st
 	p.mu.Unlock()
 }
 
+func (p *presence) KeepAgent(ctx context.Context, docID, actor, name string, agent map[string]any) {
+	p.AnnounceAgent(ctx, docID, actor, name, "", agent)
+}
+
 // refuseAgents is a policy under which Ada may not use an agent.
 type refuseAgents struct{}
 
