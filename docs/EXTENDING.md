@@ -2,14 +2,14 @@
 
 Every extension follows one shape: write an adapter for a port, prove it
 with the port's conformance suite, select it in the composition root
-(`cmd/cartograph`). The engine, the contract and the web interface do not
-change. `ARCHITECTURE.md` section 7 lists the ports; this page is the
-how.
+(`cmd/cartograph`). The engine, the contract and the web interface do
+not change. `ARCHITECTURE.md` section 7 lists the ports; this page says
+how to extend them.
 
 Before adding a kind, a field that links two kinds, or a rule that
-refuses a link, read `docs/TAXONOMY.md`. If the discipline has a word for what you are building,
-use that word with that meaning. If Cartograph must depart from it, add a
-decision to that file saying why.
+refuses a link, read `docs/TAXONOMY.md`. If the discipline has a word
+for what you are building, use that word with that meaning. If
+Cartograph must depart from it, add a decision to that file saying why.
 
 ## A new kind
 
@@ -29,15 +29,17 @@ decision to that file saying why.
    manifests through `ctx.Lookup`; they never import the engine.
 4. Run `just generate` (schemas are copied into the Go module and the
    TypeScript types regenerate), then `just ci`.
-5. Give the kind its words in `cartograph-ui's src/copy.ts` and, if it has a fixed
-   vocabulary, marks in `cartograph-ui's src/components/vocab.tsx`. The directory
-   sheet renders any kind from its schema; a kind with its own flow (as
-   Project and Goal have) gets its own route under `cartograph-ui's src/routes`.
+5. Give the kind its words in `cartograph-ui's src/copy.ts` and, if it
+   has a fixed vocabulary, marks in
+   `cartograph-ui's src/components/vocab.tsx`. The directory sheet
+   renders any kind from its schema; a kind with its own flow (as
+   Project and Goal have) gets its own route under
+   `cartograph-ui's src/routes`.
 6. Add the kind to `examples/minimal` with fictional, organisation-free
    content, and to the example-import test's list of kinds the flow
    reaches for. `just words` must stay clean.
 
-What a kind cannot do: name a person. Definitions name roles
+A kind cannot name a person. Definitions name roles
 (`Resource`); mapping roles to people lives in the delivery tool.
 
 ## A new rule on an existing kind
@@ -75,9 +77,9 @@ that keeps the shared drafts implements `store.DocStore` and runs
 `RunDocStore`, which races creates, appends and compaction the way two
 replicas would.
 
-Select it in `compose` in `cmd/cartograph/store.go`: that function is
+Select it in `compose` in `cmd/cartograph/store.go`. That function is
 the one place a path or a URL becomes an adapter. The Postgres adapter
-(`internal/store/postgres`) is the worked example: `CARTOGRAPH_STORE`
+(`internal/store/postgres`) is the worked example. `CARTOGRAPH_STORE`
 holds its URL, and `compose` builds every store from one pool. Tests
 that need a server skip unless `CARTOGRAPH_TEST_POSTGRES` is set, and
 `just test-postgres` starts a throwaway one, so `just test` stays fast.
@@ -94,9 +96,9 @@ hashes and a little metadata in a `store.VaultIndex`. SQLite implements
 it. To put that in Postgres, implement the interface in
 `store/postgres`, pass `conformance.RunVaultIndex`, and construct the
 vault with `vault.Options{OpenIndex: yourOpener}` in
-`cmd/cartograph/store.go`. The files stay where they
-are; only the cache moves. For several replicas, the Postgres store
-above is the simpler path: it needs no shared volume.
+`cmd/cartograph/store.go`. The files stay where they are; only the cache
+moves. For several replicas, the Postgres store above is the simpler
+path, because it needs no shared volume.
 
 ## A manifest syntax
 
@@ -116,10 +118,10 @@ Pass `codec/conformance.Run`, which checks a stable encode, a lossless
 round trip, the typed decode and a refusal of malformed text. Add the
 name to `config.Config.Codec`'s validation and to `codecFor` in
 `cmd/cartograph/store.go`. The vault names its files by `Extension()`;
-`cartograph export --codec <name>` is how an existing vault moves. The JSON
-adapter is 90 lines and shows the one trick: typed views are decoded
-through YAML's field mapping so a second syntax needs no second set of
-struct tags.
+`cartograph export --codec <name>` is how an existing vault moves. The
+JSON adapter is 90 lines and shows the one trick: typed views are
+decoded through YAML's field mapping so a second syntax needs no second
+set of struct tags.
 
 ## Authentication
 
@@ -141,9 +143,9 @@ are already there; `auth/proxy` is a 60-line example.
 
 An OIDC adapter would verify a bearer token against the provider's keys
 and build the principal from its claims. Nothing else changes. The
-shipped route to OIDC needs no adapter: an OIDC proxy (oauth2-proxy)
-in front of `auth/proxy`, with an identity broker (Dex) in front of
-the provider, as `cartograph-oidc` does.
+shipped route to OIDC needs no adapter. An OIDC proxy (oauth2-proxy)
+sits in front of `auth/proxy`, with an identity broker (Dex) in front
+of the provider, which is what `cartograph-oidc` does.
 
 ## Authorization and user types
 
@@ -189,8 +191,8 @@ passing `conformance.RunAccessStore`.
 
 Implement `printer.Printer` (`Print(ctx, html) ([]byte, error)`), return
 `printer.ErrUnavailable` when the machine cannot print, and construct it
-in `cmd/cartograph/serve.go` and `cmd/cartograph/printer.go`. A remote printing
-service, or a Go PDF library, slots in without the API knowing.
+in `cmd/cartograph/serve.go` and `cmd/cartograph/printer.go`. A remote
+printing service, or a Go PDF library, slots in without the API knowing.
 
 ## A bundle store
 
@@ -216,7 +218,7 @@ port promises little, on purpose:
 - A subscription ends when it is closed, when its context ends, or
   when the Bus is closed, and its channel is then closed.
 
-Nothing else depends on delivery. Every message is a hint: a client
+Nothing else depends on delivery. Every message is a hint. A client
 that misses one converges anyway, because the sync protocol compares
 state on every exchange. So an adapter needs no persistence, no
 acknowledgements and no ordering.
@@ -274,7 +276,7 @@ minimal and idempotent, that keyed list items keep their identity,
 that texts merge character by character, that concurrent writes are
 kept as conflicts, and that replicas converge across random partitions
 with messages lost, repeated and reordered. Passing it is not the whole
-job: interfaces sync with the stock automerge-repo libraries, so a
+job. Interfaces sync with the stock automerge-repo libraries, so a
 different engine also needs interfaces that speak its sync protocol,
 and the sync socket's protocol version is part of what a release
 promises (`VERSIONING.md`). Read ADR 0007 first.

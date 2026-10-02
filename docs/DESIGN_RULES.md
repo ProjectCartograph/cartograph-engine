@@ -36,8 +36,10 @@ early-grade learners, learners in rural schools and early-grade teachers.
    per goal a project may align to.
    Aim: sentence cards on a baseline-to-target scale. Scope: in and out as
    chips. Deliverables: cards. Beneficiaries: picked groups as chips, and
-   no count. Timeline: phases first, each with a duration in months; the bars, the end date and the total follow from the start month, so the time cost is assessed phase by phase. People: role slots
-   and a power-and-interest grid. Data: a uses-to-produces flow. Risks: a
+   no count. Timeline: phases first, each with a duration in months; the
+   bars, the end date and the total follow from the start month, so the
+   time cost is assessed phase by phase. People: role slots and a
+   power-and-interest grid. Data: a uses-to-produces flow. Risks: a
    likelihood-by-impact grid. Closing and Landing: proposed test lines.
 6. **Pick over type.** Anything that already exists is chosen, never typed:
    people, teams, parties, goals, KPIs, data sources, cycles, beneficiary
@@ -45,10 +47,12 @@ early-grade learners, learners in rural schools and early-grade teachers.
    goal, team, operation or cycle through the reference index.
 7. **Typed parts over sentences.** Numbers carry a kind and a unit, dates are
    months, directions are chosen; the sentence is generated.
-8. **Free text is short and capped.** Intro paragraphs are not written; a screen's question is its subtitle, and "Feeds" is a chip and a few words. Objective 120 characters, problem and
-   change statements 240, a scope chip or deliverable name 60, a rationale
-   160; a counter shows the remainder. Where a fact is unknown, a "not known
-   yet" choice with a reason replaces prose.
+8. **Free text is short and capped.** Intro paragraphs are not written; a
+   screen's question is its subtitle, and "Feeds" is a chip and a few
+   words. Objective 120 characters, problem and change statements 240, a
+   scope chip or deliverable name 60, a rationale 160; a counter shows the
+   remainder. Where a fact is unknown, a "not known yet" choice with a
+   reason replaces prose.
 9. **One line per item; long lists truncate.** Text is one line with an
    ellipsis and the full text on hover; lists show a few items then "+n
    more"; sheets are tables with filters and pages.
@@ -73,7 +77,7 @@ issued by); one approved funding envelope per currency on Project; risk
 rows typed risk, issue, dependency, assumption or constraint with an
 escalate flag and reason; personal data (none, personal, sensitive) on
 produced and consumed data; BeneficiaryGroup register (its structured
-beneficiary counts since withdrawn: see "Beneficiaries are qualitative");
+beneficiary counts since withdrawn; see "Beneficiaries are qualitative");
 maxLength caps. Approve with conditions belongs to
 change control: each condition has an owner role and a month,
 and open conditions show on the checks.
@@ -94,15 +98,16 @@ and open conditions show on the checks.
   list shows where to add the entry and never blocks a save the schema does not require.
 - **Plain field names under a named parent.** `baseline.date` and `target.date`, never `asOf`
   or `by`; the parent already says what the date is.
-- **Level names:** goal, objective, outcome, then Project (`TAXONOMY.md` D25 gives the levels
-  these names; they were first called pillar, strategic and functional). The organisational
-  unit stays "Team". (The third level was removed once and restored after a review of the
-  running interface: an outcome sits under an objective, and projects align to outcomes.)
+- **The levels are goal, objective, outcome, then Project.** `TAXONOMY.md` D25 gives the
+  levels these names; they were first called pillar, strategic and functional. The
+  organisational unit stays "Team". (The third level was removed once and restored after a
+  review of the running interface: an outcome sits under an objective, and projects align to
+  outcomes.)
 
 ## Goals as the root
-- **Hierarchy:** goal, objective, outcome, project. A goal has no parent; an objective serves one
-  goal; an outcome serves one objective; a project aligns to outcomes. Each level depends only
-  on the level above.
+- **The hierarchy is goal, objective, outcome, project.** A goal has no parent; an
+  objective serves one goal; an outcome serves one objective; a project aligns to
+  outcomes. Each level depends only on the level above.
 - **A goal references nothing below it.** No team, cycle, source or KPI on a goal; KPIs, projects,
   programmes and operations reference goals, and the tree reads those references back.
 - **Goals are easily mutable.** Add a goal or an objective by title alone, inline; rename in
@@ -150,7 +155,8 @@ The browser flows (`just e2e`, the former smoke) are an end-to-end check run
 at acceptance only; they wait on conditions, never on timers, and finish in under
 two minutes; the randomised journey is a separate on-demand recipe. A behaviour that matters
 gets a unit test at the layer that owns it (an earlier data loss on moving a goal would
-have been a ten-line test of the mutation against a fake client). This is the pitfall of many earlier projects and does not repeat here.
+have been a ten-line test of the mutation against a fake client). Many earlier projects
+fell into this pitfall; this one does not.
 
 ## Files never move; the state manifest says what is live
 
@@ -170,7 +176,10 @@ other parent on every write path, and a drop target refuses the wrong level with
 before anything is sent. The interface renders a card by the goal's `level`, never by its
 depth in a column. The rule came from an outcome shown as an objective.
 
-Every goal card carries a tag naming its level, in a muted tone of its own (violet for a goal, sky for an objective, emerald for an outcome, on the tag and as a faint tint behind the card, in both themes), so the tier is visible without reading the tree's indentation and a goal that needs to move is recognisable at a glance.
+Every goal card carries a tag naming its level, in a muted tone of its own (violet
+for a goal, sky for an objective, emerald for an outcome, on the tag and as a faint
+tint behind the card, in both themes), so the tier is visible without reading the
+tree's indentation and a goal that needs to move is recognisable at a glance.
 
 ## Names are not identities; goals are isolated by level; a goal can exist unbound
 
@@ -188,7 +197,8 @@ server for every resource created from now on, the file is `<Kind>/<id>.yaml`, a
 interface never presents an id (a project's organisational code such as a register number
 is a field of its own, `metadata.code`, shown and searchable like the name). Names are unique
 within their namespace: the parent branch for goals, the kind for everything else. Existing
-ids, including the readable slugs in the example and the instance, stay as they are. An objective or outcome may exist without its parent: it is then unbound, shown
+ids, including the readable slugs in the example and the instance, stay as they are.
+An objective or outcome may exist without its parent. It is then unbound, shown
 in an Unbound tray on Goals home rather than in the tree, flagged by an advisory check, and
 not offered to projects until bound; binding it means giving it a parent of the level above.
 A parent of the wrong level is still refused, and a goal still keeps its level. The
@@ -221,8 +231,8 @@ belongs and is never sorted to the front, because moving it breaks the one thing
 the grouping is for; only a flat register (no branches, such as beneficiary
 groups) sorts its picks forward. The level tag every goal card carries on Goals
 home is not repeated here: every chip on the step is the same level, so the tag
-would say nothing. This section is calm, focused and purposeful: one question,
-one structure, no scenery.
+would say nothing. The step asks one question in one structure, with no
+scenery.
 
 ## Beneficiaries are qualitative
 
@@ -238,35 +248,35 @@ supersedes the structured beneficiary counts in "Contract additions" above.
 ## Text is the last resort
 
 Any text on a screen must survive the question "can iconography, structure or the
-control itself say this instead?". If it can, the text goes. What survives:
-a field's label, its placeholder, a state ("Saved", "2 blocking"), a rule a person
+control itself say this instead?". If it can, the text goes. What survives: a
+field's label, its placeholder, a state ("Saved", "2 blocking"), a rule a person
 would otherwise break silently (capped at about 40 characters, never a sentence
 about why the rule exists), and an example behind the lightbulb, which is opt-in.
-What does not survive: a paragraph introducing a step, a hint restating its label,
-a note explaining where a field's data goes afterwards, a sentence justifying the
-design to the person using it. The rule has a number on it: applying it cut the
-project flow's copy by half, and no screen
-carries an explanatory paragraph any more. A builder adding text says, in the
-commit, which of the surviving categories it falls into.
+What does not survive: a paragraph introducing a step, a hint restating its label, a
+note explaining where a field's data goes afterwards, a sentence justifying the
+design to the person using it. The rule has a number on it. Applying it cut the
+project flow's copy by half, and no screen carries an explanatory paragraph any
+more. A builder adding text says, in the commit, which of the surviving categories
+it falls into.
 
 ## What a success criterion is, and is not
 
 SMART goals define what the project intends to achieve. Scope defines the
 boundaries of the work required to achieve them. Deliverables define the outputs
-the project must produce. **Success criteria define how stakeholders will
-determine whether those outputs actually produced the intended result**: the
-measurable standards by which the project is judged, agreed before work begins,
-so that success is observable rather than argued. Without them a project can
-complete every task and deliverable and still create no value.
+the project must produce. Success criteria define how stakeholders will determine
+whether those outputs actually produced the intended result. They are the
+measurable standards by which the project is judged, agreed before work begins, so
+that success is observable rather than argued. Without them a project can complete
+every task and deliverable and still create no value.
 
-It follows that a deliverable's acceptance is not a success criterion: it is the
+It follows that a deliverable's acceptance is not a success criterion. It is the
 deliverable's own test, written on the deliverable, and restating it says nothing
 about whether the result arrived. The derivation proposes outcome lines from the
 key results, plus the schedule, budget and compliance the project committed to;
 the "<name> accepted: <role> signs it off" line every deliverable used to propose
-is gone. The coaching project's guide for coaches being signed off is the
-guide's acceptance; grade 3 reading in coached schools rising towards 60 percent
-is a success criterion.
+is gone. The coaching project's guide for coaches being signed off is the guide's
+acceptance; grade 3 reading in coached schools rising towards 60 percent is a
+success criterion.
 
 ## A goal is a commitment, not a chip
 
@@ -309,7 +319,7 @@ separate question, still open.
 ## Every resource is standalone; attach directly, or bind
 
 A role, unit, party, system or facility is a `Resource` manifest, declared once and
-used across many projects. Work attaches to one of two ways. **Directly referenced**
+used across many projects. Work attaches to one in one of two ways. **Directly referenced**
 when it is simply part of the cast: `Project.spec.resources[]` carries the position
 and the project's own title for it. **Bound** when the link itself carries data that
 belongs to neither end: how much power a stakeholder holds over *this* project varies
@@ -320,8 +330,8 @@ the reading check.
 The test for a new field: if the fact is about the *relationship* rather than about
 either end, it goes on a binding kind. Do not put it on the resource, where it would
 have to be the same for every project, and do not put it on the project, where it
-duplicates the party. A binding must never become the only way in; the project still
-references its stakeholders directly; the map only scores them.
+duplicates the party. A binding must never become the only way in. The project still
+references its stakeholders directly, and the map only scores them.
 
 ## One reference shape
 
@@ -375,7 +385,7 @@ rule prevents.
 
 Rows typed `dependency` turned out to be mostly a risk, an issue or a
 constraint: "teachers may not attend the coaching" typed as a dependency is a
-risk. Nobody was careless: the type had no shape a risk sentence could not
+risk. Nobody was careless. The type had no shape a risk sentence could not
 be poured into, so it collected whatever sounded vaguely like waiting. It carries a
 direction, a reference to the far end and the phase it must land by now, and a risk
 sentence cannot fill those.
@@ -401,16 +411,16 @@ membership in one.
 Autosave wrote straight to `<vault>/<Kind>/<id>.yaml` and added the ref to
 `vault.yaml`. So opening a wizard made a half-answered definition part of the vault,
 reformatted a hand-maintained file under its author, and left "discard draft" with
-nothing to go back to: the working copy *was* the file.
+nothing to go back to, because the working copy *was* the file.
 
 A draft goes to `<vault>/.cartograph/staging/<Kind>/<id>.yaml` instead, inside the
 directory every scan in the vault package already skips, so it is invisible to the
-vault scan, the unapplied listing and export. Saving promotes it: the manifest file
+vault scan, the unapplied listing and export. Saving promotes it. The manifest file
 and the include entry that admits it land in one journalled apply unit, and then the
 draft is cleared.
 
-**Only the ref being saved.** There may be many drafts, and saving one is not a
-decision about the rest.
+Saving promotes only the ref being saved. There may be many drafts, and saving
+one is not a decision about the rest.
 
 Two consequences worth stating. A kind whose only write was autosave (a programme, an
 operation) now needs an explicit save control, because the writing used to be
@@ -428,17 +438,18 @@ So the save writes both files in one unit: temp file, fsync, rename, recorded in
 journal and replayed on open. A crash before the rename leaves the draft; after it,
 the vault file is correct.
 
-**Where the save actually happens is not where it looks.** `Commit` runs inside a
-transaction, so `txStore.PutVersion` is the path the app takes and `ManifestStore.PutVersion`
-is not. The promotion was written into the second one first: a store unit test passed
-while every real save left its draft behind. A test that drives `engine.Commit` is the
-one that holds this.
+Where the save actually happens is not where it looks. `Commit` runs inside a
+transaction, so `txStore.PutVersion` is the path the app takes and
+`ManifestStore.PutVersion` is not. The promotion was written into the second one first,
+so a store unit test passed while every real save left its draft behind. A test that
+drives `engine.Commit` is the one that holds this.
 
 ## Write files the way the vaults are written by hand
 
 `yaml.v3` indents four spaces. Every manifest in this repository is written two, so a
-save reindented the whole file and turned a one-line edit into a whole-file diff: the
-same complaint that moved autosave into staging, arriving one step later at the save.
+save reindented the whole file and turned a one-line edit into a whole-file diff. It
+was the same complaint that moved autosave into staging, arriving one step later at
+the save.
 One encoder (`internal/yamlfmt`), and everything that writes a manifest or a
 `vault.yaml` goes through it.
 
@@ -464,10 +475,10 @@ Writing a manifest from a plain object loses everything the object cannot
 carry. Keys come back in the alphabet's order rather than the author's, because
 the round trip goes through a Go map; `[a, b]` becomes a block list; a quoted
 scalar loses its quotes. None of that is an edit anybody made, and all of it
-lands in the diff: a one-line change arrived as a whole-file rewrite.
+lands in the diff. A one-line change arrived as a whole-file rewrite.
 
-So the interface **reads the file's own text** (a manifest read carries it
-beside the parsed object) and **writes over it key by key**, touching only what
+So the interface reads the file's own text (a manifest read carries it
+beside the parsed object) and writes over it key by key, touching only what
 differs. What nobody edited keeps the node it was written as. A definition
 being created for the first time has nothing to merge into and is written
 whole.
@@ -554,8 +565,8 @@ Restating "What a success criterion is, and is not", because a later plan broke 
 That plan first proposed that every success criterion trace to a
 deliverable, with a check reporting "an outcome with no output behind it". The
 earlier rule had already refuted it in passing: the derivation proposes outcome
-lines from the key results, **plus the schedule, budget and compliance the
-project committed to**. Those three have no deliverable behind them by
+lines from the key results, plus the schedule, budget and compliance the
+project committed to. Those three have no deliverable behind them by
 definition, and the check would have flagged every one.
 
 The general form: a success criterion **may** be the result of a deliverable,
@@ -566,25 +577,24 @@ behind it is an optional enrichment, worth having so the arrow can be drawn
 where it exists, and **never** a completeness test. "The coaching finishes
 within its budget" has no deliverable behind it and is complete.
 
-The lesson beyond this field: a framework borrowed from outside brings its own
-shape, and where that shape disagrees with a decision already recorded here, the
-recorded decision is the evidence: it was made against this work. Check
+The lesson beyond this field is that a framework borrowed from outside brings its
+own shape. Where that shape disagrees with a decision already recorded here, the
+recorded decision is the evidence, because it was made against this work. Check
 `DESIGN_RULES.md` and `TAXONOMY.md` before proposing a rule, not only before
 writing code.
-
 
 ## An assumption is not a risk, and it lives on a link
 
 `risks[].type` carried an `assumption` value from the beginning, and risk lists
-did not use it. People had not declined to
-record assumptions; there was nowhere that fitted.
+did not use it. People had not declined to record assumptions; there was nowhere
+that fitted.
 
-The two are different things and take different answers. A risk **might** go
-wrong and is *mitigated*. An assumption is a condition a step of the reasoning
-**requires**, and the answer to a false one is a different theory, not a
+The two are different things and take different answers. A risk *might* go
+wrong and is mitigated. An assumption is a condition a step of the reasoning
+*requires*, and the answer to a false one is a different theory, not a
 contingency, so the field that earns its keep is `ifFalse`, not `mitigation`.
 They also sit in different places: a risk belongs to the work, an assumption
-belongs to the **link between two levels** of it. That is why `assumes` sits on
+belongs to the link between two levels of it. That is why `assumes` sits on
 a pathway step and on a success criterion, and never on the manifest as a whole.
 In the Early Reading Programme, the step from coaching to fluent readers assumes
 that teachers have time in the timetable to use what they learn; if that is
@@ -599,27 +609,26 @@ assumptions in the risk list and half in the new kind.
 ## A pathway is not the goal tree
 
 `Goal.parent` makes a three-deep tree, and reading it as a Theory of Change is
-free and wrong. The tree is **alignment**: it says where a goal files, allows
+free and wrong. The tree is alignment. It says where a goal files, allows
 exactly one parent, and carries no reason. A Theory of Change says what produces
 what, routinely has several outcomes converging on one and one feeding several,
 and exists to make the reasoning examinable.
 
 So `Programme.spec.pathway` is a separate edge set, on the programme rather than
 the goal, because a goal outlives any one programme's theory of how to reach it
-and two programmes may hold different theories about the same goal. Its
-`because` is the point: an arrow with nothing written on it is a picture and
-cannot be argued with. Advisory, never blocking: a programme without a pathway
-is one nobody has thought through yet, which is worth showing rather than
-refusing.
+and two programmes may hold different theories about the same goal. Its `because`
+is the point, since an arrow with nothing written on it is a picture and cannot be
+argued with. It is advisory, never blocking. A programme without a pathway is one
+nobody has thought through yet, which is worth showing rather than refusing.
 
-The failure this avoids is worse than having no diagram: a tree read as causal
+The failure this avoids is worse than having no diagram. A tree read as causal
 renders something that looks like a Theory of Change and contains none of the
 reasoning, and nobody can tell it is empty.
 
 ## A tag is for the cut nobody planned
 
 `metadata.labels` is Kubernetes', and so is the reason to leave it
-unvalidated: a label is written to make a cut later that nobody anticipated
+unvalidated. A label is written to make a cut later that nobody anticipated
 (which region, whose reporting pack), and the cost of a typo making a new
 group is the right way round for that (TAXONOMY.md D11). A fact worth
 checking is a property with a name and a check; putting an anticipated fact
@@ -639,7 +648,8 @@ Three things follow, and they are why this is a rule rather than a field:
   change it. Asking first would be asking about a cut the person came here
   to use, not to design.
 
-The occasion: two dozen measures read as chips; a hundred read as a wall.
+It came up because two dozen measures read as chips and a hundred read as a
+wall.
 
 ## A register with its own shape brings its own add
 
@@ -648,11 +658,11 @@ a project never has to be abandoned to go and add a data source first. KPI
 could not: its baseline and target are objects where a sheet's cells hold
 values, so it is not a sheet kind, and the picker silently had no add.
 
-The answer is not to bend the measure into a sheet. It is that the picker
-asks *what kind is this* and opens that kind's own dialog: the sheet form
-for a sheet kind, the measure's own for a measure. The dialog asks for
-exactly what the schema requires plus the cycle, because the cycle decides
-which periods exist; the baseline, the target and the readings stay on the
+Bending the measure into a sheet is not the answer. The picker asks *what
+kind is this* and opens that kind's own dialog: the sheet form for a sheet
+kind, the measure's own for a measure. The dialog asks for exactly what
+the schema requires plus the cycle, because the cycle decides which
+periods exist; the baseline, the target and the readings stay on the
 measure's own page, where the chart is.
 
 ## A built sentence is finished
@@ -660,7 +670,7 @@ measure's own page, where the chart is.
 The parts of a sentence builder are fragments, because that is how they read
 under their own headings: *what they cannot do today*, *so they*. The thing
 stored is a sentence, and the joiner wrote whatever the concatenation came
-to. Most of the sentences built that way were defective: many started
+to. Most of the sentences built that way were defective. Many started
 lowercase or trailed off with no stop, and many read *"so Early-grade
 learners get help"*, where a register's heading-cased name lands mid-clause
 and reads as a defined term.
@@ -689,26 +699,25 @@ not rewritten the moment somebody opens the step.
 
 ## A generated view is a test of the flows
 
-The results framework is derived: every cell is read from the manifests when
-the page opens, and nothing is stored. That makes it
-something better than a report: **it is an audit of the definition flow**, and
-the standard is plain: if a project and a programme are
-properly defined, the logframe is a generated artifact; if it cannot be
-generated, the fault is in the flows.
+The results framework is derived: every cell is read from the manifests when the
+page opens, and nothing is stored. That makes it something better than a report.
+It is an audit of the definition flow, and the standard is plain. If a project
+and a programme are properly defined, the logframe is a generated artifact; if
+it cannot be generated, the fault is in the flows.
 
 Running it found exactly that. The matrix's Level column is
 read from `KPI.spec.resultLevel` and its indicator rows from `KPI.spec.goals`,
-and **neither field was editable anywhere in the interface**. They were set in
+and neither field was editable anywhere in the interface. They were set in
 the example vault only because they had been written there by hand, which is
 the definition of a bolted-on artifact: correct in the demonstration and
 unreachable in use. Both are now on the measure's own step, along with the
 splits it is reported by, which had the same hole. The grade 3 reading KPI
 gets its level (outcome) and its goal from that step, and nowhere else.
 
-The rule: when a view is derived, an empty cell has two possible causes, and
-they are not the same thing. The work saying nothing is a real answer and must
-be drawn as one. A field no flow asks for is a defect, and the view is where it
-becomes visible. Check which one it is before drawing a dash.
+The rule is that when a view is derived, an empty cell has two possible causes,
+and they are not the same thing. The work saying nothing is a real answer and
+must be drawn as one. A field no flow asks for is a defect, and the view is
+where it becomes visible. Check which one it is before drawing a dash.
 
 The guard is a test that reads the shipped example, derives both matrices and
 asserts every column is filled from the manifests alone.
@@ -745,13 +754,13 @@ stored as a situation (*they fall behind in reading by grade 2*) and a cause
 (*their teachers were never trained to teach it*), with learners in rural
 schools as its group; the sentence is put together when it is shown.
 
-Two consequences worth stating, because they are the point:
+The two consequences are the point:
 
 - **Changing the groups now changes the sentence and not a word anybody
   wrote.** There is nothing to restate.
 - **A person editing the file by hand sees what the interface shows.** The
-  reason for the change: outputs are deterministic generations
-  from inputs, so a tool that wants a different output writes a different
+  reason for the change is that outputs are deterministic generations from
+  inputs, so a tool that wants a different output writes a different
   generator, not a migration.
 
 The general form, which is the rule: **where the interface composes, the

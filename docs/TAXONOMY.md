@@ -5,14 +5,14 @@ only through a shared goal? It should not, and finding out why turned up
 several other places where Cartograph's vocabulary and the discipline's
 vocabulary had drifted apart.
 
-This file is the reference for any decision about **what a kind is**.
+This file is the reference for any decision about what a kind is.
 `DESIGN_RULES.md` says how Cartograph behaves; this says what the nouns mean and
 where the definitions come from, so an argument about a kind's shape can be
 settled against the discipline rather than against taste.
 
-Where Cartograph departs from the standard definition that is allowed (it is a
-capture tool for an organisation's plans, not an implementation of MSP), but the
-departure should be **deliberate and written down here**, not accidental.
+Cartograph may depart from the standard definition, since it is a capture
+tool for an organisation's plans and not an implementation of MSP. A departure
+should be deliberate and written down here, not accidental.
 
 ---
 
@@ -51,7 +51,7 @@ routine operations. PMI: programmes exist to turn project outputs into
 outcomes, coordinating the projects (and sometimes operations) to deliver
 benefits and governance no single project could.
 
-The load-bearing part: **a programme coordinates the work inside it.** That is
+What matters is that a programme coordinates the work inside it. That is
 a governance relationship, and it only means something if the programme knows
 what is inside it.
 
@@ -126,22 +126,21 @@ each of which names it.
 Nothing else. Two fields look as though they belong, because a source plan
 has headings for them, and they do not:
 
-- **`description`**: a plan may state an Objective *and* a Description for
+- `description`: a plan may state an Objective *and* a Description for
   every programme, so the ministry's plan might give the Early Reading
   Programme both. But "what the work does" is the aim plus the components
   inside it; a Description is that document's convention, not a programme's
   property.
-- **`partners`**: a list of collaborating bodies (the colleges that train
+- `partners`: a list of collaborating bodies (the colleges that train
   the ministry's teachers, say), which is a stakeholder list under another
   name. `StakeholderMap` already scopes to a programme and accepts any
   `Resource`, external bodies included. Two places to name one party.
 
-**The lesson, and it is the general one:** a source document's section
-headings are not a schema. The plan is content. Where it states something
-Cartograph has no field for, the first question is whether the concept belongs to
-a programme at all, not where to put the text. Outputs belong to the
-components; phases are delivery; a Rationale is evidence and belongs in the
-Gap register.
+The general lesson is that a source document's section headings are not a
+schema. The plan is content. Where it states something Cartograph has no field
+for, the first question is whether the concept belongs to a programme at all,
+not where to put the text. Outputs belong to the components; phases are
+delivery; a Rationale is evidence and belongs in the Gap register.
 
 ---
 
@@ -154,8 +153,8 @@ and what the interface calls the step. "Membership" below is the relation; a
 component is the thing.*
 
 A project names the programmes it belongs to (`Project.spec.alignment.programmes[]`);
-the programme side is read back from that index. One end declares, the other
-derives: the same rule dependencies follow. The reading check names the Early
+the programme side is read back from that index. One end declares and the
+other derives, as dependencies do. The reading check names the Early
 Reading Programme; the programme lists the reading check without saying so
 itself.
 
@@ -164,14 +163,14 @@ missing, but it does not constitute it. That check once *blocked*, on the
 reading that membership is "proven, not asserted". Three things were wrong
 with that:
 
-- A programme's work includes **enabling components** that serve no
+- A programme's work includes enabling components that serve no
   programme-level goal of their own (a shared migration, such as moving the
   learner records both reading projects use to a new system; a procurement
   vehicle for the reading books). Refusing those refuses a normal part of a
   programme.
-- It applied the **portfolio criterion** (common goals) as a membership gate
+- It applied the portfolio criterion (common goals) as a membership gate
   one level down.
-- It **broke a manifest from outside itself**: editing a programme's goals
+- It broke a manifest from outside itself. Editing a programme's goals
   retroactively invalidated every project that named it, so a definition valid
   yesterday blocked today because somebody edited a different file. Nothing
   else in Cartograph does that.
@@ -193,7 +192,7 @@ projects.
 The top level of a strategic plan does portfolio duty, and it is made of
 `Goal`s at the top level, not containers. *Make sure every child can read
 with understanding* groups the reading work without holding it. That is
-coherent: the goal tree carries the strategic grouping, and the investment
+coherent. The goal tree carries the strategic grouping, and the investment
 decision a portfolio exists to make (what to fund, what to stop) is a
 concern for whoever holds the budget and for the delivery tool, outside the
 capture boundary.
@@ -212,7 +211,7 @@ improvement, the grade 3 reading KPI says how it is measured, early-grade
 learners are who perceives it, and the coaching project's success criteria
 say what counts as enough.
 
-**Do not add a Benefit kind**: it would duplicate `KPI` and re-open the
+**Do not add a Benefit kind.** It would duplicate `KPI` and re-open the
 question `relatesTo` already settled. If benefits realisation is ever wanted,
 it is readings against existing KPIs, not a new noun.
 
@@ -242,9 +241,9 @@ What it asks follows from the definition rather than from the field list:
 whether it coordinates anything (derived from the work), whether there is a
 change to judge (problems, and whether each names who it lands on and cites
 its evidence), whether the benefit can be measured (goals, KPIs), and whether
-it sits in a dependency loop. Required fields are not checked: the schema
-already refuses a programme without them, and repeating a refusal as advice
-says nothing.
+it sits in a dependency loop. Required fields are not checked, because the
+schema already refuses a programme without them, and repeating a refusal as
+advice says nothing.
 
 A plan captured from its document starts this way: programmes that
 coordinate nothing yet, with no measure and sometimes no problem stated. The
@@ -289,8 +288,8 @@ existing KPIs, not a new noun". This is those readings.
 
 A KPI says what is measured, in what unit, which way is good, from where and
 how often. It is written once and rarely changes. A reading says what the
-number was in one period, and a new one arrives every cycle forever. **The
-lifetimes are different**, and that is the whole argument: keeping readings
+number was in one period, and a new one arrives every cycle forever. The
+lifetimes are different, and that is the whole argument. Keeping readings
 inside the KPI would make every quarterly number a new version of the
 definition, and every diff would read as though the definition had changed
 when only the world had. The grade 3 reading KPI is defined once; this
@@ -318,7 +317,7 @@ resources or methods, and it is a noun, not a verb. Cartograph's Gap was a
 sentence and its provenance: no current state, no desired state, no scope, and
 a citation that could only claim the whole of it.
 
-In short: a measured gap references the KPI whose baseline and
+In short, a measured gap references the KPI whose baseline and
 target already are its two states; a gap enumerates the `Segment`s it was
 observed in; and a citation names which of those segments the work addresses,
 so a project addressing one quarter of a gap is recorded as addressing one
@@ -339,14 +338,14 @@ carry, and would break the rule that a goal references nothing below it.
 ### D10. A unit is a declared thing, and the standard ones ship. *(resolved)*
 
 `KPI.spec.unit` was free text, and free text costs this: `percent` many times
-over, plus `score`, `index`, `count`, `USD`, `rate` and `hours`: no two of
-them checkable against each other, and nothing able to say that two KPIs are
-measured in the same thing.
+over, plus `score`, `index`, `count`, `USD`, `rate` and `hours`. No two of
+them were checkable against each other, and nothing could say that two KPIs
+are measured in the same thing.
 
-A **`Unit` kind**, and the KPI references it. Kubernetes' own shape: the
-built-ins are not a special case, they are ordinary objects you are given, so
-a standard set ships with every vault and an instance declares its own beside
-them with the picker's own add. There is no second code path for a custom
+The answer is a `Unit` kind, which the KPI references. This is Kubernetes'
+own shape. The built-ins are not a special case but ordinary objects you are
+given, so a standard set ships with every vault and an instance declares its
+own beside them with the picker's own add. There is no second code path for a custom
 unit, which is the whole point of doing it this way. The grade 3 reading KPI
 uses the shipped `percent`; a ministry that scores reading on its own scale
 declares a unit for it.
@@ -375,8 +374,9 @@ that makes grouping worth having, but it belongs where it already is: on the
 envelope, for every kind, because the reason to group KPIs is the reason to
 group anything.
 
-**A label is not a field.** The rule Kubernetes settles and Cartograph keeps: if a
-fact belongs to what the thing *is*, it is a property with a name and a check.
+**A label is not a field.** The rule Kubernetes settles and Cartograph keeps is
+that if a fact belongs to what the thing *is*, it is a property with a name and
+a check.
 A label is for the cuts somebody wants to make *later* and nobody anticipated:
 which region, which office, which reporting pack. The ministry might label
 its KPIs by region to compare rural districts; nobody planned that cut when
@@ -407,7 +407,7 @@ The tree says *children read fluently by the end of grade 3* files under
 teachers leads to fluent readers, or why.
 
 So a pathway, if it is built, is a **separate edge set** from the goal tree, and
-it belongs on the Programme rather than the Goal: a goal outlives any one
+it belongs on the Programme rather than the Goal, because a goal outlives any one
 programme's theory of how to reach it, and two programmes may hold different
 theories about the same goal.
 
@@ -416,7 +416,7 @@ apparatus of a results framework is present and strong (every level labelled,
 every result naming where it is read, how often, who tracks and who confirms),
 and the causal logic of both frameworks is absent. Nothing says what leads to
 what, or what has to be true for it to. The evidence that assumptions have
-nowhere to go: `risks[].type` has had an `assumption` value throughout and
+nowhere to go is that `risks[].type` has had an `assumption` value throughout and
 risk lists do not use it.
 
 ---
@@ -439,9 +439,9 @@ reading a list takes, and a picker that accepts several reads as a menu.
 The card now says it: *All of these have to
 hold: A and B.* In the Early Reading Programme, *children read fluently by
 the end of grade 3* rests on *teachers use the coaching in class* and
-*teachers see who is falling behind by grade 2*: both have to hold.
+*teachers see who is falling behind by grade 2*, and both have to hold.
 
-**Why not an "or".** A step that holds either way is two theories of how the
+Why not an "or"? A step that holds either way is two theories of how the
 change happens, and a programme is working to one of them. Recording both
 would mean recording which is being pursued, which is a decision the delivery
 tool makes and revisits, not a fact about the change. Where two routes are
@@ -449,9 +449,9 @@ genuinely live, they are two steps with the same outcome, each with its own
 reasoning and its own assumptions, which reads as what it is, and costs
 nothing to add.
 
-The practical consequence, which is the reason to state this at all: a
-programme with several strands converging is exactly the case the field is
-for. Picking three preconditions is not a workaround; it is the shape.
+The practical consequence is the reason to state this at all. A programme
+with several strands converging is exactly the case the field is for.
+Picking three preconditions is not a workaround; it is the shape.
 
 ---
 
@@ -596,13 +596,14 @@ SMART objectives) keeps the goal broad and makes the objectives SMART.
   people ask for and Doran's own title covers goals. The outcome *children
   read fluently by the end of grade 3* is Measurable through the grade 3
   reading KPI, and Time-bound once its target of 60 carries a date.
-- The other classifications were audited and fixed: KPI shown as Indicator; Means of verification; success
-  dimensions from Shenhar and Dvir (efficiency, impact on the customer,
-  impact on the team, business success, preparation for the future) plus
-  compliance; data source provenance split from category; classification
-  a fixed scheme; refresh `irregular`; `dataSteward`; resource category
-  `orgUnit`; programme manager and business change manager on Programme;
-  the stakeholder approach derived from Mendelow's grid.
+- The other classifications were audited and fixed: KPI shown as
+  Indicator; Means of verification; success dimensions from Shenhar and
+  Dvir (efficiency, impact on the customer, impact on the team, business
+  success, preparation for the future) plus compliance; data source
+  provenance split from category; classification a fixed scheme; refresh
+  `irregular`; `dataSteward`; resource category `orgUnit`; programme
+  manager and business change manager on Programme; the stakeholder
+  approach derived from Mendelow's grid.
 
 **Departures.** Compliance is kept beside Shenhar and Dvir's five: a
 requirement that is met or not is a different shape from a measure. The

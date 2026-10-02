@@ -1,10 +1,9 @@
 # Deploying Cartograph
 
 Cartograph is one binary that serves a directory, or a Postgres
-database. Everything a deployment
-decides is an environment variable; a flag overrides it; a default works
-on a laptop. This page is the operator's view. `ARCHITECTURE.md` says why
-things are shaped this way.
+database. Everything a deployment decides is an environment variable; a
+flag overrides it; a default works on a laptop. This page is the
+operator's view. `ARCHITECTURE.md` says why things are shaped this way.
 
 ## The shortest version
 
@@ -13,8 +12,8 @@ cartograph serve ./my-vault
 ```
 
 Open http://localhost:8080. The directory may be empty; the first save
-creates `vault.yaml` and the index under `.cartograph/`. Stop it with Ctrl-C
-or SIGTERM; in-flight requests finish first.
+creates `vault.yaml` and the index under `.cartograph/`. Stop it with
+Ctrl-C or SIGTERM; in-flight requests finish first.
 
 ## Configuration
 
@@ -58,18 +57,18 @@ letting the environment override it, and nowhere else.
 | `GET /readyz` | The process will take requests. 503 during shutdown, so a load balancer drains it |
 | `GET /api/v1/health` | The API answers. Part of the contract; the web interface uses it |
 
-Probes are not logged. Neither probe checks the database, on purpose:
-a liveness probe that did would restart every replica during a database
+Probes are not logged. Neither probe checks the database, on purpose. A
+liveness probe that did would restart every replica during a database
 blip, and a readiness probe that did would take every replica out of
-service at once, exactly when the database is recovering. A request
-that needs the database fails on its own and says so.
+service at once, exactly when the database is recovering. A request that
+needs the database fails on its own and says so.
 
 ## Logs
 
 One line per event on stdout, text by default, JSON with
-`CARTOGRAPH_LOG_FORMAT=json`. Requests are logged at `debug`, and at `warn`
-when the status is 5xx. Whatever runs the process decides where stdout
-goes; Cartograph never opens a log file.
+`CARTOGRAPH_LOG_FORMAT=json`. Requests are logged at `debug`, and at
+`warn` when the status is 5xx. Whatever runs the process decides where
+stdout goes; Cartograph never opens a log file.
 
 ## The container image
 
@@ -82,17 +81,17 @@ nix build .#image-chromium   # the same plus Chromium, for PDF printing (about 4
 ```
 
 Releases publish both to the organisation's container registry as
-multi-architecture tags (`<version>` and `<version>-chromium`), built
-on x86_64 and aarch64 runners from the same flake. The image runs as
-uid 65532, owns `/vault`, sets `CARTOGRAPH_VAULT=/vault` and
-`CARTOGRAPH_LOG_FORMAT=json`, exposes 8080, and checks itself with `cartograph
-ready` (there is no shell and no curl in it). Mount a volume at
-`/vault`; that volume is the only state. `compose.yaml` does the same
+multi-architecture tags (`<version>` and `<version>-chromium`), built on
+x86_64 and aarch64 runners from the same flake. The image runs as uid
+65532, owns `/vault`, sets `CARTOGRAPH_VAULT=/vault` and
+`CARTOGRAPH_LOG_FORMAT=json`, exposes 8080, and checks itself with
+`cartograph ready` (there is no shell and no curl in it). Mount a volume
+at `/vault`; that volume is the only state. `compose.yaml` does the same
 with the health check, on `cartograph:local` (or `CARTOGRAPH_IMAGE`).
 
 Seed the volume as the runtime user before the first start, and never
-mount a tracked example directory in place (the server writes `.cartograph/`
-and `vault.yaml` into whatever it serves):
+mount a tracked example directory in place (the server writes
+`.cartograph/` and `vault.yaml` into whatever it serves):
 
 ```
 docker volume create cartograph-vault
@@ -106,38 +105,40 @@ docker run -d -p 8080:8080 -v cartograph-vault:/vault cartograph:<version>
 Cartograph records who did what but does not verify anyone itself. Two
 adapters exist.
 
-**`CARTOGRAPH_AUTH=none`** (default). Every request is anonymous and every
-write is recorded as the vault's `Settings.spec.operator` (default
-`local`). Right for one operator on a trusted network, and for the
-command line, which always runs this way.
+With `CARTOGRAPH_AUTH=none` (the default), every request is anonymous
+and every write is recorded as the vault's `Settings.spec.operator`
+(default `local`). This is right for one operator on a trusted network,
+and for the command line, which always runs this way.
 
-**`CARTOGRAPH_AUTH=proxy`.** Cartograph sits behind an authenticating reverse proxy
-(oauth2-proxy, Pomerium, Authelia, an ingress controller with OIDC) that
-verifies the person and forwards their identity in a header. Cartograph trusts
-`X-Forwarded-User` (the subject), `X-Forwarded-Preferred-Username` (a
-display name, shown to others on the same screen), `X-Forwarded-Email`
-(the organisation address, which an access list knows people by) and
-`X-Forwarded-Groups` (comma-separated groups). These are the headers
-oauth2-proxy sets. A request without the subject header gets 401.
+With `CARTOGRAPH_AUTH=proxy`, Cartograph sits behind an authenticating
+reverse proxy (oauth2-proxy, Pomerium, Authelia, an ingress controller
+with OIDC) that verifies the person and forwards their identity in a
+header. Cartograph trusts `X-Forwarded-User` (the subject),
+`X-Forwarded-Preferred-Username` (a display name, shown to others on the
+same screen), `X-Forwarded-Email` (the organisation address, which an
+access list knows people by) and `X-Forwarded-Groups` (comma-separated
+groups). These are the headers oauth2-proxy sets. A request without the
+subject header gets 401.
 
 This is only safe when the proxy is the only route to the port. Bind
-`CARTOGRAPH_ADDR` to a private interface or a container network the proxy
-alone can reach. A client that can reach Cartograph directly can set the
-header and be anyone. The same caveat applies to every system that uses
-this pattern; it is not special to Cartograph.
+`CARTOGRAPH_ADDR` to a private interface or a container network the
+proxy alone can reach. A client that can reach Cartograph directly can
+set the header and be anyone. The same caveat applies to every system
+that uses this pattern, not only to Cartograph.
 
 Live editing uses a WebSocket at `/api/v1/sync`, behind the same
 authentication and policy as every other request. The proxy must pass
 WebSocket upgrades on that path and allow long-lived connections there.
 
-**Authorization.** `CARTOGRAPH_AUTHZ=allow` (default) lets every principal do
-everything, which is right when the proxy already decides who may reach
-Cartograph at all. `CARTOGRAPH_AUTHZ=roles` applies a policy from the groups the
-authenticator forwards: anyone in `CARTOGRAPH_WRITE_ROLES` may read and
-write, anyone in `CARTOGRAPH_READ_ROLES` may read, everyone else gets 403
-with a message naming the actor and the verb, and an anonymous request
-is refused outright (so pair it with `CARTOGRAPH_AUTH=proxy`). An empty read
-list means any authenticated person may read. The policy is one check in
+For authorization, `CARTOGRAPH_AUTHZ=allow` (the default) lets every
+principal do everything, which is right when the proxy already decides
+who may reach Cartograph at all. `CARTOGRAPH_AUTHZ=roles` applies a
+policy from the groups the authenticator forwards: anyone in
+`CARTOGRAPH_WRITE_ROLES` may read and write, anyone in
+`CARTOGRAPH_READ_ROLES` may read, everyone else gets 403 with a message
+naming the actor and the verb, and an anonymous request is refused
+outright (so pair it with `CARTOGRAPH_AUTH=proxy`). An empty read list
+means any authenticated person may read. The policy is one check in
 front of the whole API, so the command line, which runs in-process with
 no identity, is unaffected. Finer policies are adapters; see
 `EXTENDING.md`.
@@ -219,11 +220,11 @@ without the PDF.
 
 ## Changing the manifest syntax
 
-A vault is written in one syntax, YAML unless `CARTOGRAPH_CODEC=json`. The
-engine parses none of it itself; the codec does, and the store keeps the
-text byte for byte, which is what makes versions and diffs the person's
-own text. So the syntax is not a flag to flip on live files. To move a
-vault:
+A vault is written in one syntax, YAML unless `CARTOGRAPH_CODEC=json`.
+The engine parses none of it itself; the codec does, and the store keeps
+the text byte for byte, which is what makes versions and diffs the
+person's own text. So the syntax is not a flag to flip on live files. To
+move a vault:
 
 ```
 cartograph export /tmp/vault-json /path/to/vault --codec json
@@ -231,19 +232,19 @@ CARTOGRAPH_CODEC=json cartograph serve /tmp/vault-json
 ```
 
 Every manifest is decoded and re-encoded; `vault.yaml` is regenerated on
-first open (it is the adapter's own file and stays YAML in both). Version
-history does not travel: the export is a new vault at version 1 of
-everything, which is the same as any export.
+first open (it is the adapter's own file and stays YAML in both).
+Version history does not travel. The export is a new vault at version 1
+of everything, as any export is.
 
 ## Backups and restore
 
 For a Postgres store, see "A stateless deployment". For a vault, the
-directory is the whole state. `.cartograph/` inside it is a cache.
-A backup is a copy of the directory, or a git commit of it. A restore is
+directory is the whole state. `.cartograph/` inside it is a cache. A
+backup is a copy of the directory, or a git commit of it. A restore is
 putting the directory back and starting the server; the index rebuilds.
 Version numbers restart from what the files say, which is why versions
-that matter are snapshotted (`cartograph snapshot`) and why a vault under git
-loses nothing.
+that matter are snapshotted (`cartograph snapshot`) and why a vault
+under git loses nothing.
 
 ## Several replicas
 
@@ -268,21 +269,21 @@ cartograph serve
   later migrated, when a replica starts. Replicas that start together
   take turns, so each migration runs once.
 - Any replica serves any request. Start, stop or kill replicas at any
-  time; no volume, no sticky sessions, no index to rebuild.
+  time. There is no volume, no sticky session and no index to rebuild.
 - Each replica holds one extra connection to the database, which only
-  listens. That is the fan-out: when one replica stores a change to a
-  shared draft, it sends a notification, and every replica tells the
-  people connected to it. If that connection drops, the replica
-  reconnects and listens again. A notification lost meanwhile costs
-  latency, never an edit, because each client compares its state with
-  the server's on every exchange.
+  listens. That connection is the fan-out. When one replica stores a
+  change to a shared draft, it sends a notification, and every replica
+  tells the people connected to it. If that connection drops, the
+  replica reconnects and listens again. A notification lost meanwhile
+  costs latency, never an edit, because each client compares its state
+  with the server's on every exchange.
 - Size the database's `max_connections` for the pool of every replica
   (pgx's default is the larger of 4 and the number of CPUs) plus one
   listening connection each.
 - Any parameter in the URL that the driver does not know is passed to
   the server, so `?search_path=cartograph` keeps the tables in a schema
   of their own.
-- There is no apply gate: every row is live, and the state endpoints
+- There is no apply gate. Every row is live, and the state endpoints
   answer that this store has no state manifest. Files come in through
   `cartograph import` or `CARTOGRAPH_IMPORT`, and go out through
   `cartograph export`.
@@ -296,7 +297,7 @@ snapshots). `cartograph export` writes the manifests as files as well.
 
 ## Large-scale, highly available
 
-The stateless deployment above scales out. This section is how to run
+The stateless deployment above scales out. This section says how to run
 it for many people, with no single replica that matters.
 
 ### The topology
@@ -307,21 +308,21 @@ clients ── load balancer ── replica 1 ─┐
                             replica N ─┘        └──── direct: one LISTEN per replica
 ```
 
-- N stateless replicas, all with the same `CARTOGRAPH_STORE`, behind
-  any load balancer. No sticky sessions: any replica serves any
-  request, and a sync socket that moves to another replica resumes
-  from heads.
+- N stateless replicas, all with the same `CARTOGRAPH_STORE`, behind any
+  load balancer. There are no sticky sessions. Any replica serves any
+  request, and a sync socket that moves to another replica resumes from
+  heads.
 - Postgres is the one stateful part, and its high availability is the
   operator's. Use a managed service, or an operator such as
   CloudNativePG, with a standby and automatic failover. Cartograph
   reconnects after a failover; a change refused meanwhile stays with
   the client, which sends it again.
-- Through PgBouncer in transaction mode, two things change. LISTEN
-  does not work through such a pooler, so set `CARTOGRAPH_FANOUT_URL`
-  to a direct Postgres URL; only the one listening connection per
-  replica uses it. And pgx prepares statements, which transaction
-  pooling breaks: add `default_query_exec_mode=exec` to the store URL,
-  or turn on PgBouncer's prepared statement support
+- Through PgBouncer in transaction mode, two things change. LISTEN does
+  not work through such a pooler, so set `CARTOGRAPH_FANOUT_URL` to a
+  direct Postgres URL; only the one listening connection per replica
+  uses it. And pgx prepares statements, which transaction pooling
+  breaks, so add `default_query_exec_mode=exec` to the store URL, or
+  turn on PgBouncer's prepared statement support
   (`max_prepared_statements`, PgBouncer 1.21 or later).
 
 `compose.ha.yaml` rehearses this on one machine: Postgres, a one-shot
@@ -329,8 +330,9 @@ import of the example, two replicas, and nginx in front (`just image`,
 then `just ha-up`, and `just ha-down` to stop). The Helm chart in
 `deploy/helm/cartograph` deploys it on Kubernetes.
 
-The settings this shape tunes (`CARTOGRAPH_STORE`, `CARTOGRAPH_FANOUT_URL`,
-`CARTOGRAPH_METRICS_ADDR`, `CARTOGRAPH_SYNC_PING`, `CARTOGRAPH_DOC_CACHE`,
+The settings this shape tunes (`CARTOGRAPH_STORE`,
+`CARTOGRAPH_FANOUT_URL`, `CARTOGRAPH_METRICS_ADDR`,
+`CARTOGRAPH_SYNC_PING`, `CARTOGRAPH_DOC_CACHE`,
 `CARTOGRAPH_DRAIN_DELAY`) are in the configuration table above.
 
 ### Connection budget
@@ -382,11 +384,11 @@ that count idle time.
   touches the database. A database outage must not make the platform
   restart every replica.
 - `/readyz` is readiness. It answers 503 only while the replica drains
-  or stops. It deliberately does not check the database either: if it
+  or stops. It deliberately does not check the database either. If it
   did, a short database blip would mark every replica unready at once,
   and the load balancer would turn a partial outage into a total one.
-  While the database is away, replicas still answer, refuse writes
-  they cannot store, and recover on their own.
+  While the database is away, replicas still answer, refuse writes they
+  cannot store, and recover on their own.
 - A startup probe on `/healthz` covers the first start, which compiles
   the schemas and the Automerge module.
 
@@ -412,7 +414,7 @@ chart sets all of this.
 
 Two choices, never both on one Deployment:
 
-- **KEDA on Prometheus.** Scale on open sync connections, which is what
+- KEDA on Prometheus. Scale on open sync connections, which is what
   costs memory and file descriptors. For example, one replica per 200
   connections:
 
@@ -434,7 +436,7 @@ Two choices, never both on one Deployment:
           threshold: "200"
   ```
 
-- **A HorizontalPodAutoscaler on CPU.** Simpler, and right when most
+- A HorizontalPodAutoscaler on CPU. It is simpler, and right when most
   traffic is plain API requests.
 
 Keep the minimum at 2 or more, so one replica can go away.

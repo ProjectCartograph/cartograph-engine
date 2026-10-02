@@ -1,8 +1,8 @@
 # The interface contract
 
-**Design of record. Built: the client port with two
-transports, the conformance suite as data with its reference driver
-passing over both, the flow contract with the Goal exemplar.**
+Design of record. Built so far: the client port with two transports,
+the conformance suite as data with its reference driver passing over
+both, and the flow contract with the Goal exemplar.
 
 Cartograph has one engine and will have more than one interface: the web
 interface in the reference build, a terminal interface built with Bubble
@@ -15,13 +15,13 @@ and how it is tested, in any repository, in CI.
 
 Three decisions:
 
-1. **An interface depends on a port, never on a wire.** The engine
+1. An interface depends on a port, never on a wire. The engine
    publishes `pkg/client.Client`, a Go interface. In the same process it
    is the engine itself; across a UNIX socket, a TCP port or an SSH
    forward it is a transport adapter. A terminal interface runs inside
-   the cartograph binary with no server at all, or against a remote one, with
-   the same code. Nothing in an interface names an HTTP path.
-2. **Transports are adapters.** HTTP is the first; a UNIX domain
+   the cartograph binary with no server at all, or against a remote
+   one, with the same code. Nothing in an interface names an HTTP path.
+2. Transports are adapters. HTTP is the first; a UNIX domain
    socket carries the same contract today
    (`CARTOGRAPH_ADDR=unix:///run/cartograph.sock`, `remote.Dial("unix://...")`),
    and SSH forwards it. Another transport implements `client.Client`
@@ -31,7 +31,7 @@ Three decisions:
    syncs it over the sync socket (`/api/v1/sync`, the automerge-repo
    network protocol, version 1) with the stock automerge-repo
    libraries.
-3. **The suite is data.** Scenarios are JSON files an interface's own
+3. The suite is data. Scenarios are JSON files an interface's own
    CI runs against its own driver, in Go through this package or in the
    interface's language through a runner of its own.
 
@@ -60,12 +60,12 @@ review.
 
 ### 1.1 Fields are named by path
 
-A field's identity is its JSON pointer in the manifest: `/spec/objective`,
-`/spec/keyResults/{kr-2}/target`. It is what the schema is keyed by, what
-a check's `path` names, what a problem lands on, what the conformance
-driver sets, and what presence names as the focused field. An element of a keyed list
-is addressed by its key in braces, never by its index, because two
-people's lists do not share indices.
+A field's identity is its JSON pointer in the manifest:
+`/spec/objective`, `/spec/keyResults/{kr-2}/target`. The schema is
+keyed by it, a check's `path` names it, a problem lands on it, the
+conformance driver sets it, and presence names it as the focused field.
+An element of a keyed list is addressed by its key in braces, never by
+its index, because two people's lists do not share indices.
 
 In a web interface this is a `data-cartograph-field` attribute on the
 control; in a terminal interface it is the model's field id. Neither may
@@ -153,7 +153,7 @@ Two adapters today, under `pkg/client`:
   everything else is carried.
 
 A transport is proven by running the conformance suite over it with the
-reference driver, which is exactly what `clientdriver_test.go` does for
+reference driver, which is what `clientdriver_test.go` does for
 both. The suite therefore proves two things at once: that an interface
 behaves, and that a transport carries behaviour unchanged.
 
@@ -171,7 +171,7 @@ The `Driver` protocol is what an interface implements to be driven:
 next, back, apply), `Problems`, `Where`, `Close`. The suite reads the
 vault back through a `client.Client` and asserts on two things only:
 what the vault holds and which problems the interface showed at which
-fields. Never a widget, a pixel or a key binding.
+fields. It never asserts on a widget, a pixel or a key binding.
 
 Scenarios are JSON under `pkg/uiconformance/scenarios`, one file each,
 named after the rule they hold:
@@ -204,11 +204,11 @@ Drivers:
   web interface headlessly over the Chrome DevTools Protocol, controls by
   `data-cartograph-field`, steps by key, actions by accessible name.
 
-CI: the engine repository runs the reference driver in the ten-second
-gate (it does). An interface repository runs its driver against a copy
-of the example in its own job, with the engine from the cartograph binary
-(in-process for the terminal, served over a socket for the web). A new
-interface is a new driver and one line in a job.
+In CI, the engine repository already runs the reference driver in the
+ten-second gate. An interface repository runs its driver against a copy
+of the example in its own job, with the engine from the cartograph
+binary (in-process for the terminal, served over a socket for the web).
+A new interface is a new driver and one line in a job.
 
 ## 4. What this asks of the web interface
 
@@ -232,9 +232,9 @@ regions carry `data-cartograph-region`, which is what a pointer is
 anchored to. `just wire` also fails on an `@automerge/` import outside
 the client adapter.
 
-Still to do: render flows from `Flow(kind)` instead of the hand-coded
-`definition/outline.ts` and `GoalSteps.tsx`, and the web driver for
-the conformance suite. Nothing visible changes.
+Two things are still to do: rendering flows from `Flow(kind)` instead
+of the hand-coded `definition/outline.ts` and `GoalSteps.tsx`, and the
+web driver for the conformance suite. Nothing visible changes.
 
 ## 5. Repository split
 

@@ -1,16 +1,16 @@
 # Cartograph systems architecture
 
-**Describes the tree as built, at engine 2.2.1. Where it describes a
-port with one adapter, that is the state of things, not a promise. The
-decisions behind it are recorded one per file in
-[`adr/`](adr/README.md).**
+This describes the tree as built, at engine 2.2.1. Where it shows a
+port with one adapter, that is how things stand today, and nothing
+more. Each decision behind it has its own file in
+[`adr/`](adr/README.md).
 
 Cartograph captures what an organisation has decided to do (goals, programmes,
 projects, operations, KPIs, the data sources behind them) as declarative
 manifests, checks them against a contract and a set of discipline rules,
 and renders the result as documents other tools and people consume.
 It does not manage delivery. Jira, or whatever the organisation runs,
-does that; Cartograph hands a defined project over and keeps the record.
+does that. Cartograph hands a defined project over and keeps the record.
 
 Three decisions shape everything below.
 
@@ -20,21 +20,21 @@ Three decisions shape everything below.
    handwritten request or response type exists.
 2. **The record is the committed text of each version, in whatever
    store the deployment chose.** The engine holds no file path and no
-   syntax: a `ManifestStore` adapter keeps the text, a `Codec` adapter
-   says what the text is written in. The reference adapter, the vault,
+   syntax. A `ManifestStore` adapter keeps the text, and a `Codec`
+   adapter says what the text is written in. The reference adapter, the vault,
    makes that record a directory of files, one per manifest, plus
    `vault.yaml` saying which are live, so a vault can be read with
    `cat`, diffed with git, and edited in any editor while the server is
-   running; its index (versions, references, summaries) is a cache that
+   running. Its index (versions, references, summaries) is a cache that
    can be deleted and rebuilt. A database adapter keeps the same record
    as rows, and the engine cannot tell the difference. "Files are the
    truth" is the vault's promise, not the architecture's.
 3. **One engine, many adapters.** Every rule lives in the Go engine, which
    talks to the world through interfaces (ports). Files, SQLite,
-   Postgres, a browser that prints PDFs, an authenticating proxy: each
-   is an adapter a deployment picks by configuration. The HTTP API and
-   the command line are two front doors to the same engine; the web
-   interface is a client of the API and its sync socket, and nothing
+   Postgres, a browser that prints PDFs and an authenticating proxy are
+   all adapters, and a deployment picks each by configuration. The HTTP
+   API and the command line are two front doors to the same engine. The
+   web interface is a client of the API and its sync socket, nothing
    more.
 
 ## 1. Context
@@ -78,9 +78,9 @@ With a vault, the vault is the only thing that needs backing up, and
 `git` is a fine way to do it. The index lives beside the vault under
 `.cartograph/` and is ignored by version control. With a Postgres store
 (`CARTOGRAPH_STORE`), the database holds everything instead, and its
-own backups are the backup. The proxy and the browser are optional: a
-single operator on a laptop runs `cartograph serve .` and gets everything but
-PDF printing and identity.
+own backups are the backup. The proxy and the browser are optional. A
+single operator on a laptop runs `cartograph serve .` and gets
+everything except PDF printing and identity.
 
 ## 2. Containers
 
@@ -111,7 +111,7 @@ flowchart TB
             fanad["fanout: memory | postgres"]
             chrom["printer/chromium"]
             none["printer.None"]
-            authn["auth: none | proxy"]
+            authn["auth: none | proxy<br/>policy: allow all | roles | access"]
         end
         http --> authmw --> apigen --> apipkg --> core
         authmw --> syncsrv --> core
@@ -124,7 +124,7 @@ flowchart TB
         core --> fanad
         core --> chrom
     end
-    cliproc["cartograph validate | import | export | diff | list | snapshot |<br/>check | render | handoff | apply | exclude | recover"] --> core
+    cliproc["cartograph validate | import | export | diff | list | snapshot |<br/>check | render | handoff | apply | exclude | recover | access"] --> core
     fs[("vault directory")] --- vaultad
     db[("index.sqlite")] --- sqlitead
     pg[("Postgres (optional)<br/>store and LISTEN/NOTIFY")] --- pgad
@@ -185,6 +185,7 @@ flowchart LR
         p11["crdt.Engine, crdt.Doc<br/>the CRDT under shared drafts"]
         p12["fanout.Bus<br/>hints between replicas, presence"]
         p13["engine.Bus<br/>events: version, state"]
+        p14["store.AccessStore<br/>the access list: people,<br/>their roles and teams"]
     end
 
     subgraph adapters["Adapters (one deployment picks each)"]
@@ -200,6 +201,7 @@ flowchart LR
         a10["oidc (not built)"]
         a8["auth AllowAll"]
         a11["auth roles"]
+        a19["auth access<br/>(roles and teams)"]
         a12["codec yaml"]
         a13["codec json"]
         a14["automerge<br/>(WebAssembly on wazero)"]
@@ -213,7 +215,7 @@ flowchart LR
     d4 --> E
     d2 --> E
     d3 --> E
-    E --> p1 & p2 & p3 & p4 & p5 & p9 & p10 & p11 & p12 & p13
+    E --> p1 & p2 & p3 & p4 & p5 & p7 & p9 & p10 & p11 & p12 & p13 & p14
     d1 --> p6 & p7
     d4 --> p7 & p12
     a1 --> p8
@@ -224,7 +226,7 @@ flowchart LR
     p4 --- a1 & a3 & a9
     p5 --- a4 & a5
     p6 --- a6 & a7 & a10
-    p7 --- a8 & a11
+    p7 --- a8 & a11 & a19
     p8 --- a2
     p9 --- a12 & a13
     p10 --- a2 & a3 & a9
@@ -232,13 +234,14 @@ flowchart LR
     p12 --- a15 & a16
     p12 -.- a17
     p13 --- a18
+    p14 --- a2 & a3 & a9
 ```
 
 A few things the diagram cannot say.
 
 The ports are small and typed on plain values (`[]byte` of YAML, strings,
-times). An adapter never sees an engine type, so it can live in another
-module tomorrow without the engine noticing.
+times). An adapter never sees an engine type, so it could move to
+another module without the engine noticing.
 
 `StateStore` and `BundleStore` are optional. The engine attaches them when
 the manifest store happens to implement them (the vault does) or when the
@@ -249,49 +252,58 @@ difference between "define in YAML" and "define in a database" as far as
 the engine is concerned.
 
 The identity ports sit on the driving side on purpose. The engine takes an
-actor string and records it on every version and state transition; it
+actor string and records it on every version and state transition. It
 does not know what a session is. Two middlewares wrap the whole API, in
 order: `auth.Middleware` turns the request into a `Principal` (or answers
 401), and `auth.Authorize` classifies the request into an `Action` (read
 or write, and the manifest it names) and puts it to the `Authorizer` (or
 answers 403). The handlers never see a credential and never decide
-policy; they take the actor off the context. This keeps identity out of
-the core and lets a deployment choose "no identity on a trusted network",
-"trust the proxy's header, readers and editors by group", or "an access
-list of people, roles and teams behind an OIDC proxy" without the
-engine changing.
+policy. They take the actor off the context. So identity stays out of
+the core, and a deployment can run with no identity on a trusted
+network, trust a proxy's header with readers and editors by group, or
+keep an access list of people, roles and teams behind an OIDC proxy,
+all without changing the engine.
 
 A policy that decides by a manifest's content cannot decide at the
 middleware, which never sees the content. So the engine asks the same
 `Authorizer` again at every write, with what the write does: the
 chains of teams the manifest sits under before and after, and the spec
-fields it changes (ADR 0011). For that the engine knows
+fields it changes (ADR 0011). That is why the engine imports
 `internal/identity`, the HTTP-free half of the identity port (the
-principal on the context, the action, the authorizer); `internal/auth`
+principal on the context, the action, the authorizer). `internal/auth`
 adds the HTTP half and re-exports the rest. The engine still never
 sees a credential or a session.
 
+The access list is the one piece of identity the engine stores, behind
+`store.AccessStore`, in the same database as everything else. The
+access policy asks the engine what a principal holds (`Engine.Grants`),
+and the engine answers from the list, merging in what the directory's
+groups give through the deployment's mapping. A person whose groups
+grant a role is put on the list at their first sign-in. People are
+principals, not manifests (TAXONOMY.md D27); teams are manifests, the
+`Team` kind, so the mapping creates them like any other definition.
+
 `codec.Codec` is the one port the engine owns for its own input: manifest
 text in, document out, and canonical text back for a save. The engine
-parses no syntax itself. YAML is what the vaults are written in; the JSON
-adapter proves the seam and is the natural syntax for a database-backed
-deployment. A store carries the text its codec produced, byte for byte,
-so versions and diffs are over what the person wrote; changing the codec
-of an existing vault is therefore a migration (`cartograph export --codec
-json`, then serve the export with `CARTOGRAPH_CODEC=json`), never a flag flip
-on live files.
+parses no syntax itself. Vaults are written in YAML. The JSON adapter
+proves the seam, and it is the natural syntax for a database-backed
+deployment. A store keeps the text its codec produced, byte for byte,
+so versions and diffs are over what the person wrote. Changing the
+codec of an existing vault is therefore a migration (`cartograph export
+--codec json`, then serve the export with `CARTOGRAPH_CODEC=json`), and
+never a flag flipped on live files.
 
-`VaultIndex` is the vault adapter's own port, one layer down: the vault is
-files plus a rebuildable cache, and that cache is SQLite today and may be
-Postgres tomorrow. The engine does not see this port at all, and the
-vault does not choose its adapter: the composition root passes an opener
+`VaultIndex` is the vault adapter's own port, one layer down. The vault
+is files plus a rebuildable cache, and that cache is SQLite today. The
+engine does not see this port at all. Nor does the vault choose its
+adapter; the composition root passes an opener
 (`vault.Options.OpenIndex`), so the vault and SQLite adapters never
 import each other (ADR 0004).
 
-`pkg/client.Client` is the port on the other side: what an interface
-(web, terminal, a bot) uses, as a Go interface and never as a wire. In
-one process it is the engine (`inproc`); across a process boundary it is
-a transport adapter (`remote`: the HTTP contract over TCP or a UNIX
+`pkg/client.Client` is the port on the other side, the one an interface
+(web, terminal, a bot) uses. It is a Go interface, never a wire format.
+In one process it is the engine (`inproc`). Across a process boundary it
+is a transport adapter (`remote`, the HTTP contract over TCP or a UNIX
 socket, which SSH forwards). The HTTP API in `internal/api` is the far
 end of that transport, not something an interface talks to directly.
 Both transports are proven by the same conformance suite
@@ -299,7 +311,7 @@ Both transports are proven by the same conformance suite
 `UI_CONTRACT.md` and `MULTIPLAYER.md` are the design of record for the
 interfaces and for shared editing.
 
-Shared editing has four engine-side pieces (ADR 0007, ADR 0008).
+Shared editing has four pieces on the engine's side (ADR 0007, ADR 0008).
 `engine.Shared` is the shared-draft service: one Automerge document per
 manifest, reached through the `crdt.Engine` port, whose one adapter
 runs Automerge compiled to WebAssembly on wazero, so the binary stays
@@ -310,41 +322,46 @@ from one replica to the others, as hints that correctness never
 depends on. The sync socket, `internal/syncserver`, is a driving
 adapter beside the HTTP API: it speaks the automerge-repo network
 protocol to interfaces and turns each message into a call on
-`engine.Shared`. Live edits and presence travel there, not on the
-client port, which only names a manifest's document
-(`SharedDocument`). `engine.Bus` is what is left of the old event
-bus: versions saved and states changed, in one process.
+`engine.Shared`. Live edits and presence travel there. The client port
+only names a manifest's document (`SharedDocument`). `engine.Bus` is
+what is left of the old event bus, carrying versions saved and states
+changed within one process.
 
 ### 3.1 Clean architecture, and the test that keeps it
 
-The hexagon above is clean architecture drawn from the side. Read as
-rings, from the centre out:
+The hexagon above is clean architecture drawn from the side. Here it is
+as rings, from the centre out.
 
 | Ring | Here | May depend on |
 |---|---|---|
 | Entities | `internal/kinds`, `kinds/<kind>` and `kinds/kit` (what a kind is, its rules), `internal/contract` (the schemas and flows), `internal/sentence` | nothing in the module but each other; no driver |
 | Use cases | `internal/engine` | the ports and the entities |
 | Ports | `internal/store` (with `store.DocStore` and `store.AccessStore`), `internal/codec`, `internal/printer`, `internal/crdt`, `internal/fanout`, `engine.Bus` (driven); `pkg/client`, `pkg/uiconformance`, `internal/identity`, `internal/auth` (driving) | the entities; `internal/identity` nothing at all; `internal/auth` also `net/http`, because the identity ports are request middleware, and `internal/identity` |
-| Interface adapters | driving: `internal/api`, `internal/syncserver`, `internal/render`, `internal/spa`, `pkg/client/inproc`, `pkg/client/remote`, `uiconformance/clientdriver`; driven: `store/vault`, `store/sqlite`, `store/memory`, `store/postgres`, `crdt/automerge`, `fanout/memory`, `fanout/postgres`, `codec/yaml`, `codec/json`, `printer/chromium`, `auth/proxy`, `auth/roles`, the conformance suites, and the helpers the adapters share (`yamlfmt`, `store/manifestmeta`) | the rings inside them, never another adapter of their side |
+| Interface adapters | driving: `internal/api`, `internal/syncserver`, `internal/render`, `internal/spa`, `pkg/client/inproc`, `pkg/client/remote`, `uiconformance/clientdriver`; driven: `store/vault`, `store/sqlite`, `store/memory`, `store/postgres`, `crdt/automerge`, `fanout/memory`, `fanout/postgres`, `codec/yaml`, `codec/json`, `printer/chromium`, `auth/proxy`, `auth/roles`, `auth/access`, the conformance suites, and the helpers the adapters share (`yamlfmt`, `store/manifestmeta`) | the rings inside them, never another adapter of their side |
 | Frameworks and drivers | `net/http`, `database/sql`, `os/exec`, `modernc.org/sqlite`, `pgx` (only in the Postgres adapters), `wazero` (only in the Automerge adapter), `fsnotify`, `yaml.v3`, Chromium, the generated server (`api/gen`) | used only by adapters |
 | Composition root | `cmd/cartograph`, `internal/config` | everything; the one place an adapter is chosen |
 
-The dependency rule, dependencies point inward, is a test
-(`internal/arch`, run by `just arch` and in the gate). Every package in
+The dependency rule (dependencies point inward) is a test,
+`internal/arch`, run by `just arch` and in the gate. Every package in
 the module has a rule there, and a new package without one fails the
 build, so nothing joins the tree without somebody saying which ring it
 belongs to. Each rule lists what that package must never depend on,
 transitively: module packages by subtree, third-party drivers by
 module path, and standard-library drivers (`net/http`, `database/sql`,
-`os/exec`) by name. The engine may not import an adapter, a driver, or
-a syntax library; a port may not import the engine; an adapter may not
-import another adapter, because composing adapters is the root's job;
-the entities and the ports `internal/codec`, `internal/printer`,
-`internal/crdt` and `internal/fanout` may not import anything else in
-the module; `cmd` is the only
-package that knows everything, which is what makes it the one place an
-adapter is chosen. A change that needs a new edge gets a new port, not
-an exception (ADR 0003).
+`os/exec`) by name. In short:
+
+- the engine may not import an adapter, a driver or a syntax library;
+- a port may not import the engine;
+- an adapter may not import another adapter, because composing
+  adapters is the root's job;
+- the entities, `internal/identity` and the ports `internal/codec`,
+  `internal/printer`, `internal/crdt` and `internal/fanout` may not
+  import anything else in the module;
+- `cmd` is the only package that knows everything, which is what makes
+  it the one place an adapter is chosen.
+
+A change that needs a new edge gets a new port, not an exception
+(ADR 0003).
 
 ### 3.2 Packages
 
@@ -354,14 +371,14 @@ an exception (ADR 0003).
 | `internal/sentence` | Composes the sentences a manifest stores in parts, the same way everywhere they are shown | nothing |
 | `internal/kinds`, `internal/kinds/<kind>` | The registry of kinds and each kind's rules beyond its schema | `kinds/kit` |
 | `internal/kinds/kit` | The small types rules need (`Problem`, `Lookup`) so kind packages never import the engine | nothing |
-| `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, the shared drafts (`Shared`, and `Shape`, which maps a kind's schema onto the document), the event bus | `store`, `codec`, `crdt`, `fanout`, `kinds`, `kinds/kit`, `contract`, `sentence`; a JSON Schema validator |
-| `internal/store` | The port definitions (`ManifestStore`, `OperationalStore`, `StateStore`, `BundleStore`, `VaultIndex`, `DocStore`) and the record shapes | nothing |
+| `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, the shared drafts (`Shared`, and `Shape`, which maps a kind's schema onto the document), the access list and the team checks at every write, the event bus | `store`, `codec`, `crdt`, `fanout`, `identity`, `kinds`, `kinds/kit`, `contract`, `sentence`; a JSON Schema validator |
+| `internal/store` | The port definitions (`ManifestStore`, `OperationalStore`, `StateStore`, `BundleStore`, `VaultIndex`, `DocStore`, `AccessStore`) and the record shapes | nothing |
 | `internal/store/vault` | Files are the truth; journalled writes; watcher; apply gate; bundles. Its index is a `store.VaultIndex` the root opens for it | `store`, `store/manifestmeta`, `yamlfmt`, `fsnotify`, `yaml.v3` |
-| `internal/store/sqlite` | SQLite adapter: manifest store, operational store, journal, document store, vault index | `store`, `store/manifestmeta`, `modernc.org/sqlite` |
-| `internal/store/postgres` | Postgres adapter for a stateless deployment: manifest store, operational store, bundle store, document store; migrations applied on open | `store`, `store/manifestmeta`, `pgx` |
-| `internal/store/memory` | In-memory adapter for tests and the conformance suite: manifest store, operational store, bundle store, document store | `store`, `store/manifestmeta` |
+| `internal/store/sqlite` | SQLite adapter: manifest store, operational store, journal, document store, access list, vault index | `store`, `store/manifestmeta`, `modernc.org/sqlite` |
+| `internal/store/postgres` | Postgres adapter for a stateless deployment: manifest store, operational store, bundle store, document store, access list; migrations applied on open | `store`, `store/manifestmeta`, `pgx` |
+| `internal/store/memory` | In-memory adapter for tests and the conformance suite: manifest store, operational store, bundle store, document store, access list | `store`, `store/manifestmeta` |
 | `internal/store/manifestmeta` | Reads the envelope (kind, id, name, labels) from manifest text for the store adapters | `yaml.v3` |
-| `internal/store/conformance` | The one suite every adapter of a store port must pass, `RunDocStore` included | `store` |
+| `internal/store/conformance` | The one suite every adapter of a store port must pass, `RunDocStore` and `RunAccessStore` included | `store` |
 | `internal/crdt`, `crdt/automerge`, `crdt/conformance` | The CRDT port (`Engine`, `Doc`, `SyncState`), its Automerge adapter (the module built from `crdt/`, run on wazero), and the suite every CRDT adapter passes | nothing / `crdt`, `wazero` (automerge) |
 | `internal/fanout`, `fanout/memory`, `fanout/postgres`, `fanout/conformance` | The port that carries a hint from one replica to every other, its in-process and `LISTEN/NOTIFY` adapters, and the suite both pass | nothing / `fanout`, `pgx` (postgres) |
 | `internal/codec`, `codec/yaml`, `codec/json`, `codec/conformance` | Manifest syntax port, its two adapters, and the suite both pass | nothing / `codec`, `yamlfmt`, `yaml.v3` |
@@ -381,9 +398,9 @@ an exception (ADR 0003).
 
 Dependency direction is inward: adapters and drivers import the core,
 never the reverse. `render` is the one package that imports the engine
-and is also called by the API; it reads, it never writes, and it is the
-natural seam for a document-rendering port if a second document format
-ever appears.
+and is also called by the API. It only reads, and it is where a
+document-rendering port would go if a second document format ever
+appears.
 
 ## 4. Data
 
@@ -393,7 +410,7 @@ Every object is a manifest: an envelope (`apiVersion`, `kind`,
 `metadata`, `spec`) whose `spec` is validated by its kind's JSON Schema.
 A reference to another manifest is a field the schema marks with
 `x-cartograph-ref: <Kind>` (or `"*"` for any kind). The engine walks each
-kind's schema once at start-up to learn where its references live, so
+kind's schema once at start-up to learn where its references live. So
 adding a reference is a schema change, never an engine change.
 
 ```mermaid
@@ -441,9 +458,9 @@ erDiagram
 The 18 kinds, in registry order: Team, ReportingCycle, DataSource,
 BeneficiaryGroup, Resource, FundingSource, Segment, Gap, Assumption,
 Goal, Unit, KPI, KPIReadings, Programme, Operation, Project,
-StakeholderMap, Settings. There is no Person kind and no Portfolio kind;
-`docs/TAXONOMY.md` says why,
-and that file is the place to argue before adding a kind.
+StakeholderMap, Settings. There is no Person kind and no Portfolio kind.
+`docs/TAXONOMY.md` says why, and that file is the place to argue before
+adding a kind.
 
 ### 4.2 The vault on disk (the reference store)
 
@@ -459,12 +476,13 @@ my-vault/
     handoff/<project>/v<n>/  the charter bundle of each handoff
 ```
 
-`vault.yaml` is the apply gate. A file can be dropped into `Goal/` by
-hand, by a generator (a generator does exactly this), or by `git pull`, and it is invisible until somebody applies it.
-The Snapshots screen and `cartograph apply` do that; `cartograph exclude` takes a
-manifest out of the live state and keeps the file; `cartograph recover` puts
-it back. Deleting a manifest from the interface deletes its file: the
-index is a cache and must never hold a fact the files do not.
+`vault.yaml` is the apply gate. A file can land in `Goal/` by hand, from
+a generator, or through `git pull`, and it stays invisible until
+somebody applies it, on the Snapshots screen or with `cartograph
+apply`. `cartograph exclude` takes a manifest out of the live state and
+keeps the file, and `cartograph recover` puts it back. Deleting a
+manifest from the interface deletes its file, because the index is a
+cache and must never hold a fact the files do not.
 
 ### 4.3 The vault's index is a cache
 
@@ -476,6 +494,27 @@ watcher does the same for files that change while the server runs
 index; version numbers may restart at 1, and that is the one thing a
 rebuild loses, which is why `cartograph snapshot` exists for the versions that
 matter.
+
+### 4.4 People and the access list
+
+Definitions name roles, never people, and there is no Person kind. A
+person exists in Cartograph only as a principal: someone signed in.
+With `CARTOGRAPH_AUTHZ=access`, the access list says what each of them
+holds, keyed by their organisation address:
+
+| Field | From |
+|---|---|
+| Name, subject, last sign-in | Each sign-in, from the proxy's headers |
+| Directory roles and teams | Each sign-in, from the person's groups through the mapping (`CARTOGRAPH_ACCESS_FILE`) |
+| Roles and teams granted by hand | An administrator, on the Access page or with `cartograph access grant` |
+| Added by, added on | Who put them on the list: an administrator, or `directory` for enrolment at sign-in |
+
+The two halves are kept apart. A sign-in replaces the directory's half
+and never touches what an administrator granted, so taking someone out
+of a group takes away what the group gave and nothing else. Teams are
+`Team` manifests with a parent, and a project, programme, operation or
+data source names the team it belongs to. `cartograph access apply`
+creates the teams the mapping names.
 
 ## 5. Flows
 
@@ -520,7 +559,7 @@ sequenceDiagram
 Two properties fall out of this. A crash at any point converges on reopen,
 because the journal replays units not marked applied (and a unit's files
 are idempotent by hash). And the version number is the concurrency
-control: an adapter refuses a `PutVersion` whose number is not exactly
+control. An adapter refuses a `PutVersion` whose number is not exactly
 current plus one, so two writers cannot both win.
 
 ### 5.2 Open, rehydrate, apply
@@ -592,8 +631,8 @@ sequenceDiagram
 ```
 
 Checks never block a save. They block a handoff, and only the ones whose
-state is `block`; the rest are advice with a link to the step that fixes
-them.
+state is `block`. The rest are advice, with a link to the step that
+fixes them.
 
 ### 5.4 A request's identity
 
@@ -607,7 +646,7 @@ sequenceDiagram
     participant E as Engine
 
     C->>X: request with session
-    X->>MW: request + X-Forwarded-User
+    X->>MW: request + identity headers
     MW->>A: Authenticate(r)
     alt none configured
         A-->>MW: Anonymous
@@ -618,27 +657,36 @@ sequenceDiagram
         MW-->>C: 401
     end
     MW->>MW: Authorize(principal, ActionFor(request))
+    opt CARTOGRAPH_AUTHZ=access
+        MW->>E: Grants(principal): look up, or enrol from the directory's groups
+    end
     alt policy refuses
         MW-->>C: 403 {problems:[{message}]}
     end
     MW->>H: request with Principal on context
     H->>E: Commit(..., actor = principal.Actor(settings.operator), ...)
+    opt CARTOGRAPH_AUTHZ=access
+        E->>E: Authorize again with Action.Change: the teams before and after, the fields changed
+    end
 ```
 
-An anonymous principal records the vault's `spec.operator` as the actor,
-which is what a single-operator vault has always done. An authenticated
-one records its subject. The policy is called for the whole API before
+The proxy authenticator reads the header `CARTOGRAPH_AUTH_PROXY_HEADER`
+names (`X-Forwarded-User` by default; `cartograph-oidc` uses
+`X-Forwarded-Email`), plus the groups, email and display name when the
+proxy sends them. An anonymous principal records the vault's
+`spec.operator` as the actor, which is what a single-operator vault has
+always done. An authenticated one records its subject. The policy is called for the whole API before
 any handler, and again by the engine at every write with the change it
 makes (`Action.Change`): `CARTOGRAPH_AUTHZ=roles` decides at the first
 call alone, `CARTOGRAPH_AUTHZ=access` decides team rules at the second,
-and a policy per kind or per manifest is another adapter over the same
-`Action`. Every operation in
-the contract declares 401 and 403 for this reason. Nothing in the engine
-changed to make any of it true.
+and a policy per kind or per manifest would be another adapter over the
+same `Action`. Every operation in the contract declares 401 and 403 for
+this reason. A person not on the access list is refused everything but
+their own session, which tells the interface to show them why.
 
 ## 6. Deployment
 
-Cartograph is built to the twelve-factor shape so the same binary runs on a
+Cartograph follows the twelve-factor shape, so the same binary runs on a
 laptop, in a container, and behind an organisation's proxy.
 
 ```mermaid
@@ -673,7 +721,7 @@ flowchart LR
 |---|---|
 | Codebase | One repository, one `cartograph` binary, many deployments by environment |
 | Dependencies | `go.mod`; `flake.nix` pins the toolchain; the embedded web build is a `cartograph-ui` release pinned by `UI_VERSION` and `UI_SHA256`; the image builds from source |
-| Config | `internal/config`: every setting is a `CARTOGRAPH_*` variable (address, vault or store, fan-out, codec, authenticator, policy, roles, log format, printer), a flag overrides it. See `DEPLOYMENT.md` |
+| Config | `internal/config`. Every setting is a `CARTOGRAPH_*` variable (address, vault or store, fan-out, codec, authenticator, policy, roles, access mapping, log format, printer), and a flag overrides it. See `DEPLOYMENT.md` |
 | Backing services | The store (a vault directory and its index, or a Postgres database named by `CARTOGRAPH_STORE`), the fan-out (`CARTOGRAPH_FANOUT`: in-process, or Postgres `LISTEN/NOTIFY`), the printer and the identity provider are attached resources chosen by configuration |
 | Build, release, run | `just ci` builds; the image or `nix build .#cartograph` is the release; `cartograph serve` is the run. Nothing is edited at run time |
 | Processes | The engine keeps nothing between requests except through a port. With a vault, state is on a volume, and two replicas writing to one vault are not arbitrated, so run one writer. With `CARTOGRAPH_STORE=postgres://...` the processes are stateless: versions, working copies, shared drafts and bundles are in the database, fan-out goes over `LISTEN/NOTIFY`, and any replica serves any request and scales to zero (`SERVERLESS.md`, ADR 0008). What a replica holds besides (open documents, sync states) is a cache |
@@ -689,8 +737,8 @@ flowchart LR
 Kubernetes is extended by replacing a component behind a stable interface
 (CSI for storage, CNI for networking, an authentication webhook, a CRD
 for a new kind, an admission webhook for a new rule), never by patching
-the API server. Cartograph follows that pattern at a smaller scale. Each row
-is one thing an organisation may want to change, the interface it swaps,
+the API server. Cartograph does the same at a smaller scale. Each row is
+something an organisation may want to change, the interface it swaps,
 and what a new implementation must pass.
 
 | Want | Kubernetes analogue | Cartograph port | Today | Add one by |
@@ -702,7 +750,9 @@ and what a new implementation must pass.
 | Define projects in a database, not YAML | Different storage class | `store.ManifestStore` without `StateStore` | sqlite, postgres (`CARTOGRAPH_STORE`) | The API is the only write path; the apply gate simply reports `ErrNoState` |
 | Write manifests in another syntax | Serialisation (JSON/protobuf at the API server) | `codec.Codec` | yaml, json | An adapter that passes `codec/conformance.Run`; select it by `CARTOGRAPH_CODEC`; migrate a vault with `cartograph export --codec` |
 | Authentication | Authn webhook, OIDC | `auth.Authenticator` | none, proxy | An adapter that returns a `Principal`; select it by `CARTOGRAPH_AUTH` |
-| User types and permissions | RBAC, authz webhook | `auth.Authorizer` | AllowAll, roles | An adapter over `(Principal, Action)`; enforced once for the whole API by `auth.Authorize`; select it by `CARTOGRAPH_AUTHZ` |
+| User types and permissions | RBAC, authz webhook | `auth.Authorizer` | AllowAll, roles, access (roles and teams, ADR 0011) | An adapter over `(Principal, Action)`, asked by `auth.Authorize` for every request and by the engine at every write; select it by `CARTOGRAPH_AUTHZ` |
+| The access list kept somewhere else | RoleBindings in etcd | `store.AccessStore` | memory, sqlite (the vault's index), postgres | An adapter that passes `conformance.RunAccessStore` |
+| Sign-in through an enterprise directory | Authn webhook in front of an IdP | the proxy authenticator and the access mapping | `cartograph-oidc`: Dex and oauth2-proxy, LDAP or Entra ID | A distribution that configures released pieces; no adapter, no fork |
 | PDF without Chromium | Container runtime (CRI) | `printer.Printer` | chromium, none | An adapter over `Print(ctx, html)` |
 | Handoff bundles in object storage | Volume plugin | `store.BundleStore` | vault, memory, postgres | An adapter over `PutBundle`; the state entry records the location it returns |
 | A new interface (terminal, native, bot) | kubectl, the dashboard: clients of the API | `pkg/client.Client` + the `Driver` protocol | web (on the port; flows still hand-coded), reference driver | Build on the client port, write a driver, pass `pkg/uiconformance` in your own CI (`UI_CONTRACT.md`) |
@@ -711,14 +761,16 @@ and what a new implementation must pass.
 | Fan-out across replicas | etcd watch | `fanout.Bus` | memory, postgres (`CARTOGRAPH_FANOUT`) | Add NATS, Redis streams or a cloud pub/sub: an adapter that passes `fanout/conformance.Run`, selected by a new `CARTOGRAPH_FANOUT` value (`EXTENDING.md`) |
 | Another CRDT engine | etcd's storage engine | `crdt.Engine`, `crdt.Doc` | automerge | An adapter that passes `internal/crdt/conformance`; interfaces must then speak its sync protocol too (ADR 0007) |
 
-The pattern for every row is the same three steps. Write the adapter in
-its own package under the port's directory. Make it pass the port's
+Every row but the last follows the same three steps. Write the adapter
+in its own package under the port's directory. Make it pass the port's
 conformance suite, which is how the SQLite, memory and Postgres adapters
-are proven interchangeable today. Pick it in `cmd/cartograph` from a configuration value.
-No step touches the engine, the contract or the web interface.
+are shown to be interchangeable today. Pick it in `cmd/cartograph` from
+a configuration value. No step touches the engine, the contract or the
+web interface. The last row needs no code at all, and that is the real
+test of whether the seams are in the right places.
 
-What this is not: a plugin system that loads code at run time. An adapter
-is compiled in and selected by configuration, as the Kubernetes in-tree
+This is not a plugin system that loads code at run time. An adapter is
+compiled in and selected by configuration, as the Kubernetes in-tree
 providers were. Out-of-process adapters (a gRPC `ManifestStore`, say) are
 possible behind the same interfaces and are not planned until somebody
 needs one.
@@ -728,53 +780,66 @@ needs one.
 The reasons in brief. Decisions made since the first release, with the
 options weighed and what they cost, are in [`adr/`](adr/README.md).
 
-**Why files, and not a database, as the truth.** Because the people who
-own the content are not database administrators, and a directory of YAML
-survives every tool choice. It can be reviewed in a pull request, restored
-from any backup, generated by a script, and read without Cartograph running.
-The cost is that concurrent writers to one directory need arbitration,
-which the journal provides within one process and nothing provides across
-processes. A deployment that needs more than one writer uses the
-Postgres store instead, and gives up reading the record with `cat`.
+### Why files, and not a database, as the truth
 
-**Why the engine knows no file path and no HTTP header.** So the same
-rules run in every front door and in every test. The handoff gate is one
-function; the API, the command line and the tests call it. An engine that
-read `vault.yaml` itself would make a database-backed deployment
-impossible without a fork.
+Because the people who own the content are not database administrators,
+and a directory of YAML survives every tool choice. It can be reviewed
+in a pull request, restored from any backup, generated by a script, and
+read without Cartograph running. The cost is that concurrent writers to
+one directory need arbitration, which the journal provides within one
+process and nothing provides across processes. A deployment that needs
+more than one writer uses the Postgres store instead, and gives up
+reading the record with `cat`.
 
-**Why generated code is committed.** So a fresh checkout builds without
-running generators, so a reviewer sees what a contract change does to the
-Go and TypeScript types, and so CI can refuse drift with one `git diff`.
+### Why the engine knows no file path and no HTTP header
 
-**Why one binary.** Deployment is copying a file. The web interface
-cannot be out of step with its API because they ship together. The
-command line is the API's twin, which is what makes scripts and the
-interface agree. The interface's build is the one input a fresh
-checkout does not carry: it is a pinned, checksummed `cartograph-ui`
-release that `just ui` fetches (every recipe that compiles runs it), not
-committed output (ADR 0002).
+So the same rules run in every front door and in every test. The handoff
+gate is one function; the API, the command line and the tests call it.
+An engine that read `vault.yaml` itself would make a database-backed
+deployment impossible without a fork.
 
-**Why identity is a middleware concern.** A version records an actor
-string. Everything above that line (sessions, tokens, groups) varies by
-organisation and must not leak into the rules. The proxy adapter exists
-because every organisation already has an authenticating proxy or can run
-one; an OIDC adapter is a contained addition. Who may change what is
-the one identity question that reaches the core, and it reaches it as a
-port the engine calls, never as a session it keeps.
+### Why generated code is committed
 
-**Why checks never block a save.** Half-finished work is the normal state
-of a definition. A check that refused the save would push people back to
-Word. Checks block the handoff, where incompleteness has a cost.
+So a fresh checkout builds without running generators, so a reviewer
+sees what a contract change does to the Go and TypeScript types, and so
+CI can refuse drift with one `git diff`.
+
+### Why one binary
+
+Deployment is copying a file. The web interface cannot be out of step
+with its API because they ship together. The command line is the API's
+twin, which is what makes scripts and the interface agree. The
+interface's build is the one input a fresh checkout does not carry. It
+is a pinned, checksummed `cartograph-ui` release that `just ui` fetches
+(every recipe that compiles runs it), not committed output (ADR 0002).
+
+### Why identity is a middleware concern
+
+A version records an actor string. Everything above that line (sessions,
+tokens, groups) varies by organisation and must not leak into the rules.
+The proxy adapter exists because every organisation already has an
+authenticating proxy or can run one, and `cartograph-oidc` shows one in
+front of an enterprise directory with no Cartograph code of its own. Who
+may change what is the one identity question that reaches the core. It
+reaches it as a port the engine calls and a list the engine reads, never
+as a session the engine keeps.
+
+### Why checks never block a save
+
+Half-finished work is the normal state of a definition. A check that
+refused the save would push people back to Word. Checks block the
+handoff, where incompleteness has a cost.
 
 ## 9. What is not built yet
 
 In rough order of expected need.
 
-- An OIDC `Authenticator`, for deployments without a proxy.
-- A finer `Authorizer` (per kind, per manifest, per state transition)
-  once an organisation needs one; the shipped roles policy is read or
-  write for the whole API.
+- An OIDC `Authenticator` that verifies bearer tokens itself, for
+  deployments that cannot run a proxy. With a proxy, `cartograph-oidc`
+  already covers OIDC.
+- Permissions per manifest (an access list on one project), if an
+  organisation needs more than roles and teams (TAXONOMY.md D27 says
+  why it was not adopted).
 - The events endpoint of the HTTP transport, so `Subscribe` works over
   `remote` as it does in process.
 - The terminal interface (`UI_CONTRACT.md`).
