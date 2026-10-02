@@ -1,0 +1,61 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "kpireadings",
+    "name": "KPI readings"
+  },
+  "spec": {
+    "for": "KPIReadings",
+    "steps": [
+      {
+        "key": "indicator",
+        "title": "Indicator",
+        "guide": "The KPI these readings are of; its unit and cycle are read from there.",
+        "fields": [
+          {
+            "path": "/spec/kpi",
+            "control": "reference"
+          },
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          }
+        ]
+      },
+      {
+        "key": "actuals",
+        "title": "Actuals",
+        "guide": "One reading for each period that has been read, and nothing for a period that has not.",
+        "fields": [
+          {
+            "path": "/spec/readings",
+            "control": "list",
+            "key": "period",
+            "hint": "One row for each period. Leave a period out if it has not been read yet. Blank is not zero.",
+            "fields": [
+              {
+                "path": "/period",
+                "control": "date",
+                "hint": "The month the period ends."
+              },
+              {
+                "path": "/value",
+                "control": "number"
+              },
+              {
+                "path": "/provisional",
+                "control": "toggle"
+              },
+              {
+                "path": "/note",
+                "control": "sentence"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

@@ -128,11 +128,11 @@ func TestKindsAndSchema(t *testing.T) {
 	}
 }
 
-const teamYAML = "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n"
+const teamYAML = "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec: {}\n"
 
 func commitTeam(t *testing.T, base, id, actor string) apigen.Version {
 	t.Helper()
-	yaml := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: " + id + "\n  name: Team\nspec:\n  name: Team\n"
+	yaml := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: " + id + "\n  name: Team\nspec:\n  description: Team\n"
 	resp := doJSON(t, http.MethodPut, base+"/manifests/Team/"+id,
 		apigen.WriteRequest{Yaml: &yaml, Reason: "seed"},
 		map[string]string{"X-Cartograph-Actor": actor})
@@ -213,7 +213,7 @@ func TestPutManifestCreateThenUpdateSameCall(t *testing.T) {
 		t.Fatalf("expected create to land as version 1, got %+v", v1)
 	}
 
-	updateYAML := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One Renamed\nspec:\n  name: Team One Renamed\n"
+	updateYAML := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One Renamed\nspec: {}\n"
 	resp := doJSON(t, http.MethodPut, base+"/manifests/Team/t1",
 		apigen.WriteRequest{Yaml: &updateYAML, Reason: "rename"},
 		map[string]string{"X-Cartograph-Actor": "anyone"})
@@ -264,7 +264,7 @@ func TestActorAccepted(t *testing.T) {
 	commitTeam(t, base, "t1", "p1")
 
 	// Any actor is accepted unconditionally
-	yaml2 := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t9\n  name: Team Nine\nspec:\n  name: Team Nine\n"
+	yaml2 := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t9\n  name: Team Nine\nspec: {}\n"
 	resp := doJSON(t, http.MethodPut, base+"/manifests/Team/t9",
 		apigen.WriteRequest{Yaml: &yaml2, Reason: "test"},
 		map[string]string{"X-Cartograph-Actor": "local"})
@@ -299,7 +299,7 @@ func TestListManifestsQueryAndRefFilter(t *testing.T) {
 	_, base := newTestServer(t)
 	commitTeam(t, base, "curriculum-team", "anyone")
 
-	dsYAML := "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d1\n  name: Data Source One\nspec:\n  name: Data Source One\n  category: database\n  team: curriculum-team\n"
+	dsYAML := "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d1\n  name: Data Source One\nspec:\n  category: database\n  team: curriculum-team\n"
 	resp := doJSON(t, http.MethodPut, base+"/manifests/DataSource/d1", apigen.WriteRequest{Yaml: &dsYAML, Reason: "seed"}, map[string]string{"X-Cartograph-Actor": "anyone"})
 	if resp.StatusCode != 200 {
 		t.Fatalf("got %d", resp.StatusCode)
@@ -424,7 +424,7 @@ func TestValidateEndpoint(t *testing.T) {
 func TestVersionsDiffAndReferences(t *testing.T) {
 	_, base := newTestServer(t)
 	commitTeam(t, base, "t1", "anyone")
-	yaml2 := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One Renamed\nspec:\n  name: Team One Renamed\n"
+	yaml2 := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One Renamed\nspec: {}\n"
 	resp := doJSON(t, http.MethodPut, base+"/manifests/Team/t1", apigen.WriteRequest{Yaml: &yaml2, Reason: "rename"}, map[string]string{"X-Cartograph-Actor": "anyone"})
 	if resp.StatusCode != 200 {
 		t.Fatalf("got %d", resp.StatusCode)
@@ -830,5 +830,23 @@ func TestApplyManyRefsWritesTheVaultOnce(t *testing.T) {
 	}
 	if string(settled) != string(written) {
 		t.Fatal("re-applying changed vault.yaml")
+	}
+}
+
+// The guide people and agents both read: an outcome's words, its gap
+// link, and a 404 for a kind with no guide.
+func TestGuides(t *testing.T) {
+	srv, _ := newTestServer(t)
+	resp := doJSON(t, "GET", srv.URL+"/guides/Goal?level=outcome", nil, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	g := decode[map[string]any](t, resp)
+	steps, _ := g["steps"].([]any)
+	if g["kind"] != "Goal" || g["levelIs"] == "" || len(steps) == 0 {
+		t.Fatalf("the guide: %v", g)
+	}
+	if got := doJSON(t, "GET", srv.URL+"/guides/Nope", nil, nil); got.StatusCode != http.StatusNotFound {
+		t.Fatalf("an unknown kind: %d", got.StatusCode)
 	}
 }

@@ -75,7 +75,7 @@ internal/printer/ PDF: chromium, none
 internal/api/    the HTTP driving adapter; gen/ is generated from the contract
 pkg/client/      the port every interface uses, in-process and remote
 pkg/uiconformance/ the suite every interface passes
-examples/minimal a fictional produce cooperative
+examples/minimal a fictional produce cooperative, imperfect on purpose: its checks show what the engine catches, and fixing them with an agent is the way to learn it (ADR 0019)
 deploy/          the Helm chart (helm/cartograph), and the Postgres just helm-kind tests it on (kind/)
 compose*.yaml    one replica on a vault; the highly available shape on one machine
 internal/spa/    the embedded web interface: a cartograph-ui release, fetched, never committed

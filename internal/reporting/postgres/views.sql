@@ -14,7 +14,7 @@ FROM manifests;
 
 CREATE OR REPLACE VIEW report_teams AS
 WITH RECURSIVE team AS (
-    SELECT id, coalesce(nullif(doc #>> '{spec,name}', ''), doc #>> '{metadata,name}', '') AS name,
+    SELECT id, coalesce(nullif(doc #>> '{metadata,name}', ''), doc #>> '{spec,name}', '') AS name,
            coalesce(doc #>> '{spec,parent}', '') AS parent
     FROM report_current WHERE kind = 'Team'
 ), up (team, above, depth, at, path) AS (

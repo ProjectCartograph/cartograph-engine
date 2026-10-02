@@ -1,0 +1,67 @@
+{
+  "locale": "en",
+  "kind": "StakeholderMap",
+  "definition": "The stakeholders of one piece of work, and how much power each holds over it: a stakeholder is anyone who can affect the work or is affected by it. A map is scoped to one project, programme or operation (TAXONOMY.md, what a programme carries), and each entry names a Resource from the catalogue, so a party is declared once and scored separately on every piece of work it touches. Each stakeholder is identified first, as primary (directly affected) or secondary (indirectly affected, Clarkson), and placed later by influence and interest, whose grid gives the engagement approach (Mendelow): manage closely, keep satisfied, keep informed, monitor. A stakeholder map is not the list of roles a project staffs (those are its resources), not the beneficiary groups (who gains value), and not a list of persons.",
+  "steps": {},
+  "fields": {
+    "/spec/scope": {
+      "guide": "The project, programme or operation this map is about, by kind and id. Nothing else can be a scope: a stakeholder has a stake in a piece of work. Define the work first.",
+      "good": [
+        "Project quality-check-rollout"
+      ],
+      "poor": [
+        {
+          "text": "Team quality-team",
+          "why": "A team is not a piece of work, and a map scoped to one is refused. Scope it to the project, programme or operation the team runs."
+        }
+      ]
+    },
+    "/metadata/name": {
+      "guide": "The work's name followed by \"stakeholders\", so the map is found beside the work.",
+      "good": [
+        "Quality Check Rollout stakeholders"
+      ],
+      "poor": [
+        {
+          "text": "Stakeholders",
+          "why": "Every map would be called this; name the work it is about."
+        }
+      ]
+    },
+    "/spec/entries": {
+      "guide": "One entry per stakeholder, each a Resource from the catalogue, scored at most once. A party need not be one the work draws on: a party with power over a project is often not part of it. An entry with no score is a stakeholder named and not yet placed, which is a real state."
+    },
+    "/spec/entries/-/resource": {
+      "guide": "The catalogue entry for the stakeholder: a role, unit, party, system or facility. External bodies count. When the party is not in the catalogue, declare it there first.",
+      "good": [
+        "analytics-partner",
+        "transport-contractor",
+        "depot-network"
+      ],
+      "poor": [
+        {
+          "text": "Ada Okafor",
+          "why": "A person, not a role or a party. Cartograph names roles, and people hold them (D27)."
+        },
+        {
+          "text": "Everyone at the depots",
+          "why": "Not a catalogue entry, and too broad to place on the grid. Name the unit or the role."
+        }
+      ]
+    },
+    "/spec/entries/-/tier": {
+      "guide": "Primary if the work affects them directly, secondary if indirectly (Clarkson). A separate question from influence and interest: a secondary stakeholder can still hold a great deal of power."
+    },
+    "/spec/entries/-/influence": {
+      "guide": "How much this stakeholder can change what happens, from 1 (little) to 3 (a great deal). Leave it blank until it is assessed; a guess placed as fact misleads the grid."
+    },
+    "/spec/entries/-/interest": {
+      "guide": "How much this stakeholder cares what happens, from 1 (little) to 3 (a great deal). Leave it blank until it is assessed."
+    }
+  },
+  "links": {},
+  "checks": {
+    "stakeholders-identified": "Name each party with a stake in the work, from the Resource catalogue: those it affects and those who can affect it.",
+    "stakeholders-placed": "Place each stakeholder by influence and interest, one to three each, so the approach to them follows from the grid."
+  }
+}

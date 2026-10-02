@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -169,14 +170,51 @@ func (s *Shared) DocumentFor(ctx context.Context, kind, id string) (string, erro
 // PresenceDocument returns the id of the document that routes presence
 // on screens not about one manifest.
 func (s *Shared) PresenceDocument(ctx context.Context) (string, error) {
-	docID, err := s.docs.DocumentFor(ctx, presenceKind, presenceID)
-	if err == nil {
+	return s.liveDocument(ctx, presenceID)
+}
+
+// liveContent is all a live-only document holds: no manifest, one field
+// so that it has a change to sync. A document with no change at all is,
+// to an automerge-repo client, one nobody has yet, and it never opens.
+var liveContent = map[string]any{"live": true}
+
+// liveDocument returns a live-only document, the presence document or an
+// agent feed, making it on first use. One an earlier release made empty
+// gains its field here, the first time it is asked for.
+func (s *Shared) liveDocument(ctx context.Context, id string) (string, error) {
+	docID, err := s.docs.DocumentFor(ctx, presenceKind, id)
+	switch {
+	case err == nil:
+		if _, err := s.reconcile(ctx, docID, liveContent, crdt.Change{Message: "live"}); err != nil {
+			return "", err
+		}
 		return docID, nil
-	}
-	if !errors.Is(err, store.ErrNoDocument) {
+	case !errors.Is(err, store.ErrNoDocument):
 		return "", err
 	}
-	return s.create(ctx, presenceKind, presenceID, map[string]any{}, crdt.Shape{})
+	return s.create(ctx, presenceKind, id, liveContent, crdt.Shape{})
+}
+
+// agentFeedPrefix starts the id of a person's agent feed: the document
+// their agents' steps are announced on (docs/adr/0018). Like the presence
+// document it is live only, never a manifest; unlike it, only its person,
+// or an administrator, may open it.
+const agentFeedPrefix = "agents:"
+
+// AgentFeed returns the id of the document person's agents announce their
+// steps on, making it on first use. person is as proposals name them;
+// "" for a vault's operator.
+func (s *Shared) AgentFeed(ctx context.Context, person string) (string, error) {
+	return s.liveDocument(ctx, agentFeedPrefix+person)
+}
+
+// AgentFeedOwner reports whose agent feed a manifest name returned by
+// ManifestFor is, if it is one.
+func AgentFeedOwner(kind, id string) (person string, ok bool) {
+	if kind != presenceKind {
+		return "", false
+	}
+	return strings.CutPrefix(id, agentFeedPrefix)
 }
 
 // create makes a document from content and stores it, unless another

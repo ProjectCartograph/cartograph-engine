@@ -1,0 +1,45 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "beneficiarygroup",
+    "name": "Beneficiary group"
+  },
+  "spec": {
+    "for": "BeneficiaryGroup",
+    "steps": [
+      {
+        "key": "definition",
+        "title": "Definition",
+        "guide": "Who the work is for, defined once so every project names the same group.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/description",
+            "control": "sentence",
+            "hint": "Who is in this group, clearly enough that someone else would agree."
+          },
+          {
+            "path": "/spec/source",
+            "control": "reference",
+            "hint": "The data source that lists the people in this group."
+          }
+        ],
+        "links": [
+          {
+            "kind": "Project",
+            "path": "/spec/summary/beneficiaries/-/group"
+          },
+          {
+            "kind": "Programme",
+            "path": "/spec/problems/-/groups/-"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

@@ -65,10 +65,11 @@ func (e *Engine) teams(ctx context.Context) (*teamTree, error) {
 			continue
 		}
 		spec, _ := doc["spec"].(map[string]any)
-		name, _ := spec["name"].(string)
+		meta, _ := doc["metadata"].(map[string]any)
+		name, _ := meta["name"].(string)
 		if name == "" {
-			meta, _ := doc["metadata"].(map[string]any)
-			name, _ = meta["name"].(string)
+			// A team saved before 2.6.0 may name itself in spec.name only.
+			name, _ = spec["name"].(string)
 		}
 		t.name[v.ID] = name
 		t.byName[name] = v.ID

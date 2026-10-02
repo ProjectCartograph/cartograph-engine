@@ -79,6 +79,12 @@ func (e *Engine) ProjectChecks(ctx context.Context, id string, draft bool) (Proj
 	if err != nil {
 		return ProjectChecks{}, err
 	}
+	return e.projectChecksOf(ctx, id, doc)
+}
+
+// projectChecksOf computes the checks for a project's document, saved or
+// not: a draft, or what an agent proposes.
+func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]any) (ProjectChecks, error) {
 	spec, _ := doc["spec"].(map[string]any)
 	if spec == nil {
 		spec = map[string]any{}
@@ -116,22 +122,23 @@ func (e *Engine) ProjectChecks(ctx context.Context, id string, draft bool) (Proj
 	} else {
 		c.add("aim-mandate", "aim", phaseInitiation, checkWarn, "No mandate named yet.")
 	}
-	// Projects align to functional goals only. This check blocks if
-	// aligned to a non-functional goal (goals-aligned above already blocks on
+	// Projects align to outcomes only: the work aligned to an outcome is
+	// what the strategy reads under it (TAXONOMY.md D24). This check blocks
+	// if aligned to a goal or an objective (goals-aligned above already blocks on
 	// zero goals at all).
 	if len(goals) > 0 {
-		hasFunctional, hasNonFunctional, err := e.alignedToFunctionalGoal(ctx, goals)
+		hasFunctional, hasNonFunctional, err := e.alignedToOutcome(ctx, goals)
 		if err != nil {
 			return ProjectChecks{}, err
 		}
 		if hasNonFunctional {
 			c.add("goals-functional-level", "goals", phaseInitiation, checkBlock,
-				"Aligned to a non-functional goal; align to a functional goal instead.")
+				"Aligned to a goal or an objective; align to an outcome instead.")
 		} else if hasFunctional {
-			c.add("goals-functional-level", "goals", phaseInitiation, checkOK, "Aligned to a functional goal.")
+			c.add("goals-functional-level", "goals", phaseInitiation, checkOK, "Aligned to an outcome.")
 		} else {
 			c.add("goals-functional-level", "goals", phaseInitiation, checkBlock,
-				"All aligned goals are unresolved; align to a functional goal.")
+				"All aligned goals are unresolved; align to an outcome.")
 		}
 	}
 
@@ -372,6 +379,14 @@ func (e *Engine) ProjectChecks(ctx context.Context, id string, draft bool) (Proj
 	// read from and how often, and the roles that track and confirm it.
 	// A compliance line is satisfied rather than measured, so it is
 	// never asked for a standard, a source or a cycle.
+	// A requirement met or not is a success criterion of compliance
+	// (TAXONOMY.md D25); a separate list of them, as projects kept before
+	// 2.6.0, is a second place for the same thing.
+	if lines, _ := spec["compliance"].([]any); len(lines) > 0 {
+		c.addFix("compliance-as-criteria", "success", phaseInitiation, checkWarn,
+			fmt.Sprintf("%d compliance line%s kept apart from the success criteria: record each as a criterion of compliance.", len(lines), plural(len(lines))),
+			phaseInitiation, "success")
+	}
 	if len(criteria) == 0 {
 		c.addFix("success-criteria", "success", phaseInitiation, checkBlock,
 			"No success criterion yet.", phaseInitiation, "success")
@@ -445,14 +460,15 @@ func (e *Engine) ProjectChecks(ctx context.Context, id string, draft bool) (Proj
 	return pc, nil
 }
 
-// alignedToFunctionalGoal reports whether at least one of the given Goal ids
-// (Project.spec.alignment.goals, already parsed as []any) resolves to a
-// Goal at level functional, and whether any goal is at a different
-// level. A dangling reference (should not happen: the generic reference
+// alignedToOutcome reports whether at least one of the given Goal ids
+// (Project.spec.alignment.goals, already parsed as []any) resolves to an
+// outcome, and whether any is at another level. The check keeps its id,
+// goals-functional-level, from when outcomes were called functional goals
+// (D25): an id is part of the contract. A dangling reference (should not happen: the generic reference
 // check already refuses those at Commit) is silently skipped rather than
 // erroring, matching every other check's leniency toward a draft's own
 // possibly-inconsistent state.
-func (e *Engine) alignedToFunctionalGoal(ctx context.Context, goals []any) (hasFunctional, hasNonFunctional bool, err error) {
+func (e *Engine) alignedToOutcome(ctx context.Context, goals []any) (hasFunctional, hasNonFunctional bool, err error) {
 	for _, g := range goals {
 		id, ok := g.(string)
 		if !ok || id == "" {
@@ -577,6 +593,23 @@ func addKPIChecks(c checkAdder, spec map[string]any, isComponent bool) {
 	}
 	c.add("measures-kpis", "measures", phaseInitiation, checkOK,
 		fmt.Sprintf("%d KPI%s named.", len(kpis), plural(len(kpis))))
+	// One indicator named twice says the same thing twice, with two
+	// reasons that can drift apart.
+	seen := map[string]bool{}
+	var twice []string
+	for _, k := range kpis {
+		km, _ := k.(map[string]any)
+		id, _ := km["kpi"].(string)
+		if id != "" && seen[id] && !slices.Contains(twice, id) {
+			twice = append(twice, id)
+		}
+		seen[id] = true
+	}
+	if len(twice) > 0 {
+		c.add("measures-kpis-once", "measures", phaseInitiation, checkWarn, "Named more than once: "+strings.Join(twice, ", ")+".")
+	} else {
+		c.add("measures-kpis-once", "measures", phaseInitiation, checkOK, "Each KPI is named once.")
+	}
 }
 
 // addResourceChecks reads Project.spec.resources and spec.funding: one
@@ -615,14 +648,12 @@ func addResourceChecks(c checkAdder, spec map[string]any, isComponent bool) {
 	// for everything the project needs around it (the organisation's own
 	// charter groups them the same way, under "Stakeholders and
 	// Resources").
-	// Whether the work has named its stakeholders is not a fact this
-	// document holds any more. A stakeholder is not a position a project
-	// staffs, so it is not in the resource list; who has a stake is on the
-	// StakeholderMap scoped to the work, which carries its own check.
-	// Whether a stakeholder has been placed is no longer a fact this
-	// document holds: the score lives on the StakeholderMap scoped to the
-	// project, which carries its own check for it. Asking here would only
-	// produce a warning nothing on this screen could clear.
+	// Whether the work has named its stakeholders, and placed them, is not
+	// a fact this document holds. A stakeholder is not a position a project
+	// staffs, so it is not in the resource list; who has a stake, and their
+	// place on the grid, is on the StakeholderMap scoped to the work, whose
+	// own checks ask (stakeholderchecks.go). Asking here would only produce
+	// a warning nothing on this screen could clear.
 
 	// Informational, never warn: how many of the project's own roles are
 	// still named in free text rather than picked from the Resource
@@ -650,12 +681,13 @@ func addResourceChecks(c checkAdder, spec map[string]any, isComponent bool) {
 // rather than reported: the generic reference check already refuses a
 // dangling one, and reporting it twice would say the same thing twice.
 func (e *Engine) programmesWithoutSharedGoal(ctx context.Context, programmes []any, goals []any) ([]string, error) {
-	projectGoals := map[string]bool{}
+	var projectGoals []string
 	for _, g := range goals {
 		if id, ok := g.(string); ok && id != "" {
-			projectGoals[id] = true
+			projectGoals = append(projectGoals, id)
 		}
 	}
+	read := e.storedGoals(ctx)
 	var unproven []string
 	for _, p := range programmes {
 		id, ok := p.(string)
@@ -680,14 +712,9 @@ func (e *Engine) programmesWithoutSharedGoal(ctx context.Context, programmes []a
 		if e.codec.DecodeInto(v.YAML, &doc) != nil {
 			continue
 		}
-		shared := false
-		for _, g := range doc.Spec.Goals {
-			if projectGoals[g] {
-				shared = true
-				break
-			}
-		}
-		if !shared {
+		// Shared when one of the project's goals is one of the programme's
+		// or beneath it: the programme may be judged at any level.
+		if !read.servesAny(projectGoals, doc.Spec.Goals) {
 			name := doc.Metadata.Name
 			if name == "" {
 				name = id
@@ -786,11 +813,22 @@ func addRiskChecks(c checkAdder, spec map[string]any) {
 	}
 	missingMitigation := 0
 	escalated := 0
+	unplaced, scored := 0, 0
 	for _, r := range risks {
 		rm, ok := r.(map[string]any)
 		if !ok {
 			missingMitigation++
 			continue
+		}
+		// A risk is weighed by its impact and its likelihood; one with
+		// either missing cannot be placed on the matrix or compared.
+		if t, _ := rm["type"].(string); t == "risk" {
+			scored++
+			if imp, _ := rm["impact"].(string); imp == "" {
+				unplaced++
+			} else if lik, _ := rm["likelihood"].(string); lik == "" {
+				unplaced++
+			}
 		}
 		if m, _ := rm["mitigation"].(string); strings.TrimSpace(m) == "" {
 			missingMitigation++
@@ -806,6 +844,14 @@ func addRiskChecks(c checkAdder, spec map[string]any) {
 	} else {
 		c.add("risks-mitigation", "risks", phaseInitiation, checkWarn,
 			fmt.Sprintf("%d of %d risks have no mitigation.", missingMitigation, len(risks)))
+	}
+	if scored > 0 {
+		if unplaced == 0 {
+			c.add("risks-placed", "risks", phaseInitiation, checkOK, "Every risk has an impact and a likelihood.")
+		} else {
+			c.add("risks-placed", "risks", phaseInitiation, checkWarn,
+				fmt.Sprintf("%d of %d risks have no impact or likelihood yet.", unplaced, scored))
+		}
 	}
 	if escalated > 0 {
 		c.add("risks-escalated", "risks", phaseInitiation, checkOK,

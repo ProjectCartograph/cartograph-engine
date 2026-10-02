@@ -1,0 +1,183 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "operation",
+    "name": "Operation"
+  },
+  "spec": {
+    "for": "Operation",
+    "steps": [
+      {
+        "key": "service",
+        "title": "Service",
+        "guide": "What the service does day in and day out, who is accountable for it, who runs it, and when.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/purpose",
+            "control": "sentence",
+            "hint": "What this service does, day in and day out.",
+            "checks": [
+              "service-purpose"
+            ]
+          },
+          {
+            "path": "/spec/serviceOwner",
+            "control": "reference",
+            "title": "Service owner",
+            "hint": "The role accountable for the service end to end.",
+            "checks": [
+              "service-owner"
+            ]
+          },
+          {
+            "path": "/spec/team",
+            "control": "reference"
+          },
+          {
+            "path": "/spec/serviceWindow",
+            "control": "text",
+            "title": "Service hours",
+            "checks": [
+              "service-hours"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "alignment",
+        "title": "Alignment",
+        "guide": "The programmes this service is part of, if any.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/programmes",
+            "control": "references",
+            "checks": [
+              "alignment-programmes"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "measures",
+        "title": "Service levels",
+        "guide": "The indicators that show whether the service is running as it should.",
+        "fields": [
+          {
+            "path": "/spec/kpis",
+            "control": "references",
+            "title": "Indicators",
+            "checks": [
+              "measures-kpis"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "data",
+        "title": "Data",
+        "guide": "The data the service reads, and the data it creates or adds to, with where that lands.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/data/consumes",
+            "control": "list",
+            "key": "source",
+            "title": "Data used",
+            "fields": [
+              {
+                "path": "/source",
+                "control": "reference"
+              },
+              {
+                "path": "/purpose",
+                "control": "sentence"
+              },
+              {
+                "path": "/handoff",
+                "control": "choice"
+              },
+              {
+                "path": "/personalData",
+                "control": "choice"
+              }
+            ]
+          },
+          {
+            "path": "/spec/data/produces",
+            "control": "list",
+            "key": "sink",
+            "title": "Data produced",
+            "fields": [
+              {
+                "path": "/output",
+                "control": "choice"
+              },
+              {
+                "path": "/sink",
+                "control": "reference"
+              },
+              {
+                "path": "/purpose",
+                "control": "sentence"
+              },
+              {
+                "path": "/refresh",
+                "control": "choice"
+              },
+              {
+                "path": "/personalData",
+                "control": "choice"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "mandate",
+        "title": "Mandate",
+        "guide": "The decisions, policies, laws or contracts that require or authorise the service.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/mandate",
+            "control": "list",
+            "key": "title",
+            "fields": [
+              {
+                "path": "/kind",
+                "control": "choice"
+              },
+              {
+                "path": "/title",
+                "control": "text"
+              },
+              {
+                "path": "/reference",
+                "control": "text"
+              },
+              {
+                "path": "/date",
+                "control": "date"
+              },
+              {
+                "path": "/issuedBy",
+                "control": "text"
+              }
+            ]
+          },
+          {
+            "path": "/spec/notes",
+            "control": "sentence"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

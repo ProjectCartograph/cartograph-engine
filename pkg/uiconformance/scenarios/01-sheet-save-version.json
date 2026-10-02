@@ -5,7 +5,6 @@
   "steps": [
     { "open": { "Kind": "Team", "ID": "" } },
     { "set": { "Field": "/metadata/name", "Value": "Depot network" } },
-    { "set": { "Field": "/spec/name", "Value": "Depot network" } },
     { "set": { "Field": "/spec/description", "Value": "Runs the depots." } },
     { "act": { "Action": "saveVersion", "Reason": "first definition" } },
     { "expect": { "noProblems": true } },

@@ -310,3 +310,40 @@ func GapCitationProblems(problems []any, path string, lookup Lookup) []Problem {
 	}
 	return out
 }
+
+// ParentCycleProblems refuses a manifest of kind whose spec.parent would
+// make it its own ancestor. A tree with a cycle is not a deep hierarchy,
+// it is one with no top, and everything that walks it (teams' reach, a
+// segment's labels) would walk it forever. noun names one in the message.
+func ParentCycleProblems(doc map[string]any, ctx RuleContext, kind, noun string) []Problem {
+	spec, _ := doc["spec"].(map[string]any)
+	parent, _ := spec["parent"].(string)
+	if parent == "" || ctx.Lookup == nil {
+		return nil
+	}
+	if parent == ctx.ID {
+		return []Problem{{Path: "/spec/parent", Message: "a " + noun + " cannot be its own parent"}}
+	}
+	others, err := ctx.Lookup.Documents(kind)
+	if err != nil {
+		return nil
+	}
+	parentOf := func(id string) string {
+		s, _ := others[id]["spec"].(map[string]any)
+		p, _ := s["parent"].(string)
+		return p
+	}
+	// Walk up from the proposed parent. Bounded by the number of others,
+	// so a cycle already in the store cannot hang this.
+	seen := map[string]bool{ctx.ID: true}
+	for at := parent; at != ""; at = parentOf(at) {
+		if seen[at] {
+			return []Problem{{Path: "/spec/parent", Message: fmt.Sprintf("this would make %q its own ancestor", ctx.ID)}}
+		}
+		seen[at] = true
+		if len(seen) > len(others)+1 {
+			break
+		}
+	}
+	return nil
+}

@@ -47,7 +47,7 @@
           "type": "string",
           "minLength": 1,
           "default": "local",
-          "description": "Author name recorded in snapshot versions"
+          "description": "The author recorded on a version when no one is signed in, such as a change from the command line or a local vault: the deployment or the role that runs it, never a person (TAXONOMY.md D27)."
         },
         "examples": {
           "type": "object",

@@ -1,0 +1,230 @@
+{
+  "locale": "en",
+  "kind": "Goal",
+  "definition": "An aim in the organisation's strategy, at one of three levels: a goal (the long-term aim), an objective (a specific aim under a goal), or an outcome (a changed state that will be true once an objective is met). The strategy reads top-down from the purpose (the vision and mission in Settings): goals under the purpose, objectives under goals, outcomes under objectives. A gap is measured against the purpose and closes into an outcome. Numbers belong to the measures (key results and aligned KPIs), never to the statement. A goal is not a project (work that ends), not an operation (work that continues), and not a KPI (a measure).",
+  "levels": {
+    "goal": "The long-term aim under the purpose, usually spanning the plan (three to five years). Written as an aim: an action and the result it is for.",
+    "objective": "A specific aim under one goal, usually one to three years inside the goal's horizon. Written as an aim: an action and the result it is for.",
+    "outcome": "A changed state under one objective: what will be true once the objective is met. Written as a state, never as an action. It closes one or more gaps, each named on the gap's side."
+  },
+  "steps": {},
+  "fields": {
+    "/spec/level": {
+      "guide": "Which rung of the strategy this is: goal, objective or outcome. Decide it first: it sets what the statement must say and what the aim sits under."
+    },
+    "/spec/parent": {
+      "guide": "The aim this one sits under: an objective sits under a goal, an outcome under an objective. A goal has no parent; it sits under the purpose. Choose from the existing tree; when none fits, define the parent first, top-down.",
+      "levels": {
+        "outcome": {
+          "guide": "The objective this outcome is the changed state of. Read the objectives' statements and pick the one this state would show has been met."
+        }
+      }
+    },
+    "/metadata/name": {
+      "guide": "A short title for the aim, as a reader would scan it in the tree. For an outcome, the state in a few words.",
+      "good": [
+        "Season results reach members on time",
+        "Faults found before dispatch"
+      ],
+      "poor": [
+        {
+          "text": "Delivery improvement initiative",
+          "why": "Names an activity, not an aim or a state."
+        }
+      ]
+    },
+    "/spec/objective": {
+      "guide": "The aim in one sentence. A goal or objective starts with an action and says the result it is for; an outcome says what will be true. No numbers: they go in the measures. One aim per sentence.",
+      "levels": {
+        "goal": {
+          "guide": "An action and the long-term result it is for, broad enough to hold several objectives.",
+          "good": [
+            "Raise what a member earns from a season of deliveries, by selling more of what they grow at a better price."
+          ],
+          "poor": [
+            {
+              "text": "Increase member earnings by 15%.",
+              "why": "The number belongs in a key result; the statement says the aim."
+            },
+            {
+              "text": "Member livelihoods.",
+              "why": "A topic, not an aim: no action and no result."
+            }
+          ]
+        },
+        "objective": {
+          "guide": "An action and the specific result it is for, narrow enough to be met within the goal's horizon.",
+          "good": [
+            "Hold every depot to one quality standard, so a buyer gets the same quality from any of them."
+          ],
+          "poor": [
+            {
+              "text": "Quality standards and depots.",
+              "why": "A topic, not an aim."
+            },
+            {
+              "text": "Hold every depot to one quality standard and train all staff and replace the scanners.",
+              "why": "Three aims in one sentence; each is its own objective, or the work belongs in a project."
+            }
+          ]
+        },
+        "outcome": {
+          "guide": "The state that will be true: what a person would observe, in the present tense, once the objective is met. Not an action, not the work that leads there.",
+          "good": [
+            "A fault is caught at intake, where it can still be put right, instead of at the buyer, where it cannot.",
+            "Produce spends its first day in a depot, not in a field or on a truck."
+          ],
+          "poor": [
+            {
+              "text": "Reduce delivery time to customers so produce arrives fresh and service is dependable.",
+              "why": "An action, not a state, and two results bundled into one: say what will be true (produce arrives fresh), and make dependable service its own outcome if it is one."
+            },
+            {
+              "text": "Deliver 90% of produce within 24 hours.",
+              "why": "A target, not a state: the 90% and the 24 hours belong in a key result."
+            }
+          ]
+        }
+      }
+    },
+    "/spec/statedAs": {
+      "guide": "The aim exactly as a published plan words it, unaltered, when it comes from one. Leave it empty when the aim is the organisation's own."
+    },
+    "/spec/source": {
+      "guide": "Where the plan's wording was taken from, precisely enough to find again: the document, and the section or page.",
+      "good": [
+        "Quality review of the 2025 spring season, section 4"
+      ]
+    },
+    "/spec/keyResults": {
+      "guide": "How anyone will know the aim is met: one to three key results, each a measure with today's figure (dated), a target (dated within the horizon), the direction it should move, and its unit. An aligned KPI can measure the aim instead. Measures carry the numbers, so this is where SMART starts."
+    },
+    "/spec/keyResults/-/metric": {
+      "guide": "What is counted, precisely enough that two people would count the same thing.",
+      "good": [
+        "days from the season closing to results reaching members"
+      ],
+      "poor": [
+        {
+          "text": "speed",
+          "why": "Not countable as written: speed of what, from when to when?"
+        }
+      ]
+    },
+    "/spec/keyResults/-/baseline": {
+      "guide": "Today's figure and when it was taken, from a source the person can name. If it is not known yet, say why; never invent one."
+    },
+    "/spec/keyResults/-/target": {
+      "guide": "The figure to reach and the month to reach it by, inside the aim's horizon. It moves the way the direction says."
+    },
+    "/spec/owner": {
+      "guide": "The role accountable for the aim, from the Resource catalogue: a role, never a person. When no role fits, define the role first.",
+      "good": [
+        "operations-lead",
+        "quality-reviewer"
+      ],
+      "poor": [
+        {
+          "text": "Ada Okafor",
+          "why": "A person, not a role: Cartograph names roles, and people hold them."
+        }
+      ]
+    },
+    "/spec/horizon": {
+      "guide": "The period the aim covers, as years or years and months. A goal usually spans the plan, an objective one to three years inside its goal; an outcome may take its objective's. It must sit inside the horizon above it."
+    },
+    "/spec/whyItMatters": {
+      "guide": "Why this aim, in one sentence a reader would accept: what it changes for whom. It is what makes the aim relevant under its parent.",
+      "good": [
+        "An inconsistent supplier is priced as its worst delivery, not its average one."
+      ],
+      "poor": [
+        {
+          "text": "It is important.",
+          "why": "Says nothing a reader can check."
+        }
+      ]
+    },
+    "/spec/contributesTo": {
+      "guide": "Other objectives this outcome also moves, besides its parent, each with the reason. Only an outcome has them, and each points up at an objective or a goal other than its parent."
+    }
+  },
+  "links": {
+    "Goal:/spec/parent": {
+      "ask": "What will show this aim is met? A goal is met through the objectives under it; an objective through the outcomes under it, each a state that will be true and closes a gap. Look at the existing ones first: one may already belong here.",
+      "ifNone": "Define them with the person, top-down, in the same proposal: under a goal, its objectives; under an objective, its outcomes, each written as a state, with its measures and the gap it closes (and the gap's KPI, if there is none)."
+    },
+    "Gap:/spec/outcomes": {
+      "ask": "Which gap does this outcome close? A gap is a shortfall measured against the purpose: where things are now, where they should be, and on what measure.",
+      "ifNone": "Define the gap first: its current state, its desired state, the KPI that measures it (with a dated baseline and target), the segments it was observed in, and the source of the evidence. Then the gap names this outcome."
+    }
+  },
+  "checks": {
+    "smart-specific": "Write the statement for the level, with the numbers left to the measures.",
+    "smart-measurable": "Add a key result with a target, or align a KPI with a target to the aim.",
+    "smart-attainable": "Give every measure today's figure, dated before its target, moving the way its direction says.",
+    "smart-relevant": "Place the aim under the right parent and say why it matters.",
+    "smart-time-bound": "Date every target, inside the horizon.",
+    "owner": "Name the accountable role.",
+    "horizon": "Give the period, inside the one above it.",
+    "closes-gap": "Name this outcome on the gap it closes, or define the gap first.",
+    "key-results-count": "Keep one to three key results; more blur the focus.",
+    "contributes-to": "Point each link at a higher objective other than the parent, with a reason.",
+    "has-objectives": "Define the objectives under this goal, or place existing ones under it.",
+    "has-outcomes": "Define the outcomes under this objective, each a state that closes a gap, or place existing ones under it.",
+    "outcomes-close-gaps": "For each outcome under it, name on the gap the outcome closes, or define that gap: its current and desired state, its KPI, and the segments it was observed in."
+  },
+  "vocabulary": {
+    "aimVerbs": [
+      "align",
+      "bring",
+      "build",
+      "clarify",
+      "close",
+      "cut",
+      "deepen",
+      "deliver",
+      "eliminate",
+      "empower",
+      "enable",
+      "end",
+      "enhance",
+      "ensure",
+      "establish",
+      "expand",
+      "give",
+      "grow",
+      "hold",
+      "improve",
+      "increase",
+      "institutionalise",
+      "institutionalize",
+      "keep",
+      "lower",
+      "make",
+      "modernise",
+      "modernize",
+      "move",
+      "open",
+      "promote",
+      "protect",
+      "raise",
+      "reduce",
+      "remove",
+      "restore",
+      "secure",
+      "shift",
+      "shorten",
+      "simplify",
+      "speed",
+      "standardise",
+      "standardize",
+      "strengthen",
+      "support",
+      "transform",
+      "turn",
+      "use",
+      "widen"
+    ]
+  }
+}

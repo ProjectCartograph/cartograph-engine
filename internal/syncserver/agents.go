@@ -26,13 +26,26 @@ var agentCount atomic.Uint64
 // (contract/schemas/presence.schema.json), relayed over the fan-out like
 // any peer's. It lasts as presence does, ten seconds unless repeated, so
 // an agent shows while it works and is gone when it stops.
-func (s *Server) AnnounceAgent(ctx context.Context, docID, actor, name string) {
+//
+// focus is the field it last changed, so people see where; agent is what
+// it did (the presence schema's agent), so a person can follow it.
+func (s *Server) AnnounceAgent(ctx context.Context, docID, actor, name, focus string, agent map[string]any) {
 	sum := sha256.Sum256([]byte(actor))
 	session := "agent-" + hex.EncodeToString(sum[:8])
-	presence, err := cbor.Marshal(map[string]any{
+	p := map[string]any{
 		"v": 1, "session": session, "actor": actor, "name": name, "color": agentColour,
-		"focus": nil, "caret": nil, "pointer": nil, "at": time.Now().UnixMilli(),
-	})
+		// A float, not an int64: CBOR's eight-byte integers decode as BigInt
+		// in a browser, which no presence check accepts. Milliseconds are
+		// exact in a float for some 280,000 years.
+		"focus": nil, "caret": nil, "pointer": nil, "at": float64(time.Now().UnixMilli()),
+	}
+	if focus != "" {
+		p["focus"] = map[string]any{"path": focus}
+	}
+	if agent != nil {
+		p["agent"] = agent
+	}
+	presence, err := cbor.Marshal(p)
 	if err != nil {
 		return
 	}

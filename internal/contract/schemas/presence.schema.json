@@ -26,7 +26,11 @@
       "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/pointer" }]
     },
     "at": { "type": "integer", "minimum": 0, "description": "When this was sent, in Unix milliseconds by the sender's clock; for ordering one session's messages, never compared across sessions." },
-    "leaving": { "type": "boolean", "description": "True on the last message of a session, so others remove it at once." }
+    "leaving": { "type": "boolean", "description": "True on the last message of a session, so others remove it at once." },
+    "agent": {
+      "description": "Present when the session is an agent working for a person (docs/adr/0016). An agent holds no socket, so the engine sends its presence for it, on the manifest it works on and on the presence document, with what it did last, so a person can follow it (docs/adr/0018).",
+      "$ref": "#/$defs/agent"
+    }
   },
   "$defs": {
     "field": {
@@ -55,6 +59,24 @@
         "target": { "type": "string", "maxLength": 512, "description": "What the pointer is over: a control's data-cartograph-field, or a region's data-cartograph-region key." },
         "x": { "type": "number", "minimum": 0, "maximum": 1, "description": "Across the target, 0 at its left edge, 1 at its right." },
         "y": { "type": "number", "minimum": 0, "maximum": 1, "description": "Down the target, 0 at its top, 1 at its bottom." }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["for", "seq", "step"],
+      "additionalProperties": false,
+      "properties": {
+        "for": { "type": "string", "maxLength": 256, "description": "The person it acts for, as proposals name them; empty for a vault's operator." },
+        "seq": { "type": "integer", "minimum": 0, "description": "Counts what it has done, so a receiver shows each step once." },
+        "step": { "enum": ["guide", "read", "draft", "checks", "propose"], "description": "What it did: read a kind's guide, read a manifest, saved a draft, ran checks, or proposed." },
+        "kind": { "type": "string", "maxLength": 64 },
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 256, "description": "The manifest's name, where there is one." },
+        "fields": { "type": "array", "maxItems": 32, "items": { "type": "string", "maxLength": 512 }, "description": "For a draft, the fields it changed, by JSON pointer." },
+        "met": { "type": "integer", "minimum": 0, "description": "For a draft or checks, how many checks are met." },
+        "open": { "type": "integer", "minimum": 0, "description": "For a draft or checks, how many are still open." },
+        "proposal": { "type": "string", "maxLength": 64, "description": "For a proposal, its id." },
+        "parts": { "type": "integer", "minimum": 1, "description": "For a proposal, how many manifests it holds." }
       }
     }
   }

@@ -23,7 +23,7 @@ func TestEngineReadsAndWritesJSONManifests(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	team := []byte(`{"apiVersion":"cartograph/v1","kind":"Team","metadata":{"id":"t1","name":"Quality team"},"spec":{"name":"Quality team"}}`)
+	team := []byte(`{"apiVersion":"cartograph/v1","kind":"Team","metadata":{"id":"t1","name":"Quality team"},"spec":{"description":"Checks the produce"}}`)
 	if problems, err := e.Validate(ctx, "Team", team); err != nil || len(problems) != 0 {
 		t.Fatalf("validate: %v %v", problems, err)
 	}

@@ -337,7 +337,7 @@ func withSync(next, sync http.Handler) http.Handler {
 // stack serve runs.
 func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, reports reporting.Reporter, agents agentsConfig, ready *atomic.Bool, syncOpts ...syncserver.Option) (*http.ServeMux, *syncserver.Server) {
 	mux := http.NewServeMux()
-	deps := api.Deps{Printer: pdf, Authorizer: authz, Reports: reports}
+	deps := api.Deps{Printer: pdf, Authorizer: authz, Reports: reports, AgentsOn: agents.On}
 	if agents.On && agents.OAuth != nil {
 		deps.AgentTokens = agents.OAuth
 	}
@@ -347,7 +347,7 @@ func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz au
 		// The sync socket sits inside the same authentication and
 		// authorization as every other request; a WebSocket upgrade on
 		// /sync goes to it, everything else to the API.
-		syncSrv = syncserver.New(sh, fan, authz, slog.Default(), syncOpts...)
+		syncSrv = syncserver.New(sh, fan, authz, slog.Default(), append(syncOpts, syncserver.WithFollows(e.MayFollow))...)
 		inner = withSync(inner, syncSrv)
 	}
 	if agents.On {

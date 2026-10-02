@@ -1,0 +1,116 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "gap",
+    "name": "Gap"
+  },
+  "spec": {
+    "for": "Gap",
+    "steps": [
+      {
+        "key": "shortfall",
+        "title": "Shortfall",
+        "guide": "Where things are now, where they should be, and the outcome that would close the distance.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text",
+            "hint": "A few words naming the shortfall, such as Faults are found after dispatch."
+          },
+          {
+            "path": "/spec/measure",
+            "control": "reference",
+            "hint": "If a KPI tracks this, its baseline and target are the current and desired states.",
+            "checks": [
+              "gap-states",
+              "gap-measured"
+            ]
+          },
+          {
+            "path": "/spec/current",
+            "control": "sentence",
+            "hint": "Where things are now, in one sentence.",
+            "checks": [
+              "gap-states"
+            ]
+          },
+          {
+            "path": "/spec/desired",
+            "control": "sentence",
+            "hint": "Where things should be, in one sentence.",
+            "checks": [
+              "gap-states"
+            ]
+          },
+          {
+            "path": "/spec/outcomes",
+            "control": "references",
+            "hint": "The outcome that would be true once this gap is closed.",
+            "checks": [
+              "gap-outcome"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "scope",
+        "title": "Scope",
+        "guide": "The segments the shortfall was observed in, and who is addressing each.",
+        "fields": [
+          {
+            "path": "/spec/segments",
+            "control": "references",
+            "hint": "Add each slice the evidence covers, such as a region or a product line.",
+            "checks": [
+              "gap-segments",
+              "gap-covered"
+            ]
+          }
+        ],
+        "links": [
+          {
+            "kind": "Project",
+            "path": "/spec/summary/problems/-/gaps/-/gap",
+            "check": "gap-covered"
+          },
+          {
+            "kind": "Programme",
+            "path": "/spec/problems/-/gaps/-/gap",
+            "check": "gap-covered"
+          }
+        ]
+      },
+      {
+        "key": "evidence",
+        "title": "Evidence",
+        "guide": "Where the finding was written down, in the source's own words.",
+        "fields": [
+          {
+            "path": "/spec/source",
+            "control": "text",
+            "hint": "The document and section, precisely enough to find again.",
+            "checks": [
+              "gap-source"
+            ]
+          },
+          {
+            "path": "/spec/statement",
+            "control": "sentence",
+            "hint": "The finding in the source's own words."
+          },
+          {
+            "path": "/spec/measuredBy",
+            "control": "reference",
+            "hint": "Where this gap can be watched, if anywhere."
+          },
+          {
+            "path": "/spec/note",
+            "control": "sentence"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

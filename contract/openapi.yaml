@@ -540,6 +540,43 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /guides/{kind}:
+    get:
+      operationId: getGuide
+      summary: >-
+        How to define a kind well, for one level, in one language: what it
+        is, every step and field in order with right and wrong examples, the
+        checks each answers and how to meet them, the links to make on
+        other kinds, and the organisation's records to reuse for each
+        reference and link. Agents read the same guide over MCP.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - name: level
+          in: query
+          required: false
+          description: For a Goal, goal, objective or outcome.
+          schema:
+            type: string
+        - name: locale
+          in: query
+          required: false
+          description: The language of the words; English when there are none in it.
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: The guide
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Guide"
+
   /schemas/{kind}:
     get:
       operationId: getSchema
@@ -870,6 +907,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AgentToken"
+  /agents/feed:
+    get:
+      operationId: getAgentFeed
+      summary: >-
+        The document a person's agents announce their steps on, to follow
+        them (docs/adr/0018): what each read, drafted, checked and
+        proposed, as presence (contract/schemas/presence.schema.json,
+        agent). The caller's own, or, for an administrator, one person's.
+        Only they may open it on the sync socket; nothing is stored.
+      parameters:
+        - name: person
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedDocument"
   /agents/{grant}:
     delete:
       operationId: revokeAgentGrant
@@ -927,6 +992,28 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Proposal"
+  /proposals/{proposal}:
+    get:
+      operationId: getProposal
+      summary: >-
+        One proposal as its person reviews it: what it would change against
+        the manifest's latest version, field by field, and the checks on
+        what it proposes. Read by whoever may read its manifest.
+      parameters:
+        - $ref: "#/components/parameters/ProposalParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: The proposal under review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposalReview"
   /proposals/{proposal}/accept:
     post:
       operationId: acceptProposal
@@ -1882,6 +1969,12 @@ components:
           description: The organisation address, where the authenticator has one.
         access:
           $ref: "#/components/schemas/SessionAccess"
+        agents:
+          type: boolean
+          description: >-
+            Whether agents may act for this principal here: the deployment
+            serves MCP and, with an access list, the principal's roles allow
+            one. An interface shows Proposals when it is true.
     SessionAccess:
       type: object
       description: >-
@@ -2181,6 +2274,236 @@ components:
         version:
           type: integer
           description: The version accepting it made, when it made one.
+        set:
+          type: string
+          description: >-
+            The set this proposal belongs to, whose proposals are accepted
+            or declined together; absent for one on its own.
+        waivers:
+          type: array
+          description: >-
+            The checks the agent left open, each with why. An agent may
+            propose only what meets every check, or what names each check
+            it leaves open.
+          items:
+            $ref: "#/components/schemas/Waiver"
+
+    Waiver:
+      type: object
+      required: [check, message, reason]
+      properties:
+        check:
+          type: string
+        message:
+          type: string
+          description: What the check said.
+        reason:
+          type: string
+          description: Why the agent left it open.
+
+    ManifestCheck:
+      type: object
+      description: >-
+        One thing a manifest still needs, as every kind reports it: met
+        (ok), advice (warn), or a block on a handoff (block).
+      required: [id, state, message]
+      properties:
+        id:
+          type: string
+        state:
+          type: string
+          enum: [ok, warn, block]
+        message:
+          type: string
+        section:
+          type: string
+          description: The editor's section where it is fixed.
+
+    ProposalReview:
+      type: object
+      description: >-
+        A proposal as its person reviews it: every part, in the order they
+        would be saved. A proposal on its own has one part; a set (a KPI,
+        the gap it measures and the outcome that closes it) has one per
+        manifest, accepted or declined together.
+      required: [proposal, parts]
+      properties:
+        proposal:
+          $ref: "#/components/schemas/Proposal"
+        parts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProposalPart"
+
+    ProposalPart:
+      type: object
+      required: [proposal, changes, checks]
+      properties:
+        proposal:
+          $ref: "#/components/schemas/Proposal"
+        changes:
+          type: array
+          description: What saving it would change, against the base version (everything, for a new manifest).
+          items:
+            $ref: "#/components/schemas/Change"
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManifestCheck"
+
+    Guide:
+      type: object
+      required: [kind, locale, definition, steps, existing, template]
+      properties:
+        kind:
+          type: string
+        locale:
+          type: string
+        definition:
+          type: string
+          description: What the kind is, in the discipline's words, and what it is not.
+        level:
+          type: string
+        levelIs:
+          type: string
+          description: What the asked level is.
+        levels:
+          type: object
+          description: What each level is, when no level was asked for.
+          additionalProperties:
+            type: string
+        purpose:
+          type: object
+          description: The organisation's vision and mission, for a Goal.
+          properties:
+            vision:
+              type: string
+            mission:
+              type: string
+            source:
+              type: string
+        existing:
+          type: array
+          description: >-
+            The records of this kind (at this level) already defined: reuse
+            or improve one before defining another.
+          items:
+            $ref: "#/components/schemas/GuideCandidate"
+        template:
+          type: object
+          description: A manifest of this kind with its envelope and required fields, to fill in.
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuideStep"
+        checks:
+          type: object
+          description: By check id, how to meet it.
+          additionalProperties:
+            type: string
+        vocabulary:
+          type: object
+          description: >-
+            Words an interface offers for writing a field in this language,
+            such as the verbs an aim opens with; never used to judge one.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    GuideStep:
+      type: object
+      required: [key, title, fields]
+      properties:
+        key:
+          type: string
+        title:
+          type: string
+        guide:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuideField"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuideLink"
+
+    GuideField:
+      type: object
+      required: [path, control]
+      properties:
+        path:
+          type: string
+          description: The field's JSON pointer; list items as /spec/keyResults/-/metric.
+        control:
+          type: string
+        guide:
+          type: string
+        good:
+          type: array
+          items:
+            type: string
+        poor:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuidePoor"
+        checks:
+          type: array
+          items:
+            type: string
+        references:
+          type: string
+          description: The kind the field references.
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuideCandidate"
+
+    GuidePoor:
+      type: object
+      required: [text, why]
+      properties:
+        text:
+          type: string
+        why:
+          type: string
+
+    GuideLink:
+      type: object
+      required: [kind, path]
+      properties:
+        kind:
+          type: string
+          description: The kind that holds the link.
+        path:
+          type: string
+          description: Where on that kind the link is held.
+        check:
+          type: string
+        ask:
+          type: string
+        ifNone:
+          type: string
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuideCandidate"
+
+    GuideCandidate:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        detail:
+          type: string
+        under:
+          type: string
+          description: A goal's parent.
 
     ProposalDecision:
       type: object

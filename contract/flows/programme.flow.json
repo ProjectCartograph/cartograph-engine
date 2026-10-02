@@ -1,0 +1,315 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "programme",
+    "name": "Programme"
+  },
+  "spec": {
+    "for": "Programme",
+    "steps": [
+      {
+        "key": "aim",
+        "title": "Aim",
+        "guide": "The change this programme exists to bring about, and who is better off for it.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/aim/change",
+            "control": "sentence",
+            "title": "Intended change",
+            "hint": "How things will be once this has worked."
+          },
+          {
+            "path": "/spec/aim/gain",
+            "control": "sentence",
+            "title": "Benefit",
+            "hint": "One sentence about the people who gain."
+          },
+          {
+            "path": "/spec/source",
+            "control": "text"
+          }
+        ]
+      },
+      {
+        "key": "problems",
+        "title": "Problems",
+        "guide": "What is wrong today that the change answers, who feels it, and the evidence for it.",
+        "fields": [
+          {
+            "path": "/spec/problems",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "problems-stated"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/groups",
+                "control": "references",
+                "checks": [
+                  "problems-groups"
+                ]
+              },
+              {
+                "path": "/problem/situation",
+                "control": "sentence"
+              },
+              {
+                "path": "/problem/cause",
+                "control": "sentence"
+              },
+              {
+                "path": "/change/what",
+                "control": "sentence"
+              },
+              {
+                "path": "/change/gain",
+                "control": "sentence"
+              },
+              {
+                "path": "/gaps",
+                "control": "list",
+                "key": "gap",
+                "checks": [
+                  "problems-gaps"
+                ],
+                "fields": [
+                  {
+                    "path": "/gap",
+                    "control": "reference"
+                  },
+                  {
+                    "path": "/segments",
+                    "control": "references"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "alignment",
+        "title": "Alignment",
+        "guide": "The outcomes the programme serves, and the indicators it is judged by.",
+        "fields": [
+          {
+            "path": "/spec/goals",
+            "control": "references",
+            "title": "Outcomes",
+            "checks": [
+              "alignment-goals"
+            ]
+          },
+          {
+            "path": "/spec/kpis",
+            "control": "references",
+            "title": "Indicators",
+            "checks": [
+              "alignment-kpis"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "components",
+        "title": "Components",
+        "guide": "The projects and operations the programme coordinates, each of which names it.",
+        "fields": [],
+        "links": [
+          {
+            "kind": "Project",
+            "path": "/spec/alignment/programmes",
+            "check": "components-present"
+          },
+          {
+            "kind": "Operation",
+            "path": "/spec/programmes",
+            "check": "components-present"
+          }
+        ]
+      },
+      {
+        "key": "pathway",
+        "title": "Theory of change",
+        "guide": "How the change is expected to happen: each outcome, what must hold before it, and why.",
+        "fields": [
+          {
+            "path": "/spec/pathway",
+            "control": "list",
+            "key": "id",
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/outcome",
+                "control": "reference"
+              },
+              {
+                "path": "/from",
+                "control": "references"
+              },
+              {
+                "path": "/because",
+                "control": "sentence"
+              },
+              {
+                "path": "/assumes",
+                "control": "references"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "risks",
+        "title": "Risks",
+        "guide": "What could stop the change at programme level, and what the programme waits on.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/risks",
+            "control": "list",
+            "key": "id",
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/type",
+                "control": "choice"
+              },
+              {
+                "path": "/description",
+                "control": "sentence"
+              },
+              {
+                "path": "/impact",
+                "control": "choice"
+              },
+              {
+                "path": "/likelihood",
+                "control": "choice"
+              },
+              {
+                "path": "/mitigation",
+                "control": "sentence",
+                "checks": [
+                  "risks-mitigation"
+                ]
+              },
+              {
+                "path": "/depends/direction",
+                "control": "choice"
+              },
+              {
+                "path": "/depends/on",
+                "control": "reference",
+                "checks": [
+                  "risks-dependency-edges",
+                  "risks-dependency-cycle"
+                ]
+              },
+              {
+                "path": "/escalate/flag",
+                "control": "toggle"
+              },
+              {
+                "path": "/escalate/reason",
+                "control": "sentence"
+              },
+              {
+                "path": "/escalate/to",
+                "control": "reference"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "governance",
+        "title": "Governance",
+        "guide": "The roles accountable for the programme, and the teams that run it.",
+        "fields": [
+          {
+            "path": "/spec/sponsor",
+            "control": "reference",
+            "title": "Sponsor"
+          },
+          {
+            "path": "/spec/manager",
+            "control": "reference",
+            "title": "Programme manager"
+          },
+          {
+            "path": "/spec/businessChangeManager",
+            "control": "reference",
+            "title": "Business change manager"
+          },
+          {
+            "path": "/spec/leadTeam",
+            "control": "reference",
+            "title": "Lead team"
+          },
+          {
+            "path": "/spec/supportingTeams",
+            "control": "references",
+            "title": "Supporting teams"
+          }
+        ]
+      },
+      {
+        "key": "mandate",
+        "title": "Mandate",
+        "guide": "The decisions, policies or laws that authorise the programme.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/mandate",
+            "control": "list",
+            "key": "title",
+            "fields": [
+              {
+                "path": "/kind",
+                "control": "choice"
+              },
+              {
+                "path": "/title",
+                "control": "text"
+              },
+              {
+                "path": "/reference",
+                "control": "text"
+              },
+              {
+                "path": "/date",
+                "control": "date"
+              },
+              {
+                "path": "/issuedBy",
+                "control": "text"
+              }
+            ]
+          },
+          {
+            "path": "/spec/notes",
+            "control": "sentence"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "reportingcycle",
+    "name": "Reporting cycle"
+  },
+  "spec": {
+    "for": "ReportingCycle",
+    "steps": [
+      {
+        "key": "schedule",
+        "title": "Schedule",
+        "guide": "How long one period is, the month the cycle's year starts, and when each report is due.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/periodMonths",
+            "control": "choice",
+            "hint": "How many months one period covers."
+          },
+          {
+            "path": "/spec/startMonth",
+            "control": "number",
+            "hint": "The month of the year the first period opens, from 1 to 12."
+          },
+          {
+            "path": "/spec/dueOffsetDays",
+            "control": "number",
+            "hint": "How many days after a period closes the report is due."
+          }
+        ],
+        "links": [
+          {
+            "kind": "KPI",
+            "path": "/spec/cycle"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "locale": "en",
+  "kind": "FundingSource",
+  "definition": "A budget, grant, fund or facility that work draws money from (TAXONOMY.md D7): declared once, with the code its holders' ledger gives it, and named by every project funding line that draws on it. The code identifies the budget, not one project's use of it, so it is written once here and never retyped per project. A funding source is not a Resource: a resource is what work draws on to do the work (a role, unit, party, system or facility), and money is what it draws on to pay for it. It is not a funding line either: how much a project draws, in which currency and whether it is approved lives on the project's funding line.",
+  "steps": {},
+  "fields": {
+    "/metadata/name": {
+      "guide": "The title shown in lists and pickers. Usually the same as the budget's name."
+    },
+    "/spec/code": {
+      "guide": "How the budget is identified in the ledger it belongs to: a head, a subhead, a fund or a grant number, copied exactly. Leave it empty when the organisation does not code its budgets.",
+      "good": [
+        "BUD-2025-Q4-07"
+      ],
+      "poor": [
+        {
+          "text": "the ops one",
+          "why": "Not the ledger's identifier; nobody could find the budget from it. Copy the code as the ledger writes it, or leave it empty."
+        }
+      ]
+    },
+    "/spec/heldBy": {
+      "guide": "The unit or party that holds the budget and answers for it, from the Resource catalogue. A unit or a party, never a person. When it is not in the catalogue, declare it there first.",
+      "good": [
+        "depot-network"
+      ],
+      "poor": [
+        {
+          "text": "Ada Okafor",
+          "why": "A person, not a unit or party. Cartograph names roles and bodies, and people hold them (D27)."
+        }
+      ]
+    },
+    "/spec/period": {
+      "guide": "The span the budget covers, as the organisation names it: a financial year, a season, a grant term.",
+      "good": [
+        "2025 season"
+      ],
+      "poor": [
+        {
+          "text": "ongoing",
+          "why": "Every budget covers a span; say which, so a funding line drawn after it ends can be seen."
+        }
+      ]
+    },
+    "/spec/note": {
+      "guide": "Anything about the budget the fields above cannot hold, such as what it is meant to cover.",
+      "good": [
+        "Covers the depots' running costs, including anything bought for them mid-season."
+      ],
+      "poor": [
+        {
+          "text": "42000 USD approved for the rollout",
+          "why": "An amount drawn by one project belongs on that project's funding line, not on the budget."
+        }
+      ]
+    }
+  },
+  "links": {},
+  "checks": {}
+}

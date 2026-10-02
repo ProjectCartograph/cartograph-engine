@@ -136,5 +136,44 @@ func (s *Server) toProposal(p store.Proposal) apigen.Proposal {
 		v := p.Version
 		out.Version = &v
 	}
+	if p.Set != "" {
+		set := p.Set
+		out.Set = &set
+	}
+	if len(p.Waivers) > 0 {
+		ws := make([]apigen.Waiver, len(p.Waivers))
+		for i, w := range p.Waivers {
+			ws[i] = apigen.Waiver{Check: w.Check, Message: w.Message, Reason: w.Reason}
+		}
+		out.Waivers = &ws
+	}
+	return out
+}
+
+// GetProposal returns a proposal as its person reviews it.
+func (s *Server) GetProposal(ctx context.Context, req apigen.GetProposalRequestObject) (apigen.GetProposalResponseObject, error) {
+	v, err := s.Engine.ViewProposal(ctx, req.Proposal)
+	if errors.Is(err, engine.ErrNotFound) {
+		return apigen.GetProposal404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := apigen.GetProposal200JSONResponse{Proposal: s.toProposal(v.Proposal), Parts: make([]apigen.ProposalPart, len(v.Parts))}
+	for i, part := range v.Parts {
+		out.Parts[i] = apigen.ProposalPart{Proposal: s.toProposal(part.Proposal), Changes: toChanges(part.Changes), Checks: toChecks(part.Checks)}
+	}
+	return out, nil
+}
+
+func toChecks(cs []engine.Check) []apigen.ManifestCheck {
+	out := make([]apigen.ManifestCheck, len(cs))
+	for i, c := range cs {
+		out[i] = apigen.ManifestCheck{Id: c.ID, State: apigen.ManifestCheckState(c.State), Message: c.Message}
+		if c.Section != "" {
+			section := c.Section
+			out[i].Section = &section
+		}
+	}
 	return out
 }

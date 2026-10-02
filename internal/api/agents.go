@@ -77,3 +77,19 @@ func toAgentGrant(g store.AgentGrant) apigen.AgentGrant {
 	}
 	return out
 }
+
+// GetAgentFeed returns the document to follow a person's agents on.
+func (s *Server) GetAgentFeed(ctx context.Context, req apigen.GetAgentFeedRequestObject) (apigen.GetAgentFeedResponseObject, error) {
+	person := ""
+	if req.Params.Person != nil {
+		person = *req.Params.Person
+	}
+	docID, err := s.Engine.AgentFeed(ctx, person)
+	if errors.Is(err, engine.ErrNotFound) {
+		return apigen.GetAgentFeed404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return apigen.GetAgentFeed200JSONResponse(sharedDocument(docID)), nil
+}

@@ -185,3 +185,12 @@ func (m *ManifestStore) DecideProposal(ctx context.Context, id, status, by, reas
 	}
 	return ps.DecideProposal(ctx, id, status, by, reason, at, version)
 }
+
+// DecideProposalSet asks the index.
+func (m *ManifestStore) DecideProposalSet(ctx context.Context, set, status, by, reason string, at time.Time, versions map[string]int) ([]store.Proposal, error) {
+	ps, err := m.proposals()
+	if err != nil {
+		return nil, err
+	}
+	return ps.DecideProposalSet(ctx, set, status, by, reason, at, versions)
+}

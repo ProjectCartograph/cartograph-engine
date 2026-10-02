@@ -1,0 +1,50 @@
+{
+  "locale": "en",
+  "kind": "Segment",
+  "definition": "One named slice of what the organisation serves, such as a region, a depot, a product line or a holding size. Segments are what a gap is observed in and what a KPI is broken down by: one concept, so both name the same slices. They form a tree: a dimension is a segment with no parent (Region), and its values are its children (the northern region). A segment is not a beneficiary group (a group of people the work is for), not a team (who does the work), not a label (a free cut nobody planned), and not a period of time (the reporting cycle's job).",
+  "fields": {
+    "/spec/parent": {
+      "guide": "The dimension this is a value of, or the broader slice it sits inside. Leave it empty for a dimension itself. A segment can never sit under itself, directly or further up, and such a parent is refused on save. When the dimension does not exist yet, define it first, top-down.",
+      "good": [
+        "region, for the northern region",
+        "product-line, for fresh produce"
+      ],
+      "poor": [
+        {
+          "text": "depot-network-team, for a depot",
+          "why": "A team, not a segment: the parent is the dimension the slice belongs to, here Depot."
+        }
+      ]
+    },
+    "/spec/description": {
+      "guide": "What falls inside this slice and what does not, precisely enough that two people counting it would agree, including how a borderline case is counted.",
+      "good": [
+        "Which collection depot produce passed through. Every depot in the network is a value; produce collected in the field is counted against the depot it was taken to.",
+        "Which line produce belongs to. A crate is counted against one line only, by what it mostly holds."
+      ],
+      "poor": [
+        {
+          "text": "All the regions.",
+          "why": "Does not say where a region's boundary comes from, so two people could count a holding differently."
+        },
+        {
+          "text": "Important for quality.",
+          "why": "Says why it matters, not what falls inside it."
+        }
+      ]
+    },
+    "/metadata/name": {
+      "guide": "The name, as people say it and as lists show it."
+    }
+  },
+  "links": {
+    "Gap:/spec/segments": {
+      "ask": "Which gaps were observed in this slice? Each gap lists the segments its evidence covers.",
+      "ifNone": "Nothing has to be defined first: a segment may be declared before any gap names it. When a gap's evidence covers this slice, name the segment on the gap."
+    },
+    "KPI:/spec/disaggregations": {
+      "ask": "Which KPIs are broken down by this dimension? Each KPI lists the dimensions it is split by.",
+      "ifNone": "Leave it: only a dimension, a segment with no parent, is a disaggregation, and a KPI names it when its source can report the split."
+    }
+  }
+}

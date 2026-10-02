@@ -104,7 +104,9 @@ func TestTeamSchema(t *testing.T) {
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "Team", yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\n  name: Team Two\nspec:\n  name: Team Two\n  parent: t1\n"},
-		{name: "missing name", kind: "Team", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\n  name: Team Two\nspec:\n  description: no name here\n"},
+		// The name is metadata.name alone (2.6.0); a team without one is refused.
+		{name: "named in metadata alone", kind: "Team", yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\n  name: Team Two\nspec:\n  description: named once\n"},
+		{name: "missing name", kind: "Team", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\nspec:\n  description: no name here\n"},
 		{name: "dangling parent ref", kind: "Team", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\n  name: Team Two\nspec:\n  name: Team Two\n  parent: does-not-exist\n"},
 	})
 }
@@ -114,7 +116,8 @@ func TestBeneficiaryGroupSchema(t *testing.T) {
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid, with source", kind: "BeneficiaryGroup", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: Group Two\n  description: A second beneficiary group\n  source: d1\n"},
 		{name: "valid, minimal", kind: "BeneficiaryGroup", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: Group Two\n"},
-		{name: "missing name", kind: "BeneficiaryGroup", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  description: no name\n"},
+		{name: "named in metadata alone", kind: "BeneficiaryGroup", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  description: named once\n"},
+		{name: "missing name", kind: "BeneficiaryGroup", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\nspec:\n  description: no name\n"},
 		{name: "name exceeds maxLength 80", kind: "BeneficiaryGroup", wantProblem: true, wantSubstr: "maxLength", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: " + strings.Repeat("x", 81) + "\n"},
 		{name: "description exceeds maxLength 240", kind: "BeneficiaryGroup", wantProblem: true, wantSubstr: "maxLength", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: Group Two\n  description: " + strings.Repeat("x", 241) + "\n"},
 		// No size on a group either: the register identifies who a group is,
@@ -199,5 +202,16 @@ func TestProjectSchema(t *testing.T) {
 		{name: "operation literal new is not a dangling ref", kind: "Project", yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n  operation: new\n"},
 		{name: "dangling operation ref", kind: "Project", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n  operation: does-not-exist\n"},
 		{name: "duplicate key result ids within one objective", kind: "Project", wantProblem: true, wantSubstr: "duplicates", yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n  objectives:\n    - objective: Deliver every order\n      keyResults:\n        - id: kr-1\n          metric: Orders delivered\n          direction: increase\n          kind: count\n          unit: deliveries\n        - id: kr-1\n          metric: Coverage\n          direction: increase\n          kind: percent\n"},
+	})
+}
+
+// A team cannot sit beneath itself: a contributor's reach walks the teams
+// beneath theirs, and a loop has no bottom (TAXONOMY.md D27).
+func TestATeamCannotBeItsOwnAncestor(t *testing.T) {
+	e := seededEngine(t)
+	mustCommit(t, e, "Team", "t2", "local", "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\n  name: Team Two\nspec:\n  parent: t1\n")
+	runSchemaCases(t, e, []schemaCase{
+		{name: "beneath a team beneath it", kind: "Team", wantProblem: true, wantSubstr: "its own ancestor", yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  parent: t2\n"},
+		{name: "its own parent", kind: "Team", wantProblem: true, wantSubstr: "its own parent", yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  parent: t1\n"},
 	})
 }

@@ -80,8 +80,11 @@ type Server struct {
 	shared *engine.Shared
 	fan    fanout.Bus
 	authz  auth.Authorizer
-	log    *slog.Logger
-	peerID string
+	// follows says whether the principal on ctx may follow a person's
+	// agents (their own, or an administrator); nil, nobody may.
+	follows func(ctx context.Context, person string) bool
+	log     *slog.Logger
+	peerID  string
 
 	ping time.Duration
 	// recheck bounds what a lost fan-out hint costs (WithRecheck).
@@ -121,6 +124,12 @@ const StatusIdle = websocket.StatusCode(4000)
 // WithRecheck sets how often a connection offers its documents again
 // whether or not a hint arrived: the most a lost hint can delay a change.
 func WithRecheck(d time.Duration) Option { return func(s *Server) { s.recheck = d } }
+
+// WithFollows says who may open a person's agent feed (docs/adr/0018):
+// the engine's MayFollow.
+func WithFollows(f func(ctx context.Context, person string) bool) Option {
+	return func(s *Server) { s.follows = f }
+}
 
 // New returns a server over the engine's shared drafts. authz decides,
 // per document, whether a peer may read or write it.
@@ -522,6 +531,14 @@ func (c *conn) open(ctx context.Context, docID string) (*peerDoc, error) {
 	}
 	if err := c.s.authz.Authorize(ctx, c.principal, read); err != nil {
 		return nil, errUnavailable // not knowing and not being allowed look the same
+	}
+	// A person's agent feed is theirs (docs/adr/0018): what their agents
+	// do, on manifests others may not see, is not broadcast.
+	if owner, ok := engine.AgentFeedOwner(kind, id); ok {
+		if c.s.follows == nil || !c.s.follows(auth.WithPrincipal(ctx, c.principal), owner) {
+			return nil, errUnavailable
+		}
+		write = auth.Action{Verb: auth.VerbRead}
 	}
 	st, err := c.s.shared.NewSyncState()
 	if err != nil {

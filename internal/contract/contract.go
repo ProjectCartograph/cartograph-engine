@@ -16,3 +16,9 @@ var Schemas embed.FS
 //
 //go:embed flows/*.json
 var Flows embed.FS
+
+// Guidance embeds contract/guidance the same way: how to define each kind
+// well, in each language, which people and agents read.
+//
+//go:embed guidance
+var Guidance embed.FS

@@ -1,0 +1,188 @@
+{
+  "locale": "en",
+  "kind": "KPI",
+  "definition": "A key performance indicator, shown as Indicator: a measure written once that says what is counted, in which declared unit, which way is good, where the number is read from and how often (the means of verification). Its dated baseline and target are where things stand and where they should get to; for a measured gap they are the gap's two states. Aligned to an aim, it makes the aim measurable, and with the aim and the group who perceives the change it is how Cartograph holds a benefit. What it read in each period is not part of it: readings arrive every cycle and live in the KPI's own KPIReadings, so the definition changes only when the measure does. A KPI is not a key result (a measure that belongs to one aim and is written on it), not an aim or a target sentence (Raise the pass rate to 75 percent), not a reading (this season's 66), and not a data source (where the number comes from).",
+  "fields": {
+    "/spec/definition": {
+      "guide": "Exactly what gets counted, over what, where and when, precisely enough that two people would get the same number from the same records. No target and no direction.",
+      "good": [
+        "Share of deliveries meeting the quality standard at intake.",
+        "Median hours between a delivery being taken in and being collected from the depot.",
+        "Share of intake weight lost between the depot and the buyer in a season."
+      ],
+      "poor": [
+        {
+          "text": "How good our produce is.",
+          "why": "Not countable as written: good by what standard, checked where?"
+        },
+        {
+          "text": "Share of deliveries that pass.",
+          "why": "Pass what, checked where? A check at intake and a check at the buyer give different numbers."
+        },
+        {
+          "text": "Share of deliveries meeting the standard at intake, which should reach 75 percent.",
+          "why": "The target belongs in the target field; the definition says only what is counted."
+        }
+      ]
+    },
+    "/spec/unit": {
+      "guide": "The declared unit the number is counted in. Pick a shipped one first (percent, count, hours, days); add a unit only when none says what this is, such as a currency or a scale the cooperative defined.",
+      "good": [
+        "percent, for Quality pass rate",
+        "hours, for Collection turnaround",
+        "usd, for Member season earnings"
+      ],
+      "poor": [
+        {
+          "text": "A new unit called Percentage",
+          "why": "Percent already ships: a second spelling of one quantity is what the Unit kind exists to prevent."
+        },
+        {
+          "text": "A new unit called Deliveries",
+          "why": "What is counted belongs in the definition; the unit is count."
+        }
+      ]
+    },
+    "/spec/direction": {
+      "guide": "Which way is good: increase, decrease, or maintain for a level to hold steady. The target must move from the baseline the way this says."
+    },
+    "/spec/goals": {
+      "guide": "The aims this KPI tells you about, most often outcomes: the changed state the number would show has happened. Aligning a KPI with a target to an aim is one way to make the aim Measurable. Align only where the number answers whether that aim is met.",
+      "good": [
+        "faults-found-before-dispatch, for Quality pass rate",
+        "produce-reaches-a-depot-the-same-day, for Collection turnaround"
+      ],
+      "poor": [
+        {
+          "text": "member-season-earnings aligned to faults-found-before-dispatch",
+          "why": "Earnings move for many reasons, so the number cannot say whether faults are now found before dispatch."
+        },
+        {
+          "text": "Every goal the measure might touch",
+          "why": "A long alignment list dilutes what the KPI answers for: align where it is the evidence, not where it is related."
+        }
+      ]
+    },
+    "/spec/resultLevel": {
+      "guide": "Where the measure sits in the results framework: output (something the work produced), outcome (something that changed because of it), or impact (the longer-term change it aims at).",
+      "good": [
+        "output, for Collection turnaround",
+        "outcome, for Depot availability",
+        "impact, for Member season earnings"
+      ],
+      "poor": [
+        {
+          "text": "impact, for Collection turnaround",
+          "why": "Turnaround is a product of how the collection service runs; the longer-term change it serves is less harvest lost and what members earn."
+        }
+      ]
+    },
+    "/spec/baseline/value": {
+      "guide": "Today's figure, in the KPI's unit, from the source it is read from. If it has not been measured yet, admit it: give the reason instead, and when it will be known; never invent one.",
+      "good": [
+        "41 hours, for Collection turnaround"
+      ],
+      "poor": [
+        {
+          "text": "0, because nobody has measured it",
+          "why": "Zero is a reading; an unmeasured baseline is unknown, and saying so is what makes the gap honest."
+        }
+      ]
+    },
+    "/spec/baseline/date": {
+      "guide": "The month the baseline was measured, before the target's month.",
+      "good": [
+        "2025-09"
+      ]
+    },
+    "/spec/target/value": {
+      "guide": "The figure to reach, in the KPI's unit, moving from the baseline the way the direction says.",
+      "good": [
+        "20 hours, for Collection turnaround, whose direction is decrease"
+      ],
+      "poor": [
+        {
+          "text": "50 hours, for Collection turnaround",
+          "why": "Above the baseline of 41 on a measure whose direction is decrease: the target moves the wrong way."
+        }
+      ]
+    },
+    "/spec/target/date": {
+      "guide": "The month the target is due by, after the baseline and inside the horizon of the aims it is aligned to.",
+      "good": [
+        "2027-06"
+      ]
+    },
+    "/spec/source": {
+      "guide": "The data source the number is read from, so anyone can go and check it. A dated target read from a source captured by hand is advised on the source, so say how records get into it there.",
+      "good": [
+        "collection-log, for Collection turnaround",
+        "quality-check-tool, for Quality pass rate"
+      ],
+      "poor": [
+        {
+          "text": "member-survey, for Quality pass rate",
+          "why": "Members' opinion of quality is a different number from the share of deliveries meeting the standard at intake."
+        }
+      ]
+    },
+    "/spec/cycle": {
+      "guide": "The reporting cycle the KPI is read on. It sets the periods its readings are recorded for, so pick the one the source can actually supply.",
+      "good": [
+        "seasonal-cycle, for Quality pass rate, read from forms transcribed each season",
+        "monthly-cycle, for Collection turnaround, read from a log kept weekly"
+      ],
+      "poor": [
+        {
+          "text": "monthly-cycle, for Quality pass rate",
+          "why": "Its source is transcribed once a season, so most monthly periods would have nothing to read."
+        }
+      ]
+    },
+    "/spec/disaggregations": {
+      "guide": "The dimensions the number is broken down by, as Segments with no parent, such as depot, region or product line. The same segments a gap is observed in, so a split measure can show where a shortfall sits. Leave empty if only the total is reported.",
+      "good": [
+        "depot, for Collection turnaround",
+        "region and product-line, for Quality pass rate"
+      ],
+      "poor": [
+        {
+          "text": "delivering-members",
+          "why": "A beneficiary group, people the work is for, not a dimension the number is split by."
+        },
+        {
+          "text": "By month",
+          "why": "Time is the reporting cycle's periods, not a segment."
+        }
+      ]
+    },
+    "/metadata/name": {
+      "guide": "The name, as people say it and as lists show it."
+    },
+    "/spec/baseline/unknownReason": {
+      "guide": "Why today's figure is not known yet, in a sentence a reader can check. An admitted unknown still meets Achievable; a guessed number does not.",
+      "good": [
+        "The loss survey has never been run at the northern depots; the first one closes in March."
+      ],
+      "poor": [
+        {
+          "text": "TBD",
+          "why": "Says nothing about why or when; a reader cannot tell a gap in the evidence from a gap in the work."
+        }
+      ]
+    },
+    "/spec/baseline/expectedBy": {
+      "guide": "The month the figure will be known, when there is one."
+    }
+  },
+  "links": {
+    "Gap:/spec/measure": {
+      "ask": "Which gap does this KPI measure? Its baseline and target would then be the gap's current and desired states.",
+      "ifNone": "Leave it: not every KPI measures a recorded gap. If the shortfall it tracks is not in the register yet, record the gap, naming its outcome and its source, and choose this KPI as its measure."
+    },
+    "KPIReadings:/spec/kpi": {
+      "ask": "Where are this KPI's readings kept? One series per KPI holds what it read, period by period.",
+      "ifNone": "Name a reporting cycle first, so the KPI has periods to read; then start its readings with the first period that has closed."
+    }
+  }
+}

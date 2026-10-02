@@ -185,3 +185,41 @@ func (e *Engine) grantCaller(ctx context.Context) (self string, admin bool, err 
 	}
 	return self, slices.Contains(g.Roles, identity.RoleAdministrator), nil
 }
+
+// AgentFeed returns the document a person's agents announce their steps
+// on (docs/adr/0018): the caller's own, or, for an administrator, anyone's.
+// "" is the caller.
+func (e *Engine) AgentFeed(ctx context.Context, person string) (string, error) {
+	if e.shared == nil {
+		return "", fmt.Errorf("%w: no shared drafts, so nothing live to follow", ErrNotFound)
+	}
+	if err := refuseAgent(ctx); err != nil {
+		return "", err
+	}
+	self := personKey(identity.PrincipalFrom(ctx))
+	person = strings.ToLower(strings.TrimSpace(person))
+	if person != "" && person != self {
+		if !e.isAdministrator(ctx) {
+			return "", fmt.Errorf("%w: only an administrator follows someone else's agents", identity.ErrForbidden)
+		}
+	} else {
+		person = self
+	}
+	return e.shared.AgentFeed(ctx, person)
+}
+
+// MayFollow reports whether the principal on ctx may follow person's
+// agents: their own, or anyone's for an administrator.
+func (e *Engine) MayFollow(ctx context.Context, person string) bool {
+	return personKey(identity.PrincipalFrom(ctx)) == person || e.isAdministrator(ctx)
+}
+
+// isAdministrator reports whether the principal on ctx holds the
+// administrator role; with no access list, nobody does.
+func (e *Engine) isAdministrator(ctx context.Context) bool {
+	if e.access == nil {
+		return false
+	}
+	g, err := e.Grants(ctx, identity.PrincipalFrom(ctx))
+	return err == nil && slices.Contains(g.Roles, identity.RoleAdministrator)
+}

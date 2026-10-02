@@ -65,6 +65,10 @@ func (s *Server) GetSession(ctx context.Context, _ apigen.GetSessionRequestObjec
 	if out.Access, err = s.sessionAccess(ctx, p); err != nil {
 		return nil, err
 	}
+	// Agents may act for them where MCP is served and, with an access
+	// list, their roles allow it.
+	agents := s.AgentsOn && (out.Access == nil || out.Access.Agents != nil && *out.Access.Agents)
+	out.Agents = &agents
 	if out.Access != nil {
 		// canWrite is whether they may write anything at all.
 		out.CanWrite = false

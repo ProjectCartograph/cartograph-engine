@@ -55,6 +55,22 @@ func rewriteLegacyFields(kind string, doc map[string]any) []string {
 
 	var notes []string
 
+	// The name is metadata.name, as Kubernetes keeps it. spec.name held it a
+	// second time, and the two drifted when only one was edited; it is
+	// folded in, the metadata's winning where both are set (2.6.0).
+	if n, ok := spec["name"].(string); ok {
+		meta, _ := doc["metadata"].(map[string]any)
+		if meta == nil {
+			meta = map[string]any{}
+			doc["metadata"] = meta
+		}
+		if m, _ := meta["name"].(string); m == "" && n != "" {
+			meta["name"] = n
+		}
+		delete(spec, "name")
+		notes = append(notes, "spec.name folded into metadata.name, which now holds the name alone")
+	}
+
 	if kind == "Goal" {
 		if level, ok := spec["level"].(string); ok {
 			switch level {

@@ -1,0 +1,104 @@
+{
+  "locale": "en",
+  "kind": "Assumption",
+  "definition": "Something that has to be true for a step of the reasoning to hold: the logframe's assumptions column, and the condition on an arrow in a theory of change (TAXONOMY.md D12). It sits on the link between two levels of the work, so it is named where that link is: a programme's pathway step, or a project's success criterion that rests on deliverables. It is stated once and named by every step it conditions. An assumption is not a risk: a risk is something that might go wrong and is mitigated; an assumption is tested, and if it turns out false the answer is a different theory, not a contingency. It is not a constraint (a fixed limit on the work), not a dependency (something the work waits on), and not a hope about the work's own effort.",
+  "steps": {},
+  "fields": {
+    "/metadata/name": {
+      "guide": "A short title for the assumption, as a reader would scan it in a list: the condition in a few words.",
+      "good": [
+        "Depots release staff for training during the season",
+        "A fault found at intake can still be put right"
+      ],
+      "poor": [
+        {
+          "text": "Training assumption",
+          "why": "Names a topic, not the condition; a reader cannot tell what is assumed."
+        }
+      ]
+    },
+    "/spec/statement": {
+      "guide": "What has to be true, in one sentence, present tense, about the world rather than about the work, stated so somebody could find out whether it is.",
+      "good": [
+        "Depots let checkers off the floor for a training day while produce is still coming in.",
+        "Produce failing a check at intake can be sorted, repacked or cooled on the same day rather than written off.",
+        "Retail buyers price a supplier on how consistent its deliveries are, not only on the best of them."
+      ],
+      "poor": [
+        {
+          "text": "We will arrange cover for checkers on training days.",
+          "why": "A plan for the work, not a condition in the world. Say what has to be true (depots release staff), not what the team will do."
+        },
+        {
+          "text": "The scanners might break during the pilot.",
+          "why": "Something that might go wrong is a risk, mitigated on the project's register, not an assumption."
+        },
+        {
+          "text": "Training will be successful.",
+          "why": "Assumes the result it is meant to explain, and nobody could test it before the fact. Name the condition the step rests on."
+        },
+        {
+          "text": "Depots release staff and buyers pay more for consistent produce.",
+          "why": "Two assumptions in one sentence; each conditions a different step and may fail on its own."
+        }
+      ]
+    },
+    "/spec/ifFalse": {
+      "guide": "What happens to the reasoning if this does not hold: which step stops working, and what that does to the change. An assumption nobody can say the consequence of is one nobody will act on.",
+      "good": [
+        "Training waits for the closed season, so the shared standard arrives a season after the produce it was meant to grade.",
+        "Checking earlier finds the same faults sooner and loses the same produce, so the programme moves the paperwork and not the outcome."
+      ],
+      "poor": [
+        {
+          "text": "The project fails.",
+          "why": "Too broad to act on; say which step stops working and what that does."
+        },
+        {
+          "text": "Hire temporary checkers to cover.",
+          "why": "A mitigation, which belongs to a risk. This field says what the falsehood does to the reasoning."
+        }
+      ]
+    },
+    "/spec/confidence": {
+      "guide": "How sure anybody is that it holds: high, medium or low. A mark for a reader to weigh, never a number to multiply. Say in the note what the confidence rests on."
+    },
+    "/spec/testedBy": {
+      "guide": "How anybody would find out, where there is a way: a KPI that would move, or a data source somebody could look in. An assumption is tested, where a risk is mitigated. Leave it empty when nothing Cartograph holds would show it, and say so in the note.",
+      "good": [
+        "KPI quality-pass-rate",
+        "DataSource sales-ledger"
+      ],
+      "poor": [
+        {
+          "text": "Ask around",
+          "why": "Not a source anyone could look in again. Name the indicator or the data source that would show it."
+        }
+      ]
+    },
+    "/spec/note": {
+      "guide": "Anything else worth knowing, including where the assumption came from, who doubted it and why. Name roles or bodies, never persons.",
+      "good": [
+        "The two pilot depots agreed; the rest were not asked.",
+        "Held by the market access team from two buyer conversations, not from a price schedule."
+      ],
+      "poor": [
+        {
+          "text": "Checked with Ada.",
+          "why": "Names a person and says nothing about what was checked. Name the role or team, and what they found."
+        }
+      ]
+    }
+  },
+  "links": {
+    "Programme:/spec/pathway/-/assumes": {
+      "ask": "Which step of a programme's pathway does this have to hold for: which outcome would not follow from its preconditions if this were false?",
+      "ifNone": "Write the pathway step first, on the programme: the outcome it reaches, the outcomes it rests on and why they produce it. Then name this assumption on that step."
+    },
+    "Project:/spec/successCriteria/-/assumes": {
+      "ask": "Which project success criterion rests on this: which state would the deliverables fail to produce if this were false?",
+      "ifNone": "Write the success criterion first, on the project, with the deliverables it comes from. Then name this assumption on that criterion."
+    }
+  },
+  "checks": {}
+}

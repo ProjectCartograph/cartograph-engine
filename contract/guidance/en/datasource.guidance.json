@@ -1,0 +1,145 @@
+{
+  "locale": "en",
+  "kind": "DataSource",
+  "definition": "A data source is somewhere a number actually comes from: a register, a system, a survey, a record or a document store that an indicator, a key result, a gap or a success criterion is read from. It is the means of verification, named once in the register so every measure that reads from it points at the same place. It says what form it takes (category) and, separately, who runs it (provenance), the way DCAT keeps a dataset apart from its publisher (TAXONOMY.md D25). It says how records get into it, because that decides how soon anything read from it can be known (TAXONOMY.md D18). A data source is not an indicator: the indicator is the measure, and the source is where its readings come from. It is not a report, which is made from sources, and it is not the team that keeps it, which it names.",
+  "steps": {},
+  "fields": {
+    "/metadata/name": {
+      "guide": "The name the source goes by where it is kept, so someone could ask for it by that name.",
+      "good": [
+        "Collection Log",
+        "Member Register",
+        "Quality Check Tool"
+      ],
+      "poor": [
+        {
+          "text": "Spreadsheet",
+          "why": "A form, not a source: that is the category. Name which spreadsheet, such as the Collection Log."
+        },
+        {
+          "text": "Share of deliveries checked at intake",
+          "why": "An indicator, not a source: the measure is a KPI, which names the source its readings come from."
+        }
+      ]
+    },
+    "/spec/category": {
+      "guide": "What form the source takes: a database, a spreadsheet, a paper record, a form or survey, an operational system, an API or feed, or a document store. Who runs it is provenance, a separate question.",
+      "good": [
+        "spreadsheet",
+        "paperRecord",
+        "operationalSystem"
+      ],
+      "poor": [
+        {
+          "text": "database",
+          "why": "Chosen for the Depot Maintenance Log, a logbook kept at each depot. It is a paper record until somebody types it in."
+        }
+      ]
+    },
+    "/spec/provenance": {
+      "guide": "Whether the organisation runs this source (internal) or a third party does (external). It is not the same question as the category: a spreadsheet can be either.",
+      "good": [
+        "internal"
+      ],
+      "poor": [
+        {
+          "text": "external",
+          "why": "Chosen because the Sales Ledger is kept by the finance team, not the team asking. Another team in the organisation is still internal; external means a third party runs it."
+        }
+      ]
+    },
+    "/spec/team": {
+      "guide": "The team that keeps the source, from the teams in the organisation. Required. A team, never a person or a role: the role that looks after the content and quality is the data steward, named in a project's resources.",
+      "good": [
+        "depot-network-team",
+        "quality-team"
+      ],
+      "poor": [
+        {
+          "text": "Depot supervisor",
+          "why": "A role, not a team: the source names the team that keeps it, and a role is named in a project's resources."
+        }
+      ]
+    },
+    "/spec/access": {
+      "guide": "How someone gets to read it, and what they need first: who to ask, what account, whether it is a copy or the source itself.",
+      "good": [
+        "Shared spreadsheet, one tab per depot, filled in by the depot supervisor.",
+        "Read access on request from the finance team."
+      ],
+      "poor": [
+        {
+          "text": "Ask Ada.",
+          "why": "Names a person, who will move on, and does not say what access is given or how."
+        },
+        {
+          "text": "Yes",
+          "why": "Says that access exists, not how anyone gets it."
+        }
+      ]
+    },
+    "/spec/refresh": {
+      "guide": "How often the contents change: daily, weekly, monthly, quarterly, annual, or irregular when there is no rhythm. It bounds how often a measure read from it can move.",
+      "good": [
+        "weekly",
+        "annual"
+      ],
+      "poor": [
+        {
+          "text": "irregular",
+          "why": "Chosen for the Member Survey, which runs once a season on a known rhythm. Irregular is for a source that changes with no rhythm at all."
+        }
+      ]
+    },
+    "/spec/capture": {
+      "guide": "How each record gets into the source: typed in by hand, scanned from paper forms, filled in online, fed from another system, or not decided yet. A source filled from paper has to say how the paper becomes data, because that decides how soon anything read from it is known. Not decided is an honest answer, and a time-bound target read from a source captured by hand or not decided is advised (TAXONOMY.md D18).",
+      "good": [
+        "byHand",
+        "notDecided"
+      ],
+      "poor": [
+        {
+          "text": "onlineForm",
+          "why": "Chosen for the Quality Check Tool because the forms end up in a shared spreadsheet. They start on paper and are transcribed, so they are typed in by hand, and late forms are transcribed after the season closes."
+        }
+      ]
+    },
+    "/spec/classification": {
+      "guide": "How sensitive the contents are, from a fixed scheme: public, internal, confidential or restricted (ISO/IEC 27002, 5.12). Leave it unset rather than guess; a guessed classification is worse than none.",
+      "good": [
+        "internal",
+        "restricted"
+      ],
+      "poor": [
+        {
+          "text": "Internal use only, but some fields are sensitive",
+          "why": "Not a level of the scheme: pick one level, the highest that applies to any of the contents."
+        }
+      ]
+    },
+    "/spec/qualityIssues": {
+      "guide": "What is already known to be wrong with the source, specifically enough that a reader can judge a number read from it: what is missing, late, rounded or skewed, and since when.",
+      "good": [
+        "Collection times are entered by hand and are sometimes rounded to the hour.",
+        "Answered by roughly half the membership, weighted towards larger holdings.",
+        "Entries stop when a depot is short staffed, which is when they matter most."
+      ],
+      "poor": [
+        {
+          "text": "Data quality could be better.",
+          "why": "True of every source and says nothing a reader can allow for."
+        },
+        {
+          "text": "None",
+          "why": "Rarely true, and it reads as checked when it was not. Leave it empty when nothing is known yet."
+        }
+      ]
+    }
+  },
+  "links": {
+    "KPI:/spec/source": {
+      "ask": "Which indicator is read from this source? An indicator names the source its readings come from, as its means of verification.",
+      "ifNone": "Leave it. A source may be read by a gap, a key result, a success criterion or a project's data use instead, or be recorded before anything reads from it. When an indicator should read from it, the indicator names it."
+    }
+  }
+}

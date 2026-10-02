@@ -308,6 +308,14 @@ cheapest way to find out a release changed something you relied on.
 
 ## Agents
 
+
+An interface of your own shows people the guidance agents read:
+`GET /api/v1/guides/{kind}` gives each field's words with right and
+wrong examples, and the words an editor may offer, in the person's
+language where the engine has it (ADR 0017). Show proposals on a review
+page (`GET /api/v1/proposals/{id}`), and accept only from there. To let
+people follow their agents, open `GET /api/v1/agents/feed` on the sync
+socket and read the `agent` block of its presence (ADR 0018).
 Agents connect over MCP. Each acts for one person, with that person's
 access; it reads and proposes, and its person decides (ADR 0016). Turn
 them on with `CARTOGRAPH_MCP=on` and name the roles allowed them in the

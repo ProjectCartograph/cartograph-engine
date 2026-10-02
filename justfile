@@ -49,10 +49,11 @@ ci: generate drift vet fmt-check lint arch test words clean-tree compat build
 
 # Regenerate every committed, generated file from the contract
 generate:
-    rm -rf internal/contract/schemas internal/contract/flows
-    mkdir -p internal/contract/schemas internal/contract/flows
+    rm -rf internal/contract/schemas internal/contract/flows internal/contract/guidance
+    mkdir -p internal/contract/schemas internal/contract/flows internal/contract/guidance
     cp contract/schemas/*.json internal/contract/schemas/
     cp contract/flows/*.json internal/contract/flows/
+    cp -r contract/guidance/. internal/contract/guidance/
     cd internal/api && go generate ./...
     # The Automerge module, built from crdt/ by the flake (docs/adr/0007).
     # Its bytes are those x86_64 Linux builds: a compiler hosted on another
@@ -108,7 +109,7 @@ words:
     #!{{toolchain}} bash
     set -uo pipefail
     n=$(grep -rniE '\b(ministry|school|schools|pupil|cabinet|circular|vote|district|teacher|ecce)\b' --include='*.go' --include='*.json' --include='*.yaml' --include='*.yml' --include='*.md' . | grep -v '/dist/' | grep -vE '^./docs/(TAXONOMY|DESIGN_RULES).md' | wc -l)
-    d=$(grep -rnE '—' examples/ 2>/dev/null | wc -l)
+    d=$(grep -rnE '—' examples/ contract/guidance/ contract/flows/ 2>/dev/null | wc -l)
     echo "domain words: $n, em dashes in the example: $d"
     test "$n" -eq 0 && test "$d" -eq 0
 

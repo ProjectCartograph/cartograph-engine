@@ -67,11 +67,11 @@ func TestImportRewritesLegacyKeyResultAndKPIDates(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 
-	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n")
-	mustWriteFile(t, filepath.Join(dir, "DataSource", "ds1.yaml"), "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: ds1\n  name: DS One\nspec:\n  name: DS One\n  category: database\n  team: t1\n")
+	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec: {}\n")
+	mustWriteFile(t, filepath.Join(dir, "DataSource", "ds1.yaml"), "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: ds1\n  name: DS One\nspec:\n  category: database\n  team: t1\n")
 	mustWriteFile(t, filepath.Join(dir, "Goal", "old-goal.yaml"), "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: old-goal\n  name: Old Goal\nspec:\n  level: strategic\n  objective: Something old\n  keyResults:\n    - id: kr-1\n      metric: Old metric\n      direction: increase\n      kind: percent\n      baseline: {value: 10, asOf: \"2025-01\"}\n      target: {value: 20, by: \"2026-01\"}\n")
-	mustWriteFile(t, filepath.Join(dir, "Unit", "percent.yaml"), "apiVersion: cartograph/v1\nkind: Unit\nmetadata:\n  id: percent\n  name: Percent\nspec:\n  name: Percent\n  dimension: percent\n")
-	mustWriteFile(t, filepath.Join(dir, "KPI", "old-kpi.yaml"), "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: old-kpi\n  name: Old KPI\nspec:\n  name: Old KPI\n  definition: A definition\n  unit: percent\n  direction: increase\n  baseline: {value: 5, asOf: \"2025-01\"}\n  target: {value: 10, by: \"2026-01\"}\n  source: ds1\n")
+	mustWriteFile(t, filepath.Join(dir, "Unit", "percent.yaml"), "apiVersion: cartograph/v1\nkind: Unit\nmetadata:\n  id: percent\n  name: Percent\nspec:\n  dimension: percent\n")
+	mustWriteFile(t, filepath.Join(dir, "KPI", "old-kpi.yaml"), "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: old-kpi\n  name: Old KPI\nspec:\n  definition: A definition\n  unit: percent\n  direction: increase\n  baseline: {value: 5, asOf: \"2025-01\"}\n  target: {value: 10, by: \"2026-01\"}\n  source: ds1\n")
 
 	report, err := e.ImportDir(ctx, dir, "bootstrap", "legacy import")
 	if err != nil {
@@ -150,7 +150,7 @@ func TestImportRewritesLegacyDeliverableAcceptance(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 
-	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n")
+	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec: {}\n")
 	mustWriteFile(t, filepath.Join(dir, "Project", "old-project.yaml"),
 		"apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: old-project\n  name: Old Project\nspec:\n  team: t1\n"+
 			"  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"+
@@ -197,7 +197,7 @@ func TestReadingAVaultFileInTheOldShapeGivesTheCurrentOne(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 
-	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n")
+	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec: {}\n")
 	oldShape := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: old-shape\n  name: P\nspec:\n  team: t1\n" +
 		"  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n" +
 		"  deliverables:\n    - id: dv-1\n      name: Training pack\n      acceptance: Reviewer signs off\n"
@@ -244,7 +244,7 @@ func TestReadingAFileWithPerSectionAccountabilityDropsIt(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 
-	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n")
+	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec: {}\n")
 	mustWriteFile(t, filepath.Join(dir, "Project", "old-raci.yaml"),
 		"apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: old-raci\n  name: P\nspec:\n  team: t1\n"+
 			"  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"+
@@ -291,7 +291,7 @@ func TestImportRewritesRoleTitlesToReferences(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 
-	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n")
+	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec: {}\n")
 	mustWriteFile(t, filepath.Join(dir, "Project", "old-roles.yaml"),
 		"apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: old-roles\n  name: Old Roles\nspec:\n  team: t1\n"+
 			"  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"+
@@ -339,7 +339,7 @@ func TestImportKeepsExistingLocalIDs(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 
-	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n")
+	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"), "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec: {}\n")
 	mustWriteFile(t, filepath.Join(dir, "Project", "keep-ids.yaml"),
 		"apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: keep-ids\n  name: Keep\nspec:\n  team: t1\n"+
 			"  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"+
@@ -362,5 +362,21 @@ func TestImportKeepsExistingLocalIDs(t *testing.T) {
 	}
 	if !strings.Contains(got, "id: r-original") || !strings.Contains(got, "local: resources") {
 		t.Fatalf("expected the verifier to point at the existing id, got:\n%s", got)
+	}
+}
+
+// A manifest saved before 2.6.0 names itself twice; its spec.name is folded
+// into metadata.name on read, the metadata's winning where both are set,
+// and the name is said once from then on.
+func TestSpecNameIsFoldedIntoMetadata(t *testing.T) {
+	e := newTestEngine(t)
+	ctx := context.Background()
+	mustCommit(t, e, "Team", "t9", "local", "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t9\n  name: Quality team\nspec:\n  name: Old quality team\n")
+	v, err := e.Get(ctx, "Team", "t9")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(v.YAML), "Old quality team") || !strings.Contains(string(v.YAML), "name: Quality team") {
+		t.Fatalf("read back as:\n%s", v.YAML)
 	}
 }

@@ -57,6 +57,27 @@ func (e GoalCheckState) Valid() bool {
 	}
 }
 
+// Defines values for ManifestCheckState.
+const (
+	ManifestCheckStateBlock ManifestCheckState = "block"
+	ManifestCheckStateOk    ManifestCheckState = "ok"
+	ManifestCheckStateWarn  ManifestCheckState = "warn"
+)
+
+// Valid indicates whether the value is a known member of the ManifestCheckState enum.
+func (e ManifestCheckState) Valid() bool {
+	switch e {
+	case ManifestCheckStateBlock:
+		return true
+	case ManifestCheckStateOk:
+		return true
+	case ManifestCheckStateWarn:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProgrammeCheckState.
 const (
 	ProgrammeCheckStateOk   ProgrammeCheckState = "ok"
@@ -523,6 +544,96 @@ type GoalTree struct {
 	Nodes  []GoalNode `json:"nodes"`
 }
 
+// Guide defines model for Guide.
+type Guide struct {
+	// Checks By check id, how to meet it.
+	Checks *map[string]string `json:"checks,omitempty"`
+
+	// Definition What the kind is, in the discipline's words, and what it is not.
+	Definition string `json:"definition"`
+
+	// Existing The records of this kind (at this level) already defined: reuse or improve one before defining another.
+	Existing []GuideCandidate `json:"existing"`
+	Kind     string           `json:"kind"`
+	Level    *string          `json:"level,omitempty"`
+
+	// LevelIs What the asked level is.
+	LevelIs *string `json:"levelIs,omitempty"`
+
+	// Levels What each level is, when no level was asked for.
+	Levels *map[string]string `json:"levels,omitempty"`
+	Locale string             `json:"locale"`
+
+	// Purpose The organisation's vision and mission, for a Goal.
+	Purpose *struct {
+		Mission *string `json:"mission,omitempty"`
+		Source  *string `json:"source,omitempty"`
+		Vision  *string `json:"vision,omitempty"`
+	} `json:"purpose,omitempty"`
+	Steps []GuideStep `json:"steps"`
+
+	// Template A manifest of this kind with its envelope and required fields, to fill in.
+	Template map[string]interface{} `json:"template"`
+
+	// Vocabulary Words an interface offers for writing a field in this language, such as the verbs an aim opens with; never used to judge one.
+	Vocabulary *map[string][]string `json:"vocabulary,omitempty"`
+}
+
+// GuideCandidate defines model for GuideCandidate.
+type GuideCandidate struct {
+	Detail *string `json:"detail,omitempty"`
+	Id     string  `json:"id"`
+	Name   string  `json:"name"`
+
+	// Under A goal's parent.
+	Under *string `json:"under,omitempty"`
+}
+
+// GuideField defines model for GuideField.
+type GuideField struct {
+	Candidates *[]GuideCandidate `json:"candidates,omitempty"`
+	Checks     *[]string         `json:"checks,omitempty"`
+	Control    string            `json:"control"`
+	Good       *[]string         `json:"good,omitempty"`
+	Guide      *string           `json:"guide,omitempty"`
+
+	// Path The field's JSON pointer; list items as /spec/keyResults/-/metric.
+	Path string       `json:"path"`
+	Poor *[]GuidePoor `json:"poor,omitempty"`
+
+	// References The kind the field references.
+	References *string `json:"references,omitempty"`
+}
+
+// GuideLink defines model for GuideLink.
+type GuideLink struct {
+	Ask        *string           `json:"ask,omitempty"`
+	Candidates *[]GuideCandidate `json:"candidates,omitempty"`
+	Check      *string           `json:"check,omitempty"`
+	IfNone     *string           `json:"ifNone,omitempty"`
+
+	// Kind The kind that holds the link.
+	Kind string `json:"kind"`
+
+	// Path Where on that kind the link is held.
+	Path string `json:"path"`
+}
+
+// GuidePoor defines model for GuidePoor.
+type GuidePoor struct {
+	Text string `json:"text"`
+	Why  string `json:"why"`
+}
+
+// GuideStep defines model for GuideStep.
+type GuideStep struct {
+	Fields []GuideField `json:"fields"`
+	Guide  *string      `json:"guide,omitempty"`
+	Key    string       `json:"key"`
+	Links  *[]GuideLink `json:"links,omitempty"`
+	Title  string       `json:"title"`
+}
+
 // Health defines model for Health.
 type Health struct {
 	Status string `json:"status"`
@@ -545,6 +656,19 @@ type Manifest struct {
 	} `json:"metadata"`
 	Spec map[string]interface{} `json:"spec"`
 }
+
+// ManifestCheck One thing a manifest still needs, as every kind reports it: met (ok), advice (warn), or a block on a handoff (block).
+type ManifestCheck struct {
+	Id      string `json:"id"`
+	Message string `json:"message"`
+
+	// Section The editor's section where it is fixed.
+	Section *string            `json:"section,omitempty"`
+	State   ManifestCheckState `json:"state"`
+}
+
+// ManifestCheckState defines model for ManifestCheck.State.
+type ManifestCheckState string
 
 // ManifestDraft A manifest's working copy, kind-agnostic (the kind and id are already in the request path): the text as saved, in the deployment's codec, and the same decoded.
 type ManifestDraft struct {
@@ -734,14 +858,20 @@ type Proposal struct {
 	ManifestId string                  `json:"manifestId"`
 
 	// Op save commits the proposed manifest; append records one item of a series (series, item); state moves a project (state).
-	Op     ProposalOp     `json:"op"`
-	Reason string         `json:"reason"`
-	Series *string        `json:"series,omitempty"`
+	Op     ProposalOp `json:"op"`
+	Reason string     `json:"reason"`
+	Series *string    `json:"series,omitempty"`
+
+	// Set The set this proposal belongs to, whose proposals are accepted or declined together; absent for one on its own.
+	Set    *string        `json:"set,omitempty"`
 	State  *string        `json:"state,omitempty"`
 	Status ProposalStatus `json:"status"`
 
 	// Version The version accepting it made, when it made one.
 	Version *int `json:"version,omitempty"`
+
+	// Waivers The checks the agent left open, each with why. An agent may propose only what meets every check, or what names each check it leaves open.
+	Waivers *[]Waiver `json:"waivers,omitempty"`
 }
 
 // ProposalOp save commits the proposed manifest; append records one item of a series (series, item); state moves a project (state).
@@ -754,6 +884,24 @@ type ProposalStatus string
 type ProposalDecision struct {
 	// Reason Why, recorded with the decision.
 	Reason *string `json:"reason,omitempty"`
+}
+
+// ProposalPart defines model for ProposalPart.
+type ProposalPart struct {
+	// Changes What saving it would change, against the base version (everything, for a new manifest).
+	Changes []Change        `json:"changes"`
+	Checks  []ManifestCheck `json:"checks"`
+
+	// Proposal Something an agent proposed for its person to confirm (docs/adr/0016).
+	Proposal Proposal `json:"proposal"`
+}
+
+// ProposalReview A proposal as its person reviews it: every part, in the order they would be saved. A proposal on its own has one part; a set (a KPI, the gap it measures and the outcome that closes it) has one per manifest, accepted or declined together.
+type ProposalReview struct {
+	Parts []ProposalPart `json:"parts"`
+
+	// Proposal Something an agent proposed for its person to confirm (docs/adr/0016).
+	Proposal Proposal `json:"proposal"`
 }
 
 // RecoverRequest defines model for RecoverRequest.
@@ -803,6 +951,9 @@ type Session struct {
 
 	// Actor The principal as the engine records it on versions and state.
 	Actor string `json:"actor"`
+
+	// Agents Whether agents may act for this principal here: the deployment serves MCP and, with an access list, the principal's roles allow one. An interface shows Proposals when it is true.
+	Agents *bool `json:"agents,omitempty"`
 
 	// CanWrite Whether the authorizer allows this principal to write.
 	CanWrite bool `json:"canWrite"`
@@ -952,6 +1103,17 @@ type Version struct {
 	Reason string    `json:"reason"`
 }
 
+// Waiver defines model for Waiver.
+type Waiver struct {
+	Check string `json:"check"`
+
+	// Message What the check said.
+	Message string `json:"message"`
+
+	// Reason Why the agent left it open.
+	Reason string `json:"reason"`
+}
+
 // WriteRequest Exactly one of yaml or manifest must be supplied.
 type WriteRequest struct {
 	Manifest *map[string]interface{} `json:"manifest,omitempty"`
@@ -992,6 +1154,20 @@ type Unprocessable = ProblemList
 // ListAgentGrantsParams defines parameters for ListAgentGrants.
 type ListAgentGrantsParams struct {
 	Person *string `form:"person,omitempty" json:"person,omitempty"`
+}
+
+// GetAgentFeedParams defines parameters for GetAgentFeed.
+type GetAgentFeedParams struct {
+	Person *string `form:"person,omitempty" json:"person,omitempty"`
+}
+
+// GetGuideParams defines parameters for GetGuide.
+type GetGuideParams struct {
+	// Level For a Goal, goal, objective or outcome.
+	Level *string `form:"level,omitempty" json:"level,omitempty"`
+
+	// Locale The language of the words; English when there are none in it.
+	Locale *string `form:"locale,omitempty" json:"locale,omitempty"`
 }
 
 // GetProjectCharterHtmlParams defines parameters for GetProjectCharterHtml.
@@ -1207,6 +1383,9 @@ type ServerInterface interface {
 	// CreateAgentToken Lets an agent act for the caller by a token to paste into its client, for a client that cannot sign in through the browser. The token is shown once. Only where Cartograph is the authorization server for agents (CARTOGRAPH_MCP_AUTH=cartograph).
 	// (POST /agents)
 	CreateAgentToken(w http.ResponseWriter, r *http.Request)
+	// GetAgentFeed The document a person's agents announce their steps on, to follow them (docs/adr/0018): what each read, drafted, checked and proposed, as presence (contract/schemas/presence.schema.json, agent). The caller's own, or, for an administrator, one person's. Only they may open it on the sync socket; nothing is stored.
+	// (GET /agents/feed)
+	GetAgentFeed(w http.ResponseWriter, r *http.Request, params GetAgentFeedParams)
 	// RevokeAgentGrant Disconnects an agent at once: the caller's own, or anyone's for an administrator.
 	// (DELETE /agents/{grant})
 	RevokeAgentGrant(w http.ResponseWriter, r *http.Request, grant GrantParam)
@@ -1219,6 +1398,9 @@ type ServerInterface interface {
 	// GetGoalTree The goal tree, computed from every Goal manifest and the reference index
 	// (GET /goals/tree)
 	GetGoalTree(w http.ResponseWriter, r *http.Request)
+	// GetGuide How to define a kind well, for one level, in one language: what it is, every step and field in order with right and wrong examples, the checks each answers and how to meet them, the links to make on other kinds, and the organisation's records to reuse for each reference and link. Agents read the same guide over MCP.
+	// (GET /guides/{kind})
+	GetGuide(w http.ResponseWriter, r *http.Request, kind KindParam, params GetGuideParams)
 	// GetHealth Liveness check
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -1312,6 +1494,9 @@ type ServerInterface interface {
 	// ListProposals What agents have proposed (docs/adr/0016). An agent reads and edits drafts, and proposes what makes the record (a version, a reading, a state change); the person it acts for accepts or declines. By default, the open proposals made for the caller; with kind and id, every proposal on that manifest, for everyone who may read it.
 	// (GET /proposals)
 	ListProposals(w http.ResponseWriter, r *http.Request, params ListProposalsParams)
+	// GetProposal One proposal as its person reviews it: what it would change against the manifest's latest version, field by field, and the checks on what it proposes. Read by whoever may read its manifest.
+	// (GET /proposals/{proposal})
+	GetProposal(w http.ResponseWriter, r *http.Request, proposal ProposalParam)
 	// AcceptProposal Accept a proposal and make the record as the caller: commit its manifest, record its reading, or move its project. Only the person the proposal was made for may accept it, never an agent. Refused with 409 when the manifest has changed since the agent proposed, so the person reviews it again.
 	// (POST /proposals/{proposal}/accept)
 	AcceptProposal(w http.ResponseWriter, r *http.Request, proposal ProposalParam)
@@ -1478,6 +1663,39 @@ func (siw *ServerInterfaceWrapper) CreateAgentToken(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// GetAgentFeed operation middleware
+func (siw *ServerInterfaceWrapper) GetAgentFeed(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAgentFeedParams
+
+	// ------------- Optional query parameter "person" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "person", r.URL.Query(), &params.Person, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "person"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "person", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAgentFeed(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // RevokeAgentGrant operation middleware
 func (siw *ServerInterfaceWrapper) RevokeAgentGrant(w http.ResponseWriter, r *http.Request) {
 
@@ -1549,6 +1767,61 @@ func (siw *ServerInterfaceWrapper) GetGoalTree(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetGoalTree(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGuide operation middleware
+func (siw *ServerInterfaceWrapper) GetGuide(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetGuideParams
+
+	// ------------- Optional query parameter "level" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "level", r.URL.Query(), &params.Level, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "level"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "level", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "locale" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "locale", r.URL.Query(), &params.Locale, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "locale"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "locale", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGuide(w, r, kind, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2634,6 +2907,32 @@ func (siw *ServerInterfaceWrapper) ListProposals(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// GetProposal operation middleware
+func (siw *ServerInterfaceWrapper) GetProposal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "proposal" -------------
+	var proposal ProposalParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "proposal", r.PathValue("proposal"), &proposal, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "proposal", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProposal(w, r, proposal)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // AcceptProposal operation middleware
 func (siw *ServerInterfaceWrapper) AcceptProposal(w http.ResponseWriter, r *http.Request) {
 
@@ -3080,6 +3379,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/kinds", wrapper.ListKinds)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/flows", wrapper.ListFlows)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/flows/{kind}", wrapper.GetFlow)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/guides/{kind}", wrapper.GetGuide)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/schemas/{kind}", wrapper.GetSchema)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}", wrapper.ListManifests)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/{kind}/{id}/series/{series}", wrapper.AppendSeriesItem)
@@ -3090,8 +3390,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/session", wrapper.GetSession)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/agents", wrapper.ListAgentGrants)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/agents", wrapper.CreateAgentToken)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/agents/feed", wrapper.GetAgentFeed)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/agents/{grant}", wrapper.RevokeAgentGrant)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/proposals", wrapper.ListProposals)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/proposals/{proposal}", wrapper.GetProposal)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/proposals/{proposal}/accept", wrapper.AcceptProposal)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/proposals/{proposal}/decline", wrapper.DeclineProposal)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/access/people", wrapper.ListPeople)
@@ -3486,6 +3788,70 @@ func (response CreateAgentToken422JSONResponse) VisitCreateAgentTokenResponse(w 
 	return err
 }
 
+type GetAgentFeedRequestObject struct {
+	Params GetAgentFeedParams
+}
+
+type GetAgentFeedResponseObject interface {
+	VisitGetAgentFeedResponse(w http.ResponseWriter) error
+}
+
+type GetAgentFeed200JSONResponse SharedDocument
+
+func (response GetAgentFeed200JSONResponse) VisitGetAgentFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAgentFeed401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetAgentFeed401JSONResponse) VisitGetAgentFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAgentFeed403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetAgentFeed403JSONResponse) VisitGetAgentFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAgentFeed404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetAgentFeed404JSONResponse) VisitGetAgentFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RevokeAgentGrantRequestObject struct {
 	Grant GrantParam `json:"grant"`
 }
@@ -3702,6 +4068,71 @@ func (response GetGoalTree403JSONResponse) VisitGetGoalTreeResponse(w http.Respo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGuideRequestObject struct {
+	Kind   KindParam `json:"kind"`
+	Params GetGuideParams
+}
+
+type GetGuideResponseObject interface {
+	VisitGetGuideResponse(w http.ResponseWriter) error
+}
+
+type GetGuide200JSONResponse Guide
+
+func (response GetGuide200JSONResponse) VisitGetGuideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGuide401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetGuide401JSONResponse) VisitGetGuideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGuide403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetGuide403JSONResponse) VisitGetGuideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGuide404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetGuide404JSONResponse) VisitGetGuideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5854,6 +6285,70 @@ func (response ListProposals403JSONResponse) VisitListProposalsResponse(w http.R
 	return err
 }
 
+type GetProposalRequestObject struct {
+	Proposal ProposalParam `json:"proposal"`
+}
+
+type GetProposalResponseObject interface {
+	VisitGetProposalResponse(w http.ResponseWriter) error
+}
+
+type GetProposal200JSONResponse ProposalReview
+
+func (response GetProposal200JSONResponse) VisitGetProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProposal401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetProposal401JSONResponse) VisitGetProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProposal403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProposal403JSONResponse) VisitGetProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProposal404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProposal404JSONResponse) VisitGetProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type AcceptProposalRequestObject struct {
 	Proposal ProposalParam `json:"proposal"`
 	Body     *AcceptProposalJSONRequestBody
@@ -6787,6 +7282,9 @@ type StrictServerInterface interface {
 	// CreateAgentToken Lets an agent act for the caller by a token to paste into its client, for a client that cannot sign in through the browser. The token is shown once. Only where Cartograph is the authorization server for agents (CARTOGRAPH_MCP_AUTH=cartograph).
 	// (POST /agents)
 	CreateAgentToken(ctx context.Context, request CreateAgentTokenRequestObject) (CreateAgentTokenResponseObject, error)
+	// GetAgentFeed The document a person's agents announce their steps on, to follow them (docs/adr/0018): what each read, drafted, checked and proposed, as presence (contract/schemas/presence.schema.json, agent). The caller's own, or, for an administrator, one person's. Only they may open it on the sync socket; nothing is stored.
+	// (GET /agents/feed)
+	GetAgentFeed(ctx context.Context, request GetAgentFeedRequestObject) (GetAgentFeedResponseObject, error)
 	// RevokeAgentGrant Disconnects an agent at once: the caller's own, or anyone's for an administrator.
 	// (DELETE /agents/{grant})
 	RevokeAgentGrant(ctx context.Context, request RevokeAgentGrantRequestObject) (RevokeAgentGrantResponseObject, error)
@@ -6799,6 +7297,9 @@ type StrictServerInterface interface {
 	// GetGoalTree The goal tree, computed from every Goal manifest and the reference index
 	// (GET /goals/tree)
 	GetGoalTree(ctx context.Context, request GetGoalTreeRequestObject) (GetGoalTreeResponseObject, error)
+	// GetGuide How to define a kind well, for one level, in one language: what it is, every step and field in order with right and wrong examples, the checks each answers and how to meet them, the links to make on other kinds, and the organisation's records to reuse for each reference and link. Agents read the same guide over MCP.
+	// (GET /guides/{kind})
+	GetGuide(ctx context.Context, request GetGuideRequestObject) (GetGuideResponseObject, error)
 	// GetHealth Liveness check
 	// (GET /health)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
@@ -6892,6 +7393,9 @@ type StrictServerInterface interface {
 	// ListProposals What agents have proposed (docs/adr/0016). An agent reads and edits drafts, and proposes what makes the record (a version, a reading, a state change); the person it acts for accepts or declines. By default, the open proposals made for the caller; with kind and id, every proposal on that manifest, for everyone who may read it.
 	// (GET /proposals)
 	ListProposals(ctx context.Context, request ListProposalsRequestObject) (ListProposalsResponseObject, error)
+	// GetProposal One proposal as its person reviews it: what it would change against the manifest's latest version, field by field, and the checks on what it proposes. Read by whoever may read its manifest.
+	// (GET /proposals/{proposal})
+	GetProposal(ctx context.Context, request GetProposalRequestObject) (GetProposalResponseObject, error)
 	// AcceptProposal Accept a proposal and make the record as the caller: commit its manifest, record its reading, or move its project. Only the person the proposal was made for may accept it, never an agent. Refused with 409 when the manifest has changed since the agent proposed, so the person reviews it again.
 	// (POST /proposals/{proposal}/accept)
 	AcceptProposal(ctx context.Context, request AcceptProposalRequestObject) (AcceptProposalResponseObject, error)
@@ -7115,6 +7619,32 @@ func (sh *strictHandler) CreateAgentToken(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// GetAgentFeed operation middleware
+func (sh *strictHandler) GetAgentFeed(w http.ResponseWriter, r *http.Request, params GetAgentFeedParams) {
+	var request GetAgentFeedRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAgentFeed(ctx, request.(GetAgentFeedRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAgentFeed")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAgentFeedResponseObject); ok {
+		if err := validResponse.VisitGetAgentFeedResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // RevokeAgentGrant operation middleware
 func (sh *strictHandler) RevokeAgentGrant(w http.ResponseWriter, r *http.Request, grant GrantParam) {
 	var request RevokeAgentGrantRequestObject
@@ -7208,6 +7738,33 @@ func (sh *strictHandler) GetGoalTree(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetGoalTreeResponseObject); ok {
 		if err := validResponse.VisitGetGoalTreeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetGuide operation middleware
+func (sh *strictHandler) GetGuide(w http.ResponseWriter, r *http.Request, kind KindParam, params GetGuideParams) {
+	var request GetGuideRequestObject
+
+	request.Kind = kind
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetGuide(ctx, request.(GetGuideRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetGuide")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetGuideResponseObject); ok {
+		if err := validResponse.VisitGetGuideResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -8077,6 +8634,32 @@ func (sh *strictHandler) ListProposals(w http.ResponseWriter, r *http.Request, p
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListProposalsResponseObject); ok {
 		if err := validResponse.VisitListProposalsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProposal operation middleware
+func (sh *strictHandler) GetProposal(w http.ResponseWriter, r *http.Request, proposal ProposalParam) {
+	var request GetProposalRequestObject
+
+	request.Proposal = proposal
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProposal(ctx, request.(GetProposalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProposal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProposalResponseObject); ok {
+		if err := validResponse.VisitGetProposalResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

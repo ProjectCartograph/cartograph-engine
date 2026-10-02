@@ -1,0 +1,70 @@
+{
+  "locale": "en",
+  "kind": "BeneficiaryGroup",
+  "definition": "A beneficiary group is a group of people a piece of work is for: who perceives the benefit when it comes. Cartograph has no Benefit kind; a goal and its key results say what improves, an indicator says how it is measured, and a beneficiary group says who perceives it (TAXONOMY.md D4). It is defined once in the register so every project and programme that names it means the same people. It is qualitative: it says who, and no count belongs in it. It is not a segment (a slice a gap's evidence was observed in), not a stakeholder (a party with an interest, held on a stakeholder map), not a person, and not the team or role that does the work (that is a Team or a Resource).",
+  "steps": {},
+  "fields": {
+    "/metadata/name": {
+      "guide": "A short name for the group, as people in the organisation say it, plural and specific enough to tell it from its neighbours.",
+      "good": [
+        "Delivering members",
+        "Retail partners",
+        "Seasonal workers"
+      ],
+      "poor": [
+        {
+          "text": "Members (about 1,200)",
+          "why": "A count does not belong to the group: it says who, and any figure is read from its source."
+        },
+        {
+          "text": "Better prices for members",
+          "why": "A benefit, not a group: the improvement is a goal or a key result, and the group is who perceives it."
+        },
+        {
+          "text": "Field officer",
+          "why": "A role that does the work, not people the work is for: it belongs in the Resource catalogue."
+        }
+      ]
+    },
+    "/spec/description": {
+      "guide": "Who is in the group and who is not, in one sentence, clearly enough that two people would sort the same person the same way. Up to 240 characters. No numbers.",
+      "good": [
+        "Members who deliver produce to a depot during the season.",
+        "Workers hired by members for harvest and delivery during the peak months."
+      ],
+      "poor": [
+        {
+          "text": "Members.",
+          "why": "Repeats the name and does not say who is in or out: every member, or only those who deliver?"
+        },
+        {
+          "text": "Everyone who benefits from the cooperative.",
+          "why": "Too broad to sort anyone by, and it describes a benefit rather than a group."
+        }
+      ]
+    },
+    "/spec/source": {
+      "guide": "The data source that lists the people in this group, from the register of data sources, so anyone can check who is in it. Optional: leave it empty when no source lists the group, rather than pick one that does not.",
+      "good": [
+        "member-register",
+        "member-survey"
+      ],
+      "poor": [
+        {
+          "text": "collection-log",
+          "why": "It records collections, not who belongs to the group: a source that mentions some members is not one that lists them."
+        }
+      ]
+    }
+  },
+  "links": {
+    "Project:/spec/summary/beneficiaries/-/group": {
+      "ask": "Which projects are for this group? A project names the groups it is for on its Beneficiaries step.",
+      "ifNone": "Leave it. A group can be defined before any work names it; a project names it when it is for them."
+    },
+    "Programme:/spec/problems/-/groups/-": {
+      "ask": "Which programme problem lands on this group? A programme names, on each problem, the groups who feel it.",
+      "ifNone": "Leave it. A programme names the group on its problem when the problem lands on these people."
+    }
+  }
+}

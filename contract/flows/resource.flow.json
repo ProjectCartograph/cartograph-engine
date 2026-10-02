@@ -1,0 +1,35 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "resource",
+    "name": "Resource"
+  },
+  "spec": {
+    "for": "Resource",
+    "steps": [
+      {
+        "key": "definition",
+        "title": "Definition",
+        "guide": "What the work can draw on, named as a role or a thing, never a person.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/category",
+            "control": "choice",
+            "hint": "What kind of resource this is."
+          },
+          {
+            "path": "/spec/description",
+            "control": "sentence",
+            "hint": "What this resource does, or what it is needed for."
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

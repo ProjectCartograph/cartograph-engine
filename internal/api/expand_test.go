@@ -19,7 +19,7 @@ func TestListManifestsExpandSpec(t *testing.T) {
 		t.Fatalf("plain list = %+v, want one summary without a spec", plain)
 	}
 	expanded := decode[[]apigen.Summary](t, doJSON(t, http.MethodGet, base+"/manifests/Team?expand=spec", nil, nil))
-	if len(expanded) != 1 || expanded[0].Spec == nil || (*expanded[0].Spec)["name"] != "Team" {
+	if len(expanded) != 1 || expanded[0].Spec == nil || (*expanded[0].Spec)["description"] != "Team" {
 		t.Fatalf("expanded list = %+v, want the spec carried", expanded)
 	}
 }

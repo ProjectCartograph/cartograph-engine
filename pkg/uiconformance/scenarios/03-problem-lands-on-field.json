@@ -5,7 +5,6 @@
   "steps": [
     { "open": { "Kind": "DataSource", "ID": "" } },
     { "set": { "Field": "/metadata/name", "Value": "Member register" } },
-    { "set": { "Field": "/spec/name", "Value": "Member register" } },
     { "set": { "Field": "/spec/team", "Value": "no-such-team" } },
     { "act": { "Action": "saveVersion", "Reason": "try" } },
     { "expect": { "problem": { "field": "/spec/team", "contains": "no-such-team" } } }

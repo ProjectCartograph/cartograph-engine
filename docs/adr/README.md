@@ -26,6 +26,9 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0014](0014-reporting-is-a-port-not-the-core.md) | Reporting is a port, not the core | Accepted |
 | [0015](0015-only-attended-windows-hold-connections.md) | Only an attended window holds a connection | Accepted |
 | [0016](0016-agents-read-and-propose-people-decide.md) | Agents read and propose; people decide | Accepted |
+| [0017](0017-one-bar-for-people-and-agents.md) | One bar for people and agents, guided by the contract | Accepted |
+| [0018](0018-following-agents.md) | Following agents, each person their own | Accepted |
+| [0019](0019-said-once-as-the-taxonomy-says.md) | Said once, as the taxonomy says | Accepted |
 
 ## Writing one
 

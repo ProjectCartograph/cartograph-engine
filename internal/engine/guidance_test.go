@@ -1,0 +1,135 @@
+package engine_test
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+// The guide for an outcome: the outcome's own words and examples, a
+// parent chosen among objectives only, and the gap it closes asked for.
+func TestTheGuideForAnOutcome(t *testing.T) {
+	e := seedReadings(t)
+	g, err := e.Guide(context.Background(), "Goal", "outcome", "fr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.Locale != "en" || !strings.Contains(g.LevelIs, "state") || g.Definition == "" {
+		t.Fatalf("the guide's head: %+v", g)
+	}
+	fields := map[string]bool{}
+	var link bool
+	for _, st := range g.Steps {
+		for _, f := range st.Fields {
+			fields[f.Path] = true
+			switch f.Path {
+			case "/spec/objective":
+				if !strings.Contains(f.Guide, "state") || len(f.Poor) == 0 || !strings.Contains(f.Poor[0].Text, "Reduce delivery time") {
+					t.Errorf("the outcome statement's words: %+v", f)
+				}
+			case "/spec/parent":
+				if f.References != "Goal" || len(f.Candidates) == 0 {
+					t.Errorf("the parent's candidates: %+v", f)
+				}
+				for _, c := range f.Candidates {
+					if c.Detail != "objective" {
+						t.Errorf("an outcome's parent offered at level %q: %s", c.Detail, c.ID)
+					}
+				}
+			}
+		}
+		for _, l := range st.Links {
+			if l.Kind == "Gap" && l.Path == "/spec/outcomes" && l.Ask != "" && l.IfNone != "" {
+				link = true
+			}
+		}
+	}
+	if !fields["/spec/keyResults/-/metric"] || !link {
+		t.Fatalf("fields %v, gap link %v", fields, link)
+	}
+	if goal, _ := e.Guide(context.Background(), "Goal", "goal", "en"); len(goal.Steps) == 0 {
+		t.Fatal("no guide for a goal")
+	} else {
+		// A goal is asked for the objectives under it, never for a gap.
+		for _, st := range goal.Steps {
+			for _, l := range st.Links {
+				if l.Kind != "Goal" || l.Check != "has-objectives" {
+					t.Errorf("a goal's link: %+v", l)
+				}
+				for _, c := range l.Candidates {
+					if c.Detail != "objective" {
+						t.Errorf("a goal offered %s at level %q to place under it", c.ID, c.Detail)
+					}
+				}
+			}
+		}
+		if goal.Template["apiVersion"] != "cartograph/v1" || goal.Template["spec"].(map[string]any)["level"] != "goal" {
+			t.Errorf("the goal's template: %v", goal.Template)
+		}
+		for _, c := range goal.Existing {
+			if c.Detail != "goal" {
+				t.Errorf("an existing record at another level: %+v", c)
+			}
+		}
+	}
+}
+
+// Every check a flow or a guidance bundle names is one the engine
+// reports: read from the engine's own source, where each check is added
+// by id.
+func TestGuidanceNamesOnlyRealChecks(t *testing.T) {
+	ids := map[string]bool{}
+	src, _ := filepath.Glob("*.go")
+	re := regexp.MustCompile(`(?:\badd(?:Fix)?\(|ID:\s*)"([a-z0-9-]+)"`)
+	for _, f := range src {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range re.FindAllStringSubmatch(string(b), -1) {
+			ids[m[1]] = true
+		}
+	}
+	if !ids["smart-specific"] || !ids["closes-gap"] || !ids["gap-states"] {
+		t.Fatalf("the engine's check ids were not found: %d", len(ids))
+	}
+	flows, _ := filepath.Glob("../contract/flows/*.flow.json")
+	bundles, _ := filepath.Glob("../contract/guidance/*/*.guidance.json")
+	named := regexp.MustCompile(`"checks":\s*\[([^\]]*)\]|"check":\s*"([a-z0-9-]+)"`)
+	for _, f := range append(flows, bundles...) {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range named.FindAllStringSubmatch(string(b), -1) {
+			for _, id := range regexp.MustCompile(`"([a-z0-9-]+)"`).FindAllStringSubmatch(m[1], -1) {
+				if !ids[id[1]] {
+					t.Errorf("%s names check %q, which the engine never reports", filepath.Base(f), id[1])
+				}
+			}
+			if m[2] != "" && !ids[m[2]] {
+				t.Errorf("%s names check %q, which the engine never reports", filepath.Base(f), m[2])
+			}
+		}
+		if strings.HasSuffix(f, ".guidance.json") {
+			var g struct {
+				Checks map[string]string `json:"checks"`
+			}
+			if err := json.Unmarshal(b, &g); err != nil {
+				t.Fatal(err)
+			}
+			for id := range g.Checks {
+				if !ids[id] {
+					t.Errorf("%s says how to meet %q, which the engine never reports", filepath.Base(f), id)
+				}
+			}
+		}
+	}
+}

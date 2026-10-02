@@ -21,6 +21,7 @@ type proposals struct {
 func cloneProposal(p store.Proposal) store.Proposal {
 	p.Text = slices.Clone(p.Text)
 	p.Item = slices.Clone(p.Item)
+	p.Waivers = slices.Clone(p.Waivers)
 	return p
 }
 
@@ -56,7 +57,7 @@ func (m *ManifestStore) ListProposals(_ context.Context, f store.ProposalFilter)
 	out := []store.Proposal{}
 	for _, p := range m.props.byID {
 		if (f.For == "" || p.For == f.For) && (f.Kind == "" || p.Kind == f.Kind) &&
-			(f.ManifestID == "" || p.ManifestID == f.ManifestID) && (f.Status == "" || p.Status == f.Status) {
+			(f.ManifestID == "" || p.ManifestID == f.ManifestID) && (f.Status == "" || p.Status == f.Status) && (f.Set == "" || p.Set == f.Set) {
 			out = append(out, cloneProposal(p))
 		}
 	}
@@ -88,4 +89,38 @@ func (m *ManifestStore) DecideProposal(_ context.Context, id, status, by, reason
 	m.eventLocked(store.Event{At: at, Type: "proposal", Kind: p.Kind, ID: p.ManifestID, Detail: status, Actor: by})
 	m.mu.Unlock()
 	return cloneProposal(p), nil
+}
+
+// DecideProposalSet decides every proposal of a set, or none.
+func (m *ManifestStore) DecideProposalSet(_ context.Context, set, status, by, reason string, at time.Time, versions map[string]int) ([]store.Proposal, error) {
+	m.props.mu.Lock()
+	var members []store.Proposal
+	for _, p := range m.props.byID {
+		if set != "" && p.Set == set {
+			members = append(members, p)
+		}
+	}
+	if len(members) == 0 {
+		m.props.mu.Unlock()
+		return nil, store.ErrNoProposal
+	}
+	for _, p := range members {
+		if p.Status != store.ProposalOpen {
+			m.props.mu.Unlock()
+			return nil, store.ErrProposalDecided
+		}
+	}
+	sort.Slice(members, func(i, j int) bool { return members[i].SetIndex < members[j].SetIndex })
+	for i, p := range members {
+		p.Status, p.DecidedBy, p.DecisionReason, p.DecidedAt, p.Version = status, by, reason, at, versions[p.ID]
+		m.props.byID[p.ID] = p
+		members[i] = cloneProposal(p)
+	}
+	m.props.mu.Unlock()
+	m.mu.Lock()
+	for _, p := range members {
+		m.eventLocked(store.Event{At: at, Type: "proposal", Kind: p.Kind, ID: p.ManifestID, Detail: status, Actor: by})
+	}
+	m.mu.Unlock()
+	return members, nil
 }

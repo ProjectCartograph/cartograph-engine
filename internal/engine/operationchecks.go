@@ -21,6 +21,12 @@ func (e *Engine) OperationChecks(ctx context.Context, id string) ([]ProgrammeChe
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
 		return nil, fmt.Errorf("parse Operation/%s: %w", id, err)
 	}
+	return e.operationChecksOf(ctx, id, doc)
+}
+
+// operationChecksOf checks a operation's document, saved or not: a draft, or
+// what an agent proposes.
+func (e *Engine) operationChecksOf(ctx context.Context, id string, doc map[string]any) ([]ProgrammeCheck, error) {
 	spec, _ := doc["spec"].(map[string]any)
 	if spec == nil {
 		spec = map[string]any{}
@@ -43,10 +49,12 @@ func (e *Engine) OperationChecks(ctx context.Context, id string) ([]ProgrammeChe
 	} else {
 		add("service-purpose", "service", programmeCheckWarn, "No purpose yet.")
 	}
-	if has("team") {
+	// The service owner is the role accountable for the service end to end
+	// (ITIL 4); the team that runs it is required by the schema already.
+	if has("serviceOwner") {
 		add("service-owner", "service", programmeCheckOK, "Service owner named.")
 	} else {
-		add("service-owner", "service", programmeCheckWarn, "No service owner yet.")
+		add("service-owner", "service", programmeCheckWarn, "No service owner yet: the role accountable for the service.")
 	}
 	if has("serviceWindow") {
 		add("service-hours", "service", programmeCheckOK, "Service hours stated.")

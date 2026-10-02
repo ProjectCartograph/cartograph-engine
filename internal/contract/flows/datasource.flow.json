@@ -1,0 +1,78 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "datasource",
+    "name": "Data source"
+  },
+  "spec": {
+    "for": "DataSource",
+    "steps": [
+      {
+        "key": "definition",
+        "title": "Definition",
+        "guide": "Where the numbers come from, what form the source takes, and who keeps it.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/category",
+            "control": "choice",
+            "hint": "What kind of source it is."
+          },
+          {
+            "path": "/spec/provenance",
+            "control": "choice",
+            "hint": "Whether we run it or a third party does."
+          },
+          {
+            "path": "/spec/team",
+            "control": "reference",
+            "hint": "The team that keeps it."
+          }
+        ],
+        "links": [
+          {
+            "kind": "KPI",
+            "path": "/spec/source"
+          }
+        ]
+      },
+      {
+        "key": "access-quality",
+        "title": "Access and quality",
+        "guide": "How someone reads it, how often it changes, how records get in, and what is wrong with it today.",
+        "fields": [
+          {
+            "path": "/spec/access",
+            "control": "text",
+            "hint": "How someone gets access, and what they need first."
+          },
+          {
+            "path": "/spec/refresh",
+            "control": "choice",
+            "hint": "How often the numbers in it change."
+          },
+          {
+            "path": "/spec/capture",
+            "control": "choice",
+            "hint": "If records start on paper, say how the paper becomes data."
+          },
+          {
+            "path": "/spec/classification",
+            "control": "choice",
+            "hint": "How sensitive the contents are: public, internal, confidential or restricted."
+          },
+          {
+            "path": "/spec/qualityIssues",
+            "control": "sentence",
+            "hint": "What is already known to be wrong with it."
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

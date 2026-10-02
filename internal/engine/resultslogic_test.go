@@ -161,7 +161,7 @@ func TestStoredSentencesBecomeParts(t *testing.T) {
 	// Written the old way, straight into the store, the way a file on
 	// disk from last release arrives.
 	old := "apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: legacy-prose\n  name: Legacy\n" +
-		"spec:\n  name: Legacy\n  aim: Raise quality, so that buyers can rely on us\n  leadTeam: t1\n" +
+		"spec:\n  aim: Raise quality, so that buyers can rely on us\n  leadTeam: t1\n" +
 		"  problems:\n    - problem: Depot staff wait a season, because checks happen late\n" +
 		"      change: Checks run at intake, so depot staff learn the same day\n"
 	if err := e.PutWorking(ctx, "Programme", "legacy-prose", []byte(old)); err != nil {
@@ -194,7 +194,7 @@ func TestSeedingNeverOverwritesAUnitThatExists(t *testing.T) {
 	ctx := context.Background()
 
 	hand := "apiVersion: cartograph/v1\nkind: Unit\nmetadata:\n  id: percent\n  name: \"Percent\"\n" +
-		"spec:\n  name: \"Percent\"\n  symbol: \"%\"\n  dimension: percent\n"
+		"spec:\n  symbol: \"%\"\n  dimension: percent\n"
 	mustCommit(t, e, "Unit", "percent", "local", hand)
 
 	if _, err := e.SeedStandardUnits(ctx); err != nil {

@@ -77,6 +77,13 @@ func (e *Engine) GapCoverageFor(ctx context.Context, id string) (GapCoverage, er
 	if !found {
 		return GapCoverage{}, fmt.Errorf("%w: Gap/%s", ErrNotFound, id)
 	}
+	return e.gapCoverageOf(ctx, id, doc)
+}
+
+// gapCoverageOf works out a gap's coverage from its document, saved or
+// not, and everything that cites it.
+func (e *Engine) gapCoverageOf(ctx context.Context, id string, doc map[string]any) (GapCoverage, error) {
+	l := &lookup{ctx: ctx, store: e.manifests, codec: e.codec}
 	spec, _ := doc["spec"].(map[string]any)
 	out := GapCoverage{Gap: id}
 
@@ -192,6 +199,12 @@ func (e *Engine) GapChecks(ctx context.Context, id string) ([]ProgrammeCheck, er
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
 		return nil, fmt.Errorf("parse Gap/%s: %w", id, err)
 	}
+	return e.gapChecksOf(ctx, id, doc)
+}
+
+// gapChecksOf checks a gap's document, saved or not: a draft, or
+// what an agent proposes.
+func (e *Engine) gapChecksOf(ctx context.Context, id string, doc map[string]any) ([]ProgrammeCheck, error) {
 	spec, _ := doc["spec"].(map[string]any)
 	if spec == nil {
 		spec = map[string]any{}
@@ -235,7 +248,7 @@ func (e *Engine) GapChecks(ctx context.Context, id string) ([]ProgrammeCheck, er
 		add("gap-source", "evidence", programmeCheckWarn, "No source yet.")
 	}
 
-	coverage, err := e.GapCoverageFor(ctx, id)
+	coverage, err := e.gapCoverageOf(ctx, id, doc)
 	if err != nil {
 		return nil, err
 	}

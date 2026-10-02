@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cartograph.example/contract/guidance/guidance.schema.json",
+  "title": "Guidance",
+  "description": "How to define one kind well, in one language: what it is in the discipline's words, what each field asks for with a right and a wrong example, what to ask when a link is missing, and how to meet each check. A person reads it beside the editor; an agent reads it before drafting. It holds words only: the steps, fields, links and checks are the flow's and the engine's, so a language is added by adding a bundle, and no rule depends on one. Examples are drawn from the fictional cooperative in examples/minimal, so every reader learns from the same model.",
+  "type": "object",
+  "required": [
+    "locale",
+    "kind",
+    "definition",
+    "fields"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "locale": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+      "description": "BCP 47 language tag of the words, such as en or fr-CA."
+    },
+    "kind": {
+      "type": "string"
+    },
+    "definition": {
+      "type": "string",
+      "description": "What this kind is, in the discipline's words (TAXONOMY.md), and what it is not."
+    },
+    "levels": {
+      "type": "object",
+      "description": "For a kind with levels (Goal: goal, objective, outcome): what each level is.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "steps": {
+      "type": "object",
+      "description": "By step key: the step's title and guide in this language, where they differ from the flow's.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "guide": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "fields": {
+      "type": "object",
+      "description": "By the field's JSON pointer, as the flow and the schema name it (list items as /spec/keyResults/-/metric).",
+      "additionalProperties": {
+        "$ref": "#/$defs/field"
+      }
+    },
+    "links": {
+      "type": "object",
+      "description": "By Kind:/path, as the flow's link names it: what to ask when establishing the link, and what to do when there is nothing to link to.",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "ask",
+          "ifNone"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ask": {
+            "type": "string"
+          },
+          "ifNone": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "description": "By check id: how to meet it, in a sentence.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "vocabulary": {
+      "type": "object",
+      "description": "Words an interface offers to help write a field in this language, such as the verbs an aim opens with or the word that introduces an objective's means. Offered, never used to judge: no check or mark depends on them, and a language without them gets plain fields.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1
+      }
+    }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "required": [
+        "guide"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "guide": {
+          "type": "string",
+          "description": "What the field asks for, in the discipline's words."
+        },
+        "good": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Values written as the discipline would."
+        },
+        "poor": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "text",
+              "why"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "why": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Values that read plausibly and are wrong, each with why."
+        },
+        "levels": {
+          "type": "object",
+          "description": "For a kind with levels: the guide and examples for one level, where they differ.",
+          "additionalProperties": {
+            "$ref": "#/$defs/field"
+          }
+        }
+      }
+    }
+  }
+}

@@ -77,7 +77,7 @@ func (e *Engine) SeedStandardUnits(ctx context.Context) ([]string, error) {
 			"kind":       "Unit",
 			"metadata":   map[string]any{"id": u.ID, "name": u.Name},
 			"spec": func() map[string]any {
-				spec := map[string]any{"name": u.Name, "dimension": u.Dimension}
+				spec := map[string]any{"dimension": u.Dimension}
 				if u.Symbol != "" {
 					spec["symbol"] = u.Symbol
 				}

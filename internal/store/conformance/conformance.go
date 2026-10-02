@@ -290,6 +290,52 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 		}
 	})
 
+	t.Run("a set of proposals is decided whole or not at all", func(t *testing.T) {
+		s := newStore(t)
+		ps, ok := s.(store.ProposalStore)
+		if !ok {
+			t.Skip("the adapter keeps no proposals")
+		}
+		at := time.Date(2026, 10, 3, 9, 0, 0, 0, time.UTC)
+		for i, m := range []struct{ id, kind, mid string }{{"k", "KPI", "disputes"}, {"g", "Gap", "too-many-disputes"}, {"o", "Goal", "grading-trusted"}} {
+			must(t, ps.PutProposal(ctx, store.Proposal{ID: m.id, Kind: m.kind, ManifestID: m.mid, Op: store.ProposeSave, Text: []byte("x"),
+				Agent: "Claude", For: "ada@example.org", At: at, Status: store.ProposalOpen, Set: "s1", SetIndex: i}))
+		}
+		must(t, ps.PutProposal(ctx, store.Proposal{ID: "lone", Kind: "Goal", ManifestID: "x", Op: store.ProposeSave, Text: []byte("x"),
+			Agent: "Claude", For: "ada@example.org", At: at, Status: store.ProposalOpen}))
+		if got, _ := ps.ListProposals(ctx, store.ProposalFilter{Set: "s1"}); len(got) != 3 {
+			t.Fatalf("the set's members: %d", len(got))
+		}
+		decided, err := ps.DecideProposalSet(ctx, "s1", store.ProposalAccepted, "ada@example.org", "", at, map[string]int{"k": 1, "g": 1, "o": 2})
+		must(t, err)
+		if len(decided) != 3 || decided[0].ID != "k" || decided[2].ID != "o" || decided[2].Version != 2 || decided[1].Status != store.ProposalAccepted {
+			t.Fatalf("decided, in order: %+v", decided)
+		}
+		if _, err := ps.DecideProposalSet(ctx, "s1", store.ProposalDeclined, "ada@example.org", "", at, nil); !errors.Is(err, store.ErrProposalDecided) {
+			t.Fatalf("deciding it again: %v", err)
+		}
+		if _, err := ps.DecideProposalSet(ctx, "none", store.ProposalDeclined, "ada@example.org", "", at, nil); !errors.Is(err, store.ErrNoProposal) {
+			t.Fatalf("no such set: %v", err)
+		}
+		if got, _ := ps.GetProposal(ctx, "lone"); got.Status != store.ProposalOpen {
+			t.Fatalf("a proposal outside the set: %s", got.Status)
+		}
+
+		// One member decided already: the set stays as it was.
+		for i, id := range []string{"a", "b"} {
+			must(t, ps.PutProposal(ctx, store.Proposal{ID: id, Kind: "Goal", ManifestID: id, Op: store.ProposeSave, Text: []byte("x"),
+				Agent: "Claude", For: "ada@example.org", At: at, Status: store.ProposalOpen, Set: "s2", SetIndex: i}))
+		}
+		_, err = ps.DecideProposal(ctx, "a", store.ProposalDeclined, "ada@example.org", "", at, 0)
+		must(t, err)
+		if _, err := ps.DecideProposalSet(ctx, "s2", store.ProposalAccepted, "ada@example.org", "", at, nil); !errors.Is(err, store.ErrProposalDecided) {
+			t.Fatalf("a set with a member decided: %v", err)
+		}
+		if got, _ := ps.GetProposal(ctx, "b"); got.Status != store.ProposalOpen {
+			t.Fatalf("the other member: %s", got.Status)
+		}
+	})
+
 	t.Run("proposals are kept as proposed and decided once", func(t *testing.T) {
 		s := newStore(t)
 		ps, ok := s.(store.ProposalStore)
@@ -299,7 +345,8 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 		at := time.Date(2026, 10, 3, 9, 0, 0, 0, time.UTC)
 		put := func(id, kind, mid, forWhom string, at time.Time) {
 			must(t, ps.PutProposal(ctx, store.Proposal{ID: id, Kind: kind, ManifestID: mid, Op: store.ProposeSave,
-				Text: []byte("metadata:\n  id: " + mid + "\n"), Base: 2, Reason: "tidy", Agent: "Claude", For: forWhom, At: at, Status: store.ProposalOpen}))
+				Text: []byte("metadata:\n  id: " + mid + "\n"), Base: 2, Reason: "tidy", Agent: "Claude", For: forWhom, At: at, Status: store.ProposalOpen,
+				Waivers: []store.Waiver{{Check: "owner", Message: "No owner yet.", Reason: "the person has not decided"}}}))
 		}
 		put("p1", "Goal", "g1", "ada@example.org", at)
 		put("p2", "Goal", "g1", "lee@example.org", at.Add(time.Minute))
@@ -310,6 +357,12 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 		must(t, err)
 		if got.Op != store.ProposeAppend || got.Series != "readings" || !sameJSON(string(got.Item), `{"period":"2026-09","value":41}`) || got.Base != 4 || !got.At.Equal(at.Add(2*time.Minute)) {
 			t.Fatalf("p3 came back as %+v", got)
+		}
+		if got, _ := ps.GetProposal(ctx, "p1"); len(got.Waivers) != 1 || got.Waivers[0] != (store.Waiver{Check: "owner", Message: "No owner yet.", Reason: "the person has not decided"}) {
+			t.Fatalf("p1's waivers came back as %+v", got.Waivers)
+		}
+		if len(got.Waivers) != 0 {
+			t.Fatalf("p3 has no waivers, came back with %+v", got.Waivers)
 		}
 		if _, err := ps.GetProposal(ctx, "nope"); !errors.Is(err, store.ErrNoProposal) {
 			t.Fatalf("an unknown proposal: %v", err)

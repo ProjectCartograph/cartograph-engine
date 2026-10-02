@@ -38,6 +38,8 @@ type Server struct {
 	// AgentTokens mints pasteable agent tokens; nil where another stack
 	// authorizes agents.
 	AgentTokens AgentTokens
+	// AgentsOn is whether agents are served over MCP.
+	AgentsOn bool
 }
 
 var _ apigen.StrictServerInterface = (*Server)(nil)
@@ -54,6 +56,8 @@ type Deps struct {
 	// AgentTokens mints the tokens POST /agents returns: the authorization
 	// server's, when Cartograph is one. Nil answers 404.
 	AgentTokens AgentTokens
+	// AgentsOn says agents are served over MCP, for the session to say.
+	AgentsOn bool
 }
 
 // Handler returns the complete net/http handler for the API, mounted under
@@ -74,7 +78,7 @@ func New(e *engine.Engine, deps Deps) http.Handler {
 	if z == nil {
 		z = auth.AllowAll{}
 	}
-	strict := apigen.NewStrictHandlerWithOptions(&Server{Engine: e, Printer: p, Authz: z, Reports: deps.Reports, AgentTokens: deps.AgentTokens}, nil,
+	strict := apigen.NewStrictHandlerWithOptions(&Server{Engine: e, Printer: p, Authz: z, Reports: deps.Reports, AgentTokens: deps.AgentTokens, AgentsOn: deps.AgentsOn}, nil,
 		apigen.StrictHTTPServerOptions{ResponseErrorHandlerFunc: writeError})
 	return apigen.Handler(strict)
 }

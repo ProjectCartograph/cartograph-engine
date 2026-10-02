@@ -13,6 +13,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/segment"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/settings"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/stakeholdermap"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/team"
 )
 
 // Spec describes one kind.
@@ -29,7 +30,7 @@ type Spec struct {
 
 // All is every registered kind, in the fixed order used for listing.
 var All = []Spec{
-	{Name: "Team", SchemaFile: "team.schema.json"},
+	{Name: "Team", SchemaFile: "team.schema.json", Rules: team.Rules},
 	{Name: "ReportingCycle", SchemaFile: "reportingcycle.schema.json"},
 	{Name: "DataSource", SchemaFile: "datasource.schema.json"},
 	{Name: "BeneficiaryGroup", SchemaFile: "beneficiarygroup.schema.json"},

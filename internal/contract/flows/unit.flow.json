@@ -1,0 +1,46 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "unit",
+    "name": "Unit"
+  },
+  "spec": {
+    "for": "Unit",
+    "steps": [
+      {
+        "key": "definition",
+        "title": "Definition",
+        "guide": "What the unit is called, what kind of quantity it is, and what exactly it counts.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/dimension",
+            "control": "choice",
+            "hint": "What kind of quantity this is. Hours and days are both durations."
+          },
+          {
+            "path": "/spec/symbol",
+            "control": "text",
+            "hint": "The short form, such as % for percent. Leave empty if there is none."
+          },
+          {
+            "path": "/spec/description",
+            "control": "sentence",
+            "hint": "What exactly is counted, where the name alone could be read two ways."
+          }
+        ],
+        "links": [
+          {
+            "kind": "KPI",
+            "path": "/spec/unit"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

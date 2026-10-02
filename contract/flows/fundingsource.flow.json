@@ -1,0 +1,56 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "fundingsource",
+    "name": "Funding source"
+  },
+  "spec": {
+    "for": "FundingSource",
+    "steps": [
+      {
+        "key": "identity",
+        "title": "Budget",
+        "guide": "Which budget this is, as its holders name it and as their ledger codes it.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/code",
+            "control": "text"
+          }
+        ]
+      },
+      {
+        "key": "holder",
+        "title": "Holder and period",
+        "guide": "Who holds the budget and answers for it, and what span it covers.",
+        "fields": [
+          {
+            "path": "/spec/heldBy",
+            "control": "reference"
+          },
+          {
+            "path": "/spec/period",
+            "control": "text"
+          }
+        ]
+      },
+      {
+        "key": "note",
+        "title": "Note",
+        "guide": "Anything about this budget the fields above cannot hold.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/note",
+            "control": "sentence"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

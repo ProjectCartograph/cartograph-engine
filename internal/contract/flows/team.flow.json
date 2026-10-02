@@ -1,0 +1,36 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "team",
+    "name": "Team"
+  },
+  "spec": {
+    "for": "Team",
+    "steps": [
+      {
+        "key": "structure",
+        "title": "Structure",
+        "guide": "Where the team sits in the organisation, what it is called, and what it is responsible for.",
+        "fields": [
+          {
+            "path": "/spec/parent",
+            "control": "reference",
+            "title": "Parent team",
+            "hint": "The team this one sits under, if any."
+          },
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/description",
+            "control": "sentence",
+            "hint": "What this team is responsible for."
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

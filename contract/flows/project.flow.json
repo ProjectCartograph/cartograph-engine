@@ -1,0 +1,789 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "project",
+    "name": "Project"
+  },
+  "spec": {
+    "for": "Project",
+    "steps": [
+      {
+        "key": "goals",
+        "title": "Alignment",
+        "guide": "What this project is part of, and which outcomes it serves.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/alignment/programmes",
+            "control": "references",
+            "hint": "The programmes this project belongs to. It can belong to more than one.",
+            "checks": [
+              "goals-programme-membership",
+              "components-programmes"
+            ]
+          },
+          {
+            "path": "/spec/alignment/partOf",
+            "control": "reference",
+            "hint": "Choose this only if it shares that project's sponsor and budget.",
+            "checks": [
+              "components-parent",
+              "components-one-level"
+            ]
+          },
+          {
+            "path": "/spec/alignment/goals",
+            "control": "references",
+            "checks": [
+              "goals-aligned",
+              "goals-functional-level"
+            ]
+          },
+          {
+            "path": "/spec/team",
+            "control": "reference"
+          }
+        ]
+      },
+      {
+        "key": "beneficiaries",
+        "title": "Beneficiaries",
+        "guide": "The groups that gain value from this project, directly or indirectly.",
+        "fields": [
+          {
+            "path": "/spec/summary/beneficiaries",
+            "control": "list",
+            "key": "group",
+            "checks": [
+              "beneficiaries-named"
+            ],
+            "fields": [
+              {
+                "path": "/group",
+                "control": "reference"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "aim",
+        "title": "Problem",
+        "guide": "What those groups cannot do today, and how things will be once this has worked.",
+        "fields": [
+          {
+            "path": "/spec/summary/problems",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "aim-problem-change",
+              "aim-problem-groups"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/groups",
+                "control": "references",
+                "title": "Affected groups"
+              },
+              {
+                "path": "/problem/situation",
+                "control": "sentence",
+                "title": "Problem",
+                "hint": "One sentence about the groups above, as things are today."
+              },
+              {
+                "path": "/problem/cause",
+                "control": "sentence",
+                "title": "Cause",
+                "hint": "The main reason. If it were fixed, the problem would go away."
+              },
+              {
+                "path": "/change/what",
+                "control": "sentence",
+                "title": "Intended change",
+                "hint": "How things will be once this has worked."
+              },
+              {
+                "path": "/change/gain",
+                "control": "sentence",
+                "title": "Benefit",
+                "hint": "What the groups above can do then that they cannot today."
+              },
+              {
+                "path": "/gaps",
+                "control": "list",
+                "key": "gap",
+                "title": "Gaps",
+                "fields": [
+                  {
+                    "path": "/gap",
+                    "control": "reference"
+                  },
+                  {
+                    "path": "/segments",
+                    "control": "references",
+                    "hint": "Leave empty if this work reaches the whole of the gap."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "path": "/spec/mandate",
+            "control": "list",
+            "key": "title",
+            "title": "Mandate",
+            "checks": [
+              "aim-mandate"
+            ],
+            "fields": [
+              {
+                "path": "/kind",
+                "control": "choice"
+              },
+              {
+                "path": "/title",
+                "control": "text"
+              },
+              {
+                "path": "/reference",
+                "control": "text"
+              },
+              {
+                "path": "/date",
+                "control": "date"
+              },
+              {
+                "path": "/issuedBy",
+                "control": "text"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "scope",
+        "title": "Scope",
+        "guide": "Where the work starts and stops.",
+        "fields": [
+          {
+            "path": "/spec/summary/scopeIn",
+            "control": "list",
+            "title": "In scope",
+            "hint": "Write one sentence each.",
+            "checks": [
+              "scope-in"
+            ]
+          },
+          {
+            "path": "/spec/summary/scopeOut",
+            "control": "list",
+            "title": "Out of scope",
+            "hint": "What people might expect that this will not do."
+          }
+        ]
+      },
+      {
+        "key": "measures",
+        "title": "Objectives",
+        "guide": "The change this project makes and how, and the measures that show it happened.",
+        "fields": [
+          {
+            "path": "/spec/objectives",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "goals-objective",
+              "goals-key-results-count",
+              "components-add-up"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/objective",
+                "control": "sentence",
+                "hint": "Pick a verb, then say what it changes and how. Leave numbers to the key results."
+              },
+              {
+                "path": "/keyResults",
+                "control": "list",
+                "key": "id",
+                "title": "Key results",
+                "hint": "Add one to three, each measurable.",
+                "fields": [
+                  {
+                    "path": "/id",
+                    "control": "readonly"
+                  },
+                  {
+                    "path": "/metric",
+                    "control": "text"
+                  },
+                  {
+                    "path": "/kind",
+                    "control": "choice"
+                  },
+                  {
+                    "path": "/unit",
+                    "control": "text"
+                  },
+                  {
+                    "path": "/direction",
+                    "control": "choice"
+                  },
+                  {
+                    "path": "/baseline",
+                    "control": "number",
+                    "checks": [
+                      "goals-key-results-baseline"
+                    ]
+                  },
+                  {
+                    "path": "/target",
+                    "control": "number",
+                    "checks": [
+                      "goals-key-results-target"
+                    ]
+                  },
+                  {
+                    "path": "/source",
+                    "control": "reference",
+                    "checks": [
+                      "goals-key-results-source",
+                      "data-capture-turnaround",
+                      "data-capture-decided"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "path": "/spec/kpis",
+            "control": "list",
+            "key": "kpi",
+            "title": "Indicators",
+            "checks": [
+              "measures-kpis"
+            ],
+            "fields": [
+              {
+                "path": "/kpi",
+                "control": "reference"
+              },
+              {
+                "path": "/reason",
+                "control": "sentence",
+                "title": "Rationale"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "resources",
+        "title": "Resources",
+        "guide": "The roles the project needs and the money it draws on.",
+        "fields": [
+          {
+            "path": "/spec/resources",
+            "control": "list",
+            "key": "id",
+            "title": "Roles",
+            "hint": "Name the post, never a person.",
+            "checks": [
+              "resources-sponsor-lead",
+              "resources-mapped",
+              "landing-owner",
+              "components-one-sponsor"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/role",
+                "control": "choice"
+              },
+              {
+                "path": "/resource",
+                "control": "reference"
+              },
+              {
+                "path": "/note",
+                "control": "text"
+              }
+            ]
+          },
+          {
+            "path": "/spec/funding",
+            "control": "list",
+            "key": "currency",
+            "title": "Approved funding",
+            "hint": "Add one line per currency.",
+            "checks": [
+              "resources-funding",
+              "components-one-sponsor"
+            ],
+            "fields": [
+              {
+                "path": "/amount",
+                "control": "number"
+              },
+              {
+                "path": "/currency",
+                "control": "choice"
+              },
+              {
+                "path": "/source",
+                "control": "reference",
+                "title": "Budget"
+              },
+              {
+                "path": "/status",
+                "control": "choice"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "stakeholders",
+        "title": "Stakeholders",
+        "guide": "Who can affect this project or is affected by it, and how much power each holds.",
+        "fields": [],
+        "links": [
+          {
+            "kind": "StakeholderMap",
+            "path": "/spec/scope"
+          }
+        ]
+      },
+      {
+        "key": "deliverables",
+        "title": "Deliverables",
+        "guide": "What the project produces, and the test each one is accepted against.",
+        "fields": [
+          {
+            "path": "/spec/deliverables",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "deliverables-count",
+              "deliverables-acceptance",
+              "deliverables-verifier",
+              "closing-criteria"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/name",
+                "control": "text"
+              },
+              {
+                "path": "/description",
+                "control": "sentence"
+              },
+              {
+                "path": "/acceptance",
+                "control": "list",
+                "title": "Accepted when",
+                "hint": "Name a role, and what it confirms.",
+                "fields": [
+                  {
+                    "path": "/by",
+                    "control": "reference",
+                    "title": "Verified by"
+                  },
+                  {
+                    "path": "/outcome",
+                    "control": "sentence",
+                    "title": "Confirms that"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "success",
+        "title": "Success criteria",
+        "guide": "What has to be true for the project to have succeeded, not merely to have finished.",
+        "fields": [
+          {
+            "path": "/spec/successCriteria",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "success-criteria",
+              "success-measured",
+              "success-owner",
+              "landing-criteria"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/statement",
+                "control": "sentence",
+                "title": "Criterion",
+                "hint": "Something that will be true once this has worked, that someone else could check."
+              },
+              {
+                "path": "/metric",
+                "control": "choice",
+                "title": "Type"
+              },
+              {
+                "path": "/standard",
+                "control": "text",
+                "title": "Target"
+              },
+              {
+                "path": "/source",
+                "control": "reference",
+                "title": "Read from",
+                "checks": [
+                  "data-capture-decided"
+                ]
+              },
+              {
+                "path": "/cycle",
+                "control": "reference",
+                "title": "Read each"
+              },
+              {
+                "path": "/owner",
+                "control": "reference",
+                "title": "Measured by",
+                "checks": [
+                  "success-owner"
+                ]
+              },
+              {
+                "path": "/confirmedBy",
+                "control": "reference",
+                "title": "Signed off by"
+              },
+              {
+                "path": "/from",
+                "control": "references",
+                "title": "Deliverables",
+                "hint": "Only if a deliverable produces it."
+              },
+              {
+                "path": "/assumes",
+                "control": "references",
+                "title": "Assumptions"
+              },
+              {
+                "path": "/when",
+                "control": "choice",
+                "title": "Assessed",
+                "checks": [
+                  "landing-criteria"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "closing",
+        "title": "Closure",
+        "guide": "What the outputs are accepted against when the project closes.",
+        "fields": [
+          {
+            "path": "/spec/deliverables",
+            "control": "readonly",
+            "title": "Acceptance criteria",
+            "checks": [
+              "closing-criteria"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "timeline",
+        "title": "Schedule",
+        "guide": "When the work starts and the phases it runs through; the end is derived.",
+        "fields": [
+          {
+            "path": "/spec/timeline/start",
+            "control": "date",
+            "title": "Starts",
+            "checks": [
+              "timeline-start-phases"
+            ]
+          },
+          {
+            "path": "/spec/timeline/phases",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "timeline-start-phases"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/name",
+                "control": "text",
+                "title": "Phase"
+              },
+              {
+                "path": "/months",
+                "control": "number",
+                "title": "Months"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "data",
+        "title": "Data",
+        "guide": "The data this project reads, and the data it creates and where that lands.",
+        "fields": [
+          {
+            "path": "/spec/data/consumes",
+            "control": "list",
+            "key": "source",
+            "title": "Data used",
+            "checks": [
+              "data-handoff"
+            ],
+            "fields": [
+              {
+                "path": "/source",
+                "control": "reference"
+              },
+              {
+                "path": "/purpose",
+                "control": "sentence"
+              },
+              {
+                "path": "/handoff",
+                "control": "choice",
+                "title": "Transfer method",
+                "checks": [
+                  "data-handoff"
+                ]
+              },
+              {
+                "path": "/personalData",
+                "control": "choice"
+              }
+            ]
+          },
+          {
+            "path": "/spec/data/produces",
+            "control": "list",
+            "key": "sink",
+            "title": "Data produced",
+            "checks": [
+              "data-personal-data",
+              "data-sink",
+              "data-capture-decided"
+            ],
+            "fields": [
+              {
+                "path": "/output",
+                "control": "choice"
+              },
+              {
+                "path": "/sink",
+                "control": "reference",
+                "title": "Data store",
+                "checks": [
+                  "data-sink"
+                ]
+              },
+              {
+                "path": "/purpose",
+                "control": "sentence"
+              },
+              {
+                "path": "/refresh",
+                "control": "choice",
+                "title": "Frequency"
+              },
+              {
+                "path": "/personalData",
+                "control": "choice",
+                "checks": [
+                  "data-personal-data"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "risks",
+        "title": "Risks",
+        "guide": "What could go wrong, what already has, what the work waits on, and what limits it.",
+        "fields": [
+          {
+            "path": "/spec/risks",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "risks-mitigation",
+              "risks-escalated",
+              "risks-dependency-edges",
+              "risks-dependency-cycle",
+              "risks-dependency-schedule"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/type",
+                "control": "choice"
+              },
+              {
+                "path": "/description",
+                "control": "sentence"
+              },
+              {
+                "path": "/impact",
+                "control": "choice"
+              },
+              {
+                "path": "/likelihood",
+                "control": "choice"
+              },
+              {
+                "path": "/mitigation",
+                "control": "sentence",
+                "checks": [
+                  "risks-mitigation"
+                ]
+              },
+              {
+                "path": "/depends/direction",
+                "control": "choice",
+                "when": {
+                  "path": "/type",
+                  "in": [
+                    "dependency"
+                  ]
+                },
+                "checks": [
+                  "risks-dependency-edges"
+                ]
+              },
+              {
+                "path": "/depends/on",
+                "control": "reference",
+                "title": "The other end",
+                "when": {
+                  "path": "/type",
+                  "in": [
+                    "dependency"
+                  ]
+                },
+                "checks": [
+                  "risks-dependency-edges",
+                  "risks-dependency-cycle"
+                ]
+              },
+              {
+                "path": "/depends/needBy",
+                "control": "reference",
+                "title": "Needed by",
+                "when": {
+                  "path": "/type",
+                  "in": [
+                    "dependency"
+                  ]
+                },
+                "checks": [
+                  "risks-dependency-schedule"
+                ]
+              },
+              {
+                "path": "/escalate/flag",
+                "control": "toggle",
+                "title": "Needs a decision above the project",
+                "checks": [
+                  "risks-escalated"
+                ]
+              },
+              {
+                "path": "/escalate/to",
+                "control": "reference",
+                "title": "Decision needed from"
+              },
+              {
+                "path": "/escalate/reason",
+                "control": "sentence",
+                "title": "Decision needed"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "landing",
+        "title": "Handover",
+        "guide": "The operation that runs the result, and what has to be true once it is in use.",
+        "fields": [
+          {
+            "path": "/spec/operation",
+            "control": "reference",
+            "title": "Handed over to",
+            "hint": "The operation that runs the result, or a new one defined alongside.",
+            "checks": [
+              "landing-operation"
+            ]
+          },
+          {
+            "path": "/spec/successCriteria",
+            "control": "readonly",
+            "title": "Success criteria at handover",
+            "checks": [
+              "landing-criteria"
+            ]
+          },
+          {
+            "path": "/spec/resources",
+            "control": "readonly",
+            "title": "Service owner",
+            "checks": [
+              "landing-owner"
+            ]
+          },
+          {
+            "path": "/spec/notes",
+            "control": "sentence"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

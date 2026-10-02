@@ -673,3 +673,53 @@ func TestAPeerThatEditsStays(t *testing.T) {
 		}
 	}
 }
+
+// A person's agent feed opens for them and no one else (docs/adr/0018):
+// what their agents work on is not broadcast.
+func TestAnAgentFeedIsItsPersons(t *testing.T) {
+	replicaEngines = nil
+	srvs := replicas(t, 1, nil, backends["memory"](t), syncserver.WithFollows(func(ctx context.Context, person string) bool {
+		return replicaEngines[0].MayFollow(ctx, person)
+	}))
+	ctx := context.Background()
+	theirs, err := replicaEngines[0].Shared().AgentFeed(ctx, "ada@example.org")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mine, err := replicaEngines[0].Shared().AgentFeed(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Nobody signed in here, so the operator's feed is this session's.
+	if m := connect(t, srvs[0], "operator", mine).read(); m.Type != "sync" {
+		t.Fatalf("one's own feed answered %+v", m)
+	}
+	if m := connect(t, srvs[0], "someone", theirs).read(); m.Type != "doc-unavailable" {
+		t.Fatalf("Ada's feed, to someone else, answered %+v", m)
+	}
+}
+
+// The presence document and an agent feed hold one field, so a client
+// has a change to sync: automerge-repo never opens a document with none,
+// and presence away from a manifest, and following agents, would hear
+// nothing.
+func TestLiveDocumentsHaveSomethingToSync(t *testing.T) {
+	replicaEngines = nil
+	srvs := replicas(t, 1, nil, backends["memory"](t), syncserver.WithFollows(func(ctx context.Context, person string) bool { return true }))
+	ctx := context.Background()
+	presence, err := replicaEngines[0].Shared().PresenceDocument(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	feed, err := replicaEngines[0].Shared().AgentFeed(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, docID := range map[string]string{"presence": presence, "feed": feed} {
+		p := connect(t, srvs[0], name, docID)
+		p.until(func() bool {
+			j, _ := p.doc.JSON()
+			return j["live"] == true
+		})
+	}
+}

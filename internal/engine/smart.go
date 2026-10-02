@@ -367,3 +367,34 @@ func (e *Engine) alignedKPISpecs(ctx context.Context, id string) ([]map[string]a
 	}
 	return out, nil
 }
+
+// serves reports whether a goal is aim or sits beneath it in the tree: a
+// project aligned to an outcome serves a programme judged on the
+// objective above it (TAXONOMY.md D24, D25: aims at every level).
+func (r goalReader) serves(goal, aim string) bool {
+	seen := map[string]bool{}
+	for id := goal; id != "" && !seen[id]; {
+		if id == aim {
+			return true
+		}
+		seen[id] = true
+		spec, ok := r.spec(id)
+		if !ok {
+			return false
+		}
+		id, _ = spec["parent"].(string)
+	}
+	return false
+}
+
+// servesAny reports whether any of goals serves any of aims.
+func (r goalReader) servesAny(goals []string, aims []string) bool {
+	for _, g := range goals {
+		for _, a := range aims {
+			if r.serves(g, a) {
+				return true
+			}
+		}
+	}
+	return false
+}

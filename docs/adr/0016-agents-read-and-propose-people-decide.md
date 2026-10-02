@@ -112,6 +112,9 @@ to ask first, which nothing guarantees.
 ## Consequences
 
 - Nothing an agent does is in the record until a person says so.
+- What an agent may propose, and how it is guided, is ADR 0017: the
+  same checks a person meets, proposals in sets, reviewed before they
+  are decided.
 - An interface shows proposals: an inbox for its person, and a notice
   on the manifest for everyone who reads it.
 - Handoffs still render their charter where the API runs; accepting a

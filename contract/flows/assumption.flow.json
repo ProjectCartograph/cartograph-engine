@@ -1,0 +1,84 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "assumption",
+    "name": "Assumption"
+  },
+  "spec": {
+    "for": "Assumption",
+    "steps": [
+      {
+        "key": "statement",
+        "title": "Assumption",
+        "guide": "What has to be true for a step of the reasoning to hold, and which step it conditions.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/statement",
+            "control": "sentence"
+          }
+        ],
+        "links": [
+          {
+            "kind": "Programme",
+            "path": "/spec/pathway/-/assumes"
+          },
+          {
+            "kind": "Project",
+            "path": "/spec/successCriteria/-/assumes"
+          }
+        ]
+      },
+      {
+        "key": "consequence",
+        "title": "If false",
+        "guide": "What happens to the reasoning if this does not hold.",
+        "fields": [
+          {
+            "path": "/spec/ifFalse",
+            "control": "sentence"
+          }
+        ]
+      },
+      {
+        "key": "confidence",
+        "title": "Confidence",
+        "guide": "How sure anybody is that it holds.",
+        "fields": [
+          {
+            "path": "/spec/confidence",
+            "control": "choice"
+          }
+        ]
+      },
+      {
+        "key": "verification",
+        "title": "Means of verification",
+        "guide": "How anybody would find out whether it holds.",
+        "fields": [
+          {
+            "path": "/spec/testedBy",
+            "control": "reference"
+          }
+        ]
+      },
+      {
+        "key": "note",
+        "title": "Note",
+        "guide": "Anything else worth knowing, such as who doubted it and why.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/note",
+            "control": "sentence"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

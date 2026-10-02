@@ -64,7 +64,8 @@ func (r Reporter) teamTree(ctx context.Context) (map[string]team, error) {
 	out := make(map[string]team, len(vs))
 	for _, v := range vs {
 		name, spec := r.doc(v)
-		if n, _ := spec["name"].(string); n != "" {
+		if n, _ := spec["name"].(string); name == "" && n != "" {
+			// Saved before 2.6.0, named in spec.name only.
 			name = n
 		}
 		parent, _ := spec["parent"].(string)

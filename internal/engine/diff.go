@@ -143,3 +143,26 @@ func diffArrayByIndex(path string, a, b []any) []Change {
 	}
 	return changes
 }
+
+// ChangedFields lists, by JSON pointer, the fields that differ between two
+// texts of a manifest; before may be empty for a new one. At most limit.
+func (e *Engine) ChangedFields(before, after []byte, limit int) []string {
+	var a, b map[string]any
+	if len(before) > 0 {
+		_ = e.codec.DecodeInto(before, &a)
+	}
+	if e.codec.DecodeInto(after, &b) != nil {
+		return nil
+	}
+	if a == nil {
+		a = map[string]any{}
+	}
+	var out []string
+	for _, c := range diffValues("", a, b) {
+		if len(out) == limit {
+			break
+		}
+		out = append(out, c.Path)
+	}
+	return out
+}

@@ -29,7 +29,7 @@ import (
 // Presence announces an agent on a document, so the people on it see it
 // working. The sync socket implements it; nil announces nothing.
 type Presence interface {
-	AnnounceAgent(ctx context.Context, docID, actor, name string)
+	AnnounceAgent(ctx context.Context, docID, actor, name, focus string, agent map[string]any)
 }
 
 // Options are what the MCP server works through.
@@ -59,20 +59,54 @@ func ServeStdio(ctx context.Context, o Options) error {
 	return newServer(o, identity.Anonymous).Run(ctx, &sdk.StdioTransport{})
 }
 
-const instructions = `Cartograph captures what an organisation has decided to do: goals,
-programmes, projects, operations, KPIs and the data sources behind them.
+const instructions = `Cartograph is the organisation's record of what it has decided to do: its
+purpose, goals, objectives and outcomes, the gaps they close, the
+projects, programmes and operations that deliver them, and the KPIs and
+data that measure them. What you help define must fit that record and the
+discipline it follows, exactly as a person working in the editor would
+have to: the same checks, the same links, the same words.
 
 You act for the person who connected you, with their access and no more.
-You may read everything they may, check and validate, and edit drafts
-(the people working on the same manifest see your changes and see you).
-You may not make the record: saving a version, recording a reading,
-moving a project and handing it off are proposals that your person
-accepts or declines in Cartograph. Say what you propose and why.
+You may read, validate, check and draft; people on the same manifest see
+your drafts live. You may not make the record: saving a version,
+recording a reading and moving a project are proposals your person
+accepts or declines in Cartograph, after reading them.
 
-To guide someone through defining something, use the guide prompt for
-its kind: it gives the steps and fields in order. Fields are named by
-JSON pointer (/spec/summary/problems/0/problem/situation). A check never
-blocks a save; problems say which field to fix.`
+Work this way, every time:
+1. Name what the person wants in Cartograph's terms: which kind, and for
+   a Goal which level (goal, objective, outcome). Ask if unsure.
+2. Call guide for that kind and level before drafting anything. It gives
+   the definition, every step and field in order, what each field must
+   say with right and wrong examples, the links to make, the template to
+   fill in, and the organisation's existing records. Use its words; they
+   are the discipline's. If an existing record already says what the
+   person wants, work on that one instead of defining another.
+3. Work top-down and make every link the guide names. Reuse what exists
+   before defining anything new: offer the person the guide's candidates
+   by name. When a link has nothing to point at (an outcome with no gap,
+   a gap with no KPI, an aim with no owner role), define that first,
+   with the person, then come back.
+4. Ask the person for what only they know (owners, figures, dates,
+   sources), a step at a time, with examples drawn from their own
+   records. Never invent a figure, a date, a source or an owner.
+5. Save drafts as you go with save_draft, and fix every open check it
+   returns. checks reads the draft at any time.
+6. Propose only when every check is met: propose_save for one manifest,
+   propose_set for several that reference each other (a KPI, the gap it
+   measures and the outcome that closes it), which your person accepts
+   whole. An open check refuses the proposal. Leave one open only when
+   your person cannot settle it now, naming it with the reason in
+   openChecks; your person reads each reason.
+7. Your work ends in a proposal, never in a chat message asking the
+   person to accept: they accept in Cartograph, after reading it. Tell
+   them what you proposed, and what you left open and why.
+8. Some judgement no check can make: whether an outcome describes a state
+   rather than an action, whether an aim says one thing, whether a
+   statement is specific. That is yours. Hold every statement to the
+   guide's examples before proposing, and tell your person where you are
+   unsure.
+
+Fields are named by JSON pointer (/spec/keyResults/0/target).`
 
 // call is one tool call's context: the person, as acting through the
 // calling agent, after checking they may use one.
@@ -91,6 +125,22 @@ func (o Options) begin(ctx context.Context, person identity.Principal, req *sdk.
 		who.Agent = "an agent"
 		if info := req.ClientInfo(); info != nil && strings.TrimSpace(info.Name) != "" {
 			who.Agent = strings.TrimSpace(info.Name)
+		} else if req.Extra != nil {
+			// Served without sessions, a client names itself only in its
+			// first request; its User-Agent comes with every one.
+			if name := ProductName(req.Extra.Header.Get("User-Agent")); name != "" {
+				who.Agent = name
+			}
+		}
+	}
+	// A client running several agents (a main one and its sub-agents) may
+	// name the one calling in the request's _meta, so its person can tell
+	// their work apart; it is recorded beside its parent.
+	if req.Params != nil {
+		if sub, ok := req.Params.GetMeta()[SubagentMeta].(string); ok {
+			if sub = strings.TrimSpace(sub); sub != "" && len(sub) <= 64 {
+				who.Agent += " › " + sub
+			}
 		}
 	}
 	if o.Authz != nil {
@@ -110,15 +160,27 @@ func (c call) actor() string {
 	return c.who.Actor(operator)
 }
 
-// announce shows the agent on a manifest's shared draft.
-func (c call) announce(kind, id string) {
-	// Without shared drafts, nobody watches a draft live to see it.
+// SubagentMeta is the _meta key a client names a sub-agent by.
+const SubagentMeta = "cartograph/subagent"
+
+// step is one thing an agent did, as the presence schema's agent has it
+// (docs/adr/0018): what, on which manifest, and how it left it.
+type step struct {
+	Step, Kind, ID string
+	Text           []byte   // the manifest, for its name
+	Fields         []string // what a draft changed
+	Checks         []engine.Check
+	Proposal       string
+	Parts          int
+}
+
+// announce shows what the agent did: on the manifest's shared draft, so
+// the people on it see where it works, and on the presence document, so
+// the person it acts for can follow it from anywhere. Without shared
+// drafts nobody watches live, and nothing is sent.
+func (c call) announce(st step) {
 	sh := c.o.Engine.Shared()
 	if c.o.Presence == nil || sh == nil {
-		return
-	}
-	docID, err := sh.DocumentFor(c.ctx, kind, id)
-	if err != nil {
 		return
 	}
 	name := c.who.Name
@@ -128,7 +190,70 @@ func (c call) announce(kind, id string) {
 	if name == "" {
 		name = "The operator"
 	}
-	c.o.Presence.AnnounceAgent(c.ctx, docID, c.actor(), name+"'s agent ("+c.who.Agent+")")
+	label := name + "'s agent (" + c.who.Agent + ")"
+	// The step's number is its time in microseconds, so steps from any
+	// replica order themselves; a float, so a browser reads a number.
+	agent := map[string]any{"for": personFor(c.who), "seq": float64(time.Now().UnixMicro()), "step": st.Step}
+	if st.Kind != "" {
+		agent["kind"] = st.Kind
+	}
+	if st.ID != "" {
+		agent["id"] = st.ID
+	}
+	if st.Text != nil {
+		var doc struct {
+			Metadata struct {
+				Name string `json:"name"`
+			} `json:"metadata"`
+		}
+		if b, err := c.o.Engine.Codec().Decode(st.Text); err == nil {
+			if raw, err := json.Marshal(b); err == nil && json.Unmarshal(raw, &doc) == nil && doc.Metadata.Name != "" {
+				agent["name"] = doc.Metadata.Name
+			}
+		}
+	}
+	if len(st.Fields) > 0 {
+		agent["fields"] = st.Fields
+	}
+	if st.Checks != nil {
+		met, open := 0, 0
+		for _, ch := range st.Checks {
+			if ch.Open() {
+				open++
+			} else {
+				met++
+			}
+		}
+		agent["met"], agent["open"] = met, open
+	}
+	if st.Proposal != "" {
+		agent["proposal"], agent["parts"] = st.Proposal, max(st.Parts, 1)
+	}
+	focus := ""
+	if len(st.Fields) > 0 {
+		focus = st.Fields[0]
+	}
+	if st.Kind != "" && st.ID != "" {
+		if docID, err := sh.DocumentFor(c.ctx, st.Kind, st.ID); err == nil {
+			c.o.Presence.AnnounceAgent(c.ctx, docID, c.actor(), label, focus, agent)
+		}
+	}
+	// The person's own feed, not the presence document everyone joins:
+	// what an agent works on is its person's to see (docs/adr/0018).
+	if docID, err := sh.AgentFeed(c.ctx, personFor(c.who)); err == nil {
+		c.o.Presence.AnnounceAgent(c.ctx, docID, c.actor(), label, "", agent)
+	}
+}
+
+// personFor is the person an agent acts for, as proposals name them.
+func personFor(p identity.Principal) string {
+	if p.Anonymous {
+		return ""
+	}
+	if p.Email != "" {
+		return strings.ToLower(p.Email)
+	}
+	return p.Subject
 }
 
 // tool registers a tool whose handler runs as the agent.
@@ -159,7 +284,26 @@ func failed(err error) *sdk.CallToolResult {
 		}
 		text = b.String()
 	}
+	var open *engine.OpenChecksError
+	if errors.As(err, &open) {
+		var b strings.Builder
+		fmt.Fprintf(&b, "Not proposed: %d check%s still open, as a person would see them in the editor:", len(open.Open), map[bool]string{true: "", false: "s"}[len(open.Open) == 1])
+		for _, c := range open.Open {
+			fmt.Fprintf(&b, "\n- %s/%s %s (%s, section %s): %s", c.Kind, c.ManifestID, c.ID, c.State, orNone(c.Section), c.Message)
+		}
+		b.WriteString("\nMeet each one: ask your person for what only they know (an owner, a figure, a date), never invent it, " +
+			"save the draft, and call checks until none is open. Only a check you cannot meet without them may be left, " +
+			"by passing openChecks (for propose_save {check id: why}; for propose_set {Kind/id: {check id: why}}); your person sees each reason before deciding.")
+		text = b.String()
+	}
 	return &sdk.CallToolResult{IsError: true, Content: []sdk.Content{&sdk.TextContent{Text: text}}}
+}
+
+func orNone(s string) string {
+	if s == "" {
+		return "none"
+	}
+	return s
 }
 
 func orRoot(path string) string {
@@ -210,6 +354,31 @@ type (
 		ID       string         `json:"id"`
 		Manifest map[string]any `json:"manifest,omitempty" jsonschema:"the manifest to save; the current draft when left out"`
 		Reason   string         `json:"reason" jsonschema:"why, in a sentence the person will read"`
+		// Checks the agent could not meet, each with why; the person sees
+		// them on the proposal.
+		OpenChecks map[string]string `json:"openChecks,omitempty" jsonschema:"only for a check you cannot meet without your person: check id to why it is left open; every other open check refuses the proposal"`
+	}
+	proposeSetIn struct {
+		Manifests []setMemberIn `json:"manifests" jsonschema:"every manifest that stands or falls together, in any order; each is saved after those it references"`
+		Reason    string        `json:"reason" jsonschema:"why, in a sentence the person will read"`
+		// Checks the agent could not meet, by Kind/id, then check id.
+		OpenChecks map[string]map[string]string `json:"openChecks,omitempty" jsonschema:"only for checks you cannot meet without your person: Kind/id to (check id to why); every other open check refuses the set"`
+	}
+	setMemberIn struct {
+		Kind     string         `json:"kind"`
+		ID       string         `json:"id"`
+		Manifest map[string]any `json:"manifest,omitempty" jsonschema:"the manifest; its current draft when left out"`
+	}
+	checksIn struct {
+		Kind     string         `json:"kind"`
+		ID       string         `json:"id"`
+		Manifest map[string]any `json:"manifest,omitempty" jsonschema:"a manifest to check without saving it; its draft or latest version when left out"`
+	}
+	guideIn struct {
+		Kind   string `json:"kind"`
+		Level  string `json:"level,omitempty" jsonschema:"for a Goal: goal, objective or outcome"`
+		Locale string `json:"locale,omitempty" jsonschema:"the language of the words, such as en; English when there are none in it"`
+		Step   string `json:"step,omitempty" jsonschema:"one step's key, to read a long guide a step at a time"`
 	}
 	proposeItemIn struct {
 		Kind   string         `json:"kind" jsonschema:"KPIReadings for a reading"`
@@ -263,13 +432,37 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
+			c.announce(step{Step: "read", Kind: in.Kind, ID: in.ID, Text: v.YAML})
 			return map[string]any{"version": v.Number, "yaml": string(v.YAML)}, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "schema", Description: "The JSON Schema of a kind: every field, its type, allowed values and what it refers to.", Annotations: readOnly},
 		func(c call, in kindOnly) (any, error) { return e.Schema(in.Kind) })
 
-	tool(s, o, person, &sdk.Tool{Name: "flow", Description: "The steps of a kind's editor, in order, and the fields in each: the order to guide a person in.", Annotations: readOnly},
+	tool(s, o, person, &sdk.Tool{Name: "guide", Description: "Read this before drafting any manifest. How to define a kind well, for one level: what it is, every step and field in order, " +
+		"what each field must say with right and wrong examples, the checks each answers and how to meet them, the links to make on other kinds, " +
+		"and the organisation's existing records to reuse for each reference and link.", Annotations: readOnly},
+		func(c call, in guideIn) (any, error) {
+			g, err := e.Guide(c.ctx, in.Kind, in.Level, in.Locale)
+			if err != nil {
+				return nil, err
+			}
+			c.announce(step{Step: "guide", Kind: in.Kind})
+			if in.Step == "" {
+				return guided{Guide: g, Next: nextSteps}, nil
+			}
+			// One step only, for a long flow such as a project's; the
+			// step keys come from a guide without step.
+			for _, st := range g.Steps {
+				if st.Key == in.Step {
+					g.Steps = []engine.GuideStep{st}
+					return guided{Guide: g, Next: nextSteps}, nil
+				}
+			}
+			return nil, fmt.Errorf("%s has no step %q", in.Kind, in.Step)
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "flow", Description: "The steps of a kind's editor, in order, and the fields in each, as the contract states them. guide gives the same with the words, examples and records to use.", Annotations: readOnly},
 		func(c call, in kindOnly) (any, error) {
 			b, ok, err := e.FlowJSON(in.Kind)
 			if err != nil || !ok {
@@ -279,15 +472,30 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return flow, json.Unmarshal(b, &flow)
 		})
 
-	tool(s, o, person, &sdk.Tool{Name: "checks", Description: "What a goal or a project still needs, by section: advice, never a block on saving.", Annotations: readOnly},
-		func(c call, in manifestRef) (any, error) {
-			switch in.Kind {
-			case "Goal":
-				return e.GoalChecks(c.ctx, in.ID)
-			case "Project":
-				return e.ProjectChecks(c.ctx, in.ID, true)
+	tool(s, o, person, &sdk.Tool{Name: "checks", Description: "Every quality check a person sees in the editor, on the manifest as it stands (its draft, where there is one): " +
+		"what is met (ok), what is still open (warn, or block for what stops a project's handoff), and the section where each is fixed. " +
+		"Run it after every save_draft; propose only when nothing is open.", Annotations: readOnly},
+		func(c call, in checksIn) (any, error) {
+			if in.Manifest != nil {
+				text, err := e.Codec().Encode(in.Manifest)
+				if err != nil {
+					return nil, err
+				}
+				checks, err := e.ChecksOf(c.ctx, in.Kind, in.ID, text)
+				if err != nil {
+					return nil, err
+				}
+				return checkReport(checks), nil
 			}
-			return nil, fmt.Errorf("checks are for goals and projects, not %s", in.Kind)
+			checks, err := e.DraftChecks(c.ctx, in.Kind, in.ID)
+			if errors.Is(err, engine.ErrNotFound) {
+				return nil, fmt.Errorf("%s/%s has no draft or version yet: save_draft it, or pass the manifest to check", in.Kind, in.ID)
+			}
+			if err != nil {
+				return nil, err
+			}
+			c.announce(step{Step: "checks", Kind: in.Kind, ID: in.ID, Checks: checks})
+			return checkReport(checks), nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "goal_tree", Description: "Every goal, objective and outcome as a tree, with what is aligned to each.", Annotations: readOnly},
@@ -347,12 +555,24 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
+			before, _, _ := e.GetWorking(c.ctx, in.Kind, in.ID)
+			if before == nil {
+				if v, err := e.Get(c.ctx, in.Kind, in.ID); err == nil {
+					before = v.YAML
+				}
+			}
 			if err := e.SaveWorking(c.ctx, in.Kind, in.ID, text, c.actor()); err != nil {
 				return nil, err
 			}
-			c.announce(in.Kind, in.ID)
 			problems, _ := e.Validate(c.ctx, in.Kind, text)
-			return map[string]any{"saved": "draft", "problems": problems}, nil
+			checks, err := e.ChecksOf(c.ctx, in.Kind, in.ID, text)
+			if err != nil {
+				return nil, err
+			}
+			c.announce(step{Step: "draft", Kind: in.Kind, ID: in.ID, Text: text, Fields: e.ChangedFields(before, text, 32), Checks: checks})
+			out := checkReport(checks)
+			out["saved"], out["problems"] = "draft", problems
+			return out, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "propose_save", Description: "Propose saving a manifest as its next version, for your person to accept or decline in Cartograph. Checked now as a save would be.", Annotations: proposal},
@@ -371,34 +591,83 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
-			p, err := e.ProposeSave(c.ctx, in.Kind, in.ID, text, in.Reason)
-			c.announce(in.Kind, in.ID)
+			p, err := e.ProposeSave(c.ctx, in.Kind, in.ID, text, in.Reason, in.OpenChecks)
+			if err == nil {
+				c.announce(step{Step: "propose", Kind: in.Kind, ID: in.ID, Text: text, Proposal: p.ID, Parts: 1})
+			}
 			return proposed(p), err
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "propose_set", Description: "Propose several manifests that reference each other, such as a KPI, the gap it measures and the outcome that closes it, " +
+		"as one proposal your person accepts or declines whole. Each is checked against the others and against every check its kind has; " +
+		"they are saved together, in the order their references need.", Annotations: proposal},
+		func(c call, in proposeSetIn) (any, error) {
+			members := make([]engine.SetMember, 0, len(in.Manifests))
+			for _, m := range in.Manifests {
+				var text []byte
+				var err error
+				if m.Manifest != nil {
+					text, err = e.Codec().Encode(m.Manifest)
+				} else {
+					var found bool
+					text, found, err = e.GetWorking(c.ctx, m.Kind, m.ID)
+					if err == nil && !found {
+						err = fmt.Errorf("%s/%s has no draft to propose: save one, or pass the manifest", m.Kind, m.ID)
+					}
+				}
+				if err != nil {
+					return nil, err
+				}
+				members = append(members, engine.SetMember{Kind: m.Kind, ID: m.ID, Text: text})
+			}
+			set, err := e.ProposeSet(c.ctx, members, in.Reason, in.OpenChecks)
+			if err != nil {
+				return nil, err
+			}
+			last := set[len(set)-1]
+			c.announce(step{Step: "propose", Kind: last.Kind, ID: last.ManifestID, Text: last.Text, Proposal: last.ID, Parts: len(set)})
+			out := proposed(set[0])
+			parts := make([]string, len(set))
+			for i, p := range set {
+				parts[i] = p.Kind + "/" + p.ManifestID
+			}
+			out.(map[string]any)["parts"] = parts
+			return out, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "propose_item", Description: "Propose recording one item of a series, such as a KPI reading (kind KPIReadings, series readings), for your person to accept.", Annotations: proposal},
 		func(c call, in proposeItemIn) (any, error) {
 			p, err := e.ProposeAppend(c.ctx, in.Kind, in.ID, in.Series, in.Item, in.Reason)
+			if err == nil {
+				c.announce(step{Step: "propose", Kind: in.Kind, ID: in.ID, Proposal: p.ID, Parts: 1})
+			}
 			return proposed(p), err
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "propose_state", Description: "Propose moving a project: defined, handed off or cancelled. A handoff must pass the project's blocking checks.", Annotations: proposal},
 		func(c call, in proposeStateIn) (any, error) {
 			p, err := e.ProposeState(c.ctx, in.Project, in.To, in.Reason)
+			if err == nil {
+				c.announce(step{Step: "propose", Kind: "Project", ID: in.Project, Proposal: p.ID, Parts: 1})
+			}
 			return proposed(p), err
 		})
 
 	for _, kind := range e.FlowKinds() {
 		kind := kind
-		s.AddPrompt(&sdk.Prompt{Name: "guide_" + strings.ToLower(kind), Description: "Guide a person through defining a " + kind + ", step by step."},
+		s.AddPrompt(&sdk.Prompt{Name: "guide_" + strings.ToLower(kind), Description: "Define a " + kind + " with the person, step by step, as Cartograph's guide says."},
 			func(ctx context.Context, _ *sdk.GetPromptRequest) (*sdk.GetPromptResult, error) {
-				b, _, err := e.FlowJSON(kind)
+				g, err := e.Guide(ctx, kind, "", "")
 				if err != nil {
 					return nil, err
 				}
-				text := "Guide the person through defining a " + kind + ", one step at a time, in this order. " +
-					"Ask for what each field needs, save their answers as a draft with save_draft as you go, run checks, " +
-					"and when they are happy, propose_save with a reason. The steps and their fields:\n\n" + string(b)
+				b, err := json.MarshalIndent(g, "", " ")
+				if err != nil {
+					return nil, err
+				}
+				text := "Help me define a " + kind + " in Cartograph. Work as Cartograph's instructions say: settle the level first where there is one " +
+					"(then call guide again for that level), go step by step, make every link, reuse my organisation's records before defining new ones, " +
+					"ask me for what only I know with examples, save drafts and meet every check, then propose. The guide:\n\n" + string(b)
 				return &sdk.GetPromptResult{Messages: []*sdk.PromptMessage{{Role: "user", Content: &sdk.TextContent{Text: text}}}}, nil
 			})
 	}
@@ -418,4 +687,54 @@ func proposed(p store.Proposal) any {
 		"proposal": p.ID, "status": p.Status, "at": p.At.Format(time.RFC3339),
 		"next": "Proposed. " + who + " accepts or declines it in Cartograph, under Proposals; nothing is saved until then.",
 	}
+}
+
+// checkReport is checks as an agent acts on them: what is still open
+// first, then what is met, and what to do next.
+func checkReport(checks []engine.Check) map[string]any {
+	open, met := []engine.Check{}, []string{}
+	for _, c := range checks {
+		if c.Open() {
+			open = append(open, c)
+		} else {
+			met = append(met, c.ID)
+		}
+	}
+	next := "Every check is met. Propose it when your person is ready."
+	if len(open) > 0 {
+		next = "Not ready to propose. Meet each open check: ask your person for what only they know, never invent it, then save the draft again."
+	}
+	return map[string]any{"open": open, "met": met, "next": next}
+}
+
+// guided is a guide as an agent reads it: the guide, then what to do with
+// it, where a small model reads it last and remembers it best.
+type guided struct {
+	engine.Guide
+	Next []string `json:"next"`
+}
+
+// nextSteps is the method, named by tool, at the end of every guide.
+var nextSteps = []string{
+	"If an existing record already says what your person wants, work on it (get it, then save_draft your changes) instead of defining another.",
+	"Settle each step with your person, in order, using the field guides and their examples; never invent a figure, date, source or owner.",
+	"Make every link the guide names; where there is nothing to link to, define that too, top-down, with guide for its kind.",
+	"save_draft each manifest as you go and meet every open check it returns; checks reads any manifest, saved or not.",
+	"Then propose: propose_save for one manifest, propose_set for several that reference each other. Your work is not done until it is proposed; your person accepts it in Cartograph, not in this conversation.",
+}
+
+// ProductName is a User-Agent's first product as a person reads it:
+// claude-code/2.1 is Claude Code. Empty for a browser or a library.
+func ProductName(ua string) string {
+	product, _, _ := strings.Cut(strings.TrimSpace(ua), "/")
+	product, _, _ = strings.Cut(product, " ")
+	switch strings.ToLower(product) {
+	case "", "mozilla", "go-http-client", "curl", "python-requests", "node", "undici", "axios", "node-fetch":
+		return ""
+	}
+	words := strings.FieldsFunc(product, func(r rune) bool { return r == '-' || r == '_' })
+	for i, w := range words {
+		words[i] = strings.ToUpper(w[:1]) + w[1:]
+	}
+	return strings.Join(words, " ")
 }

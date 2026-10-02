@@ -1,0 +1,628 @@
+{
+  "locale": "en",
+  "kind": "Project",
+  "definition": "A temporary endeavour producing outputs (TAXONOMY.md, the definitions): work that ends, run by one team under one sponsor and one budget. A project produces outputs, its deliverables; it does not by itself produce benefits, which come once those outputs are in use, so every project names the operation it hands over to. It aligns to outcomes in the strategy, may belong to one or more programmes (it declares them, D1), and may be a component of one other project that shares its sponsor and budget (D15). A project is not an operation (work with no end date, D14), not a programme (which coordinates several pieces of work towards one change), not a goal (an aim), and not a deliverable (one thing the project produces). It is defined in three phases: Initiation, Closure and Handover.",
+  "steps": {},
+  "fields": {
+    "/metadata/name": {
+      "guide": "A short name for the work, as people would say it. Name it for the change it makes, not for the service it lands in: the service's name belongs to the operation (D17).",
+      "good": [
+        "Quality Check Rollout"
+      ],
+      "poor": [
+        {
+          "text": "Quality Check Service",
+          "why": "That is the operation the work hands over to. The project is named for the change it makes to that service."
+        },
+        {
+          "text": "Phase 2",
+          "why": "Says where the work sits in a schedule, not what it changes; nobody outside the team could tell what it is."
+        }
+      ]
+    },
+    "/spec/alignment/programmes": {
+      "guide": "The programmes this project is part of. Belonging is declared here and read back on the programme (D1). A project usually shares an outcome with each programme it names; when it does not, a check says so but never refuses it. A component names no programme: it belongs to its parent's."
+    },
+    "/spec/alignment/partOf": {
+      "guide": "The one project this is a component of, if any (D15). Choose a parent only when this part shares the parent's sponsor and budget; a part with its own sponsor or budget is a separate project, and the two together are a programme. One level deep: a component cannot have components."
+    },
+    "/spec/alignment/goals": {
+      "guide": "The outcomes this project serves, picked from the strategy. A project aligns to outcomes only, never to a goal or an objective directly. Pick the outcomes of the programmes named above first, then any outcome it serves beyond them. A component serves its parent's outcomes and names none here. When no outcome fits, define the outcome first, top-down under its objective."
+    },
+    "/spec/team": {
+      "guide": "The team that runs the project and whose contributors may edit it (D27). A team from the organisation's structure, not a person and not a role.",
+      "good": [
+        "quality-team"
+      ]
+    },
+    "/spec/summary/beneficiaries": {
+      "guide": "The groups that gain value from this project, directly or indirectly, picked from the beneficiary groups. Name each group and nothing else: no counts, no targets. Name them before the problem, because a problem is stated about them."
+    },
+    "/spec/summary/beneficiaries/-/group": {
+      "guide": "One beneficiary group. Think past the people the work serves directly to everyone downstream of them.",
+      "good": [
+        "delivering-members",
+        "retail-partners",
+        "depot-staff"
+      ],
+      "poor": [
+        {
+          "text": "Everyone",
+          "why": "Nobody can be asked to confirm a problem felt by everyone; name the groups."
+        }
+      ]
+    },
+    "/spec/summary/problems": {
+      "guide": "The problems this project answers, each a card: the groups that feel it, what they cannot do today and why, and how things will be once the work has worked. A project may answer more than one problem. The first is the headline. Each problem may cite the gaps in the register it answers."
+    },
+    "/spec/summary/problems/-/groups": {
+      "guide": "Which of the beneficiary groups named above feel this problem. The problem sentence is read with them as its subject."
+    },
+    "/spec/summary/problems/-/problem/situation": {
+      "guide": "What the groups cannot do today, said about them, without repeating them as the subject. One sentence, as things are now, not as a lack of the solution.",
+      "good": [
+        "learn of a failed delivery a season late",
+        "are told a different answer each time they ask what a passing delivery looks like"
+      ],
+      "poor": [
+        {
+          "text": "There is no quality check tool at intake.",
+          "why": "States the missing solution, not what the groups cannot do. It decides the answer before the problem is agreed."
+        },
+        {
+          "text": "Quality is poor.",
+          "why": "Says nothing about any group or what they cannot do; nobody could confirm or dispute it."
+        }
+      ]
+    },
+    "/spec/summary/problems/-/problem/cause": {
+      "guide": "The one thing behind the situation: if it were fixed, the problem would go away.",
+      "good": [
+        "checks happen after dispatch and the produce has already left the depot",
+        "each depot keeps its own checklist and none of them agree"
+      ],
+      "poor": [
+        {
+          "text": "Lack of training, old scanners, poor roads and late payments.",
+          "why": "Four causes in one line. Name the one the work addresses; the others may be other problems or risks."
+        }
+      ]
+    },
+    "/spec/summary/problems/-/change/what": {
+      "guide": "How things will stand once this has worked, as a state, not the work that gets there.",
+      "good": [
+        "Every delivery is checked at intake against one published standard",
+        "One published standard is what a check is run against"
+      ],
+      "poor": [
+        {
+          "text": "Train depot staff and roll out the check.",
+          "why": "Describes the work, not how things will be once it has worked. The work belongs in the deliverables."
+        }
+      ]
+    },
+    "/spec/summary/problems/-/change/gain": {
+      "guide": "What the groups can do then that they cannot today, said about them. Optional: without it the sentence stops at what will be true.",
+      "good": [
+        "learn of a failure the same day and can rework it",
+        "give the same answer whoever asks"
+      ],
+      "poor": [
+        {
+          "text": "be happier",
+          "why": "Not something anybody could observe them doing; say what they can then do."
+        }
+      ]
+    },
+    "/spec/summary/problems/-/gaps": {
+      "guide": "The gaps in the register this problem answers, and which of each gap's segments the work reaches. A citation, not a restatement. Leave the segments empty only when the work reaches the whole gap (D9). When the gap is not in the register, record it there first."
+    },
+    "/spec/summary/problems/-/gaps/-/gap": {
+      "guide": "One gap from the register, as written there.",
+      "good": [
+        "faults-found-after-dispatch"
+      ]
+    },
+    "/spec/summary/problems/-/gaps/-/segments": {
+      "guide": "Which of the gap's own segments this work reaches. A project that starts at two depots reaches those depots, not the whole gap. Only segments the gap names can be picked."
+    },
+    "/spec/mandate": {
+      "guide": "What authorises the work: a decision, a policy, a law or regulation, a contract, a business case or a request, each with its reference and date so it can be found again. A component works under its parent's mandate."
+    },
+    "/spec/mandate/-/title": {
+      "guide": "What the document is called, as its issuer titles it.",
+      "good": [
+        "Approval to pilot delivery quality checks",
+        "Produce quality standard"
+      ],
+      "poor": [
+        {
+          "text": "Board said yes",
+          "why": "Not a title anybody could look up; give the decision's own title and put its reference beside it."
+        }
+      ]
+    },
+    "/spec/mandate/-/reference": {
+      "guide": "The identifier the issuer gives it.",
+      "good": [
+        "DEC-2025-014",
+        "POL-QUALITY-02"
+      ]
+    },
+    "/spec/mandate/-/issuedBy": {
+      "guide": "The body that issued it, as written.",
+      "good": [
+        "Cooperative Board"
+      ]
+    },
+    "/spec/summary/scopeIn": {
+      "guide": "What the work covers, one short line each. Scope is the boundary, not the plan: say what is included, not how it will be done.",
+      "good": [
+        "Checking every delivery at intake",
+        "Training depot staff to run the quality check tool"
+      ],
+      "poor": [
+        {
+          "text": "Everything related to quality",
+          "why": "Draws no boundary; nobody could tell from it whether a piece of work is in or out."
+        }
+      ]
+    },
+    "/spec/summary/scopeOut": {
+      "guide": "What people might expect the work to do that it will not, one short line each, with the reason where it helps.",
+      "good": [
+        "Checking produce already sold to retailers",
+        "Building a new digital quality check tool"
+      ],
+      "poor": [
+        {
+          "text": "Anything not listed above",
+          "why": "Says nothing a reader would not already assume. Name the things people would expect to be in."
+        }
+      ]
+    },
+    "/spec/objectives": {
+      "guide": "The change this project makes, and how, as one or more objectives, each with one to three key results. A project objective is an outcome with the means named in the same breath. Its key results measure the outcome, not the effort. The numbers go in the key results."
+    },
+    "/spec/objectives/-/objective": {
+      "guide": "One sentence: a verb, the change it makes, then \"by\" and how. No numbers: they go in the key results, and a digit here is refused.",
+      "good": [
+        "Catch faults at intake by checking every delivery against one standard",
+        "Standardise depot checks by training every checker against one published standard"
+      ],
+      "poor": [
+        {
+          "text": "Improve delivery quality across the depots.",
+          "why": "Says what changes but not how. A project objective names the means: add \"by\" and the approach."
+        },
+        {
+          "text": "Deliver a depot staff training pack and a quality results view.",
+          "why": "Those are deliverables, the outputs. The objective is the change they are for."
+        },
+        {
+          "text": "Catch 85% of faults at intake by checking every delivery.",
+          "why": "The 85% is a target and belongs in a key result; the objective says the change."
+        }
+      ]
+    },
+    "/spec/objectives/-/keyResults": {
+      "guide": "One to three measures that show the objective was met, each with today's figure, a dated target, the direction it should move, its unit where it has one, and the data source it is read from."
+    },
+    "/spec/objectives/-/keyResults/-/metric": {
+      "guide": "What is counted, precisely enough that two people would count the same thing. Count the result, not the activity.",
+      "good": [
+        "the share of faults found at intake rather than by a buyer",
+        "hours between a failed check and the depot knowing"
+      ],
+      "poor": [
+        {
+          "text": "number of checks run",
+          "why": "Counts activity, not the change. Checks can all happen and catch nothing."
+        },
+        {
+          "text": "quality",
+          "why": "Not countable as written: quality of what, measured how?"
+        }
+      ]
+    },
+    "/spec/objectives/-/keyResults/-/kind": {
+      "guide": "What sort of number this is: percent, count, money, ratio or duration. A count, money or duration needs a unit; a percent or ratio takes none."
+    },
+    "/spec/objectives/-/keyResults/-/unit": {
+      "guide": "The unit for a count, money or duration, such as hours or USD. Leave it empty for a percent or a ratio."
+    },
+    "/spec/objectives/-/keyResults/-/direction": {
+      "guide": "Which way the figure should move: increase, decrease, reach or maintain. The target must move from the baseline the way this says."
+    },
+    "/spec/objectives/-/keyResults/-/baseline": {
+      "guide": "Today's figure and the month it was taken, from a source the person can name. If it is not known yet, give the reason and when it will be; never invent one."
+    },
+    "/spec/objectives/-/keyResults/-/target": {
+      "guide": "The figure to reach and the month to reach it by. It moves from the baseline the way the direction says."
+    },
+    "/spec/objectives/-/keyResults/-/source": {
+      "guide": "The data source the figure is read from, from the register. If the source is typed in by hand or its capture is not decided, a turnaround target may not be readable in time; say how records will get in.",
+      "good": [
+        "quality-check-tool"
+      ]
+    },
+    "/spec/kpis": {
+      "guide": "The standing indicators this project moves, each with the reason it is named. An indicator is a whole-of-project concern and may be named by several projects. A component moves its parent's indicators."
+    },
+    "/spec/kpis/-/reason": {
+      "guide": "Why this project moves this indicator, in one line a reader would accept.",
+      "good": [
+        "The published standard is what the pass rate counts."
+      ],
+      "poor": [
+        {
+          "text": "Relevant KPI.",
+          "why": "Says nothing a reader can check; say how the work moves the figure."
+        }
+      ]
+    },
+    "/spec/resources": {
+      "guide": "The roles the project needs, each a position from the standard project organisation and, where known, the catalogue entry that fills it. Roles, never persons: who fills a role lives in the delivery tool. A sponsor and a project manager are needed; a service owner accepts the handover. Stakeholders are not roles; they go on the stakeholder map."
+    },
+    "/spec/resources/-/role": {
+      "guide": "The position: sponsor, project manager, team member, user representative, technical lead, data owner, data steward, data custodian, project support or service owner. Not a RACI letter, and not \"stakeholder\"."
+    },
+    "/spec/resources/-/resource": {
+      "guide": "The catalogue entry that fills this position: a role, unit, party, system or facility, declared once under Resource. Optional while nobody knows yet; when none fits, name the role first.",
+      "good": [
+        "depot-network",
+        "depot-supervisor",
+        "operations-lead"
+      ],
+      "poor": [
+        {
+          "text": "Ada Okafor",
+          "why": "A person, not a role. Cartograph names roles, and people hold them (D27)."
+        },
+        {
+          "text": "Sponsor",
+          "why": "Repeats the position already picked; name the catalogue entry that fills it."
+        }
+      ]
+    },
+    "/spec/resources/-/note": {
+      "guide": "Anything about this role on this project the catalogue entry cannot say, in a few words.",
+      "good": [
+        "Half a day a week during the pilot"
+      ]
+    },
+    "/spec/funding": {
+      "guide": "The money the project draws on, one line per currency: the amount, the currency, the budget it comes from and whether it is approved, requested or unfunded. A component is funded through its parent."
+    },
+    "/spec/funding/-/amount": {
+      "guide": "The amount on this line, in the line's currency. Write the figure as approved or requested; nothing else about money is held anywhere else."
+    },
+    "/spec/funding/-/source": {
+      "guide": "The budget this line draws on, a funding source declared once with its code (D7). Leave it empty while no budget is found, and set the status to unfunded or requested. When the budget is not declared yet, declare it first.",
+      "good": [
+        "operating-budget"
+      ],
+      "poor": [
+        {
+          "text": "seasonal-training-budget, filed as a Resource",
+          "why": "A budget is a funding source, not a resource. Resource is what the work draws on to do it; money is what it draws on to pay for it."
+        }
+      ]
+    },
+    "/spec/funding/-/status": {
+      "guide": "Whether the money is approved, requested or unfunded. An unfunded line says the work needs money nobody has found yet, which is worth saying."
+    },
+    "/spec/deliverables": {
+      "guide": "The outputs the project produces, each with what makes it accepted and who says so. A deliverable is a thing that can be handed over, not an activity and not a change. These acceptance tests are what the project is closed against."
+    },
+    "/spec/deliverables/-/name": {
+      "guide": "The output as a noun, short enough to scan.",
+      "good": [
+        "Depot staff training pack",
+        "Quality results view"
+      ],
+      "poor": [
+        {
+          "text": "Train depot staff",
+          "why": "An activity, not an output. Name the thing that is produced and can be accepted."
+        },
+        {
+          "text": "Faults caught at intake",
+          "why": "A change, not an output. That belongs in an objective or a success criterion."
+        }
+      ]
+    },
+    "/spec/deliverables/-/description": {
+      "guide": "What the output contains, in one sentence. Optional.",
+      "good": [
+        "Slides, a facilitator guide and practice materials for running the quality check tool."
+      ]
+    },
+    "/spec/deliverables/-/acceptance": {
+      "guide": "One line per part that has to be signed off: the role that verifies it, and what it confirms."
+    },
+    "/spec/deliverables/-/acceptance/-/by": {
+      "guide": "The role that verifies this, picked from the roles in Resources. When the role is not there, name it first."
+    },
+    "/spec/deliverables/-/acceptance/-/outcome": {
+      "guide": "What that role confirms, written as a test someone else could apply.",
+      "good": [
+        "confirms the practice materials match the published standard",
+        "confirms the view matches the underlying spreadsheet"
+      ],
+      "poor": [
+        {
+          "text": "is happy with it",
+          "why": "Not a test anybody else could apply; say what is checked."
+        }
+      ]
+    },
+    "/spec/successCriteria": {
+      "guide": "What has to be true for the project to have succeeded, not merely to have finished. Each criterion names the state, its dimension and the bar it clears, where that is read from and how often, the role that tracks it, the role that signs it off, and when it falls due: at closure, at handover or after handover. A criterion is the floor the project must clear; a key result is the stretch it reaches for."
+    },
+    "/spec/successCriteria/-/statement": {
+      "guide": "The state that has to be true, written so somebody else could settle it. The bar itself goes in the target.",
+      "good": [
+        "Faults are found at intake rather than by a buyer.",
+        "Every depot runs the check unaided.",
+        "The data protection review of member delivery records is complete with no open actions."
+      ],
+      "poor": [
+        {
+          "text": "The project is delivered on time.",
+          "why": "Finishing is not succeeding, and on time against what? Name the state, and put a schedule bar in the target under efficiency if that is the criterion."
+        },
+        {
+          "text": "The training pack is produced.",
+          "why": "That is a deliverable's acceptance, not success. Say what is true once the pack is in use."
+        }
+      ]
+    },
+    "/spec/successCriteria/-/metric": {
+      "guide": "Which dimension of success this measures (Shenhar and Dvir, D25): efficiency, impact on the customer, impact on the team, business success, preparation for the future, or compliance, a requirement that is met or not."
+    },
+    "/spec/successCriteria/-/standard": {
+      "guide": "The bar that has to be cleared, short. A compliance criterion takes none.",
+      "good": [
+        "at least 85 percent",
+        "every depot, every season"
+      ],
+      "poor": [
+        {
+          "text": "good",
+          "why": "No bar anybody could clear or miss."
+        }
+      ]
+    },
+    "/spec/successCriteria/-/source": {
+      "guide": "The data source the measurement is read from, named once in the register. A compliance criterion takes none."
+    },
+    "/spec/successCriteria/-/cycle": {
+      "guide": "How often it is read, a reporting cycle from the register. A compliance criterion takes none.",
+      "good": [
+        "seasonal-cycle"
+      ]
+    },
+    "/spec/successCriteria/-/owner": {
+      "guide": "The role that keeps the measurement up to date, from the roles in Resources."
+    },
+    "/spec/successCriteria/-/confirmedBy": {
+      "guide": "The role or governance body that decides whether this was met. Usually the sponsor, or the service owner for a criterion read after handover."
+    },
+    "/spec/successCriteria/-/from": {
+      "guide": "The deliverables that produce this state, only where some do. A criterion about schedule, budget or compliance usually has none, and is complete without."
+    },
+    "/spec/successCriteria/-/assumes": {
+      "guide": "What has to be true for the deliverables to produce this state: the logframe's assumptions column. Pick an assumption, or record one first."
+    },
+    "/spec/successCriteria/-/when": {
+      "guide": "When it is checked: at closure, when the outputs are accepted; at handover, when the service takes the work over; or after handover, at each benefits review."
+    },
+    "/spec/timeline/start": {
+      "guide": "The month the work starts."
+    },
+    "/spec/timeline/phases": {
+      "guide": "The phases in order, each with a name and a length in months. The end month is derived from the start and the phases, never typed."
+    },
+    "/spec/timeline/phases/-/name": {
+      "guide": "What happens in the phase, in a few words.",
+      "good": [
+        "Pilot at two depots",
+        "Rollout to every depot"
+      ],
+      "poor": [
+        {
+          "text": "Phase 1",
+          "why": "Says where it sits, not what happens in it; the order already says where."
+        }
+      ]
+    },
+    "/spec/data/consumes": {
+      "guide": "The data sources this project reads and never writes back to, each with why and how it is handed over."
+    },
+    "/spec/data/consumes/-/purpose": {
+      "guide": "What the project uses the data for, in one sentence.",
+      "good": [
+        "Identify members with deliveries due for a check this season."
+      ],
+      "poor": [
+        {
+          "text": "Data",
+          "why": "Says nothing about what the data is for."
+        }
+      ]
+    },
+    "/spec/data/consumes/-/handoff": {
+      "guide": "How the data reaches the project: an automatic feed, a file transfer, a shared database, manual re-entry or paper."
+    },
+    "/spec/data/produces": {
+      "guide": "What the project creates or adds to, where it lands, why, how often, and whether it holds personal data. Data that lands nowhere is data nobody can find again."
+    },
+    "/spec/data/produces/-/sink": {
+      "guide": "The data source that holds the output afterwards. For a new data source, the source the project delivers."
+    },
+    "/spec/data/produces/-/purpose": {
+      "guide": "What the output is for, in one sentence.",
+      "good": [
+        "Showing which depots are catching faults at intake rather than after dispatch."
+      ]
+    },
+    "/spec/data/produces/-/personalData": {
+      "guide": "Whether the output holds personal data: none, personal or sensitive."
+    },
+    "/spec/risks": {
+      "guide": "The project's register: risks (might go wrong), issues (already have), dependencies (what the work waits on, or what waits on it) and constraints (fixed limits). Not assumptions: an assumption is tested, not mitigated, and is recorded on its own and named on the step it conditions."
+    },
+    "/spec/risks/-/type": {
+      "guide": "Risk, issue, dependency or constraint. Only a dependency points at something."
+    },
+    "/spec/risks/-/description": {
+      "guide": "What could happen or has happened, and what it would do, in one sentence.",
+      "good": [
+        "The board must approve extending the check beyond the two pilot depots.",
+        "Some quality check forms arrive at the depot office after the season closes."
+      ],
+      "poor": [
+        {
+          "text": "Budget",
+          "why": "A topic, not a risk: say what might happen to it and what that would do."
+        },
+        {
+          "text": "Depots release staff for training during the season.",
+          "why": "An assumption, not a risk. Record it as an Assumption and name it on the success criterion it conditions."
+        }
+      ]
+    },
+    "/spec/risks/-/mitigation": {
+      "guide": "What is done to make it less likely or less harmful, in one sentence.",
+      "good": [
+        "Put the pilot's results to the board one month before rollout starts."
+      ],
+      "poor": [
+        {
+          "text": "Monitor closely.",
+          "why": "Watching is not acting; say what is done and when."
+        }
+      ]
+    },
+    "/spec/risks/-/depends/direction": {
+      "guide": "Whether this project waits on the other end, or the other end waits on it. Declared at one end only."
+    },
+    "/spec/risks/-/depends/on": {
+      "guide": "The other end: another project, a data source or any other manifest, or something outside Cartograph named as written."
+    },
+    "/spec/risks/-/depends/needBy": {
+      "guide": "The phase of this project's schedule the dependency must land by."
+    },
+    "/spec/risks/-/escalate/to": {
+      "guide": "Whose decision is needed: usually the sponsor or a board."
+    },
+    "/spec/risks/-/escalate/reason": {
+      "guide": "The decision that is needed, and why the project cannot make it.",
+      "good": [
+        "Late forms are already delaying quality reporting to the board this season."
+      ]
+    },
+    "/spec/operation": {
+      "guide": "The operation that runs the result once the project closes, whose service owner accepts the handover (D17). Choose \"new\" when the operation has to be defined alongside.",
+      "good": [
+        "quality-check-service"
+      ]
+    },
+    "/spec/notes": {
+      "guide": "Anything a reader needs that has no field of its own. Not a place for what a field already holds."
+    }
+  },
+  "links": {
+    "StakeholderMap:/spec/scope": {
+      "ask": "Who can affect this project or is affected by it, and for each, how much influence and how much interest do they have?",
+      "ifNone": "Start the stakeholder map scoped to this project. Name each stakeholder from the Resource catalogue, declaring any party that is missing there first, and leave the scores blank until they are known."
+    }
+  },
+  "checks": {
+    "goals-aligned": "Pick at least one outcome this project serves, or make it a component of a project that does.",
+    "goals-functional-level": "Align to outcomes only, not to a goal or an objective.",
+    "goals-programme-membership": "Align to at least one outcome each named programme also serves; an enabling component that serves none may leave this advice standing.",
+    "aim-mandate": "Name the decision, policy, law, contract, business case or request that authorises the work.",
+    "aim-problem-change": "Write both halves of every problem: the situation and the intended change.",
+    "aim-problem-groups": "Name the beneficiary groups that feel each problem.",
+    "scope-in": "Add at least one line saying what the work covers.",
+    "deliverables-count": "Add at least one deliverable.",
+    "deliverables-acceptance": "Give every deliverable at least one acceptance criterion.",
+    "deliverables-verifier": "Name the role that verifies every acceptance criterion.",
+    "beneficiaries-named": "Name at least one beneficiary group.",
+    "timeline-start-phases": "Set a start month and at least one phase.",
+    "goals-objective": "Write at least one objective.",
+    "goals-key-results-count": "Give every objective one to three key results.",
+    "goals-key-results-baseline": "Give every key result today's figure with its date, or say why it is not known yet.",
+    "goals-key-results-target": "Give every key result a dated target.",
+    "goals-key-results-source": "Name the data source every key result is read from.",
+    "measures-kpis": "Name at least one indicator the project moves, with the reason.",
+    "components-add-up": "Give a project with components a key result that the components add up to.",
+    "components-parent": "Name a different project as the parent; a project cannot be a component of itself.",
+    "components-one-level": "Name the parent's own parent instead; components are one level deep.",
+    "components-programmes": "Remove the programmes from a component; it belongs to its parent's.",
+    "components-one-sponsor": "Use the parent's sponsor and budget, or make this a separate project and the pair a programme.",
+    "resources-funding": "Add a funding line, even an unfunded one.",
+    "resources-sponsor-lead": "Name a sponsor and a project manager in Resources; a component needs only a project manager.",
+    "resources-mapped": "Pick the catalogue entry that fills each role, where it is known.",
+    "data-personal-data": "Say whether every output holds personal data.",
+    "data-sink": "Name the data source every output lands in.",
+    "data-handoff": "Replace manual re-entry with a feed, a file transfer or a shared database where you can, or note why not.",
+    "data-capture-decided": "Decide how records get into each data source a target is read from, on the data source.",
+    "data-capture-turnaround": "Read a turnaround target from a source whose records get in fast enough, or have this project change how they get in.",
+    "risks-mitigation": "Give every risk a mitigation.",
+    "risks-escalated": "Flag a risk for escalation when it needs a decision above the project, and name whose.",
+    "risks-dependency-edges": "Give every dependency its direction and the other end.",
+    "risks-dependency-cycle": "Break the loop: one end of it must not wait on the other.",
+    "risks-dependency-schedule": "Move the needed-by phase, or agree an earlier finish with the other end.",
+    "success-criteria": "Add at least one success criterion.",
+    "success-measured": "Give every measured criterion a target, a data source and a reporting cycle.",
+    "success-owner": "Name the role that tracks every criterion.",
+    "closing-criteria": "Give every deliverable a test it is accepted against.",
+    "landing-operation": "Name the operation the result is handed over to, or a new one.",
+    "landing-criteria": "Add a success criterion that falls due at handover or after it.",
+    "landing-owner": "Name a service owner in Resources to accept the handover.",
+    "measures-kpis-once": "Name each KPI once, with one reason; merge the reasons if it was named twice.",
+    "risks-placed": "Give every risk an impact and a likelihood, so it can be weighed against the others.",
+    "compliance-as-criteria": "Record each compliance line as a success criterion with metric compliance, naming the role that confirms it; then remove the line."
+  },
+  "vocabulary": {
+    "objectiveVerbs": [
+      "improve",
+      "increase",
+      "raise",
+      "grow",
+      "strengthen",
+      "reduce",
+      "cut",
+      "shorten",
+      "remove",
+      "eliminate",
+      "simplify",
+      "make",
+      "give",
+      "enable",
+      "establish",
+      "restore",
+      "protect",
+      "open",
+      "shift",
+      "move",
+      "bring",
+      "turn",
+      "close",
+      "end",
+      "speed",
+      "lower",
+      "widen",
+      "deepen",
+      "secure",
+      "standardise",
+      "standardize"
+    ],
+    "meansWord": [
+      "by"
+    ]
+  }
+}

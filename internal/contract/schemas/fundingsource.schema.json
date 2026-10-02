@@ -24,15 +24,13 @@
     "spec": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name"
-      ],
+      "required": [],
       "properties": {
         "name": {
           "type": "string",
           "minLength": 1,
           "maxLength": 120,
-          "description": "What this budget is called by the people who hold it."
+          "description": "Deprecated: the name is metadata.name, as Kubernetes keeps it. Read from a manifest saved before 2.6.0 and folded into metadata.name; never written."
         },
         "code": {
           "type": "string",

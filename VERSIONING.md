@@ -15,6 +15,8 @@ can depend on. A change to any of it is classified by the rules below.
 | The HTTP contract | `contract/openapi.yaml`, served at `/api/v1` | A path, operation, response or field removed or renamed; a request field made required; a type changed | A path, operation, optional field or response added | A description |
 | The manifest schemas | `contract/schemas/*.schema.json`, `apiVersion: cartograph/v1` | A property or enum value removed; a property made required; a type narrowed; a kind removed | A kind, property or enum value added | A title or description |
 | The flows | `contract/flows/*.flow.json` | A step or field removed or re-keyed | A step or field added | Words |
+| The guidance | `contract/guidance/<locale>/*.guidance.json`, served by `GET /guides/{kind}` and the MCP `guide` tool | A field path, link or check id it is keyed by removed or renamed | A language, field, link, check or vocabulary added | Words and examples |
+| The checks | the ids of every check, as `ChecksOf` reports them | An id removed or renamed | A check added | Messages |
 | The Go packages | `pkg/client`, `pkg/uiconformance`, module `github.com/ProjectCartograph/cartograph-engine/v2` | An exported identifier removed or its signature changed; a scenario's expectation tightened | An identifier or scenario added | Internals |
 | The sync socket | `/api/v1/sync`: the automerge-repo network protocol, version 1, over a WebSocket | A move to another protocol version; a message type no longer answered | | |
 | The presence payload | `contract/schemas/presence.schema.json` | As for the manifest schemas | As for the manifest schemas | As for the manifest schemas |

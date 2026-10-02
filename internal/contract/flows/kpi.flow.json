@@ -1,0 +1,134 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "kpi",
+    "name": "KPI"
+  },
+  "spec": {
+    "for": "KPI",
+    "steps": [
+      {
+        "key": "definition",
+        "title": "Definition",
+        "guide": "What is counted, in what unit, and which way is good.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/definition",
+            "control": "sentence",
+            "hint": "Exactly what gets counted, so two people would get the same number."
+          },
+          {
+            "path": "/spec/unit",
+            "control": "reference",
+            "hint": "What it is counted in. Pick one, or add a new one if nothing fits."
+          },
+          {
+            "path": "/spec/direction",
+            "control": "choice"
+          }
+        ]
+      },
+      {
+        "key": "result",
+        "title": "Result",
+        "guide": "The aims this KPI tells you about, and where it sits in the results framework.",
+        "fields": [
+          {
+            "path": "/spec/goals",
+            "control": "references",
+            "hint": "The aims this KPI tells you about, most often outcomes."
+          },
+          {
+            "path": "/spec/resultLevel",
+            "control": "choice"
+          }
+        ],
+        "links": [
+          {
+            "kind": "Gap",
+            "path": "/spec/measure",
+            "check": "gap-measured"
+          }
+        ]
+      },
+      {
+        "key": "baseline-target",
+        "title": "Baseline and target",
+        "guide": "Where it stands today and where it needs to get to, each with its month.",
+        "fields": [
+          {
+            "path": "/spec/baseline/value",
+            "control": "number",
+            "hint": "Where it stands today."
+          },
+          {
+            "path": "/spec/baseline/date",
+            "control": "date",
+            "hint": "The month that figure is from."
+          },
+          {
+            "path": "/spec/baseline/unknownReason",
+            "control": "sentence",
+            "hint": "If today's figure is not known, why, and when it will be."
+          },
+          {
+            "path": "/spec/baseline/expectedBy",
+            "control": "date"
+          },
+          {
+            "path": "/spec/target/value",
+            "control": "number",
+            "hint": "Where it needs to get to."
+          },
+          {
+            "path": "/spec/target/date",
+            "control": "date",
+            "hint": "The month it is due by."
+          }
+        ]
+      },
+      {
+        "key": "verification",
+        "title": "Means of verification",
+        "guide": "Where the number is read from, and how often.",
+        "fields": [
+          {
+            "path": "/spec/source",
+            "control": "reference",
+            "hint": "Which system or record this number is read from, so anyone can go and check it."
+          },
+          {
+            "path": "/spec/cycle",
+            "control": "reference",
+            "hint": "How often it is read. This sets the periods its readings are recorded for."
+          }
+        ],
+        "links": [
+          {
+            "kind": "KPIReadings",
+            "path": "/spec/kpi"
+          }
+        ]
+      },
+      {
+        "key": "disaggregation",
+        "title": "Disaggregation",
+        "guide": "The segments this number is broken down by, if any.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/disaggregations",
+            "control": "references",
+            "hint": "How this number is broken down, such as by region. Leave empty if only the total is reported."
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

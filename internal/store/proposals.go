@@ -26,6 +26,15 @@ type Proposal struct {
 	// Base is the manifest's latest version when it was proposed.
 	Base   int
 	Reason string
+	// Waivers are the checks the agent left open, each with its reason,
+	// for its person to see before deciding.
+	Waivers []Waiver
+	// Set groups proposals that stand or fall together (manifests that
+	// reference each other, such as a KPI, the gap it measures and the
+	// outcome that closes it); SetIndex is the order they are saved in.
+	// "" for a proposal on its own.
+	Set      string
+	SetIndex int
 	// Agent is the agent that proposed it; For is the person it acts for,
 	// who alone may decide it (their address, or "" for an anonymous
 	// operator).
@@ -39,6 +48,14 @@ type Proposal struct {
 	DecisionReason string
 	// Version is the version accepting it made, when it made one.
 	Version int
+}
+
+// Waiver is a check an agent proposed without meeting: the check, what
+// it said, and why the agent left it.
+type Waiver struct {
+	Check   string `json:"check"`
+	Message string `json:"message"`
+	Reason  string `json:"reason"`
 }
 
 // What a proposal does.
@@ -58,7 +75,7 @@ const (
 // ProposalFilter narrows a list. An empty field matches anything; Status
 // "" is every status.
 type ProposalFilter struct {
-	For, Kind, ManifestID, Status string
+	For, Kind, ManifestID, Status, Set string
 }
 
 var (
@@ -80,4 +97,8 @@ type ProposalStore interface {
 	// when, why and the version made; ErrProposalDecided when it is not
 	// open, ErrNoProposal when there is none.
 	DecideProposal(ctx context.Context, id, status, by, reason string, at time.Time, version int) (Proposal, error)
+	// DecideProposalSet decides every proposal of a set at once, or none:
+	// ErrProposalDecided when any is not open, ErrNoProposal when the set
+	// has none. versions gives the version each made, by proposal id.
+	DecideProposalSet(ctx context.Context, set, status, by, reason string, at time.Time, versions map[string]int) ([]Proposal, error)
 }

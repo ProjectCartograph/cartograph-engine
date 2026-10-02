@@ -29,8 +29,8 @@
             "path": "/spec/objective",
             "control": "sentence",
             "checks": [
-              "specific",
-              "attainable"
+              "smart-specific",
+              "smart-attainable"
             ]
           },
           {
@@ -49,7 +49,7 @@
             "control": "list",
             "key": "id",
             "checks": [
-              "measurable"
+              "smart-measurable"
             ],
             "fields": [
               {
@@ -82,6 +82,41 @@
               }
             ]
           }
+        ],
+        "links": [
+          {
+            "kind": "Goal",
+            "path": "/spec/parent",
+            "when": {
+              "path": "/spec/level",
+              "in": [
+                "goal"
+              ]
+            },
+            "check": "has-objectives"
+          },
+          {
+            "kind": "Goal",
+            "path": "/spec/parent",
+            "when": {
+              "path": "/spec/level",
+              "in": [
+                "objective"
+              ]
+            },
+            "check": "has-outcomes"
+          },
+          {
+            "kind": "Gap",
+            "path": "/spec/outcomes",
+            "when": {
+              "path": "/spec/level",
+              "in": [
+                "outcome"
+              ]
+            },
+            "check": "closes-gap"
+          }
         ]
       },
       {
@@ -93,14 +128,15 @@
             "path": "/spec/owner",
             "control": "reference",
             "checks": [
-              "accountable"
+              "owner"
             ]
           },
           {
             "path": "/spec/horizon",
             "control": "horizon",
             "checks": [
-              "timeBound"
+              "smart-time-bound",
+              "horizon"
             ]
           }
         ]
@@ -114,7 +150,7 @@
             "path": "/spec/whyItMatters",
             "control": "sentence",
             "checks": [
-              "relevant"
+              "smart-relevant"
             ]
           },
           {

@@ -53,6 +53,12 @@ func (e *Engine) ProgrammeChecks(ctx context.Context, id string) ([]ProgrammeChe
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
 		return nil, fmt.Errorf("parse Programme/%s: %w", id, err)
 	}
+	return e.programmeChecksOf(ctx, id, doc)
+}
+
+// programmeChecksOf checks a programme's document, saved or not: a draft, or
+// what an agent proposes.
+func (e *Engine) programmeChecksOf(ctx context.Context, id string, doc map[string]any) ([]ProgrammeCheck, error) {
 	spec, _ := doc["spec"].(map[string]any)
 	if spec == nil {
 		spec = map[string]any{}
@@ -86,6 +92,58 @@ func (e *Engine) ProgrammeChecks(ctx context.Context, id string) ([]ProgrammeChe
 		add("components-present", "components", programmeCheckOK,
 			fmt.Sprintf("%d project%s and %d operation%s named.",
 				len(projects), plural(len(projects)), len(operations), plural(len(operations))))
+	}
+
+	// A member project serves the programme by moving one of its aims,
+	// or an aim beneath one (D1: shared goals are the test of the
+	// grouping); one that serves none says it belongs while serving
+	// something else. Operations name no goals, so only projects are read.
+	if goals, _ := spec["goals"].([]any); len(goals) > 0 && len(projects) > 0 {
+		var unserved []string
+		l := &lookup{ctx: ctx, store: e.manifests, codec: e.codec}
+		docs, err := l.Documents("Project")
+		if err != nil {
+			return nil, err
+		}
+		read := e.storedGoals(ctx)
+		aims := strs(goals)
+		for _, pid := range projects {
+			pspec, _ := docs[pid]["spec"].(map[string]any)
+			alignment, _ := pspec["alignment"].(map[string]any)
+			theirs, _ := alignment["goals"].([]any)
+			// It serves the programme when one of its goals is one of the
+			// programme's aims or beneath it.
+			if !read.servesAny(strs(theirs), aims) {
+				unserved = append(unserved, docName(docs[pid], pid))
+			}
+		}
+		sort.Strings(unserved)
+		if len(unserved) == 0 {
+			add("components-serve-outcomes", "components", programmeCheckOK, "Every project in it serves one of its aims.")
+		} else {
+			add("components-serve-outcomes", "components", programmeCheckWarn,
+				fmt.Sprintf("%s name%s this programme but serve%s none of its aims.", englishList(unserved),
+					map[bool]string{true: "s", false: ""}[len(unserved) == 1], map[bool]string{true: "s", false: ""}[len(unserved) == 1]))
+		}
+	}
+
+	// The change it exists for, the pathway it believes leads there, and
+	// the team that leads it: without them a programme is a heading.
+	aim, _ := spec["aim"].(map[string]any)
+	if change, _ := aim["change"].(string); strings.TrimSpace(change) != "" {
+		add("aim-change", "aim", programmeCheckOK, "The change it exists for is stated.")
+	} else {
+		add("aim-change", "aim", programmeCheckWarn, "No change stated yet.")
+	}
+	if steps, _ := spec["pathway"].([]any); len(steps) > 0 {
+		add("pathway-steps", "pathway", programmeCheckOK, fmt.Sprintf("%d pathway step%s.", len(steps), plural(len(steps))))
+	} else {
+		add("pathway-steps", "pathway", programmeCheckWarn, "No pathway yet: what must hold before the change happens.")
+	}
+	if lead, _ := spec["leadTeam"].(string); lead != "" {
+		add("governance-lead", "governance", programmeCheckOK, "A lead team is named.")
+	} else {
+		add("governance-lead", "governance", programmeCheckWarn, "No lead team named yet.")
 	}
 
 	// A programme exists to answer something wrong, and a problem that
@@ -313,4 +371,15 @@ func (e *Engine) programmeMembers(ctx context.Context, id string) (projects, ope
 		}
 	}
 	return projects, operations, nil
+}
+
+// strs keeps the strings of a list read from a manifest.
+func strs(list []any) []string {
+	var out []string
+	for _, v := range list {
+		if s, ok := v.(string); ok && s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }

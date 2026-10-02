@@ -25,13 +25,20 @@ var ada = identity.Principal{Subject: "ada@example.org", Email: "ada@example.org
 const team = "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n"
 
 type presence struct {
-	mu   sync.Mutex
-	seen []string
+	mu    sync.Mutex
+	seen  []string
+	steps []announced
 }
 
-func (p *presence) AnnounceAgent(_ context.Context, docID, actor, name string) {
+type announced struct {
+	doc, focus string
+	agent      map[string]any
+}
+
+func (p *presence) AnnounceAgent(_ context.Context, docID, actor, name, focus string, agent map[string]any) {
 	p.mu.Lock()
 	p.seen = append(p.seen, actor+" | "+name)
+	p.steps = append(p.steps, announced{doc: docID, focus: focus, agent: agent})
 	p.mu.Unlock()
 }
 
@@ -112,7 +119,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 		t.Fatalf("get: %s", text)
 	}
 	draft := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t1", "name": "Team One"},
-		"spec": map[string]any{"name": "Team One", "description": "Drafted by an agent"}}
+		"spec": map[string]any{"description": "Drafted by an agent"}}
 	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t1", "manifest": draft}); res.IsError {
 		t.Fatalf("save_draft: %s", text)
 	}
@@ -122,6 +129,28 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	}
 	if len(pr.seen) == 0 || pr.seen[0] != "ada@example.org via Claude | Ada's agent (Claude)" {
 		t.Fatalf("announced as %v", pr.seen)
+	}
+	// The draft is announced on the team's document, at the field it
+	// changed, and on Ada's own feed, for her to follow; never on the
+	// presence document everyone joins.
+	docs := map[string]bool{}
+	for _, a := range pr.steps {
+		if a.agent["step"] != "draft" {
+			continue
+		}
+		docs[a.doc] = true
+		fields, _ := a.agent["fields"].([]string)
+		if a.agent["for"] != "ada@example.org" || a.agent["kind"] != "Team" || a.agent["name"] != "Team One" || len(fields) != 1 || fields[0] != "/spec/description" {
+			t.Errorf("the draft step: %+v", a.agent)
+		}
+		if _, ok := a.agent["met"]; !ok {
+			t.Errorf("the draft step carries no check count: %+v", a.agent)
+		}
+	}
+	feed, _ := e.Shared().AgentFeed(ctx, "ada@example.org")
+	teamDoc, _ := e.Shared().DocumentFor(ctx, "Team", "t1")
+	if !docs[feed] || !docs[teamDoc] || len(docs) != 2 {
+		t.Fatalf("the draft was announced on %v, want the team's and Ada's feed", docs)
 	}
 
 	res, text := callTool(t, cs, "propose_save", map[string]any{"kind": "Team", "id": "t1", "reason": "describe the team"})
@@ -160,5 +189,34 @@ func TestGuidePrompts(t *testing.T) {
 	}
 	if len(prompts.Prompts) != len(e.FlowKinds()) || len(prompts.Prompts) == 0 {
 		t.Fatalf("%d prompts for %d flows", len(prompts.Prompts), len(e.FlowKinds()))
+	}
+}
+
+func TestAClientIsNamedByItsUserAgent(t *testing.T) {
+	for ua, want := range map[string]string{
+		"claude-code/2.1.283 (external, cli)": "Claude Code",
+		"Cursor/1.4":                          "Cursor",
+		"Mozilla/5.0 (X11; Linux x86_64)":     "",
+		"Go-http-client/1.1":                  "",
+		"":                                    "",
+	} {
+		if got := mcp.ProductName(ua); got != want {
+			t.Errorf("%q: %q, want %q", ua, got, want)
+		}
+	}
+}
+
+// A sub-agent names itself in _meta and is recorded beside its parent.
+func TestASubagentIsNamedBesideItsParent(t *testing.T) {
+	_, pr, cs := setup(t, nil)
+	res, err := cs.CallTool(context.Background(), &sdk.CallToolParams{Name: "get", Arguments: map[string]any{"kind": "Team", "id": "t1"},
+		Meta: sdk.Meta{mcp.SubagentMeta: "researcher"}})
+	if err != nil || res.IsError {
+		t.Fatalf("get: %v %+v", err, res)
+	}
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	if len(pr.seen) == 0 || pr.seen[len(pr.seen)-1] != "ada@example.org via Claude › researcher | Ada's agent (Claude › researcher)" {
+		t.Fatalf("announced as %v", pr.seen)
 	}
 }

@@ -326,6 +326,20 @@ version, recording a reading, moving or handing off a project and
 deleting are proposals its person accepts or declines under Proposals in
 the interface (ADR 0016).
 
+An agent is held to what a person meets in the editor (ADR 0017): it
+reads the kind's guide first, which joins the contract's guidance to the
+organisation's own records, and a proposal whose checks are open is
+refused unless the agent says why each is left open. Manifests that
+reference each other are proposed and accepted as one set. Every
+proposal is its manifests' draft, opened in the editor, and is read on
+its review page before it is decided.
+
+A person follows their agents as they work (ADR 0018): each step goes to
+a feed only they, or an administrator, may open, and following moves
+their view with the agent. Following needs the agent on the same
+deployment as the interface, over HTTP (`/api/v1/mcp`); an agent on
+stdio (`cartograph mcp`) runs in its own process and has no one to tell.
+
 With an access list, the mapping's `agents:` key names the roles that
 may use one, and an administrator can turn one person's agents off on
 the Access page:

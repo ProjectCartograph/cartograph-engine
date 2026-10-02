@@ -51,14 +51,14 @@ func TestProposalsAreDecidedByTheirPerson(t *testing.T) {
 	}
 	before := saved()
 
-	if _, err := e.ProposeSave(actingAs(ada), "Team", "t1", []byte(strings.Replace(teamText, "%s", "x", 1)), "r"); !errors.Is(err, engine.ErrNotAnAgent) {
+	if _, err := e.ProposeSave(actingAs(ada), "Team", "t1", []byte(strings.Replace(teamText, "%s", "x", 1)), "r", nil); !errors.Is(err, engine.ErrNotAnAgent) {
 		t.Fatalf("a person proposing: %v", err)
 	}
 	var invalid *engine.ValidationError
-	if _, err := e.ProposeSave(actingAs(adasBot), "Team", "t1", []byte("apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: T\nspec:\n  nope: 1\n"), "r"); !errors.As(err, &invalid) {
+	if _, err := e.ProposeSave(actingAs(adasBot), "Team", "t1", []byte("apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: T\nspec:\n  nope: 1\n"), "r", nil); !errors.As(err, &invalid) {
 		t.Fatalf("an invalid proposal: %v", err)
 	}
-	p, err := e.ProposeSave(actingAs(adasBot), "Team", "t1", []byte(strings.Replace(teamText, "%s", "Tidied by an agent", 1)), "tidy the description")
+	p, err := e.ProposeSave(actingAs(adasBot), "Team", "t1", []byte(strings.Replace(teamText, "%s", "Tidied by an agent", 1)), "tidy the description", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestProposalsAreDecidedByTheirPerson(t *testing.T) {
 // accepted over what changed.
 func TestAStaleProposalIsRefused(t *testing.T) {
 	e := seedReadings(t)
-	p, err := e.ProposeSave(actingAs(adasBot), "Team", "t1", []byte(strings.Replace(teamText, "%s", "proposed", 1)), "r")
+	p, err := e.ProposeSave(actingAs(adasBot), "Team", "t1", []byte(strings.Replace(teamText, "%s", "proposed", 1)), "r", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,5 +145,112 @@ func TestReadingsAndStatesAreProposed(t *testing.T) {
 	st, _ := e.GetProjectState(context.Background(), "proj-1")
 	if st.State != "cancelled" {
 		t.Fatalf("the project is %s", st.State)
+	}
+}
+
+// An agent proposes only what passes the checks a person sees in the
+// editor, or names each it leaves open and why; the proposal becomes the
+// draft, so its person opens it in the editor.
+func TestProposalsMeetTheChecksOrSayWhy(t *testing.T) {
+	e := seedReadings(t)
+	bare := []byte("apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g-new\n  name: Members trust the grading\nspec:\n  level: goal\n  objective: Members accept the grade their produce is given.\n")
+	_, err := e.ProposeSave(actingAs(adasBot), "Goal", "g-new", bare, "a new goal", nil)
+	var open *engine.OpenChecksError
+	if !errors.As(err, &open) || len(open.Open) == 0 {
+		t.Fatalf("a bare goal: %v", err)
+	}
+	waive := map[string]string{}
+	for _, c := range open.Open {
+		waive[c.ID] = "Ada has not decided yet"
+	}
+	delete(waive, open.Open[0].ID)
+	if _, err := e.ProposeSave(actingAs(adasBot), "Goal", "g-new", bare, "a new goal", waive); !errors.As(err, &open) || len(open.Open) != 1 {
+		t.Fatalf("one check neither met nor waived: %v", err)
+	}
+	waive[open.Open[0].ID] = "Ada has not decided yet"
+	p, err := e.ProposeSave(actingAs(adasBot), "Goal", "g-new", bare, "a new goal", waive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Waivers) != len(waive) || p.Waivers[0].Reason != "Ada has not decided yet" || p.Waivers[0].Message == "" {
+		t.Fatalf("the waivers on the proposal: %+v", p.Waivers)
+	}
+	if draft, found, _ := e.GetWorking(context.Background(), "Goal", "g-new"); !found || !strings.Contains(string(draft), "Members trust the grading") {
+		t.Fatalf("the proposal as the draft: %v %s", found, draft)
+	}
+	if checks, err := e.DraftChecks(context.Background(), "Goal", "g-new"); err != nil || len(checks) == 0 {
+		t.Fatalf("checks on a draft never saved: %v %v", checks, err)
+	}
+}
+
+// A KPI, the gap it measures and nothing saved between them: proposed as
+// one set, validated against each other, accepted in one transaction in
+// the order the references need, or declined together.
+func TestASetStandsOrFallsTogether(t *testing.T) {
+	e := seedReadings(t)
+	kpi := []byte("apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k-disputes\n  name: Grading disputes\nspec:\n  name: Grading disputes\n  definition: Share of graded deliveries a member disputes.\n  unit: percent\n  direction: decrease\n  source: d1\n  goals: [g1-f]\n")
+	gap := []byte("apiVersion: cartograph/v1\nkind: Gap\nmetadata:\n  id: gap-disputes\n  name: Members dispute grades\nspec:\n  statement: One delivery in eight is disputed.\n  current: One delivery in eight is disputed.\n  desired: Disputes are rare.\n  measure: k-disputes\n  outcomes: [g1-f]\n")
+	members := []engine.SetMember{{Kind: "Gap", ID: "gap-disputes", Text: gap}, {Kind: "KPI", ID: "k-disputes", Text: kpi}}
+
+	// Alone, the gap references a KPI that does not exist.
+	var invalid *engine.ValidationError
+	if _, err := e.ProposeSet(actingAs(adasBot), members[:1], "r", nil); !errors.As(err, &invalid) {
+		t.Fatalf("the gap without its KPI: %v", err)
+	}
+	waiveAll := func() map[string]map[string]string {
+		w := map[string]map[string]string{}
+		_, err := e.ProposeSet(actingAs(adasBot), members, "r", nil)
+		var open *engine.OpenChecksError
+		if errors.As(err, &open) {
+			for _, c := range open.Open {
+				key := c.Kind + "/" + c.ManifestID
+				if w[key] == nil {
+					w[key] = map[string]string{}
+				}
+				w[key][c.ID] = "for the test"
+			}
+		} else if err != nil {
+			t.Fatal(err)
+		}
+		return w
+	}
+	set, err := e.ProposeSet(actingAs(adasBot), members, "the gap and its measure", waiveAll())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(set) != 2 || set[0].Kind != "KPI" || set[1].Kind != "Gap" || set[0].Set == "" || set[0].Set != set[1].Set {
+		t.Fatalf("the set, KPI first: %+v", set)
+	}
+	if _, err := e.AcceptProposal(actingAs(lee), set[1].ID, "lee@example.org", "", nil); !errors.Is(err, engine.ErrNotTheirs) {
+		t.Fatalf("someone else accepting: %v", err)
+	}
+	if _, err := e.AcceptProposal(actingAs(ada), set[1].ID, "ada@example.org", "reads right", nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range []struct{ kind, id string }{{"KPI", "k-disputes"}, {"Gap", "gap-disputes"}} {
+		vs, err := e.Versions(context.Background(), m.kind, m.id)
+		if err != nil || len(vs) != 1 || vs[0].Actor != "ada@example.org" || !strings.Contains(vs[0].Reason, "proposed by Claude") {
+			t.Fatalf("%s/%s saved: %+v, %v", m.kind, m.id, vs, err)
+		}
+	}
+	mine, _ := e.Proposals(actingAs(ada), store.ProposalFilter{Set: set[0].Set})
+	for _, p := range mine {
+		if p.Status != store.ProposalAccepted || p.Version != 1 {
+			t.Fatalf("each member accepted with its version: %+v", p)
+		}
+	}
+
+	// Declining one member declines the set.
+	members[0].Text = []byte(strings.Replace(string(gap), "Disputes are rare.", "Disputes are very rare.", 1))
+	members[1].Text = []byte(strings.Replace(string(kpi), "Share of", "The share of", 1))
+	again, err := e.ProposeSet(actingAs(adasBot), members, "sharper", waiveAll())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.DeclineProposal(actingAs(ada), again[0].ID, "ada@example.org", "not now"); err != nil {
+		t.Fatal(err)
+	}
+	if p, _ := e.Proposals(actingAs(ada), store.ProposalFilter{Set: again[0].Set}); p[0].Status != store.ProposalDeclined || p[1].Status != store.ProposalDeclined {
+		t.Fatalf("the set after declining one: %+v", p)
 	}
 }

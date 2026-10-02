@@ -3,8 +3,10 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,16 +15,16 @@ import (
 
 var _ store.ProposalStore = (*ManifestStore)(nil)
 
-const proposalColumns = `id, kind, manifest_id, op, text, series, item, state, base, reason, agent, for_person, at, status, decided_by, decided_at, decision_reason, version`
+const proposalColumns = `id, kind, manifest_id, op, text, series, item, state, base, reason, agent, for_person, at, status, decided_by, decided_at, decision_reason, version, waivers, set_id, set_index`
 
 type rowScanner interface{ Scan(...any) error }
 
 func scanProposal(r rowScanner) (store.Proposal, error) {
 	var p store.Proposal
 	var text, item sql.NullString
-	var at, decided string
+	var at, decided, waivers string
 	if err := r.Scan(&p.ID, &p.Kind, &p.ManifestID, &p.Op, &text, &p.Series, &item, &p.State, &p.Base, &p.Reason,
-		&p.Agent, &p.For, &at, &p.Status, &p.DecidedBy, &decided, &p.DecisionReason, &p.Version); err != nil {
+		&p.Agent, &p.For, &at, &p.Status, &p.DecidedBy, &decided, &p.DecisionReason, &p.Version, &waivers, &p.Set, &p.SetIndex); err != nil {
 		return store.Proposal{}, err
 	}
 	if text.Valid {
@@ -34,6 +36,11 @@ func scanProposal(r rowScanner) (store.Proposal, error) {
 	p.At, _ = time.Parse(seriesLayout, at)
 	if decided != "" {
 		p.DecidedAt, _ = time.Parse(seriesLayout, decided)
+	}
+	if waivers != "" {
+		if err := json.Unmarshal([]byte(waivers), &p.Waivers); err != nil {
+			return store.Proposal{}, fmt.Errorf("proposal %s waivers: %w", p.ID, err)
+		}
 	}
 	return p, nil
 }
@@ -47,9 +54,16 @@ func (m *ManifestStore) PutProposal(ctx context.Context, p store.Proposal) error
 	if p.Item != nil {
 		item = string(p.Item)
 	}
-	_, err := m.ex.ExecContext(ctx, `INSERT INTO proposals (id, kind, manifest_id, op, text, series, item, state, base, reason, agent, for_person, at, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.ID, p.Kind, p.ManifestID, p.Op, text, p.Series, item, p.State, p.Base, p.Reason, p.Agent, p.For, p.At.UTC().Format(seriesLayout), p.Status)
+	waivers, err := json.Marshal(p.Waivers)
+	if err != nil {
+		return err
+	}
+	if p.Waivers == nil {
+		waivers = []byte("[]")
+	}
+	_, err = m.ex.ExecContext(ctx, `INSERT INTO proposals (id, kind, manifest_id, op, text, series, item, state, base, reason, agent, for_person, at, status, waivers, set_id, set_index)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.Kind, p.ManifestID, p.Op, text, p.Series, item, p.State, p.Base, p.Reason, p.Agent, p.For, p.At.UTC().Format(seriesLayout), p.Status, string(waivers), p.Set, p.SetIndex)
 	return err
 }
 
@@ -66,7 +80,7 @@ func (m *ManifestStore) GetProposal(ctx context.Context, id string) (store.Propo
 func (m *ManifestStore) ListProposals(ctx context.Context, f store.ProposalFilter) ([]store.Proposal, error) {
 	var where []string
 	var args []any
-	for _, c := range []struct{ col, val string }{{"for_person", f.For}, {"kind", f.Kind}, {"manifest_id", f.ManifestID}, {"status", f.Status}} {
+	for _, c := range []struct{ col, val string }{{"for_person", f.For}, {"kind", f.Kind}, {"manifest_id", f.ManifestID}, {"status", f.Status}, {"set_id", f.Set}} {
 		if c.val != "" {
 			where = append(where, c.col+" = ?")
 			args = append(args, c.val)
@@ -103,4 +117,43 @@ func (m *ManifestStore) DecideProposal(ctx context.Context, id, status, by, reas
 		return store.Proposal{}, store.ErrProposalDecided
 	}
 	return p, err
+}
+
+// DecideProposalSet decides every proposal of a set in one transaction:
+// all of them, or none when any is decided already.
+func (m *ManifestStore) DecideProposalSet(ctx context.Context, set, status, by, reason string, at time.Time, versions map[string]int) ([]store.Proposal, error) {
+	decide := func(s *ManifestStore) ([]store.Proposal, error) {
+		members, err := s.ListProposals(ctx, store.ProposalFilter{Set: set})
+		if err != nil {
+			return nil, err
+		}
+		if len(members) == 0 || set == "" {
+			return nil, store.ErrNoProposal
+		}
+		for _, p := range members {
+			if p.Status != store.ProposalOpen {
+				return nil, store.ErrProposalDecided
+			}
+		}
+		var out []store.Proposal
+		for _, p := range members {
+			d, err := s.DecideProposal(ctx, p.ID, status, by, reason, at, versions[p.ID])
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, d)
+		}
+		sort.Slice(out, func(i, j int) bool { return out[i].SetIndex < out[j].SetIndex })
+		return out, nil
+	}
+	if m.db == nil {
+		return decide(m)
+	}
+	var out []store.Proposal
+	err := m.WithinTransaction(ctx, func(ctx context.Context, tx store.ManifestStore) error {
+		var err error
+		out, err = decide(tx.(*ManifestStore))
+		return err
+	})
+	return out, err
 }

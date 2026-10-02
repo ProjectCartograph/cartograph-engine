@@ -265,7 +265,7 @@ func (e *Engine) ApplyDirectory(ctx context.Context, actor string) ([]string, er
 		if t.byName[name] != "" {
 			continue
 		}
-		spec := map[string]any{"name": name}
+		spec := map[string]any{}
 		if dt.Parent != "" {
 			parent := t.byName[dt.Parent]
 			if parent == "" {

@@ -21,7 +21,7 @@ func TestStakeholderMapRules(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := e.Commit(ctx, "Programme", "prog1", []byte(
-		"apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: prog1\n  name: Prog\nspec:\n  name: Prog\n  aim: {change: Make things better}\n  leadTeam: t1\n"+
+		"apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: prog1\n  name: Prog\nspec:\n  aim: {change: Make things better}\n  leadTeam: t1\n"+
 			"  problems:\n    - problem: {situation: A gap}\n      change: {what: No more gap}\n"), "local", "seed"); err != nil {
 		t.Fatal(err)
 	}
@@ -100,9 +100,9 @@ func TestImportReadsEveryDocumentInAFile(t *testing.T) {
 	dir := t.TempDir()
 
 	mustWriteFile(t, filepath.Join(dir, "everything.yaml"),
-		"apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n"+
+		"apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec: {}\n"+
 			"---\n"+
-			"apiVersion: cartograph/v1\nkind: Resource\nmetadata:\n  id: depot-managers\n  name: Depot managers\nspec:\n  name: Depot managers\n  category: externalParty\n"+
+			"apiVersion: cartograph/v1\nkind: Resource\nmetadata:\n  id: depot-managers\n  name: Depot managers\nspec:\n  category: externalParty\n"+
 			"---\n"+
 			"apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p1\n  name: P\nspec:\n  team: t1\n"+
 			"  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"+
@@ -146,7 +146,7 @@ func TestSingleDocumentFileKeepsItsBytes(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 
-	original := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  # a comment nobody should lose\n  name: Team One\n"
+	original := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  # a comment nobody should lose\n  description: Team One\n"
 	mustWriteFile(t, filepath.Join(dir, "team.yaml"), original)
 
 	if _, err := e.ImportDir(ctx, dir, "bootstrap", "single doc"); err != nil {

@@ -1,0 +1,82 @@
+{
+  "locale": "en",
+  "kind": "KPIReadings",
+  "definition": "The actuals of one KPI: what it read, period by period, kept as one series beside the KPI rather than inside it. The KPI says what is measured, in what unit, which way is good and how often, and is written once; a reading says what the number was in one period, and a new one arrives every cycle. Keeping them apart means a new reading never looks like a change to the definition. Which periods exist is derived from the KPI's reporting cycle, never stored here, and a period is named by the month it ends. A period with no reading is one nobody has read yet, which is not a zero. Readings are not a KPI (the definition), not a baseline or a target (the two dated figures on the KPI), and not one file per reading: the series is one thing that grows.",
+  "fields": {
+    "/spec/kpi": {
+      "guide": "The KPI these are readings of. Its unit, direction and cycle are read from there and never restated here. One series per KPI.",
+      "good": [
+        "quality-pass-rate",
+        "collection-turnaround"
+      ]
+    },
+    "/metadata/name": {
+      "guide": "The KPI's name followed by readings, so the series is found beside its measure.",
+      "good": [
+        "Quality pass rate readings"
+      ],
+      "poor": [
+        {
+          "text": "Quality pass rate 2026",
+          "why": "A series is not cut by year: it is one series for the life of the KPI."
+        }
+      ]
+    },
+    "/spec/readings": {
+      "guide": "One entry for each period that has been read, in period order. One reading per period: two numbers for the same period is a disagreement, not data, and is refused on save. Leave out a period nobody has read; restate a number by changing its entry, not by adding a second one."
+    },
+    "/spec/readings/-/period": {
+      "guide": "The period the reading is for, as the month it ends (YYYY-MM), one of the periods the KPI's cycle lays out. On the seasonal cycle starting in September, periods end in November, February, May and August.",
+      "good": [
+        "2026-02, for the season from December to February",
+        "2026-03, for March on the monthly cycle"
+      ],
+      "poor": [
+        {
+          "text": "2025-12, for the season from December to February",
+          "why": "The month the period starts: a period is named by the month it ends, when its number exists."
+        },
+        {
+          "text": "2026-02, entered a second time with a corrected value",
+          "why": "Two readings for one period are refused: correct the existing entry, and mark it provisional while it may still change."
+        }
+      ]
+    },
+    "/spec/readings/-/value": {
+      "guide": "The number read for the period, in the unit the KPI names, as a plain number.",
+      "good": [
+        "64.5",
+        "33"
+      ],
+      "poor": [
+        {
+          "text": "64.5%",
+          "why": "The unit lives on the KPI, in one place; a reading is the number alone."
+        },
+        {
+          "text": "0, for a period nobody collected",
+          "why": "Zero is a reading. Leave the period out, and explain in the note of the next reading if the missing period needs saying."
+        }
+      ]
+    },
+    "/spec/readings/-/provisional": {
+      "guide": "Mark the reading provisional while the number may still be restated, such as when late forms are still being transcribed. Clear the mark once it is final."
+    },
+    "/spec/readings/-/note": {
+      "guide": "Why this number is what it is, when that needs saying: a change of method, a season unlike the others, a period that was only partly collected.",
+      "good": [
+        "The wet season brought more bruising than the standard allows for; the method did not change."
+      ],
+      "poor": [
+        {
+          "text": "Provisional",
+          "why": "That is the provisional mark's job, which a chart can show and a roll-up can act on."
+        },
+        {
+          "text": "Bad season.",
+          "why": "Says nothing a reader can use: say what made it different and whether the method changed."
+        }
+      ]
+    }
+  }
+}

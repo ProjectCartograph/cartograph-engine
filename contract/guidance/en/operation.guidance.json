@@ -1,0 +1,208 @@
+{
+  "locale": "en",
+  "kind": "Operation",
+  "definition": "An operation is continuing work with no end date: a service the organisation runs day in and day out (TAXONOMY.md, the definitions; D14). The first question about any work is whether it ends: work that ends is a project or a programme, work that keeps running is an operation. An operation carries the name of the service (D17); a project that sets it up or changes it is named for that change, hands over to it, and the operation's team accepts the handover. It has a service owner, the role accountable for it end to end (ITIL), and a team that runs it (D23, D27). Its service levels are watched through indicators. Business as usual sits inside a programme's boundary, so an operation names the programmes it is part of, if any (D2). An operation is not a project (it has no closure), not a team (the team runs it; the operation is the service), and not a data source (a source is where records are kept; an operation may read or produce them). Its checks advise and never block.",
+  "steps": {},
+  "fields": {
+    "/metadata/name": {
+      "guide": "The name of the service, as the people who use it would say it. The service keeps its name; a project that changes it is named for the change.",
+      "good": [
+        "Quality Check Service",
+        "Collection Service",
+        "Member Register Service"
+      ],
+      "poor": [
+        {
+          "text": "Quality Check Rollout",
+          "why": "Names a change that ends, which is a project landing in the service, not the service itself."
+        },
+        {
+          "text": "Quality Team",
+          "why": "Names the team that runs the service, not the service."
+        }
+      ]
+    },
+    "/spec/purpose": {
+      "guide": "What the service does, day in and day out, and what for, in one sentence. It describes continuing work: no end date, no target figure.",
+      "good": [
+        "Check every delivery for quality and route failures into rework.",
+        "Move produce from every depot to the buyer within a day of intake.",
+        "Keep one record per member, current enough to pay, count and contact them from."
+      ],
+      "poor": [
+        {
+          "text": "Introduce quality checks at every depot by the end of 2026.",
+          "why": "Work that ends: introducing the checks is a project that hands over to this service."
+        },
+        {
+          "text": "Achieve a 90% quality pass rate.",
+          "why": "A target, not what the service does: the figure belongs to an indicator."
+        },
+        {
+          "text": "Quality.",
+          "why": "A topic, not a service: say what it does and for whom."
+        }
+      ]
+    },
+    "/spec/serviceOwner": {
+      "guide": "The role accountable for the service end to end (ITIL's service owner), from the Resource catalogue. It is the role that accepts a project's handover into the service. A role, never a person; when no role fits, define the role first.",
+      "good": [
+        "operations-lead",
+        "quality-reviewer"
+      ],
+      "poor": [
+        {
+          "text": "Ada Okafor",
+          "why": "A person, not a role: Cartograph names roles, and people hold them."
+        },
+        {
+          "text": "quality-team",
+          "why": "A team, which goes in the team field; the service owner is one accountable role."
+        }
+      ]
+    },
+    "/spec/team": {
+      "guide": "The team that runs the service, from the team tree. It decides whose work the operation is. When no team fits, define the team first.",
+      "good": [
+        "quality-team",
+        "depot-network-team"
+      ],
+      "poor": [
+        {
+          "text": "depot-supervisor",
+          "why": "A role, not a team: the role accountable goes in the service owner."
+        }
+      ]
+    },
+    "/spec/serviceWindow": {
+      "guide": "The hours and days the service runs, plainly enough that a user knows when they can rely on it.",
+      "good": [
+        "Every delivery day, ongoing.",
+        "Daily through the season, reduced rounds out of season.",
+        "Weekdays, 08:00 to 17:00."
+      ],
+      "poor": [
+        {
+          "text": "As needed.",
+          "why": "Nobody can plan around it: say when the service runs."
+        },
+        {
+          "text": "2025-09 to 2026-06",
+          "why": "Dates with an end describe a project; an operation keeps running."
+        }
+      ]
+    },
+    "/spec/programmes": {
+      "guide": "The programmes this service is part of. Name one only when the programme coordinates this service towards its change; an operation outside any programme is normal, and nothing advises against it. The programme reads its components back from here.",
+      "good": [
+        "quality-improvement-programme"
+      ],
+      "poor": [
+        {
+          "text": "market-access-programme, because the same team works on it",
+          "why": "Sharing a team or a stakeholder is the portfolio test failing, not membership: name a programme only when it steers this service towards its change."
+        }
+      ]
+    },
+    "/spec/kpis": {
+      "guide": "The indicators that say whether the service is running at the level it should: its service levels, from the KPI register. When none exists, define the KPI first.",
+      "good": [
+        "quality-pass-rate",
+        "collection-turnaround"
+      ],
+      "poor": [
+        {
+          "text": "member-season-earnings",
+          "why": "Measures a benefit of the wider strategy, which this service only contributes to; a service level says how the service itself performs."
+        }
+      ]
+    },
+    "/spec/data": {
+      "guide": "The service's two-way relationship with data: what it reads, and what it creates or adds to, with where that lands."
+    },
+    "/spec/data/consumes/-/source": {
+      "guide": "A data source the service reads and never writes back to, from the data source register.",
+      "good": [
+        "member-register"
+      ]
+    },
+    "/spec/data/consumes/-/purpose": {
+      "guide": "What the service uses the data for, in one sentence.",
+      "good": [
+        "Identify members with deliveries due for a check this season."
+      ],
+      "poor": [
+        {
+          "text": "Reference data.",
+          "why": "Says what the data is, not what the service does with it."
+        }
+      ]
+    },
+    "/spec/data/consumes/-/handoff": {
+      "guide": "How the data reaches the service: a feed, a file transfer, a shared database, manual re-entry or paper."
+    },
+    "/spec/data/consumes/-/personalData": {
+      "guide": "Whether the data used holds personal data, sensitive personal data, or none."
+    },
+    "/spec/data/produces/-/output": {
+      "guide": "What the service puts into the world: records in an existing source, documents or files, an extract or report, or a new data source."
+    },
+    "/spec/data/produces/-/sink": {
+      "guide": "Where the produced data lands: the register, system or store that holds it afterwards.",
+      "good": [
+        "quality-check-tool",
+        "collection-log"
+      ]
+    },
+    "/spec/data/produces/-/purpose": {
+      "guide": "What the produced data is for, in one sentence.",
+      "good": [
+        "Record quality check results for each delivery."
+      ],
+      "poor": [
+        {
+          "text": "Data.",
+          "why": "Says nothing about what is recorded or why."
+        }
+      ]
+    },
+    "/spec/data/produces/-/refresh": {
+      "guide": "How often the data is brought up to date where it lands."
+    },
+    "/spec/data/produces/-/personalData": {
+      "guide": "Whether the produced data holds personal data, sensitive personal data, or none."
+    },
+    "/spec/mandate": {
+      "guide": "What requires or authorises the service: a decision, policy, law or regulation, contract, business case or request, each with its title and, where there is one, its reference, date and issuing body."
+    },
+    "/spec/mandate/-/title": {
+      "guide": "The title of the decision or document, as it is written.",
+      "good": [
+        "Produce quality standard"
+      ],
+      "poor": [
+        {
+          "text": "We have always done it",
+          "why": "Habit is not a mandate: leave the mandate empty, or name the decision or policy that requires the service."
+        }
+      ]
+    },
+    "/spec/mandate/-/issuedBy": {
+      "guide": "The body that issued it, never a person.",
+      "good": [
+        "Cooperative Board"
+      ]
+    },
+    "/spec/notes": {
+      "guide": "Anything a reader needs that has no field of its own. Not a place for what a field already holds."
+    }
+  },
+  "links": {},
+  "checks": {
+    "service-purpose": "Say what the service does, day in and day out.",
+    "service-owner": "Name the role accountable for the service end to end as its service owner, from the Resource catalogue.",
+    "service-hours": "Give the hours and days the service runs.",
+    "alignment-programmes": "Name a programme only when the service is one of its components; an operation outside any programme needs nothing here.",
+    "measures-kpis": "Name at least one indicator that shows the service's level."
+  }
+}

@@ -24,7 +24,6 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "name",
         "definition",
         "unit",
         "direction",
@@ -32,6 +31,7 @@
       ],
       "properties": {
         "name": {
+          "description": "Deprecated: the name is metadata.name, as Kubernetes keeps it. Read from a manifest saved before 2.6.0 and folded into metadata.name; never written.",
           "type": "string",
           "minLength": 1
         },
@@ -53,7 +53,8 @@
           ]
         },
         "baseline": {
-          "$ref": "common.schema.json#/$defs/ValueAndDate"
+          "$ref": "common.schema.json#/$defs/KeyResultBaseline",
+          "description": "Today's figure and when it was taken, or an admitted unknown with the reason and when it will be known: every measure has one or the other (TAXONOMY.md D25, D26)."
         },
         "target": {
           "$ref": "common.schema.json#/$defs/ValueAndDate"
@@ -72,7 +73,7 @@
             "$ref": "common.schema.json#/$defs/Slug",
             "x-cartograph-ref": "Goal"
           },
-          "description": "Alignment to outcomes only (a kind rule)."
+          "description": "The aims this indicator measures, at any level: SMART's Measurable is met through a key result or an aligned indicator, at every level (TAXONOMY.md D25)."
         },
         "resultLevel": {
           "type": "string",

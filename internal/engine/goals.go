@@ -389,6 +389,12 @@ func (e *Engine) GoalChecks(ctx context.Context, id string) ([]GoalCheck, error)
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
 		return nil, fmt.Errorf("parse Goal/%s: %w", id, err)
 	}
+	return e.goalChecksOf(ctx, id, doc)
+}
+
+// goalChecksOf computes the checks for a goal's document, saved or not: a
+// draft, or what an agent proposes.
+func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any) ([]GoalCheck, error) {
 	spec, _ := doc["spec"].(map[string]any)
 	if spec == nil {
 		spec = map[string]any{}
@@ -405,6 +411,73 @@ func (e *Engine) GoalChecks(ctx context.Context, id string) ([]GoalCheck, error)
 	horizon := e.effectiveHorizon(read, spec)
 	_, checks := e.goalSmart(read, spec, kpis, horizon)
 	checks = append(checks, e.contextChecks(ctx, spec, horizon)...)
+
+	// The strategy is read top-down (D24): a goal is met through the
+	// objectives under it, an objective through the outcomes under it. One
+	// with nothing under it says what is wanted and not how anyone will
+	// see it happen.
+	var under GoalCheck
+	below := ""
+	switch level {
+	case "goal":
+		under, below = GoalCheck{ID: "has-objectives"}, "objective"
+	case "objective":
+		under, below = GoalCheck{ID: "has-outcomes"}, "outcome"
+	}
+	if below != "" {
+		children, err := e.goalsUnder(ctx, id, below)
+		if err != nil {
+			return nil, err
+		}
+		if len(children) > 0 {
+			under.State, under.Message = goalCheckOK, fmt.Sprintf("%d %s%s under it.", len(children), below, plural(len(children)))
+		} else {
+			under.State, under.Message = goalCheckWarn, fmt.Sprintf("No %s under it yet: say what will show it is met.", below)
+		}
+		checks = append(checks, under)
+	}
+	// And each outcome under an objective closes a gap, so the objective
+	// answers a shortfall someone measured, not only an intention.
+	if level == "objective" {
+		ids, err := e.goalIDsUnder(ctx, id, "outcome")
+		if err != nil {
+			return nil, err
+		}
+		var unanswered []string
+		for _, child := range ids {
+			closing, err := e.gapsClosing(ctx, child.id)
+			if err != nil {
+				return nil, err
+			}
+			if len(closing) == 0 {
+				unanswered = append(unanswered, child.name)
+			}
+		}
+		switch {
+		case len(ids) == 0:
+		case len(unanswered) == 0:
+			checks = append(checks, GoalCheck{ID: "outcomes-close-gaps", State: goalCheckOK, Message: "Every outcome under it closes a gap."})
+		default:
+			checks = append(checks, GoalCheck{ID: "outcomes-close-gaps", State: goalCheckWarn,
+				Message: "Closes no gap yet: " + englishList(unanswered) + ". Name the gap each closes, or define it."})
+		}
+	}
+
+	// An outcome closes a gap (D24): which gap, and so what shortfall it
+	// answers. The link is the gap's, so this reads the gaps that name it.
+	if level == "outcome" {
+		closing, err := e.gapsClosing(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if len(closing) > 0 {
+			checks = append(checks, GoalCheck{ID: "closes-gap", State: goalCheckOK,
+				Message: "Closes " + englishList(closing) + "."})
+		} else {
+			checks = append(checks, GoalCheck{ID: "closes-gap", State: goalCheckWarn,
+				Message: "No gap names this outcome yet. Say which gap it closes, or define the gap first."})
+		}
+	}
 
 	if krs, _ := spec["keyResults"].([]any); len(krs) > 3 {
 		checks = append(checks, GoalCheck{

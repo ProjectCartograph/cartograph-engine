@@ -25,7 +25,6 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "name",
         "dimension"
       ],
       "properties": {
@@ -33,7 +32,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 60,
-          "description": "What this unit is called, as it reads beside a number."
+          "description": "Deprecated: the name is metadata.name, as Kubernetes keeps it. Read from a manifest saved before 2.6.0 and folded into metadata.name; never written."
         },
         "symbol": {
           "type": "string",

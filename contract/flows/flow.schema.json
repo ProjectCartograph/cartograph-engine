@@ -91,6 +91,13 @@
           "items": {
             "$ref": "#/$defs/field"
           }
+        },
+        "links": {
+          "type": "array",
+          "description": "Other manifests this step settles a link with, where the link is held on their side: a gap names the outcomes that would close it, so an outcome's step asks which gap it closes. Each is established before or with this manifest, reusing an existing one first.",
+          "items": {
+            "$ref": "#/$defs/link"
+          }
         }
       }
     },
@@ -148,6 +155,55 @@
             "type": "string"
           },
           "description": "Keys of the checks this field answers (SMART marks, completeness lines); shown beside the field as marks, never as prose."
+        },
+        "when": {
+          "$ref": "#/$defs/when"
+        }
+      }
+    },
+    "link": {
+      "type": "object",
+      "required": [
+        "kind",
+        "path"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "The kind that holds the link."
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "Where on that kind the link is held, as a JSON pointer; it names this manifest's id."
+        },
+        "when": {
+          "$ref": "#/$defs/when"
+        },
+        "check": {
+          "type": "string",
+          "description": "The check that reports whether the link is made."
+        }
+      }
+    },
+    "when": {
+      "type": "object",
+      "required": [
+        "path",
+        "in"
+      ],
+      "description": "Applies only when the field at path holds one of the values in: an outcome's links, not a goal's.",
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "in": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
         }
       }
     }

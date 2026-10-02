@@ -1,0 +1,87 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "stakeholdermap",
+    "name": "Stakeholder map"
+  },
+  "spec": {
+    "for": "StakeholderMap",
+    "steps": [
+      {
+        "key": "scope",
+        "title": "Scope",
+        "guide": "The piece of work this map is about.",
+        "fields": [
+          {
+            "path": "/spec/scope",
+            "control": "reference",
+            "hint": "A project, a programme or an operation."
+          },
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          }
+        ]
+      },
+      {
+        "key": "identify",
+        "title": "Stakeholders",
+        "guide": "Who can affect this work or is affected by it, and whether directly or indirectly.",
+        "fields": [
+          {
+            "path": "/spec/entries",
+            "control": "list",
+            "key": "resource",
+            "fields": [
+              {
+                "path": "/resource",
+                "control": "reference"
+              },
+              {
+                "path": "/tier",
+                "control": "choice",
+                "title": "Type"
+              }
+            ],
+            "checks": [
+              "stakeholders-identified"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "assess",
+        "title": "Influence and interest",
+        "guide": "How much each stakeholder can change what happens, and how much they care.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/entries",
+            "control": "list",
+            "key": "resource",
+            "hint": "Leave a score blank until you know it.",
+            "fields": [
+              {
+                "path": "/resource",
+                "control": "readonly"
+              },
+              {
+                "path": "/influence",
+                "control": "number"
+              },
+              {
+                "path": "/interest",
+                "control": "number"
+              }
+            ],
+            "checks": [
+              "stakeholders-placed"
+            ]
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}
