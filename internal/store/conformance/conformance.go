@@ -504,11 +504,22 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 			must(t, tx.PutVersion(ctx, store.Version{Kind: "Goal", ID: "g2", Number: 1, YAML: []byte("metadata:\n  id: g2\n"), Actor: "a", Reason: "r", On: now}))
 			return errRollback
 		})
-		got, err := el.Events(ctx, cursor, 1000)
-		must(t, err)
 		want := []string{"version Goal/g1 1 a@example.org", "version Goal/g1 2 b@example.org"}
 		if _, ok := s.(store.SeriesStore); ok {
 			want = append(want, "series KPIReadings/r1 2026-01 c@example.org")
+		}
+		// An adapter may hold an event back while any transaction older
+		// than it is still open, so nothing commits behind a cursor;
+		// another test's transaction on a shared server can be one. The
+		// events show once it ends, so wait for them as a reader would.
+		var got []store.Event
+		for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+			var err error
+			got, err = el.Events(ctx, cursor, 1000)
+			must(t, err)
+			if len(got) >= len(want) || time.Now().After(deadline) {
+				break
+			}
 		}
 		if len(got) != len(want) {
 			t.Fatalf("events after %d: %+v, want %v", cursor, got, want)
