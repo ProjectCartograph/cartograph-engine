@@ -105,13 +105,19 @@ var rules = map[string][]string{
 	"internal/kinds/": join([]string{"internal/engine", "internal/store", "internal/codec", "internal/printer", "internal/auth"}, outer, adapters, drivers),
 
 	// Ports: the entities only. The identity ports are HTTP middleware,
-	// so net/http is theirs; nothing else from the outer ring is.
-	"internal/store":    join([]string{"internal/engine", "internal/kinds", "internal/store/", "internal/codec", "pkg/client", "pkg/uiconformance"}, outer, adapters, drivers),
-	"internal/codec":    join([]string{"internal", "pkg", "cmd"}, drivers),
-	"internal/printer":  join([]string{"internal", "pkg", "cmd"}, drivers),
-	"internal/crdt":     join([]string{"internal", "pkg", "cmd"}, drivers),
-	"internal/fanout":   join([]string{"internal", "pkg", "cmd"}, drivers),
-	"internal/auth":     join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
+	// so net/http is theirs; nothing else from the outer ring is, and
+	// auth knows only the identity types beneath it.
+	"internal/store":   join([]string{"internal/engine", "internal/kinds", "internal/store/", "internal/codec", "pkg/client", "pkg/uiconformance"}, outer, adapters, drivers),
+	"internal/codec":   join([]string{"internal", "pkg", "cmd"}, drivers),
+	"internal/printer": join([]string{"internal", "pkg", "cmd"}, drivers),
+	"internal/crdt":    join([]string{"internal", "pkg", "cmd"}, drivers),
+	"internal/fanout":  join([]string{"internal", "pkg", "cmd"}, drivers),
+	"internal/auth": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/codec", "internal/printer",
+		"internal/crdt", "internal/fanout", "internal/contract", "internal/sentence", "internal/syncserver", "internal/yamlfmt",
+		"pkg", "cmd"}, outer, adapters, without(drivers, "net/http")),
+	// Who a request runs as and what they ask, without HTTP: the part of
+	// the identity port the engine may know. It stands alone.
+	"internal/identity": leaf,
 	"pkg/client":        join([]string{"internal", "pkg/client/", "pkg/uiconformance", "cmd"}, drivers),
 	"pkg/uiconformance": join([]string{"internal", "pkg/client/", "cmd"}, drivers),
 

@@ -5,12 +5,6 @@ import (
 	"strings"
 )
 
-// Verbs an Action carries. Read is any safe method; Write is the rest.
-const (
-	VerbRead  = "read"
-	VerbWrite = "write"
-)
-
 // ActionFor classifies a request: its verb from the method, and the
 // manifest it concerns from the path when the path names one
 // (/manifests/{kind}/{id}...). Everything else (the goal tree, the
