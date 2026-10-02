@@ -35,9 +35,10 @@ import (
 // protocolVersion is the only automerge-repo protocol version there is.
 const protocolVersion = "1"
 
-// recheck is how often a connection offers each of its documents to its
-// peer again, so a change whose fan-out hint was lost still arrives.
-const recheck = 15 * time.Second
+// defaultRecheck is how often a connection offers each of its documents
+// to its peer again, so a change whose fan-out hint was lost still
+// arrives.
+const defaultRecheck = 15 * time.Second
 
 // maxMessage bounds one inbound message. A sync message carrying a large
 // document's whole history can be big; anything beyond this is refused.
@@ -82,10 +83,12 @@ type Server struct {
 	log    *slog.Logger
 	peerID string
 
-	ping  time.Duration
-	mu    sync.Mutex
-	rooms map[string]*room // by document id
-	conns map[*conn]struct{}
+	ping time.Duration
+	// recheck bounds what a lost fan-out hint costs (WithRecheck).
+	recheck time.Duration
+	mu      sync.Mutex
+	rooms   map[string]*room // by document id
+	conns   map[*conn]struct{}
 
 	received, sent, refused atomic.Int64
 }
@@ -98,6 +101,10 @@ type Option func(*Server)
 // nginx or an AWS ALB) and a dead one is noticed. 0 turns pings off.
 func WithPing(d time.Duration) Option { return func(s *Server) { s.ping = d } }
 
+// WithRecheck sets how often a connection offers its documents again
+// whether or not a hint arrived: the most a lost hint can delay a change.
+func WithRecheck(d time.Duration) Option { return func(s *Server) { s.recheck = d } }
+
 // New returns a server over the engine's shared drafts. authz decides,
 // per document, whether a peer may read or write it.
 func New(shared *engine.Shared, fan fanout.Bus, authz auth.Authorizer, log *slog.Logger, opts ...Option) *Server {
@@ -108,7 +115,7 @@ func New(shared *engine.Shared, fan fanout.Bus, authz auth.Authorizer, log *slog
 		log = slog.Default()
 	}
 	s := &Server{shared: shared, fan: fan, authz: authz, log: log, peerID: "cartograph-" + shared.Replica(),
-		ping: 20 * time.Second, rooms: map[string]*room{}, conns: map[*conn]struct{}{}}
+		ping: 20 * time.Second, recheck: defaultRecheck, rooms: map[string]*room{}, conns: map[*conn]struct{}{}}
 	for _, o := range opts {
 		o(s)
 	}
@@ -364,7 +371,7 @@ func (c *conn) run(ctx context.Context) error {
 		return err
 	}
 
-	tick := time.NewTicker(recheck)
+	tick := time.NewTicker(c.s.recheck)
 	defer tick.Stop()
 	go func() {
 		for {

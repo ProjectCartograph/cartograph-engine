@@ -130,7 +130,10 @@ func replicas(t *testing.T, n int, authz auth.Authorizer, ports backend) []*http
 			}
 		}
 		log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
-		srv := httptest.NewServer(syncserver.New(e.Shared(), bus, authz, log))
+		// A second's recheck: a fan-out hint lost while the shared
+		// database is busy (it is, under the whole suite) costs a second
+		// here, as it costs at most the default 15 in service.
+		srv := httptest.NewServer(syncserver.New(e.Shared(), bus, authz, log, syncserver.WithRecheck(time.Second)))
 		t.Cleanup(func() { srv.Close(); bus.Close() })
 		out = append(out, srv)
 		replicaEngines = append(replicaEngines, e)
@@ -153,6 +156,16 @@ type peer struct {
 	st    crdt.SyncState
 	eph   chan msg
 	syncs int // sync messages received
+
+	// in is every frame the server sends, read by one goroutine. A
+	// read that waits with a deadline would close the connection when
+	// the deadline passes (coder/websocket), so waiting happens here.
+	in chan frame
+}
+
+type frame struct {
+	b   []byte
+	err error
 }
 
 func connect(t *testing.T, srv *httptest.Server, id, docID string) *peer {
@@ -171,7 +184,16 @@ func connect(t *testing.T, srv *httptest.Server, id, docID string) *peer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := &peer{t: t, ws: ws, id: id, docID: docID, doc: doc, st: st, eph: make(chan msg, 16)}
+	p := &peer{t: t, ws: ws, id: id, docID: docID, doc: doc, st: st, eph: make(chan msg, 16), in: make(chan frame, 64)}
+	go func() {
+		for {
+			_, b, err := ws.Read(context.Background())
+			p.in <- frame{b, err}
+			if err != nil {
+				return
+			}
+		}
+	}()
 	t.Cleanup(func() { ws.Close(websocket.StatusNormalClosure, ""); doc.Close(); st.Close() })
 	p.send(msg{Type: "join", SenderID: id, SupportedProtocolVersions: []string{"1"}})
 	if m := p.read(); m.Type != "peer" || m.SelectedProtocolVersion != "1" || m.TargetID != id {
@@ -198,17 +220,28 @@ func (p *peer) send(m msg) {
 }
 
 func (p *peer) read() msg {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_, b, err := p.ws.Read(ctx)
-	if err != nil {
-		p.t.Fatalf("%s: read: %v", p.id, err)
-	}
-	var m msg
-	if err := cbor.Unmarshal(b, &m); err != nil {
-		p.t.Fatal(err)
+	m, ok := p.next(5 * time.Second)
+	if !ok {
+		p.t.Fatalf("%s: nothing to read in 5s", p.id)
 	}
 	return m
+}
+
+// next returns the next message, or false when none arrives in wait.
+func (p *peer) next(wait time.Duration) (msg, bool) {
+	select {
+	case f := <-p.in:
+		if f.err != nil {
+			p.t.Fatalf("%s: read: %v", p.id, f.err)
+		}
+		var m msg
+		if err := cbor.Unmarshal(f.b, &m); err != nil {
+			p.t.Fatal(err)
+		}
+		return m, true
+	case <-time.After(wait):
+		return msg{}, false
+	}
 }
 
 // until runs the protocol until cond holds: answering every sync
@@ -222,18 +255,9 @@ func (p *peer) until(cond func() bool) {
 			p.t.Fatalf("%s: condition not met; document is %v", p.id, j)
 		}
 		p.offer()
-		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
-		_, b, err := p.ws.Read(ctx)
-		cancel()
-		if err != nil {
-			if ctx.Err() != nil {
-				continue
-			}
-			p.t.Fatalf("%s: read: %v", p.id, err)
-		}
-		var m msg
-		if err := cbor.Unmarshal(b, &m); err != nil {
-			p.t.Fatal(err)
+		m, ok := p.next(200 * time.Millisecond)
+		if !ok {
+			continue
 		}
 		switch m.Type {
 		case "sync":
@@ -271,18 +295,9 @@ func pump(t *testing.T, peers []*peer, cond func() bool) {
 // step offers local changes and handles at most one message.
 func (p *peer) step(wait time.Duration) {
 	p.offer()
-	ctx, cancel := context.WithTimeout(context.Background(), wait)
-	defer cancel()
-	_, b, err := p.ws.Read(ctx)
-	if err != nil {
-		if ctx.Err() != nil {
-			return
-		}
-		p.t.Fatalf("%s: read: %v", p.id, err)
-	}
-	var m msg
-	if err := cbor.Unmarshal(b, &m); err != nil {
-		p.t.Fatal(err)
+	m, ok := p.next(wait)
+	if !ok {
+		return
 	}
 	switch m.Type {
 	case "sync":
