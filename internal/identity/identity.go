@@ -8,6 +8,7 @@ package identity
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 // Principal is who a request runs as.
@@ -23,6 +24,21 @@ type Principal struct {
 	Roles []string
 	// Anonymous is true when no authenticator identified anyone.
 	Anonymous bool
+	// Agent names the agent acting for this person, through MCP
+	// (docs/adr/0016); empty when the person acts themself. An agent
+	// holds its person's authority and no more, and may read and propose
+	// but not make the record: that waits for the person.
+	Agent string
+	// Delegated is a principal an agent grant carries, not a sign-in: no
+	// directory groups came with the request, so the person's roles and
+	// teams are the ones recorded at their last sign-in.
+	Delegated bool
+}
+
+// Person is the principal without its agent: the person it acts for.
+func (p Principal) Person() Principal {
+	p.Agent = ""
+	return p
 }
 
 // Anonymous is the principal of a request nobody identified.
@@ -31,14 +47,23 @@ var Anonymous = Principal{Subject: "", Anonymous: true}
 // Actor is what a write records: the subject, or fallback for an
 // anonymous principal (a vault's spec.operator, typically).
 func (p Principal) Actor(fallback string) string {
-	if p.Anonymous || p.Subject == "" {
-		return fallback
+	who := p.Subject
+	if p.Anonymous || who == "" {
+		who = fallback
 	}
-	return p.Subject
+	if p.Agent != "" {
+		return who + " via " + p.Agent
+	}
+	return who
 }
 
 // ErrForbidden is returned by an Authorizer that refuses an action.
 var ErrForbidden = errors.New("forbidden")
+
+// ErrAgentProposes refuses an agent something that makes the record: a
+// version, a reading, a state change, a deletion. It may propose it, and
+// its person confirms (docs/adr/0016).
+var ErrAgentProposes = fmt.Errorf("%w: an agent proposes this, and its person confirms it", ErrForbidden)
 
 // Verbs an Action carries. Read is any safe method; Write is the rest.
 const (
@@ -67,6 +92,7 @@ const (
 	ResourceAccess  = "access"  // the access list
 	ResourceVault   = "vault"   // applying and recovering the vault
 	ResourceSession = "session" // who the caller is
+	ResourceAgent   = "agent"   // acting through an agent at all
 )
 
 // Change is what one write does to one manifest.
@@ -100,6 +126,10 @@ type Grants struct {
 	// Teams are the teams the principal acts for, without the teams
 	// beneath them.
 	Teams []string
+	// Agents is whether the principal may act through an agent: one of
+	// their roles is allowed agents, and an administrator has not turned
+	// theirs off (docs/adr/0016).
+	Agents bool
 }
 
 // Scope is how much of a kind a principal may write.

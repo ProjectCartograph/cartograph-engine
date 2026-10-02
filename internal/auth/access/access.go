@@ -55,6 +55,16 @@ func (p Policy) Authorize(ctx context.Context, pr auth.Principal, a auth.Action)
 	if err != nil {
 		return err
 	}
+	// An agent acts only for someone whose roles allow agents and whose
+	// agents an administrator has not turned off (docs/adr/0016).
+	if pr.Agent != "" || a.Resource == auth.ResourceAgent {
+		if !g.Agents {
+			return fmt.Errorf("%w: agents are not enabled for you", auth.ErrForbidden)
+		}
+		if a.Resource == auth.ResourceAgent {
+			return nil
+		}
+	}
 	// The access list holds everyone's address and what they hold:
 	// administrators read it, nobody else.
 	if a.Verb == auth.VerbRead && a.Resource != auth.ResourceAccess {

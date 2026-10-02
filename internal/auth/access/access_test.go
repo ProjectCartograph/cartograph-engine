@@ -129,3 +129,41 @@ func TestScope(t *testing.T) {
 		t.Fatalf("unlisted: %s, %v", got, err)
 	}
 }
+
+// An agent acts only for someone its roles allow agents for, and an
+// administrator can turn one person's off; within that, it has its
+// person's authority and no more (docs/adr/0016).
+func TestAgents(t *testing.T) {
+	agent := someone
+	agent.Agent = "Claude"
+	allowed := auth.Grants{Listed: true, Roles: []string{auth.RoleContributor}, Teams: []string{curriculum}, Agents: true}
+	notAllowed := allowed
+	notAllowed.Agents = false
+	ctx := context.Background()
+	read := auth.Action{Verb: auth.VerbRead, Kind: "Goal", ID: "g"}
+	use := auth.Action{Verb: auth.VerbRead, Resource: auth.ResourceAgent}
+
+	for name, c := range map[string]struct {
+		g    auth.Grants
+		who  auth.Principal
+		a    auth.Action
+		want bool
+	}{
+		"an allowed agent reads":                       {allowed, agent, read, true},
+		"an allowed agent uses agents":                 {allowed, agent, use, true},
+		"an allowed agent drafts its team's work":      {allowed, agent, write("Project", chains([]string{curriculum}, []string{curriculum})), true},
+		"an allowed agent has no more than its person": {allowed, agent, write("Project", chains([]string{assessment}, []string{assessment})), false},
+		"an agent not allowed may not read":            {notAllowed, agent, read, false},
+		"an agent not allowed may not use agents":      {notAllowed, agent, use, false},
+		"its person, without the agent, still reads":   {notAllowed, someone, read, true},
+		"a person not allowed agents is told so":       {notAllowed, someone, use, false},
+	} {
+		err := policy(c.g).Authorize(ctx, c.who, c.a)
+		if (err == nil) != c.want {
+			t.Errorf("%s: %v", name, err)
+		}
+		if err != nil && !errors.Is(err, auth.ErrForbidden) {
+			t.Errorf("%s: %v is not ErrForbidden", name, err)
+		}
+	}
+}

@@ -37,6 +37,9 @@ var Anonymous = identity.Anonymous
 // ErrForbidden is returned by an Authorizer that refuses an action.
 var ErrForbidden = identity.ErrForbidden
 
+// ErrAgentProposes refuses an agent what its person must confirm.
+var ErrAgentProposes = identity.ErrAgentProposes
+
 // Verbs, resources, roles and scopes, as identity names them.
 const (
 	VerbRead           = identity.VerbRead
@@ -44,6 +47,7 @@ const (
 	ResourceAccess     = identity.ResourceAccess
 	ResourceVault      = identity.ResourceVault
 	ResourceSession    = identity.ResourceSession
+	ResourceAgent      = identity.ResourceAgent
 	RoleReader         = identity.RoleReader
 	RoleContributor    = identity.RoleContributor
 	RoleStrategyEditor = identity.RoleStrategyEditor

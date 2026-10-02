@@ -52,6 +52,11 @@ func (a *Authorizer) Authorize(_ context.Context, p auth.Principal, act auth.Act
 		return fmt.Errorf("%w: sign in to %s", auth.ErrForbidden, act.Verb)
 	}
 	canWrite := a.has(p, a.write)
+	if act.Resource == auth.ResourceAgent {
+		// Without an access list, anyone who may read may use an agent;
+		// the agent ceiling still holds (docs/adr/0016).
+		act.Verb = auth.VerbRead
+	}
 	switch act.Verb {
 	case auth.VerbRead:
 		if canWrite || len(a.read) == 0 || a.has(p, a.read) {
