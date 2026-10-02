@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -23,15 +24,17 @@ import (
 type Engine struct {
 	manifests store.ManifestStore
 	ops       store.OperationalStore
-	state     store.StateStore  // nil when the store has no apply gate
-	bundles   store.BundleStore // nil when nowhere keeps handoff bundles
-	codec     codec.Codec       // the manifest syntax; YAML unless told otherwise
-	bus       Bus               // event fan-out; in-process unless told otherwise
-	crdt      crdt.Engine       // the CRDT under shared drafts (docs/adr/0007)
-	docs      store.DocStore    // where shared drafts are kept
-	fan       fanout.Bus        // hints between replicas (docs/adr/0008)
-	shared    *Shared           // built when crdt, docs and fan are all set
-	docCache  int               // the shared-document cache bound; 0 means the default
+	state     store.StateStore    // nil when the store has no apply gate
+	bundles   store.BundleStore   // nil when nowhere keeps handoff bundles
+	codec     codec.Codec         // the manifest syntax; YAML unless told otherwise
+	bus       Bus                 // event fan-out; in-process unless told otherwise
+	crdt      crdt.Engine         // the CRDT under shared drafts (docs/adr/0007)
+	docs      store.DocStore      // where shared drafts are kept
+	fan       fanout.Bus          // hints between replicas (docs/adr/0008)
+	shared    *Shared             // built when crdt, docs and fan are all set
+	docCache  int                 // the shared-document cache bound; 0 means the default
+	authz     identity.Authorizer // asked again at every write (docs/adr/0011); nil asks nothing
+	teamCache teamCache           // the team tree, for team chains
 	schemas   *schemaSet
 	refRules  map[string][]refRule
 }
@@ -245,6 +248,9 @@ func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, 
 	if len(problems) > 0 {
 		return Version{}, &ValidationError{Problems: problems}
 	}
+	if err := e.guardDoc(ctx, kind, id, doc); err != nil {
+		return Version{}, err
+	}
 
 	// Compute next version number: use highest snapshot number (from ListVersions), not working copy number
 	// Working copy has Number=0; snapshots have Number≥1. Always use highest snapshot + 1.
@@ -272,6 +278,7 @@ func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, 
 	if err != nil {
 		return Version{}, err
 	}
+	e.forgetTeams(kind)
 	e.afterVersion(ctx, v)
 	return v, nil
 }
@@ -451,6 +458,14 @@ func (e *Engine) DiscardWorking(ctx context.Context, kind, id string) error {
 	if !ok {
 		return nil
 	}
+	// Discarding puts the saved version back: a change from the draft to it.
+	if v, found, err := e.manifests.GetCurrent(ctx, kind, id); err != nil {
+		return err
+	} else if found {
+		if err := e.guardText(ctx, kind, id, v.YAML); err != nil {
+			return err
+		}
+	}
 	if err := discarder.DiscardWorking(ctx, kind, id); err != nil {
 		return err
 	}
@@ -469,6 +484,9 @@ func (e *Engine) DiscardWorking(ctx context.Context, kind, id string) error {
 // a version. Used for autosave writes that don't create an explicit snapshot.
 // It also re-indexes the manifest's outgoing references.
 func (e *Engine) PutWorking(ctx context.Context, kind, id string, yamlBytes []byte) error {
+	if err := e.guardText(ctx, kind, id, yamlBytes); err != nil {
+		return err
+	}
 	// Write the working copy
 	if err := e.manifests.PutWorking(ctx, kind, id, yamlBytes); err != nil {
 		return err
@@ -502,6 +520,9 @@ func (e *Engine) Delete(ctx context.Context, kind, id, actor, reason string) err
 	}
 	if !found {
 		return fmt.Errorf("%w: %s/%s", ErrNotFound, kind, id)
+	}
+	if err := e.guardDoc(ctx, kind, id, nil); err != nil {
+		return err
 	}
 	refs, err := e.manifests.ListReferencing(ctx, kind, id)
 	if err != nil {

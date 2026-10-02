@@ -308,6 +308,16 @@ func (s *Shared) Receive(ctx context.Context, docID string, peer crdt.SyncState,
 		}
 		return false, nil
 	}
+	// A policy that decides by content (docs/adr/0011) is asked about
+	// what the message changed. A refused change is never stored: the
+	// document is dropped from the cache, so the next use loads it as
+	// the store has it, and the peer is told it may not write.
+	var was map[string]any
+	if s.e.guarding(ctx) {
+		if was, err = sd.doc.JSON(); err != nil {
+			return false, err
+		}
+	}
 	if err := sd.doc.ReceiveSyncMessage(peer, msg); err != nil {
 		return false, err
 	}
@@ -317,6 +327,16 @@ func (s *Shared) Receive(ctx context.Context, docID string, peer crdt.SyncState,
 	}
 	if after.Equal(before) {
 		return false, nil
+	}
+	if was != nil {
+		now, err := sd.doc.JSON()
+		if err != nil {
+			return false, err
+		}
+		if err := s.e.guard(ctx, sd.kind, sd.id, was, now); err != nil {
+			s.discard(sd)
+			return false, fmt.Errorf("%w: %v", ErrReadOnly, err)
+		}
 	}
 	return true, s.persist(ctx, docID, sd)
 }

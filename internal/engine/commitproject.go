@@ -25,6 +25,9 @@ func (e *Engine) CommitProject(ctx context.Context, id string, yamlBytes []byte,
 	if len(problems) > 0 {
 		return Version{}, &ValidationError{Problems: problems}
 	}
+	if err := e.guardDoc(ctx, "Project", id, doc); err != nil {
+		return Version{}, err
+	}
 
 	current, found, err := e.manifests.GetCurrent(ctx, "Project", id)
 	if err != nil {

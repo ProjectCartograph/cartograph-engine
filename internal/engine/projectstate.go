@@ -98,6 +98,9 @@ func (e *Engine) TransitionProjectState(ctx context.Context, id, to, actor, reas
 	} else if !found {
 		return ProjectState{}, fmt.Errorf("%w: Project/%s", ErrNotFound, id)
 	}
+	if err := e.guardStored(ctx, "Project", id); err != nil {
+		return ProjectState{}, err
+	}
 	if p, err := e.checkActor(ctx, actor); err != nil {
 		return ProjectState{}, err
 	} else if p != nil {
@@ -224,6 +227,9 @@ func (e *Engine) HandoffGate(ctx context.Context, projectID string) (snapshot in
 func (e *Engine) Handoff(ctx context.Context, projectID, actor string, req HandoffRequest) (HandoffResult, error) {
 	if e.bundles == nil {
 		return HandoffResult{}, fmt.Errorf("handoff needs a bundle store")
+	}
+	if err := e.guardStored(ctx, "Project", projectID); err != nil {
+		return HandoffResult{}, err
 	}
 	snapshotNum, err := e.HandoffGate(ctx, projectID)
 	if err != nil {

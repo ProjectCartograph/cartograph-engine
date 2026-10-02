@@ -98,6 +98,9 @@ func (e *Engine) DeleteGoal(ctx context.Context, id, actor, reason string) error
 	if !found {
 		return fmt.Errorf("%w: Goal/%s", ErrNotFound, id)
 	}
+	if err := e.guardDoc(ctx, "Goal", id, nil); err != nil {
+		return err
+	}
 	refs, err := e.manifests.ListReferencing(ctx, "Goal", id)
 	if err != nil {
 		return err
