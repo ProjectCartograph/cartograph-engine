@@ -869,6 +869,7 @@ In rough order of expected need.
 
 Related reading: `DEPLOYMENT.md` (running it), `SERVERLESS.md`
 (stateless operation), `EXTENDING.md` (adding to it),
+`DISTRIBUTIONS.md` (shipping your own, without a fork),
 `../README.md` (building it), `DESIGN_RULES.md` (how it behaves),
 `TAXONOMY.md` (what the nouns mean), and `adr/` (each decision, with
 what it cost).

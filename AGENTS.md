@@ -51,6 +51,7 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 - `docs/ARCHITECTURE.md`: the system, the hexagon, the flows, the extension points, the clean-architecture mapping. Read sections 3 and 7 before any structural change.
 - `docs/DEPLOYMENT.md`: configuration (`CARTOGRAPH_*`), the image, identity, backups. `docs/SERVERLESS.md`: stateless operation.
 - `docs/EXTENDING.md`: adding a kind, a store, a codec, an authenticator, a fan-out, a CRDT engine.
+- `docs/DISTRIBUTIONS.md`: shipping a distribution, worked through with a Laravel interface and Entra ID.
 - `docs/UI_CONTRACT.md`, `docs/MULTIPLAYER.md`: what interfaces are built from, and shared editing.
 - `docs/DESIGN_RULES.md`: how Cartograph behaves. `docs/TAXONOMY.md`: what the nouns mean.
 - `STYLE.md`: code and commits. `CONTRIBUTING.md`: the loop.
