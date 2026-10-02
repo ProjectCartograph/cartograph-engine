@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -32,84 +31,6 @@ var agentCount atomic.Uint64
 // it did (the presence schema's agent), so a person can follow it.
 func (s *Server) AnnounceAgent(ctx context.Context, docID, actor, name, focus string, agent map[string]any) {
 	s.announce(ctx, docID, actor, name, focus, agent)
-}
-
-// KeepAgent announces an agent's step on a feed, as AnnounceAgent does,
-// and keeps repeating it until the agent has been quiet for a while
-// (WithLinger), so a person who opens Cartograph, or reloads it, while
-// their agent waits on them still sees it and where it got to
-// (docs/adr/0018). Each repeat is the same step, so nobody counts it
-// twice. Only this replica repeats it, through the fan-out like the
-// first; it is presence, held in memory, and a restart forgets it.
-func (s *Server) KeepAgent(ctx context.Context, docID, actor, name string, agent map[string]any) {
-	s.announce(ctx, docID, actor, name, "", agent)
-	if s.lingerFor <= 0 {
-		return
-	}
-	s.lingerMu.Lock()
-	defer s.lingerMu.Unlock()
-	if s.lingering == nil {
-		s.lingering = map[string]*kept{}
-	}
-	s.lingering[docID+"\x00"+actor] = &kept{docID: docID, actor: actor, name: name, agent: agent, until: time.Now().Add(s.lingerFor)}
-	if !s.lingerRunning {
-		s.lingerRunning = true
-		go s.repeatKept()
-	}
-}
-
-// kept is the last step of one agent on one feed, and until when it is
-// repeated.
-type kept struct {
-	docID, actor, name string
-	agent              map[string]any
-	until              time.Time
-}
-
-// repeatKept repeats every kept step at the presence heartbeat, and
-// stops when none is left.
-func (s *Server) repeatKept() {
-	t := time.NewTicker(s.lingerEvery)
-	defer t.Stop()
-	for range t.C {
-		now := time.Now()
-		s.lingerMu.Lock()
-		var due []*kept
-		for k, st := range s.lingering {
-			if now.After(st.until) {
-				delete(s.lingering, k)
-				continue
-			}
-			due = append(due, st)
-		}
-		if len(due) == 0 {
-			s.lingerRunning = false
-			s.lingerMu.Unlock()
-			return
-		}
-		s.lingerMu.Unlock()
-		for _, st := range due {
-			ctx, cancel := context.WithTimeout(context.Background(), s.lingerEvery)
-			s.announce(ctx, st.docID, st.actor, st.name, "", st.agent)
-			cancel()
-		}
-	}
-}
-
-// lingerState is the steps KeepAgent repeats.
-type lingerState struct {
-	lingerMu      sync.Mutex
-	lingering     map[string]*kept
-	lingerRunning bool
-	// lingerFor is how long after its last step an agent is still shown
-	// on its person's feed; lingerEvery how often it is repeated.
-	lingerFor, lingerEvery time.Duration
-}
-
-// WithLinger keeps an agent's last step on its person's feed for this
-// long after the step, repeated every so often. 0 announces it once.
-func WithLinger(lasts, every time.Duration) Option {
-	return func(s *Server) { s.lingerFor, s.lingerEvery = lasts, every }
 }
 
 func (s *Server) announce(ctx context.Context, docID, actor, name, focus string, agent map[string]any) {

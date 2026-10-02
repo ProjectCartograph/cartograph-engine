@@ -263,6 +263,16 @@ message and then only its heartbeat, so a room of people on different
 screens costs a heartbeat each, not a pointer each. An agent has no view,
 only the field it works on, and is drawn wherever that field is shown.
 
+An agent edits a draft beside people, not after them. It starts the
+draft as soon as it knows what it is defining, so people see it at once
+and can work on it, then changes it a field at a time with the MCP tool
+`edit_draft`: the fields it names are set inside the draft's own lock and
+every other field is left as it stands, so what a person typed a moment
+before is kept. Each edit returns the whole draft, their changes
+included, and the agent is told to build on them and never put a value
+back. Saving a whole manifest (`save_draft`) is for creating one: it
+makes the draft equal to the agent's copy.
+
 A session is a browser tab or a terminal, not a person. One principal
 may have several. Presence names the authenticated principal of a live
 session and ends with it. It is not a record of a person, and Cartograph

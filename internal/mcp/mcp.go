@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -30,9 +31,6 @@ import (
 // working. The sync socket implements it; nil announces nothing.
 type Presence interface {
 	AnnounceAgent(ctx context.Context, docID, actor, name, focus string, agent map[string]any)
-	// KeepAgent announces a step on a person's feed and keeps it shown
-	// while the agent is quiet, as when it waits on them.
-	KeepAgent(ctx context.Context, docID, actor, name string, agent map[string]any)
 }
 
 // Options are what the MCP server works through.
@@ -89,21 +87,34 @@ Work this way, every time:
    by name. When a link has nothing to point at (an outcome with no gap,
    a gap with no KPI, an aim with no owner role), define that first,
    with the person, then come back.
-4. Ask the person for what only they know (owners, figures, dates,
+4. Start the draft at once. As soon as you know the kind and a working
+   name, create it with save_draft (its id, name and what little you
+   know), before asking anything else, so your person sees it in
+   Cartograph and can work on it with you. Every manifest you will
+   define for this piece of work gets its draft the same way, as you
+   come to it.
+5. Then work field by field with edit_draft, one step of the guide at a
+   time, saving each answer as soon as your person gives it. Your person
+   and their colleagues may edit the same draft in Cartograph while you
+   work: edit_draft changes only the fields you name and returns the
+   draft as it now stands, their changes included. Read it every time,
+   build on what they wrote, and never put back a value they changed;
+   if you disagree, say so and ask. Use save_draft again only to create.
+6. Ask the person for what only they know (owners, figures, dates,
    sources), a step at a time, with examples drawn from their own
-   records. Never invent a figure, a date, a source or an owner.
-5. Save drafts as you go with save_draft, and fix every open check it
-   returns. checks reads the draft at any time.
-6. Propose only when every check is met: propose_save for one manifest,
+   records. Never invent a figure, a date, a source or an owner. Fix
+   every open check edit_draft returns; checks reads the draft at any
+   time.
+7. Propose only when every check is met: propose_save for one manifest,
    propose_set for several that reference each other (a KPI, the gap it
    measures and the outcome that closes it), which your person accepts
    whole. An open check refuses the proposal. Leave one open only when
    your person cannot settle it now, naming it with the reason in
    openChecks; your person reads each reason.
-7. Your work ends in a proposal, never in a chat message asking the
+8. Your work ends in a proposal, never in a chat message asking the
    person to accept: they accept in Cartograph, after reading it. Tell
    them what you proposed, and what you left open and why.
-8. Some judgement no check can make: whether an outcome describes a state
+9. Some judgement no check can make: whether an outcome describes a state
    rather than an action, whether an aim says one thing, whether a
    statement is specific. That is yours. Hold every statement to the
    guide's examples before proposing, and tell your person where you are
@@ -244,7 +255,7 @@ func (c call) announce(st step) {
 	// The person's own feed, not the presence document everyone joins:
 	// what an agent works on is its person's to see (docs/adr/0018).
 	if docID, err := sh.AgentFeed(c.ctx, personFor(c.who)); err == nil {
-		c.o.Presence.KeepAgent(c.ctx, docID, c.actor(), label, agent)
+		c.o.Presence.AnnounceAgent(c.ctx, docID, c.actor(), label, "", agent)
 	}
 }
 
@@ -346,6 +357,12 @@ type (
 		ID   string `json:"id"`
 		From int    `json:"from" jsonschema:"the earlier version"`
 		To   int    `json:"to" jsonschema:"the later version"`
+	}
+	editIn struct {
+		Kind  string         `json:"kind"`
+		ID    string         `json:"id"`
+		Set   map[string]any `json:"set,omitempty" jsonschema:"fields to set, by JSON pointer, such as {\"/spec/objective\": \"...\"}; in a list, a number replaces that item and - appends one"`
+		Unset []string       `json:"unset,omitempty" jsonschema:"fields or list items to remove, by JSON pointer"`
 	}
 	manifestIn struct {
 		Kind     string         `json:"kind"`
@@ -575,6 +592,36 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			c.announce(step{Step: "draft", Kind: in.Kind, ID: in.ID, Text: text, Fields: e.ChangedFields(before, text, 32), Checks: checks})
 			out := checkReport(checks)
 			out["saved"], out["problems"] = "draft", problems
+			return out, nil
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "edit_draft", Description: "Set or clear single fields of a manifest's draft, by JSON pointer, leaving every other field as it stands, " +
+		"so changes people make in Cartograph at the same time are kept. Returns the draft as it now stands, their changes included, and its checks. " +
+		"Starts the draft when the manifest has none. Use it for every change after save_draft creates a manifest.", Annotations: drafting},
+		func(c call, in editIn) (any, error) {
+			if len(in.Set) == 0 && len(in.Unset) == 0 {
+				return nil, fmt.Errorf("name at least one field to set or unset")
+			}
+			text, err := e.EditDraft(c.ctx, in.Kind, in.ID, in.Set, in.Unset, c.actor())
+			if err != nil {
+				return nil, err
+			}
+			problems, _ := e.Validate(c.ctx, in.Kind, text)
+			checks, err := e.ChecksOf(c.ctx, in.Kind, in.ID, text)
+			if err != nil {
+				return nil, err
+			}
+			fields := make([]string, 0, len(in.Set)+len(in.Unset))
+			for p := range in.Set {
+				fields = append(fields, p)
+			}
+			fields = append(fields, in.Unset...)
+			sort.Strings(fields)
+			c.announce(step{Step: "draft", Kind: in.Kind, ID: in.ID, Text: text, Fields: fields, Checks: checks})
+			out := checkReport(checks)
+			// The whole draft, as everyone now has it: what the person
+			// changed since the agent last read it is in here to build on.
+			out["saved"], out["problems"], out["draft"] = "draft", problems, string(text)
 			return out, nil
 		})
 

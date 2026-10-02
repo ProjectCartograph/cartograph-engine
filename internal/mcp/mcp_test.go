@@ -42,10 +42,6 @@ func (p *presence) AnnounceAgent(_ context.Context, docID, actor, name, focus st
 	p.mu.Unlock()
 }
 
-func (p *presence) KeepAgent(ctx context.Context, docID, actor, name string, agent map[string]any) {
-	p.AnnounceAgent(ctx, docID, actor, name, "", agent)
-}
-
 // refuseAgents is a policy under which Ada may not use an agent.
 type refuseAgents struct{}
 
@@ -114,7 +110,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	}
 	for _, tl := range tools.Tools {
 		readOnly := tl.Annotations != nil && tl.Annotations.ReadOnlyHint
-		if !readOnly && tl.Name != "save_draft" && !strings.HasPrefix(tl.Name, "propose_") {
+		if !readOnly && tl.Name != "save_draft" && tl.Name != "edit_draft" && !strings.HasPrefix(tl.Name, "propose_") {
 			t.Errorf("tool %s may change something and is neither a draft nor a proposal", tl.Name)
 		}
 	}
@@ -222,5 +218,42 @@ func TestASubagentIsNamedBesideItsParent(t *testing.T) {
 	defer pr.mu.Unlock()
 	if len(pr.seen) == 0 || pr.seen[len(pr.seen)-1] != "ada@example.org via Claude › researcher | Ada's agent (Claude › researcher)" {
 		t.Fatalf("announced as %v", pr.seen)
+	}
+}
+
+// An agent edits the fields it names and no others, so what its person
+// changed in the meantime stays, and comes back to the agent to build on.
+func TestAnAgentsEditKeepsWhatItsPersonChanged(t *testing.T) {
+	e, _, cs := setup(t, nil)
+	ctx := context.Background()
+	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g9", "name": "Cut loss after picking"},
+		"spec": map[string]any{"level": "goal", "objective": "Less fruit is lost"}}
+	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g9", "manifest": goal}); res.IsError {
+		t.Fatalf("save_draft: %s", text)
+	}
+	// Meanwhile, its person writes why it matters in Cartograph.
+	text, _, err := e.GetWorking(ctx, "Goal", "g9")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := e.Codec().Decode(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc["spec"].(map[string]any)["whyItMatters"] = "Members are paid by what arrives sound"
+	mine, _ := e.Codec().Encode(doc)
+	if err := e.SaveWorking(ctx, "Goal", "g9", mine, "ada@example.org"); err != nil {
+		t.Fatal(err)
+	}
+
+	res, out := callTool(t, cs, "edit_draft", map[string]any{"kind": "Goal", "id": "g9", "set": map[string]any{"/spec/objective": "Fruit arrives sound at every depot"}})
+	if res.IsError {
+		t.Fatalf("edit_draft: %s", out)
+	}
+	if !strings.Contains(out, "Members are paid by what arrives sound") || !strings.Contains(out, "Fruit arrives sound at every depot") {
+		t.Fatalf("the draft returned lost a change: %s", out)
+	}
+	if res, out := callTool(t, cs, "edit_draft", map[string]any{"kind": "Goal", "id": "g9", "set": map[string]any{"/metadata/id": "other"}}); !res.IsError {
+		t.Fatalf("an edit changed the id: %s", out)
 	}
 }
