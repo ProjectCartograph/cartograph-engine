@@ -654,3 +654,47 @@ process-oriented, as some vendors group goals): it is not a standard and
 repeats what SMART, the outcome level and operations already express;
 labels cover any local grouping. An objective-type field: the kind already
 says it. Team and individual goals: the delivery tool's job.
+
+### D27. People are principals, never definitions; teams are the structure. *(resolved)*
+
+**The discipline.** Role-based access control (NIST's RBAC model,
+standardised as ANSI INCITS 359) grants permissions to roles and
+assigns people to roles, so a permission never names a person. Least
+privilege gives each role only what its work needs. An organisation's
+structure is a tree of units, each answerable to the one above, and a
+directory (LDAP, Entra ID, any OIDC provider) is where an enterprise
+keeps both its people and its groups.
+
+**What Cartograph does.**
+- A person is a principal: who signs in, what roles they hold and
+  which teams they act for. The access list keeps them (address,
+  display name, roles, teams, last sign-in) as operational state, the
+  way project state history is kept. A person never becomes a
+  manifest, and a definition still names a role, never a person.
+- The organisation's structure is the `Team` kind, as it already was:
+  a team names its parent, and projects, operations and data sources
+  name their team, programmes their lead team. Groups from the
+  directory may be enrolled as teams, so the tree in Cartograph is the
+  one the organisation already keeps.
+- Four roles, each a bundle of permissions. A *reader* sees every
+  goal, definition and register, and changes nothing. A *contributor*
+  defines the projects, programmes, operations and data sources of
+  their own teams and the teams beneath them, keeps the shared
+  registers, records readings and hands off a defined project. A
+  *strategy editor* shapes the goals, objectives and outcomes. An
+  *administrator* does everything the others do, for every team, and
+  also keeps the teams, the settings and the vault, recovers removed
+  records, and decides who may sign in and what they hold. Roles
+  combine; a person with none signs in to nothing.
+- In the running example, the ministry's early grades team sits under
+  its curriculum division. A contributor in the curriculum division
+  may edit *coach early-grade teachers in reading*, which the early
+  grades team runs; a contributor in the assessment team may not, but
+  may record a reading of the reading KPI.
+
+**Not adopted.** A Person kind: it would put people into definitions,
+which D1 to D26 keep to roles, and copy what the directory already
+holds. Permissions per manifest (an access list on each project): the
+team a manifest names already says whose work it is. Provisioning by
+SCIM: enrolment at sign-in covers what Cartograph needs; a SCIM
+endpoint is an adapter a deployment may add later.
