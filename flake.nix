@@ -72,7 +72,7 @@
             pname = "cartograph";
             inherit version;
             src = lib.cleanSource ./.;
-            vendorHash = "sha256-HrXRj45As20P6vpEhFHXJ5HMsz8I/56ITI0/LzVzYBg=";
+            vendorHash = "sha256-wmRy0uULoA0ZKcmL9kPCIpzWEsFFLfrGb5xLAbAPSVU=";
             subPackages = [ "cmd/cartograph" ];
             env.CGO_ENABLED = 0;
             ldflags = [ "-s" "-w" "-X main.version=${version}" ];

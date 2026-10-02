@@ -42,7 +42,7 @@ var postgresAdapters = []string{"internal/store/postgres", "internal/fanout/post
 
 // outer is what only the composition root and the driving adapters
 // beside it may know.
-var outer = []string{"internal/api", "internal/spa", "internal/render", "internal/config", "cmd"}
+var outer = []string{"internal/api", "internal/spa", "internal/render", "internal/config", "internal/mcp", "internal/oauth", "cmd"}
 
 // adapters are every driven adapter and the syntax helpers they share.
 // A port or the engine knowing one of these would point a dependency
@@ -157,9 +157,19 @@ var rules = map[string][]string{
 	// The sync socket is a driving adapter like the API: the engine and
 	// the ports, never a driven adapter, the API, or the root.
 	"internal/syncserver": join([]string{"internal/api", "internal/spa", "internal/render", "internal/config", "cmd"}, adapters, without(drivers, "net/http")),
-	"internal/api":        join([]string{"internal/spa", "internal/config", "cmd"}, adapters, without(drivers, "net/http")),
-	"internal/api/gen":    join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
-	"internal/spa":        join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
+	// The MCP front door (docs/adr/0016): the engine and the ports, never
+	// another front door, a driven adapter or the root; net/http for the
+	// handler, and the MCP SDK, which no one else uses. The SDK's package
+	// also holds its client, which can start a server as a process, so
+	// os/exec comes with it; the adapter starts none.
+	"internal/mcp": join([]string{"internal/api", "internal/spa", "internal/render", "internal/config", "internal/syncserver", "cmd"}, adapters, without(drivers, "net/http", "os/exec")),
+	// The authorization server for agents is an adapter of the identity
+	// port, outside the engine: it knows the engine only through the port
+	// it declares, and no store, codec or other adapter.
+	"internal/oauth":   join([]string{"internal/api", "internal/spa", "internal/render", "internal/config", "internal/mcp", "internal/syncserver", "internal/engine", "cmd"}, adapters, without(drivers, "net/http")),
+	"internal/api":     join([]string{"internal/spa", "internal/config", "cmd"}, adapters, without(drivers, "net/http")),
+	"internal/api/gen": join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
+	"internal/spa":     join([]string{"internal", "pkg", "cmd"}, without(drivers, "net/http")),
 	// render reads through the engine and decodes through its codec; it
 	// parses no syntax and touches no store.
 	// Reporting is a port of its own, outside the core (docs/adr/0014):
