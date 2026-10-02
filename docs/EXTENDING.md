@@ -140,7 +140,10 @@ middleware, the context plumbing and the handlers' use of the principal
 are already there; `auth/proxy` is a 60-line example.
 
 An OIDC adapter would verify a bearer token against the provider's keys
-and build the principal from its claims. Nothing else changes.
+and build the principal from its claims. Nothing else changes. The
+shipped route to OIDC needs no adapter: an OIDC proxy (oauth2-proxy)
+in front of `auth/proxy`, with an identity broker (Dex) in front of
+the provider, as `cartograph-oidc` does.
 
 ## Authorization and user types
 
@@ -153,19 +156,34 @@ type Authorizer interface {
 ```
 
 `Action` carries a verb (`read` for safe methods and validation, `write`
-for the rest) and the kind and id when the request names one manifest.
-`auth.Authorize` is the one enforcement point: it wraps the whole API
-after authentication, classifies every request with `auth.ActionFor`,
-and answers 403 in the contract's problem shape when the policy
-refuses. Every operation in `openapi.yaml` declares 401 and 403.
+for the rest), the kind and id when the request names one manifest, and
+the resource when it concerns the access list, the vault or the
+session. The policy is asked twice. `auth.Authorize` wraps the whole
+API after authentication, classifies every request with
+`auth.ActionFor`, and answers 403 in the contract's problem shape when
+the policy refuses; it cannot see the manifest, so `Action.Change` is
+nil there. The engine then asks again at every write, through
+`engine.WithAuthorizer`, with `Change` set: the chains of teams the
+manifest sits under before and after the write, and the spec fields it
+changes. A policy that decides by content decides at the second call
+and lets the first through. Every operation in `openapi.yaml` declares
+401 and 403.
 
-Two adapters ship: `auth.AllowAll` and `auth/roles` (read roles, write
-roles, anonymous refused), selected by `CARTOGRAPH_AUTHZ`. A finer policy, per
-kind or per manifest or per state transition, is another adapter over
-the same `Action`; nothing else moves. Roles come from the authenticator
-(`Principal.Roles`), so a role policy needs no store of its own. A policy
-that assigns roles to subjects inside Cartograph would be a small kind of its
-own, and belongs in `TAXONOMY.md` first.
+Three adapters ship, selected by `CARTOGRAPH_AUTHZ`: `auth.AllowAll`,
+`auth/roles` (read roles, write roles, anonymous refused) and
+`auth/access` (four roles and teams over an access list, ADR 0011). A
+policy that also implements `auth.Scoper` tells the session, and so the
+interface, how much of each kind a principal may write. The types an
+authorizer sees live in `internal/identity`, which the engine may
+import; `auth` re-exports them. Roles from the authenticator
+(`Principal.Roles`) are directory groups; `auth/access` maps them onto
+its roles through `CARTOGRAPH_ACCESS_FILE`, and keeps people in the
+`store.AccessStore` port, never as manifests (TAXONOMY.md D27).
+
+A deployment that wants a fifth role, or a team rule of its own,
+writes another policy over the same `Action` and `Change`, and selects
+it in `cmd/cartograph/serve.go`. A new store holds the access list by
+passing `conformance.RunAccessStore`.
 
 ## A PDF printer
 

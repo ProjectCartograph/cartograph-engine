@@ -39,7 +39,8 @@ prints the same table.
 | `CARTOGRAPH_SHUTDOWN_TIMEOUT` | `-shutdown-timeout` | `10s` | Grace period after SIGTERM |
 | `CARTOGRAPH_AUTH` | `-auth` | `none` | `none` or `proxy` (below) |
 | `CARTOGRAPH_AUTH_PROXY_HEADER` | `-auth-proxy-header` | `X-Forwarded-User` | Header the proxy adapter reads |
-| `CARTOGRAPH_AUTHZ` | `-authz` | `allow` | `allow` (every principal may do everything) or `roles` (below). `roles` needs an authenticator |
+| `CARTOGRAPH_AUTHZ` | `-authz` | `allow` | `allow` (every principal may do everything), `roles` or `access` (below). `roles` and `access` need an authenticator |
+| `CARTOGRAPH_ACCESS_FILE` | `-access-file` | empty | For `access`: the mapping from directory groups to roles and teams. Empty: no group grants anything |
 | `CARTOGRAPH_READ_ROLES` | `-read-roles` | empty | Comma-separated roles that may read. Empty: any authenticated principal may read |
 | `CARTOGRAPH_WRITE_ROLES` | `-write-roles` | empty | Comma-separated roles that may write. Empty: nobody may write |
 | `CARTOGRAPH_CODEC` | `-codec` | `yaml` | The manifest syntax, `yaml` or `json`. A vault is written in one; see "Changing the manifest syntax" |
@@ -114,8 +115,10 @@ command line, which always runs this way.
 (oauth2-proxy, Pomerium, Authelia, an ingress controller with OIDC) that
 verifies the person and forwards their identity in a header. Cartograph trusts
 `X-Forwarded-User` (the subject), `X-Forwarded-Preferred-Username` (a
-display name) and `X-Forwarded-Groups` (comma-separated roles). A request
-without the subject header gets 401.
+display name, shown to others on the same screen), `X-Forwarded-Email`
+(the organisation address, which an access list knows people by) and
+`X-Forwarded-Groups` (comma-separated groups). These are the headers
+oauth2-proxy sets. A request without the subject header gets 401.
 
 This is only safe when the proxy is the only route to the port. Bind
 `CARTOGRAPH_ADDR` to a private interface or a container network the proxy
@@ -142,6 +145,66 @@ no identity, is unaffected. Finer policies are adapters; see
 ```
 CARTOGRAPH_AUTH=proxy CARTOGRAPH_AUTHZ=roles CARTOGRAPH_READ_ROLES=staff CARTOGRAPH_WRITE_ROLES=planners,admins cartograph serve /vault
 ```
+
+### Access by role and team
+
+`CARTOGRAPH_AUTHZ=access` is the policy an organisation with many teams
+needs (ADR 0011, TAXONOMY.md D27). Only people on the access list may
+sign in. Each holds roles: a *reader* sees everything; a *contributor*
+changes the projects, programmes, operations and data sources of their
+teams and the teams beneath them, and keeps the shared registers; a
+*strategy editor* shapes the goals and the vision and mission; an
+*administrator* does everything, for every team, and manages access
+from the Access page. The engine checks each write against the teams
+the manifest belongs to, before and after the change, including edits
+on the sync socket.
+
+People get there two ways. An administrator adds them by address and
+grants roles and teams. Or their directory groups do it when they sign
+in, by the mapping in `CARTOGRAPH_ACCESS_FILE`:
+
+```yaml
+roles:
+  reader: [all-staff]
+  contributor: [curriculum-division, early-grades-team, assessment-unit]
+  strategyEditor: [planning-unit]
+  administrator: [cartograph-administrators]
+teams:
+  - group: curriculum-division
+    name: Curriculum division
+  - group: early-grades-team
+    name: Early grades
+    parent: Curriculum division
+  - group: assessment-unit
+    name: Assessment
+```
+
+A person whose groups grant a role is listed at their first sign-in.
+At every sign-in their groups' roles and teams are refreshed; what an
+administrator granted is kept apart and never undone by it. A team is
+known by its name, which is unique among teams; its parent is another
+team's name.
+
+The mapped teams are created by one command, run once per deployment
+before the replicas start, so two replicas never both create one:
+
+```
+cartograph access apply /etc/cartograph/access.yaml -store "$CARTOGRAPH_STORE"
+```
+
+Where no group grants the administrator role, name the first
+administrator the same way:
+
+```
+cartograph access grant someone@example.org -roles administrator -store "$CARTOGRAPH_STORE"
+```
+
+The groups come from the identity provider through the proxy. With
+OIDC, the provider must put them in a `groups` claim and the proxy must
+forward it; an identity broker such as Dex does both for Entra ID,
+LDAP, SAML and other providers. `cartograph-oidc` is a complete,
+tested example: Dex, oauth2-proxy, a directory, compose files and Helm
+values.
 
 ## PDF printing
 

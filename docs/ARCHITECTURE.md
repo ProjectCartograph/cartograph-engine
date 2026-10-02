@@ -257,8 +257,19 @@ or write, and the manifest it names) and puts it to the `Authorizer` (or
 answers 403). The handlers never see a credential and never decide
 policy; they take the actor off the context. This keeps identity out of
 the core and lets a deployment choose "no identity on a trusted network",
-"trust the proxy's header, readers and editors by group", or (later)
-"verify an OIDC token" without the engine changing.
+"trust the proxy's header, readers and editors by group", or "an access
+list of people, roles and teams behind an OIDC proxy" without the
+engine changing.
+
+A policy that decides by a manifest's content cannot decide at the
+middleware, which never sees the content. So the engine asks the same
+`Authorizer` again at every write, with what the write does: the
+chains of teams the manifest sits under before and after, and the spec
+fields it changes (ADR 0011). For that the engine knows
+`internal/identity`, the HTTP-free half of the identity port (the
+principal on the context, the action, the authorizer); `internal/auth`
+adds the HTTP half and re-exports the rest. The engine still never
+sees a credential or a session.
 
 `codec.Codec` is the one port the engine owns for its own input: manifest
 text in, document out, and canonical text back for a save. The engine
@@ -313,7 +324,7 @@ rings, from the centre out:
 |---|---|---|
 | Entities | `internal/kinds`, `kinds/<kind>` and `kinds/kit` (what a kind is, its rules), `internal/contract` (the schemas and flows), `internal/sentence` | nothing in the module but each other; no driver |
 | Use cases | `internal/engine` | the ports and the entities |
-| Ports | `internal/store` (with `store.DocStore`), `internal/codec`, `internal/printer`, `internal/crdt`, `internal/fanout`, `engine.Bus` (driven); `pkg/client`, `pkg/uiconformance`, `internal/auth` (driving) | the entities; `internal/auth` also `net/http`, because the identity ports are request middleware |
+| Ports | `internal/store` (with `store.DocStore` and `store.AccessStore`), `internal/codec`, `internal/printer`, `internal/crdt`, `internal/fanout`, `engine.Bus` (driven); `pkg/client`, `pkg/uiconformance`, `internal/identity`, `internal/auth` (driving) | the entities; `internal/identity` nothing at all; `internal/auth` also `net/http`, because the identity ports are request middleware, and `internal/identity` |
 | Interface adapters | driving: `internal/api`, `internal/syncserver`, `internal/render`, `internal/spa`, `pkg/client/inproc`, `pkg/client/remote`, `uiconformance/clientdriver`; driven: `store/vault`, `store/sqlite`, `store/memory`, `store/postgres`, `crdt/automerge`, `fanout/memory`, `fanout/postgres`, `codec/yaml`, `codec/json`, `printer/chromium`, `auth/proxy`, `auth/roles`, the conformance suites, and the helpers the adapters share (`yamlfmt`, `store/manifestmeta`) | the rings inside them, never another adapter of their side |
 | Frameworks and drivers | `net/http`, `database/sql`, `os/exec`, `modernc.org/sqlite`, `pgx` (only in the Postgres adapters), `wazero` (only in the Automerge adapter), `fsnotify`, `yaml.v3`, Chromium, the generated server (`api/gen`) | used only by adapters |
 | Composition root | `cmd/cartograph`, `internal/config` | everything; the one place an adapter is chosen |
@@ -358,7 +369,8 @@ an exception (ADR 0003).
 | `pkg/client`, `client/inproc`, `client/remote` | The port every interface uses, and its two transports | nothing; `engine` and `auth` (inproc), `net/http` (remote) |
 | `pkg/uiconformance`, `uiconformance/clientdriver` | The interface suite as data, its Go runner, and the reference driver | `client` |
 | `internal/printer`, `printer/chromium` | PDF port and the headless-browser adapter | nothing / `printer`, `os/exec` |
-| `internal/auth`, `auth/proxy`, `auth/roles` | Identity and policy ports, context plumbing, the two middlewares; the proxy-header authenticator and the role policy | `net/http` / `auth` |
+| `internal/identity` | The HTTP-free identity types: principal, action and change, grants, roles, the authorizer | nothing |
+| `internal/auth`, `auth/proxy`, `auth/roles`, `auth/access` | Identity and policy ports, the two middlewares; the proxy-header authenticator, the role policy, and the access policy by role and team | `net/http`, `identity` / `auth` |
 | `internal/render` | HTML documents (charters) from engine data; reads through the engine and decodes through its codec | `engine` |
 | `internal/api`, `api/gen` | The generated strict server and the thin handlers | `engine`, `store`, `codec`, `auth`, `printer`, `render` |
 | `internal/syncserver` | The sync socket: the automerge-repo network protocol, version 1, over a WebSocket, turned into calls on `engine.Shared` | `engine`, `crdt`, `fanout`, `auth`; `coder/websocket`, a CBOR codec, `net/http` |
@@ -615,10 +627,12 @@ sequenceDiagram
 
 An anonymous principal records the vault's `spec.operator` as the actor,
 which is what a single-operator vault has always done. An authenticated
-one records its subject. The policy is one call for the whole API, before
-any handler: `CARTOGRAPH_AUTHZ=roles` with `CARTOGRAPH_READ_ROLES` and
-`CARTOGRAPH_WRITE_ROLES` is the shipped one, and a policy per kind or per
-manifest is another adapter over the same `Action`. Every operation in
+one records its subject. The policy is called for the whole API before
+any handler, and again by the engine at every write with the change it
+makes (`Action.Change`): `CARTOGRAPH_AUTHZ=roles` decides at the first
+call alone, `CARTOGRAPH_AUTHZ=access` decides team rules at the second,
+and a policy per kind or per manifest is another adapter over the same
+`Action`. Every operation in
 the contract declares 401 and 403 for this reason. Nothing in the engine
 changed to make any of it true.
 
@@ -745,7 +759,9 @@ committed output (ADR 0002).
 string. Everything above that line (sessions, tokens, groups) varies by
 organisation and must not leak into the rules. The proxy adapter exists
 because every organisation already has an authenticating proxy or can run
-one; an OIDC adapter is a contained addition.
+one; an OIDC adapter is a contained addition. Who may change what is
+the one identity question that reaches the core, and it reaches it as a
+port the engine calls, never as a session it keeps.
 
 **Why checks never block a save.** Half-finished work is the normal state
 of a definition. A check that refused the save would push people back to

@@ -239,7 +239,11 @@ replicas. It never reads, stores or logs them.
 
 The payload is `contract/schemas/presence.schema.json`: the session, the
 principal and display name, a colour, the route, the focused field (a
-JSON pointer), the caret as two Automerge cursors, and the pointer. The
+JSON pointer), the caret as two Automerge cursors, and the pointer.
+The display name is the one `GET /session` returns, which the
+authenticator took from the identity provider (with `auth/proxy`,
+`X-Forwarded-Preferred-Username`), so people see each other by the
+names their directory gives them. The
 pointer is held as the element it is over (a control's
 `data-cartograph-field`, or a region's `data-cartograph-region`) with x
 and y as fractions of that element, so a pointer lands over the same
