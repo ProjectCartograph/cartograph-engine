@@ -61,7 +61,8 @@ func New(e *engine.Engine, deps Deps) http.Handler {
 	if z == nil {
 		z = auth.AllowAll{}
 	}
-	strict := apigen.NewStrictHandler(&Server{Engine: e, Printer: p, Authz: z}, nil)
+	strict := apigen.NewStrictHandlerWithOptions(&Server{Engine: e, Printer: p, Authz: z}, nil,
+		apigen.StrictHTTPServerOptions{ResponseErrorHandlerFunc: writeError})
 	return apigen.Handler(strict)
 }
 

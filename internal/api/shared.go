@@ -58,6 +58,22 @@ func (s *Server) GetSession(ctx context.Context, _ apigen.GetSessionRequestObjec
 		name := p.Name
 		out.Name = &name
 	}
+	if p.Email != "" {
+		email := p.Email
+		out.Email = &email
+	}
+	if out.Access, err = s.sessionAccess(ctx, p); err != nil {
+		return nil, err
+	}
+	if out.Access != nil {
+		// canWrite is whether they may write anything at all.
+		out.CanWrite = false
+		for _, sc := range out.Access.Scopes {
+			if sc != apigen.None {
+				out.CanWrite = true
+			}
+		}
+	}
 	return apigen.GetSession200JSONResponse(out), nil
 }
 

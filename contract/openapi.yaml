@@ -728,6 +728,102 @@ paths:
               schema:
                 $ref: "#/components/schemas/Session"
 
+  /access/people:
+    get:
+      operationId: listPeople
+      summary: The access list
+      description: >-
+        Everyone who may sign in, with the roles and teams an administrator
+        granted them and the ones their directory groups gave at their last
+        sign-in (docs/adr/0011). Only an administrator may read it; it is
+        absent (404) when the deployment keeps no access list.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [people]
+                properties:
+                  people:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Person"
+
+  /access/people/{email}:
+    parameters:
+      - name: email
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The person's organisation address, compared lower-case.
+    put:
+      operationId: grantPerson
+      summary: List a person, or change what an administrator grants them
+      description: >-
+        Lists the person by their address if they are not listed, so they
+        may sign in, and sets the roles and teams an administrator grants
+        them. What their directory groups give is kept apart and is not
+        changed here. An administrator may not drop their own
+        administrator role (409).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonGrant"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The change would remove the caller's own access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "200":
+          description: The person as listed now
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+    delete:
+      operationId: removePerson
+      summary: Take a person off the access list
+      description: >-
+        They may no longer sign in, unless their directory groups enrol them
+        again at their next sign-in. An administrator may not remove
+        themselves (409).
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The caller may not remove themselves
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "204":
+          description: Removed
+
   /sync:
     get:
       operationId: sync
@@ -1155,8 +1251,7 @@ components:
     Forbidden:
       description: >-
         The principal may not perform this action under the deployment's
-        authorizer (CARTOGRAPH_AUTHZ=roles). The message names the actor and
-        the verb.
+        authorizer (CARTOGRAPH_AUTHZ=roles or access). The message says why.
       content:
         application/json:
           schema:
@@ -1502,6 +1597,111 @@ components:
         canWrite:
           type: boolean
           description: Whether the authorizer allows this principal to write.
+        email:
+          type: string
+          description: The organisation address, where the authenticator has one.
+        access:
+          $ref: "#/components/schemas/SessionAccess"
+    SessionAccess:
+      type: object
+      description: >-
+        What the access list gives the principal (docs/adr/0011), present when
+        the deployment keeps one. An interface offers editing from it; the
+        engine decides again on every write.
+      required: [listed, roles, teams, reach, scopes]
+      properties:
+        listed:
+          type: boolean
+          description: >-
+            Whether the principal is on the access list. Someone who is not
+            may sign in to the proxy but sees nothing.
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+        teams:
+          type: array
+          description: The teams the principal acts for, by id.
+          items:
+            type: string
+        reach:
+          type: array
+          description: >-
+            The principal's teams and every team beneath them, by id: whose
+            projects, programmes, operations and data sources they may change
+            where their scope for the kind is teams.
+          items:
+            type: string
+        scopes:
+          type: object
+          description: For each kind, how much of it the principal may write.
+          additionalProperties:
+            type: string
+            enum: [none, teams, all]
+    Role:
+      type: string
+      enum: [reader, contributor, strategyEditor, administrator]
+      description: >-
+        A role on the access list (TAXONOMY.md D27). A reader sees everything
+        and changes nothing; a contributor changes the work of their teams and
+        the teams beneath them and keeps the shared registers; a strategy
+        editor shapes the goals and the vision and mission; an administrator
+        does everything, for every team, and manages access.
+    PersonGrant:
+      type: object
+      required: [roles, teams]
+      properties:
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+        teams:
+          type: array
+          description: Team ids.
+          items:
+            type: string
+    Person:
+      type: object
+      description: >-
+        One entry on the access list: someone who may sign in, never a
+        manifest (TAXONOMY.md D27).
+      required: [email, name, roles, teams, directoryRoles, directoryTeams, addedBy, addedOn]
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+          description: The display name from the directory; empty until the first sign-in.
+        roles:
+          type: array
+          description: The roles an administrator granted.
+          items:
+            $ref: "#/components/schemas/Role"
+        teams:
+          type: array
+          description: The teams an administrator granted, by id.
+          items:
+            type: string
+        directoryRoles:
+          type: array
+          description: The roles the person's directory groups gave at their last sign-in.
+          items:
+            $ref: "#/components/schemas/Role"
+        directoryTeams:
+          type: array
+          description: The teams the person's directory groups gave at their last sign-in, by id.
+          items:
+            type: string
+        addedBy:
+          type: string
+          description: Who listed them, or "directory" when a sign-in enrolled them.
+        addedOn:
+          type: string
+          format: date-time
+        lastSignedIn:
+          type: string
+          format: date-time
+          description: Absent until the first sign-in.
     Problem:
       type: object
       required: [path, message]

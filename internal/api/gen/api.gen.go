@@ -162,6 +162,51 @@ func (e ProjectStateName) Valid() bool {
 	}
 }
 
+// Defines values for Role.
+const (
+	Administrator  Role = "administrator"
+	Contributor    Role = "contributor"
+	Reader         Role = "reader"
+	StrategyEditor Role = "strategyEditor"
+)
+
+// Valid indicates whether the value is a known member of the Role enum.
+func (e Role) Valid() bool {
+	switch e {
+	case Administrator:
+		return true
+	case Contributor:
+		return true
+	case Reader:
+		return true
+	case StrategyEditor:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SessionAccessScopes.
+const (
+	All   SessionAccessScopes = "all"
+	None  SessionAccessScopes = "none"
+	Teams SessionAccessScopes = "teams"
+)
+
+// Valid indicates whether the value is a known member of the SessionAccessScopes enum.
+func (e SessionAccessScopes) Valid() bool {
+	switch e {
+	case All:
+		return true
+	case None:
+		return true
+	case Teams:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListManifestsParamsExpand.
 const (
 	Spec ListManifestsParamsExpand = "spec"
@@ -399,6 +444,40 @@ type ManifestView struct {
 	Yaml     string   `json:"yaml"`
 }
 
+// Person One entry on the access list: someone who may sign in, never a manifest (TAXONOMY.md D27).
+type Person struct {
+	// AddedBy Who listed them, or "directory" when a sign-in enrolled them.
+	AddedBy string    `json:"addedBy"`
+	AddedOn time.Time `json:"addedOn"`
+
+	// DirectoryRoles The roles the person's directory groups gave at their last sign-in.
+	DirectoryRoles []Role `json:"directoryRoles"`
+
+	// DirectoryTeams The teams the person's directory groups gave at their last sign-in, by id.
+	DirectoryTeams []string `json:"directoryTeams"`
+	Email          string   `json:"email"`
+
+	// LastSignedIn Absent until the first sign-in.
+	LastSignedIn *time.Time `json:"lastSignedIn,omitempty"`
+
+	// Name The display name from the directory; empty until the first sign-in.
+	Name string `json:"name"`
+
+	// Roles The roles an administrator granted.
+	Roles []Role `json:"roles"`
+
+	// Teams The teams an administrator granted, by id.
+	Teams []string `json:"teams"`
+}
+
+// PersonGrant defines model for PersonGrant.
+type PersonGrant struct {
+	Roles []Role `json:"roles"`
+
+	// Teams Team ids.
+	Teams []string `json:"teams"`
+}
+
 // Problem defines model for Problem.
 type Problem struct {
 	Message string `json:"message"`
@@ -512,17 +591,45 @@ type References struct {
 	Outgoing []Ref     `json:"outgoing"`
 }
 
+// Role A role on the access list (TAXONOMY.md D27). A reader sees everything and changes nothing; a contributor changes the work of their teams and the teams beneath them and keeps the shared registers; a strategy editor shapes the goals and the vision and mission; an administrator does everything, for every team, and manages access.
+type Role string
+
 // Session defines model for Session.
 type Session struct {
+	// Access What the access list gives the principal (docs/adr/0011), present when the deployment keeps one. An interface offers editing from it; the engine decides again on every write.
+	Access *SessionAccess `json:"access,omitempty"`
+
 	// Actor The principal as the engine records it on versions and state.
 	Actor string `json:"actor"`
 
 	// CanWrite Whether the authorizer allows this principal to write.
 	CanWrite bool `json:"canWrite"`
 
+	// Email The organisation address, where the authenticator has one.
+	Email *string `json:"email,omitempty"`
+
 	// Name A display name, where the authenticator has one; otherwise absent.
 	Name *string `json:"name,omitempty"`
 }
+
+// SessionAccess What the access list gives the principal (docs/adr/0011), present when the deployment keeps one. An interface offers editing from it; the engine decides again on every write.
+type SessionAccess struct {
+	// Listed Whether the principal is on the access list. Someone who is not may sign in to the proxy but sees nothing.
+	Listed bool `json:"listed"`
+
+	// Reach The principal's teams and every team beneath them, by id: whose projects, programmes, operations and data sources they may change where their scope for the kind is teams.
+	Reach []string `json:"reach"`
+	Roles []Role   `json:"roles"`
+
+	// Scopes For each kind, how much of it the principal may write.
+	Scopes map[string]SessionAccessScopes `json:"scopes"`
+
+	// Teams The teams the principal acts for, by id.
+	Teams []string `json:"teams"`
+}
+
+// SessionAccessScopes defines model for SessionAccess.Scopes.
+type SessionAccessScopes string
 
 // Settings defines model for Settings.
 type Settings struct {
@@ -739,6 +846,9 @@ type ListSnapshotsParams struct {
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// GrantPersonJSONRequestBody defines body for GrantPerson for application/json ContentType.
+type GrantPersonJSONRequestBody = PersonGrant
+
 // DeleteGoalJSONRequestBody defines body for DeleteGoal for application/json ContentType.
 type DeleteGoalJSONRequestBody = DeleteGoalRequest
 
@@ -830,6 +940,15 @@ func (t *ListManifests200JSONResponseBody) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ListPeople The access list
+	// (GET /access/people)
+	ListPeople(w http.ResponseWriter, r *http.Request)
+	// RemovePerson Take a person off the access list
+	// (DELETE /access/people/{email})
+	RemovePerson(w http.ResponseWriter, r *http.Request, email string)
+	// GrantPerson List a person, or change what an administrator grants them
+	// (PUT /access/people/{email})
+	GrantPerson(w http.ResponseWriter, r *http.Request, email string)
 	// ListFlows The kinds that have a flow (a stepped definition, contract/flows). A kind without one is a sheet: one step, every field.
 	// (GET /flows)
 	ListFlows(w http.ResponseWriter, r *http.Request)
@@ -969,6 +1088,72 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListPeople operation middleware
+func (siw *ServerInterfaceWrapper) ListPeople(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPeople(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemovePerson operation middleware
+func (siw *ServerInterfaceWrapper) RemovePerson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "email" -------------
+	var email string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "email", r.PathValue("email"), &email, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "email", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemovePerson(w, r, email)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GrantPerson operation middleware
+func (siw *ServerInterfaceWrapper) GrantPerson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "email" -------------
+	var email string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "email", r.PathValue("email"), &email, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "email", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GrantPerson(w, r, email)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListFlows operation middleware
 func (siw *ServerInterfaceWrapper) ListFlows(w http.ResponseWriter, r *http.Request) {
@@ -2355,6 +2540,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/document", wrapper.GetSharedDocument)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/presence", wrapper.GetPresenceDocument)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/session", wrapper.GetSession)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/access/people", wrapper.ListPeople)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/access/people/{email}", wrapper.RemovePerson)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/access/people/{email}", wrapper.GrantPerson)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/sync", wrapper.Sync)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/manifests/{kind}/{id}", wrapper.DeleteManifest)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}", wrapper.GetManifest)
@@ -2385,6 +2573,236 @@ type NotFoundJSONResponse ProblemList
 type UnauthenticatedJSONResponse ProblemList
 
 type UnprocessableJSONResponse ProblemList
+
+type ListPeopleRequestObject struct {
+}
+
+type ListPeopleResponseObject interface {
+	VisitListPeopleResponse(w http.ResponseWriter) error
+}
+
+type ListPeople200JSONResponse struct {
+	People []Person `json:"people"`
+}
+
+func (response ListPeople200JSONResponse) VisitListPeopleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPeople401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListPeople401JSONResponse) VisitListPeopleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPeople403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListPeople403JSONResponse) VisitListPeopleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPeople404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListPeople404JSONResponse) VisitListPeopleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemovePersonRequestObject struct {
+	Email string `json:"email"`
+}
+
+type RemovePersonResponseObject interface {
+	VisitRemovePersonResponse(w http.ResponseWriter) error
+}
+
+type RemovePerson204Response struct {
+}
+
+func (response RemovePerson204Response) VisitRemovePersonResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RemovePerson401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response RemovePerson401JSONResponse) VisitRemovePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemovePerson403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response RemovePerson403JSONResponse) VisitRemovePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemovePerson404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RemovePerson404JSONResponse) VisitRemovePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemovePerson409JSONResponse ProblemList
+
+func (response RemovePerson409JSONResponse) VisitRemovePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GrantPersonRequestObject struct {
+	Email string `json:"email"`
+	Body  *GrantPersonJSONRequestBody
+}
+
+type GrantPersonResponseObject interface {
+	VisitGrantPersonResponse(w http.ResponseWriter) error
+}
+
+type GrantPerson200JSONResponse Person
+
+func (response GrantPerson200JSONResponse) VisitGrantPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GrantPerson401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GrantPerson401JSONResponse) VisitGrantPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GrantPerson403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GrantPerson403JSONResponse) VisitGrantPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GrantPerson404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GrantPerson404JSONResponse) VisitGrantPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GrantPerson409JSONResponse ProblemList
+
+func (response GrantPerson409JSONResponse) VisitGrantPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GrantPerson422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response GrantPerson422JSONResponse) VisitGrantPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type ListFlowsRequestObject struct {
 }
@@ -5198,6 +5616,15 @@ func (response ListUnapplied403JSONResponse) VisitListUnappliedResponse(w http.R
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// ListPeople The access list
+	// (GET /access/people)
+	ListPeople(ctx context.Context, request ListPeopleRequestObject) (ListPeopleResponseObject, error)
+	// RemovePerson Take a person off the access list
+	// (DELETE /access/people/{email})
+	RemovePerson(ctx context.Context, request RemovePersonRequestObject) (RemovePersonResponseObject, error)
+	// GrantPerson List a person, or change what an administrator grants them
+	// (PUT /access/people/{email})
+	GrantPerson(ctx context.Context, request GrantPersonRequestObject) (GrantPersonResponseObject, error)
 	// ListFlows The kinds that have a flow (a stepped definition, contract/flows). A kind without one is a sheet: one step, every field.
 	// (GET /flows)
 	ListFlows(ctx context.Context, request ListFlowsRequestObject) (ListFlowsResponseObject, error)
@@ -5366,6 +5793,89 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListPeople operation middleware
+func (sh *strictHandler) ListPeople(w http.ResponseWriter, r *http.Request) {
+	var request ListPeopleRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPeople(ctx, request.(ListPeopleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPeople")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListPeopleResponseObject); ok {
+		if err := validResponse.VisitListPeopleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemovePerson operation middleware
+func (sh *strictHandler) RemovePerson(w http.ResponseWriter, r *http.Request, email string) {
+	var request RemovePersonRequestObject
+
+	request.Email = email
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemovePerson(ctx, request.(RemovePersonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemovePerson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemovePersonResponseObject); ok {
+		if err := validResponse.VisitRemovePersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GrantPerson operation middleware
+func (sh *strictHandler) GrantPerson(w http.ResponseWriter, r *http.Request, email string) {
+	var request GrantPersonRequestObject
+
+	request.Email = email
+
+	var body GrantPersonJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GrantPerson(ctx, request.(GrantPersonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GrantPerson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GrantPersonResponseObject); ok {
+		if err := validResponse.VisitGrantPersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ListFlows operation middleware
