@@ -13,6 +13,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
@@ -26,6 +27,7 @@ type Engine struct {
 	ops       store.OperationalStore
 	state     store.StateStore    // nil when the store has no apply gate
 	bundles   store.BundleStore   // nil when nowhere keeps handoff bundles
+	layout    layout.Layout       // nil when the graph has no layout (WithLayout)
 	codec     codec.Codec         // the manifest syntax; YAML unless told otherwise
 	bus       Bus                 // event fan-out; in-process unless told otherwise
 	crdt      crdt.Engine         // the CRDT under shared drafts (docs/adr/0007)

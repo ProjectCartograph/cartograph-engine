@@ -45,6 +45,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/GoalTree"
 
+  /graph:
+    get:
+      operationId: getGraph
+      summary: Every manifest and every reference between them, for the workspace graph
+      description: >-
+        Read from the reference index: a node per manifest of every kind
+        but Settings and KPIReadings, and an edge wherever one names
+        another in its spec. An edge points from the manifest that holds
+        the reference to the one it names. The engine places every node
+        (x, y), the same way for the same workspace, so every interface
+        draws the graph alike; with focus, each node also says how many
+        edges it is from that one.
+      parameters:
+        - name: focus
+          in: query
+          required: false
+          description: A manifest as Kind/id, to measure every node's distance from.
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Graph"
+
   /manifests/Goal/{id}/checks:
     get:
       operationId: getGoalChecks
@@ -2645,6 +2676,50 @@ components:
           items:
             $ref: "#/components/schemas/GoalNode"
 
+    Graph:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphNode"
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphEdge"
+    GraphNode:
+      type: object
+      required: [kind, id, name, x, y]
+      properties:
+        x:
+          type: number
+          format: double
+          description: Where the engine's layout placed it, in units an interface scales to its screen.
+        y:
+          type: number
+          format: double
+        distance:
+          type: integer
+          description: How many edges, either way, from the focus asked for; absent when nothing joins them or no focus was asked for.
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+          description: metadata.name
+        level:
+          type: string
+          description: A goal's level (goal, objective, outcome); absent for every other kind.
+    GraphEdge:
+      type: object
+      required: [from, to]
+      properties:
+        from:
+          $ref: "#/components/schemas/Ref"
+        to:
+          $ref: "#/components/schemas/Ref"
     GoalTree:
       type: object
       required: [levels, nodes]

@@ -544,6 +544,36 @@ type GoalTree struct {
 	Nodes  []GoalNode `json:"nodes"`
 }
 
+// Graph defines model for Graph.
+type Graph struct {
+	Edges []GraphEdge `json:"edges"`
+	Nodes []GraphNode `json:"nodes"`
+}
+
+// GraphEdge defines model for GraphEdge.
+type GraphEdge struct {
+	From Ref `json:"from"`
+	To   Ref `json:"to"`
+}
+
+// GraphNode defines model for GraphNode.
+type GraphNode struct {
+	// Distance How many edges, either way, from the focus asked for; absent when nothing joins them or no focus was asked for.
+	Distance *int   `json:"distance,omitempty"`
+	Id       string `json:"id"`
+	Kind     string `json:"kind"`
+
+	// Level A goal's level (goal, objective, outcome); absent for every other kind.
+	Level *string `json:"level,omitempty"`
+
+	// Name metadata.name
+	Name string `json:"name"`
+
+	// X Where the engine's layout placed it, in units an interface scales to its screen.
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
 // Guide defines model for Guide.
 type Guide struct {
 	// Checks By check id, how to meet it.
@@ -1161,6 +1191,12 @@ type GetAgentFeedParams struct {
 	Person *string `form:"person,omitempty" json:"person,omitempty"`
 }
 
+// GetGraphParams defines parameters for GetGraph.
+type GetGraphParams struct {
+	// Focus A manifest as Kind/id, to measure every node's distance from.
+	Focus *string `form:"focus,omitempty" json:"focus,omitempty"`
+}
+
 // GetGuideParams defines parameters for GetGuide.
 type GetGuideParams struct {
 	// Level For a Goal, goal, objective or outcome.
@@ -1398,6 +1434,9 @@ type ServerInterface interface {
 	// GetGoalTree The goal tree, computed from every Goal manifest and the reference index
 	// (GET /goals/tree)
 	GetGoalTree(w http.ResponseWriter, r *http.Request)
+	// GetGraph Every manifest and every reference between them, for the workspace graph
+	// (GET /graph)
+	GetGraph(w http.ResponseWriter, r *http.Request, params GetGraphParams)
 	// GetGuide How to define a kind well, for one level, in one language: what it is, every step and field in order with right and wrong examples, the checks each answers and how to meet them, the links to make on other kinds, and the organisation's records to reuse for each reference and link. Agents read the same guide over MCP.
 	// (GET /guides/{kind})
 	GetGuide(w http.ResponseWriter, r *http.Request, kind KindParam, params GetGuideParams)
@@ -1767,6 +1806,39 @@ func (siw *ServerInterfaceWrapper) GetGoalTree(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetGoalTree(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGraph operation middleware
+func (siw *ServerInterfaceWrapper) GetGraph(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetGraphParams
+
+	// ------------- Optional query parameter "focus" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "focus", r.URL.Query(), &params.Focus, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "focus"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "focus", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGraph(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3359,6 +3431,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/settings", wrapper.GetSettings)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/goals/tree", wrapper.GetGoalTree)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/graph", wrapper.GetGraph)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Goal/{id}/checks", wrapper.GetGoalChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Gap/{id}/checks", wrapper.GetGapChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Gap/{id}/coverage", wrapper.GetGapCoverage)
@@ -4061,6 +4134,56 @@ func (response GetGoalTree401JSONResponse) VisitGetGoalTreeResponse(w http.Respo
 type GetGoalTree403JSONResponse struct{ ForbiddenJSONResponse }
 
 func (response GetGoalTree403JSONResponse) VisitGetGoalTreeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGraphRequestObject struct {
+	Params GetGraphParams
+}
+
+type GetGraphResponseObject interface {
+	VisitGetGraphResponse(w http.ResponseWriter) error
+}
+
+type GetGraph200JSONResponse Graph
+
+func (response GetGraph200JSONResponse) VisitGetGraphResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGraph401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetGraph401JSONResponse) VisitGetGraphResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGraph403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetGraph403JSONResponse) VisitGetGraphResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7297,6 +7420,9 @@ type StrictServerInterface interface {
 	// GetGoalTree The goal tree, computed from every Goal manifest and the reference index
 	// (GET /goals/tree)
 	GetGoalTree(ctx context.Context, request GetGoalTreeRequestObject) (GetGoalTreeResponseObject, error)
+	// GetGraph Every manifest and every reference between them, for the workspace graph
+	// (GET /graph)
+	GetGraph(ctx context.Context, request GetGraphRequestObject) (GetGraphResponseObject, error)
 	// GetGuide How to define a kind well, for one level, in one language: what it is, every step and field in order with right and wrong examples, the checks each answers and how to meet them, the links to make on other kinds, and the organisation's records to reuse for each reference and link. Agents read the same guide over MCP.
 	// (GET /guides/{kind})
 	GetGuide(ctx context.Context, request GetGuideRequestObject) (GetGuideResponseObject, error)
@@ -7738,6 +7864,32 @@ func (sh *strictHandler) GetGoalTree(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetGoalTreeResponseObject); ok {
 		if err := validResponse.VisitGetGoalTreeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetGraph operation middleware
+func (sh *strictHandler) GetGraph(w http.ResponseWriter, r *http.Request, params GetGraphParams) {
+	var request GetGraphRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetGraph(ctx, request.(GetGraphRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetGraph")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetGraphResponseObject); ok {
+		if err := validResponse.VisitGetGraphResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

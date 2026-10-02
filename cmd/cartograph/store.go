@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/access"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout/force"
 	"log/slog"
 	"os"
 	"sync"
@@ -143,7 +144,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		counted := &countedBus{Bus: bus}
 		accessOpts, authz, bind := accessControl(o, postgres.NewAccessStore(pool))
 		e, err := engine.New(postgres.NewManifestStore(pool), postgres.NewOperationalStore(pool),
-			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithBundles(postgres.NewBundleStore(pool)))...)
+			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(force.New()), engine.WithBundles(postgres.NewBundleStore(pool)))...)
 		if err != nil {
 			bus.Close()
 			pool.Close()
@@ -182,7 +183,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		bus := fanoutmemory.New()
 		counted := &countedBus{Bus: bus}
 		accessOpts, authz, bind := accessControl(o, v.Index().Access())
-		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c))...)
+		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(force.New()))...)
 		if err != nil {
 			bus.Close()
 			v.Close()
@@ -214,7 +215,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 	docs := sqlite.NewDocStore(db)
 	counted := &countedBus{Bus: bus}
 	accessOpts, authz, bind := accessControl(o, sqlite.NewAccessStore(db))
-	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c))...)
+	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(force.New()))...)
 	if err != nil {
 		bus.Close()
 		db.Close()

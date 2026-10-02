@@ -98,6 +98,7 @@ has none. In this repository:
 - `fanout`: internal/fanout
 - `flake`: flake.nix
 - `kinds`: internal/kinds
+- `layout`: internal/layout, the graph layout port and its adapters
 - `mcp`: internal/mcp, the MCP adapter for agents
 - `oauth`: internal/oauth, the authorization server for agents
 - `release`: VERSION and the pinned interface

@@ -1423,3 +1423,30 @@ func nameOf(c codec.Codec, text []byte) string {
 	name, _ := md["name"].(string)
 	return name
 }
+
+func (s *Server) GetGraph(ctx context.Context, req apigen.GetGraphRequestObject) (apigen.GetGraphResponseObject, error) {
+	var focus *engine.Ref
+	if req.Params.Focus != nil {
+		if kind, id, ok := strings.Cut(*req.Params.Focus, "/"); ok && kind != "" && id != "" {
+			focus = &engine.Ref{Kind: kind, ID: id}
+		}
+	}
+	g, err := s.Engine.Graph(ctx, focus)
+	if err != nil {
+		return nil, err
+	}
+	out := apigen.Graph{Nodes: make([]apigen.GraphNode, len(g.Nodes)), Edges: make([]apigen.GraphEdge, len(g.Edges))}
+	for i, n := range g.Nodes {
+		out.Nodes[i] = apigen.GraphNode{Kind: n.Kind, Id: n.ID, Name: n.Name, X: n.X, Y: n.Y}
+		if n.Level != "" {
+			out.Nodes[i].Level = &n.Level
+		}
+		if n.Distance >= 0 {
+			out.Nodes[i].Distance = &n.Distance
+		}
+	}
+	for i, e := range g.Edges {
+		out.Edges[i] = apigen.GraphEdge{From: apigen.Ref{Kind: e.From.Kind, Id: e.From.ID}, To: apigen.Ref{Kind: e.To.Kind, Id: e.To.ID}}
+	}
+	return apigen.GetGraph200JSONResponse(out), nil
+}
