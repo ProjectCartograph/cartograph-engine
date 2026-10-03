@@ -11,7 +11,7 @@ spec:
   direction: decrease
   baseline: {value: 41, date: "2025-09"}
   target: {value: 20, date: "2027-06"}
-  source: collection-log
+  sources: [collection-log]
   cycle: monthly-cycle
   goals: [produce-reaches-a-depot-the-same-day, less-harvest-lost-after-picking]
   resultLevel: output

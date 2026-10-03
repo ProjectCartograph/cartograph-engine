@@ -104,7 +104,7 @@
             "hint": "The finding in the source's own words."
           },
           {
-            "path": "/spec/measuredBy",
+            "path": "/spec/dataSources",
             "control": "reference",
             "hint": "Where this gap can be watched, if anywhere."
           },

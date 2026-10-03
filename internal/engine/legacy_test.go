@@ -380,3 +380,24 @@ func TestSpecNameIsFoldedIntoMetadata(t *testing.T) {
 		t.Fatalf("read back as:\n%s", v.YAML)
 	}
 }
+
+// A KPI and a gap saved with one data source read as lists of them, and a
+// KPI saved the old way still saves (2.7.0, ADR 0021).
+func TestSingleSourcesReadAsLists(t *testing.T) {
+	e := newTestEngine(t)
+	ctx := context.Background()
+	if _, err := e.ImportDir(ctx, exampleDir(t), "seed", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	old := "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k-old\n  name: Old KPI\nspec:\n  definition: Share of crates sound at intake\n  unit: percent\n  direction: increase\n  source: collection-log\n"
+	if _, err := e.Commit(ctx, "KPI", "k-old", []byte(old), "alice", "an older client"); err != nil {
+		t.Fatalf("a KPI with one source no longer saves: %v", err)
+	}
+	v, err := e.Get(ctx, "KPI", "k-old")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(v.YAML); !strings.Contains(got, "sources:") || !strings.Contains(got, "collection-log") || strings.Contains(got, "\n  source:") {
+		t.Fatalf("one source does not read as a list:\n%s", got)
+	}
+}

@@ -68,10 +68,19 @@
           "maxLength": 240,
           "description": "Where this was written down, precisely enough to find again. Provenance rather than a link, the way Goal.spec.source is: a citation names a document, which Cartograph does not hold."
         },
+        "dataSources": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "DataSource"
+          },
+          "description": "Where this gap can actually be watched, when it can be: every data source the evidence comes from, since a finding is often read from several at once (an intake log and a survey). Optional because most cited findings are not live measures."
+        },
         "measuredBy": {
           "$ref": "common.schema.json#/$defs/Slug",
           "x-cartograph-ref": "DataSource",
-          "description": "Where this gap can actually be watched, when it can be. Optional because most cited findings are not live measures; the ones that are get a source Cartograph can track."
+          "description": "Deprecated: a gap may be watched in several data sources at once; they are dataSources. Read from a manifest saved before 2.7.0 and folded into dataSources; never written."
         },
         "note": {
           "type": "string",

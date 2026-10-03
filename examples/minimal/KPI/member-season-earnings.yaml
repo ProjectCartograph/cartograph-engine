@@ -11,7 +11,7 @@ spec:
   direction: increase
   baseline: {value: 820, date: "2025-09"}
   target: {value: 1000, date: "2027-06"}
-  source: sales-ledger
+  sources: [sales-ledger]
   cycle: seasonal-cycle
   goals: [grow-member-livelihoods, members-earn-more-each-season]
   resultLevel: impact

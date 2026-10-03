@@ -143,9 +143,6 @@
         }
       ]
     },
-    "/spec/measuredBy": {
-      "guide": "The data source where this gap can actually be watched, when it can be. Leave it empty when the finding was counted once by hand and no system holds it; say so in the note."
-    },
     "/spec/note": {
       "guide": "Anything the quote cannot carry without ceasing to be the source's own words: how it was counted, or why it cannot be watched yet.",
       "good": [
@@ -157,6 +154,9 @@
           "why": "Work addressing the gap is recorded on the work's side, where its problem cites the gap, so the register can count it."
         }
       ]
+    },
+    "/spec/dataSources": {
+      "guide": "Every data source this gap can be watched in, when it can be: name each one the evidence comes from, since a finding is often read from several at once. Leave it empty for a finding nothing records live."
     }
   },
   "links": {

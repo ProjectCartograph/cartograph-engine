@@ -11,7 +11,7 @@ spec:
   direction: increase
   baseline: {value: 62, date: "2025-09"}
   target: {value: 75, date: "2027-06"}
-  source: quality-check-tool
+  sources: [quality-check-tool]
   cycle: seasonal-cycle
   # The pillar it moves, and the functional goal it measures directly:
   # the share meeting the standard at intake is what "faults found

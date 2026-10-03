@@ -11,7 +11,7 @@ spec:
   direction: decrease
   baseline: {value: 18, date: "2025-09"}
   target: {value: 9, date: "2027-06"}
-  source: collection-log
+  sources: [collection-log]
   cycle: seasonal-cycle
   goals: [less-harvest-lost-after-picking]
   resultLevel: outcome

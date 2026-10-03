@@ -26,8 +26,7 @@
       "required": [
         "definition",
         "unit",
-        "direction",
-        "source"
+        "direction"
       ],
       "properties": {
         "name": {
@@ -59,9 +58,20 @@
         "target": {
           "$ref": "common.schema.json#/$defs/ValueAndDate"
         },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "DataSource"
+          },
+          "description": "Every data source the number is read from: one, or several when it is computed from them jointly (a count from one and the total from another), so anyone can go and check each."
+        },
         "source": {
           "$ref": "common.schema.json#/$defs/Slug",
-          "x-cartograph-ref": "DataSource"
+          "x-cartograph-ref": "DataSource",
+          "description": "Deprecated: an indicator may be read from several data sources jointly; they are sources. Read from a manifest saved before 2.7.0 and folded into sources; never written."
         },
         "cycle": {
           "$ref": "common.schema.json#/$defs/Slug",
@@ -91,7 +101,19 @@
           },
           "description": "The dimensions this KPI can be broken down by, as Segment references. A reference, not free text: the thing a measure is split by and the thing a gap is observed in are one concept, and free text would give it two names, one of them uncheckable."
         }
-      }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "sources"
+          ]
+        },
+        {
+          "required": [
+            "source"
+          ]
+        }
+      ]
     }
   }
 }

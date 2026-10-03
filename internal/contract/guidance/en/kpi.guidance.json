@@ -114,19 +114,6 @@
         "2027-06"
       ]
     },
-    "/spec/source": {
-      "guide": "The data source the number is read from, so anyone can go and check it. A dated target read from a source captured by hand is advised on the source, so say how records get into it there.",
-      "good": [
-        "collection-log, for Collection turnaround",
-        "quality-check-tool, for Quality pass rate"
-      ],
-      "poor": [
-        {
-          "text": "member-survey, for Quality pass rate",
-          "why": "Members' opinion of quality is a different number from the share of deliveries meeting the standard at intake."
-        }
-      ]
-    },
     "/spec/cycle": {
       "guide": "The reporting cycle the KPI is read on. It sets the periods its readings are recorded for, so pick the one the source can actually supply.",
       "good": [
@@ -174,6 +161,19 @@
     },
     "/spec/baseline/expectedBy": {
       "guide": "The month the figure will be known, when there is one."
+    },
+    "/spec/sources": {
+      "guide": "Every data source the number is read from, so anyone can go and check it: one, or several when it is computed from them jointly, such as a count from one and the total from another. A dated target read from a source captured only once is a guess.",
+      "good": [
+        "collection-log, for Collection turnaround",
+        "quality-check-tool, for Quality pass rate"
+      ],
+      "poor": [
+        {
+          "text": "member-survey, for Quality pass rate",
+          "why": "Members' opinion of quality is a different number from the share of deliveries meeting the standard at intake."
+        }
+      ]
     }
   },
   "links": {

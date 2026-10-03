@@ -187,7 +187,7 @@ func measures(ctx context.Context, e *engine.Engine, n names, ids []string) [][]
 			return val
 		}
 		byID[id] = []string{name, point(spec["baseline"]), point(spec["target"]),
-			n.of("DataSource", str(spec["source"])), n.of("ReportingCycle", str(spec["cycle"]))}
+			sourcesOf(n, spec), n.of("ReportingCycle", str(spec["cycle"]))}
 	})
 	var rows [][]string
 	for _, id := range ids {
@@ -223,4 +223,21 @@ func roleNames(n names, resources []map[string]any, role string) []string {
 		}
 	}
 	return out
+}
+
+// sourcesOf names every data source an indicator is read from, and the one
+// a manifest from before 2.7.0 names.
+func sourcesOf(n names, spec map[string]any) string {
+	var out []string
+	if ids, ok := spec["sources"].([]any); ok {
+		for _, id := range ids {
+			if s := str(id); s != "" {
+				out = append(out, n.of("DataSource", s))
+			}
+		}
+	}
+	if s := str(spec["source"]); s != "" && len(out) == 0 {
+		out = append(out, n.of("DataSource", s))
+	}
+	return strings.Join(out, ", ")
 }

@@ -114,7 +114,7 @@
         "guide": "Where the number is read from, and how often.",
         "fields": [
           {
-            "path": "/spec/source",
+            "path": "/spec/sources",
             "control": "reference",
             "hint": "Which system or record this number is read from, so anyone can go and check it."
           },

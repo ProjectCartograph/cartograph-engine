@@ -138,7 +138,7 @@
     }
   },
   "links": {
-    "KPI:/spec/source": {
+    "KPI:/spec/sources": {
       "ask": "Which indicator is read from this source? An indicator names the source its readings come from, as its means of verification.",
       "ifNone": "Leave it. A source may be read by a gap, a key result, a success criterion or a project's data use instead, or be recorded before anything reads from it. When an indicator should read from it, the indicator names it."
     }

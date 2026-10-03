@@ -71,6 +71,30 @@ func rewriteLegacyFields(kind string, doc map[string]any) []string {
 		notes = append(notes, "spec.name folded into metadata.name, which now holds the name alone")
 	}
 
+	// A gap may be watched in several data sources, and an indicator read
+	// from several jointly; the single fields are folded into the lists
+	// (2.7.0, ADR 0021).
+	for _, f := range []struct{ kind, old, list string }{{"Gap", "measuredBy", "dataSources"}, {"KPI", "source", "sources"}} {
+		if kind != f.kind {
+			continue
+		}
+		if one, ok := spec[f.old].(string); ok {
+			list, _ := spec[f.list].([]any)
+			found := false
+			for _, v := range list {
+				if v == one {
+					found = true
+				}
+			}
+			if !found && one != "" {
+				list = append([]any{one}, list...)
+			}
+			spec[f.list] = list
+			delete(spec, f.old)
+			notes = append(notes, "spec."+f.old+" folded into spec."+f.list)
+		}
+	}
+
 	if kind == "Goal" {
 		if level, ok := spec["level"].(string); ok {
 			switch level {
