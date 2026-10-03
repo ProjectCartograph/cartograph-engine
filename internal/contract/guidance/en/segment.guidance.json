@@ -1,10 +1,10 @@
 {
   "locale": "en",
   "kind": "Segment",
-  "definition": "One named slice of what the organisation serves, such as a region, a depot, a product line or a holding size. Segments are what a gap is observed in and what a KPI is broken down by: one concept, so both name the same slices. They form a tree: a dimension is a segment with no parent (Region), and its values are its children (the northern region). A segment is not a beneficiary group (a group of people the work is for), not a team (who does the work), not a label (a free cut nobody planned), and not a period of time (the reporting cycle's job).",
+  "definition": "A segment is a way of slicing up what the organisation serves, so a gap can say where it was found and a KPI can be broken down the same way: by region, by depot, by product line, by holding size. Define the slicing first, as a segment with no parent (Region), then each slice under it (the northern region). Both gaps and KPIs name the same segments, so a finding and its measure always cut the work the same way. A segment is not a beneficiary group (people the work is for), not a team (who does the work), not a label (a free cut nobody planned), and not a period of time (the reporting cycle's job).",
   "fields": {
     "/spec/parent": {
-      "guide": "The dimension this is a value of, or the broader slice it sits inside. Leave it empty for a dimension itself. A segment can never sit under itself, directly or further up, and such a parent is refused on save. When the dimension does not exist yet, define it first, top-down.",
+      "guide": "The slicing this is one slice of (Region, for the northern region), or the broader slice it sits inside. Leave it empty for the slicing itself. A segment can never sit under itself, directly or further up, and such a parent is refused on save. When the slicing does not exist yet, define it first.",
       "good": [
         "region, for the northern region",
         "product-line, for fresh produce"
