@@ -25,32 +25,7 @@ var ErrBadEdit = errors.New("bad draft edit")
 // and the draft returned holds it, for the agent to build on. A manifest
 // with no draft and no version yet starts as one, with only its id.
 func (e *Engine) EditDraft(ctx context.Context, kind, id string, set map[string]any, unset []string, actor string) ([]byte, error) {
-	apply := func(doc map[string]any) error {
-		// Parents before children, so a field and one inside it can be
-		// set in one edit.
-		paths := make([]string, 0, len(set))
-		for p := range set {
-			paths = append(paths, p)
-		}
-		sort.Slice(paths, func(i, j int) bool {
-			return len(paths[i]) < len(paths[j]) || len(paths[i]) == len(paths[j]) && paths[i] < paths[j]
-		})
-		for _, p := range paths {
-			if err := pointerSet(doc, p, set[p]); err != nil {
-				return err
-			}
-		}
-		for _, p := range unset {
-			if err := pointerUnset(doc, p); err != nil {
-				return err
-			}
-		}
-		meta, _ := doc["metadata"].(map[string]any)
-		if meta == nil || meta["id"] != id {
-			return fmt.Errorf("%w: metadata.id is %s's own and cannot change", ErrBadEdit, id)
-		}
-		return nil
-	}
+	apply := func(doc map[string]any) error { return applyEdit(doc, id, set, unset) }
 	if e.shared != nil {
 		content, err := e.shared.Update(ctx, kind, id, apply, "edited by "+actor)
 		if err == nil {
@@ -214,6 +189,35 @@ func pointerUnset(doc map[string]any, p string) error {
 		default:
 			return nil
 		}
+	}
+	return nil
+}
+
+// applyEdit sets and clears fields of a manifest by JSON pointer, parents
+// before children, and refuses a change of its id.
+func applyEdit(doc map[string]any, id string, set map[string]any, unset []string) error {
+	// Parents before children, so a field and one inside it can be
+	// set in one edit.
+	paths := make([]string, 0, len(set))
+	for p := range set {
+		paths = append(paths, p)
+	}
+	sort.Slice(paths, func(i, j int) bool {
+		return len(paths[i]) < len(paths[j]) || len(paths[i]) == len(paths[j]) && paths[i] < paths[j]
+	})
+	for _, p := range paths {
+		if err := pointerSet(doc, p, set[p]); err != nil {
+			return err
+		}
+	}
+	for _, p := range unset {
+		if err := pointerUnset(doc, p); err != nil {
+			return err
+		}
+	}
+	meta, _ := doc["metadata"].(map[string]any)
+	if meta == nil || meta["id"] != id {
+		return fmt.Errorf("%w: metadata.id is %s's own and cannot change", ErrBadEdit, id)
 	}
 	return nil
 }

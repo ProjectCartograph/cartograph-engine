@@ -84,6 +84,9 @@ func (e *Engine) ChecksOf(ctx context.Context, kind, id string, text []byte) ([]
 // DraftChecks computes the checks for a manifest as it stands: its draft
 // where there is one, else its latest version.
 func (e *Engine) DraftChecks(ctx context.Context, kind, id string) ([]Check, error) {
+	if text, ok := inPlay(ctx, kind, id); ok {
+		return e.ChecksOf(e.withInPlay(ctx), kind, id, text)
+	}
 	text, found, err := e.manifests.GetWorking(ctx, kind, id)
 	if err != nil {
 		return nil, err
@@ -185,4 +188,17 @@ func (e *Engine) goalIDsUnder(ctx context.Context, id, level string) ([]namedGoa
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].name < out[j].name })
 	return out, nil
+}
+
+// withInPlay checks with every draft of the change set on ctx, as one set.
+func (e *Engine) withInPlay(ctx context.Context) context.Context {
+	docs := map[string]map[string]any{}
+	for _, r := range inPlayRefs(ctx) {
+		t, _ := inPlay(ctx, r.Kind, r.ID)
+		var d map[string]any
+		if e.codec.DecodeInto(t, &d) == nil {
+			docs[r.Kind+"/"+r.ID] = d
+		}
+	}
+	return withProposed(ctx, docs)
 }

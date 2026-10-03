@@ -76,6 +76,7 @@
         "met": { "type": "integer", "minimum": 0, "description": "For a draft or checks, how many checks are met." },
         "open": { "type": "integer", "minimum": 0, "description": "For a draft or checks, how many are still open." },
         "proposal": { "type": "string", "maxLength": 64, "description": "For a proposal, its id." },
+        "changeSet": { "type": "string", "maxLength": 64, "description": "The change set the step was in (docs/adr/0022), so a person following opens its draft there; for a proposal, the change set proposed." },
         "parts": { "type": "integer", "minimum": 1, "description": "For a proposal, how many manifests it holds." }
       }
     }

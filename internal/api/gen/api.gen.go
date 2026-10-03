@@ -39,6 +39,33 @@ func (e ChangeOp) Valid() bool {
 	}
 }
 
+// Defines values for ChangeSetStatus.
+const (
+	ChangeSetStatusClosed   ChangeSetStatus = "closed"
+	ChangeSetStatusMerged   ChangeSetStatus = "merged"
+	ChangeSetStatusMerging  ChangeSetStatus = "merging"
+	ChangeSetStatusOpen     ChangeSetStatus = "open"
+	ChangeSetStatusProposed ChangeSetStatus = "proposed"
+)
+
+// Valid indicates whether the value is a known member of the ChangeSetStatus enum.
+func (e ChangeSetStatus) Valid() bool {
+	switch e {
+	case ChangeSetStatusClosed:
+		return true
+	case ChangeSetStatusMerged:
+		return true
+	case ChangeSetStatusMerging:
+		return true
+	case ChangeSetStatusOpen:
+		return true
+	case ChangeSetStatusProposed:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GoalCheckState.
 const (
 	GoalCheckStateOk   GoalCheckState = "ok"
@@ -270,6 +297,33 @@ func (e SessionAccessScopes) Valid() bool {
 	}
 }
 
+// Defines values for ListChangeSetsParamsStatus.
+const (
+	ListChangeSetsParamsStatusClosed   ListChangeSetsParamsStatus = "closed"
+	ListChangeSetsParamsStatusMerged   ListChangeSetsParamsStatus = "merged"
+	ListChangeSetsParamsStatusMerging  ListChangeSetsParamsStatus = "merging"
+	ListChangeSetsParamsStatusOpen     ListChangeSetsParamsStatus = "open"
+	ListChangeSetsParamsStatusProposed ListChangeSetsParamsStatus = "proposed"
+)
+
+// Valid indicates whether the value is a known member of the ListChangeSetsParamsStatus enum.
+func (e ListChangeSetsParamsStatus) Valid() bool {
+	switch e {
+	case ListChangeSetsParamsStatusClosed:
+		return true
+	case ListChangeSetsParamsStatusMerged:
+		return true
+	case ListChangeSetsParamsStatusMerging:
+		return true
+	case ListChangeSetsParamsStatusOpen:
+		return true
+	case ListChangeSetsParamsStatusProposed:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListManifestsParamsExpand.
 const (
 	Spec ListManifestsParamsExpand = "spec"
@@ -399,6 +453,92 @@ type Change struct {
 
 // ChangeOp defines model for Change.Op.
 type ChangeOp string
+
+// ChangeSet A piece of work kept apart from the record and from every other piece of work until it is accepted, as a pull request is (docs/adr/0022).
+type ChangeSet struct {
+	// Agent The agent working in it, if one is.
+	Agent          *string    `json:"agent,omitempty"`
+	At             time.Time  `json:"at"`
+	DecidedAt      *time.Time `json:"decidedAt,omitempty"`
+	DecidedBy      *string    `json:"decidedBy,omitempty"`
+	DecisionReason *string    `json:"decisionReason,omitempty"`
+	Description    *string    `json:"description,omitempty"`
+
+	// For The person it is for, who accepts it.
+	For *string `json:"for,omitempty"`
+	Id  string  `json:"id"`
+
+	// Reason What proposing it said.
+	Reason  *string         `json:"reason,omitempty"`
+	Status  ChangeSetStatus `json:"status"`
+	Title   string          `json:"title"`
+	Updated time.Time       `json:"updated"`
+	Waivers *[]Waiver       `json:"waivers,omitempty"`
+}
+
+// ChangeSetStatus defines model for ChangeSet.Status.
+type ChangeSetStatus string
+
+// ChangeSetDraft defines model for ChangeSetDraft.
+type ChangeSetDraft struct {
+	// InChangeSet Whether the change set has its own draft of it; false when this is the record.
+	InChangeSet bool   `json:"inChangeSet"`
+	Yaml        string `json:"yaml"`
+}
+
+// ChangeSetEdit defines model for ChangeSetEdit.
+type ChangeSetEdit struct {
+	// Previous The text the editor last had, so only what it changed since is applied.
+	Previous *string `json:"previous,omitempty"`
+	Yaml     string  `json:"yaml"`
+}
+
+// ChangeSetInclude defines model for ChangeSetInclude.
+type ChangeSetInclude struct {
+	Included bool `json:"included"`
+}
+
+// ChangeSetItem defines model for ChangeSetItem.
+type ChangeSetItem struct {
+	At *time.Time `json:"at,omitempty"`
+
+	// Base The version it started from; 0 for a manifest the change set creates.
+	Base int     `json:"base"`
+	By   *string `json:"by,omitempty"`
+
+	// Changes What accepting it would change, against the version it started from.
+	Changes []Change        `json:"changes"`
+	Checks  []ManifestCheck `json:"checks"`
+	Id      string          `json:"id"`
+
+	// Included False for an item trimmed from the next acceptance.
+	Included bool    `json:"included"`
+	Kind     string  `json:"kind"`
+	Name     *string `json:"name,omitempty"`
+
+	// Stale The version saved since it started, when one was; accepting is refused until it is reviewed again.
+	Stale *int `json:"stale,omitempty"`
+}
+
+// ChangeSetProposal defines model for ChangeSetProposal.
+type ChangeSetProposal struct {
+	// OpenChecks Checks left open, by Kind/id, then check id, each with why.
+	OpenChecks *map[string]map[string]string `json:"openChecks,omitempty"`
+	Reason     *string                       `json:"reason,omitempty"`
+}
+
+// ChangeSetReview defines model for ChangeSetReview.
+type ChangeSetReview struct {
+	// ChangeSet A piece of work kept apart from the record and from every other piece of work until it is accepted, as a pull request is (docs/adr/0022).
+	ChangeSet ChangeSet       `json:"changeSet"`
+	Items     []ChangeSetItem `json:"items"`
+}
+
+// ChangeSetTitle defines model for ChangeSetTitle.
+type ChangeSetTitle struct {
+	Description *string `json:"description,omitempty"`
+	Title       *string `json:"title,omitempty"`
+}
 
 // ConflictResponse defines model for ConflictResponse.
 type ConflictResponse struct {
@@ -1164,6 +1304,9 @@ type Waiver struct {
 	// Message What the check said.
 	Message string `json:"message"`
 
+	// On The manifest it is on, as Kind/id, in a change set.
+	On *string `json:"on,omitempty"`
+
 	// Reason Why the agent left it open.
 	Reason string `json:"reason"`
 }
@@ -1174,6 +1317,9 @@ type WriteRequest struct {
 	Reason   string                  `json:"reason"`
 	Yaml     *string                 `json:"yaml,omitempty"`
 }
+
+// ChangeSetParam defines model for ChangeSetParam.
+type ChangeSetParam = string
 
 // GrantParam defines model for GrantParam.
 type GrantParam = string
@@ -1214,6 +1360,15 @@ type ListAgentGrantsParams struct {
 type GetAgentFeedParams struct {
 	Person *string `form:"person,omitempty" json:"person,omitempty"`
 }
+
+// ListChangeSetsParams defines parameters for ListChangeSets.
+type ListChangeSetsParams struct {
+	Status   *ListChangeSetsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+	Everyone *bool                       `form:"everyone,omitempty" json:"everyone,omitempty"`
+}
+
+// ListChangeSetsParamsStatus defines parameters for ListChangeSets.
+type ListChangeSetsParamsStatus string
 
 // GetGraphParams defines parameters for GetGraph.
 type GetGraphParams struct {
@@ -1327,6 +1482,30 @@ type GrantPersonJSONRequestBody = PersonGrant
 
 // CreateAgentTokenJSONRequestBody defines body for CreateAgentToken for application/json ContentType.
 type CreateAgentTokenJSONRequestBody = AgentTokenRequest
+
+// StartChangeSetJSONRequestBody defines body for StartChangeSet for application/json ContentType.
+type StartChangeSetJSONRequestBody = ChangeSetTitle
+
+// RetitleChangeSetJSONRequestBody defines body for RetitleChangeSet for application/json ContentType.
+type RetitleChangeSetJSONRequestBody = ChangeSetTitle
+
+// AcceptChangeSetJSONRequestBody defines body for AcceptChangeSet for application/json ContentType.
+type AcceptChangeSetJSONRequestBody = ProposalDecision
+
+// CloseChangeSetJSONRequestBody defines body for CloseChangeSet for application/json ContentType.
+type CloseChangeSetJSONRequestBody = ProposalDecision
+
+// IncludeChangeSetItemJSONRequestBody defines body for IncludeChangeSetItem for application/json ContentType.
+type IncludeChangeSetItemJSONRequestBody = ChangeSetInclude
+
+// PutChangeSetItemJSONRequestBody defines body for PutChangeSetItem for application/json ContentType.
+type PutChangeSetItemJSONRequestBody = ChangeSetEdit
+
+// ProposeChangeSetJSONRequestBody defines body for ProposeChangeSet for application/json ContentType.
+type ProposeChangeSetJSONRequestBody = ChangeSetProposal
+
+// ReopenChangeSetJSONRequestBody defines body for ReopenChangeSet for application/json ContentType.
+type ReopenChangeSetJSONRequestBody = ProposalDecision
 
 // DeleteGoalJSONRequestBody defines body for DeleteGoal for application/json ContentType.
 type DeleteGoalJSONRequestBody = DeleteGoalRequest
@@ -1449,6 +1628,42 @@ type ServerInterface interface {
 	// RevokeAgentGrant Disconnects an agent at once: the caller's own, or anyone's for an administrator.
 	// (DELETE /agents/{grant})
 	RevokeAgentGrant(w http.ResponseWriter, r *http.Request, grant GrantParam)
+	// ListChangeSets Change sets (docs/adr/0022): the caller's own and their agents', newest first; everyone's for an administrator who asks.
+	// (GET /changesets)
+	ListChangeSets(w http.ResponseWriter, r *http.Request, params ListChangeSetsParams)
+	// StartChangeSet Open a change set for the caller to work in, apart from the record and the shared drafts.
+	// (POST /changesets)
+	StartChangeSet(w http.ResponseWriter, r *http.Request)
+	// GetChangeSet A change set as its person reviews it: every item, what it changes against the version it started from, its checks with the rest of the change set, and whether the record has moved on since.
+	// (GET /changesets/{set})
+	GetChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// RetitleChangeSet Change what a change set says it is.
+	// (PATCH /changesets/{set})
+	RetitleChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// AcceptChangeSet Accept a proposed change set as the person it is for: every included item saved as a version, in one transaction. Trimmed items stay, and the change set is open again with them. Refused with 409 when a manifest in it has changed since it started.
+	// (POST /changesets/{set}/accept)
+	AcceptChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// CloseChangeSet End a change set without saving it.
+	// (POST /changesets/{set}/close)
+	CloseChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// DropChangeSetItem Take an item out of a change set altogether.
+	// (DELETE /changesets/{set}/items/{kind}/{id})
+	DropChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam)
+	// GetChangeSetItem A manifest as it stands in a change set, its draft there, else the record.
+	// (GET /changesets/{set}/items/{kind}/{id})
+	GetChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam)
+	// IncludeChangeSetItem Include an item in the change set's next acceptance, or trim it from it, keeping it as a draft for later.
+	// (PATCH /changesets/{set}/items/{kind}/{id})
+	IncludeChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam)
+	// PutChangeSetItem Keep a manifest's draft in a change set. With previous (the text the editor last had), only the fields that changed since are applied, so what someone else changed in other fields meanwhile is kept.
+	// (PUT /changesets/{set}/items/{kind}/{id})
+	PutChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam)
+	// ProposeChangeSet Put a change set up for its person to accept: every included item is checked with the others, open checks refused unless each is left open with a reason.
+	// (POST /changesets/{set}/propose)
+	ProposeChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// ReopenChangeSet Take a proposed change set back to work, to ask for changes or to withdraw it.
+	// (POST /changesets/{set}/reopen)
+	ReopenChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
 	// ListFlows The kinds that have a flow (a stepped definition, contract/flows). A kind without one is a sheet: one step, every field.
 	// (GET /flows)
 	ListFlows(w http.ResponseWriter, r *http.Request)
@@ -1776,6 +1991,398 @@ func (siw *ServerInterfaceWrapper) RevokeAgentGrant(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.RevokeAgentGrant(w, r, grant)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListChangeSets operation middleware
+func (siw *ServerInterfaceWrapper) ListChangeSets(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListChangeSetsParams
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "everyone" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "everyone", r.URL.Query(), &params.Everyone, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "everyone"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "everyone", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListChangeSets(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// StartChangeSet operation middleware
+func (siw *ServerInterfaceWrapper) StartChangeSet(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StartChangeSet(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetChangeSet operation middleware
+func (siw *ServerInterfaceWrapper) GetChangeSet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetChangeSet(w, r, set)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RetitleChangeSet operation middleware
+func (siw *ServerInterfaceWrapper) RetitleChangeSet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RetitleChangeSet(w, r, set)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AcceptChangeSet operation middleware
+func (siw *ServerInterfaceWrapper) AcceptChangeSet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AcceptChangeSet(w, r, set)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CloseChangeSet operation middleware
+func (siw *ServerInterfaceWrapper) CloseChangeSet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CloseChangeSet(w, r, set)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DropChangeSetItem operation middleware
+func (siw *ServerInterfaceWrapper) DropChangeSetItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DropChangeSetItem(w, r, set, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetChangeSetItem operation middleware
+func (siw *ServerInterfaceWrapper) GetChangeSetItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetChangeSetItem(w, r, set, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// IncludeChangeSetItem operation middleware
+func (siw *ServerInterfaceWrapper) IncludeChangeSetItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.IncludeChangeSetItem(w, r, set, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutChangeSetItem operation middleware
+func (siw *ServerInterfaceWrapper) PutChangeSetItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutChangeSetItem(w, r, set, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ProposeChangeSet operation middleware
+func (siw *ServerInterfaceWrapper) ProposeChangeSet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ProposeChangeSet(w, r, set)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReopenChangeSet operation middleware
+func (siw *ServerInterfaceWrapper) ReopenChangeSet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReopenChangeSet(w, r, set)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3491,6 +4098,18 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/agents/{grant}", wrapper.RevokeAgentGrant)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/proposals", wrapper.ListProposals)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/proposals/{proposal}", wrapper.GetProposal)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/changesets", wrapper.ListChangeSets)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/changesets", wrapper.StartChangeSet)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/changesets/{set}", wrapper.GetChangeSet)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/changesets/{set}", wrapper.RetitleChangeSet)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}", wrapper.DropChangeSetItem)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}", wrapper.GetChangeSetItem)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}", wrapper.IncludeChangeSetItem)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}", wrapper.PutChangeSetItem)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/changesets/{set}/propose", wrapper.ProposeChangeSet)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/changesets/{set}/accept", wrapper.AcceptChangeSet)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/changesets/{set}/close", wrapper.CloseChangeSet)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/changesets/{set}/reopen", wrapper.ReopenChangeSet)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/proposals/{proposal}/accept", wrapper.AcceptProposal)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/proposals/{proposal}/decline", wrapper.DeclineProposal)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/access/people", wrapper.ListPeople)
@@ -4003,6 +4622,903 @@ func (response RevokeAgentGrant404JSONResponse) VisitRevokeAgentGrantResponse(w 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListChangeSetsRequestObject struct {
+	Params ListChangeSetsParams
+}
+
+type ListChangeSetsResponseObject interface {
+	VisitListChangeSetsResponse(w http.ResponseWriter) error
+}
+
+type ListChangeSets200JSONResponse []ChangeSet
+
+func (response ListChangeSets200JSONResponse) VisitListChangeSetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListChangeSets401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListChangeSets401JSONResponse) VisitListChangeSetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListChangeSets403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListChangeSets403JSONResponse) VisitListChangeSetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type StartChangeSetRequestObject struct {
+	Body *StartChangeSetJSONRequestBody
+}
+
+type StartChangeSetResponseObject interface {
+	VisitStartChangeSetResponse(w http.ResponseWriter) error
+}
+
+type StartChangeSet200JSONResponse ChangeSet
+
+func (response StartChangeSet200JSONResponse) VisitStartChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type StartChangeSet401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response StartChangeSet401JSONResponse) VisitStartChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type StartChangeSet403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response StartChangeSet403JSONResponse) VisitStartChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetRequestObject struct {
+	Set ChangeSetParam `json:"set"`
+}
+
+type GetChangeSetResponseObject interface {
+	VisitGetChangeSetResponse(w http.ResponseWriter) error
+}
+
+type GetChangeSet200JSONResponse ChangeSetReview
+
+func (response GetChangeSet200JSONResponse) VisitGetChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSet401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetChangeSet401JSONResponse) VisitGetChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSet403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetChangeSet403JSONResponse) VisitGetChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSet404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetChangeSet404JSONResponse) VisitGetChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetitleChangeSetRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Body *RetitleChangeSetJSONRequestBody
+}
+
+type RetitleChangeSetResponseObject interface {
+	VisitRetitleChangeSetResponse(w http.ResponseWriter) error
+}
+
+type RetitleChangeSet200JSONResponse ChangeSet
+
+func (response RetitleChangeSet200JSONResponse) VisitRetitleChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetitleChangeSet401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response RetitleChangeSet401JSONResponse) VisitRetitleChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetitleChangeSet403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response RetitleChangeSet403JSONResponse) VisitRetitleChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetitleChangeSet404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RetitleChangeSet404JSONResponse) VisitRetitleChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetitleChangeSet409JSONResponse ProblemList
+
+func (response RetitleChangeSet409JSONResponse) VisitRetitleChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptChangeSetRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Body *AcceptChangeSetJSONRequestBody
+}
+
+type AcceptChangeSetResponseObject interface {
+	VisitAcceptChangeSetResponse(w http.ResponseWriter) error
+}
+
+type AcceptChangeSet200JSONResponse ChangeSet
+
+func (response AcceptChangeSet200JSONResponse) VisitAcceptChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptChangeSet401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response AcceptChangeSet401JSONResponse) VisitAcceptChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptChangeSet403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response AcceptChangeSet403JSONResponse) VisitAcceptChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptChangeSet404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AcceptChangeSet404JSONResponse) VisitAcceptChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptChangeSet409JSONResponse ProblemList
+
+func (response AcceptChangeSet409JSONResponse) VisitAcceptChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptChangeSet422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response AcceptChangeSet422JSONResponse) VisitAcceptChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CloseChangeSetRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Body *CloseChangeSetJSONRequestBody
+}
+
+type CloseChangeSetResponseObject interface {
+	VisitCloseChangeSetResponse(w http.ResponseWriter) error
+}
+
+type CloseChangeSet200JSONResponse ChangeSet
+
+func (response CloseChangeSet200JSONResponse) VisitCloseChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CloseChangeSet401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CloseChangeSet401JSONResponse) VisitCloseChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CloseChangeSet403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CloseChangeSet403JSONResponse) VisitCloseChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CloseChangeSet404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CloseChangeSet404JSONResponse) VisitCloseChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CloseChangeSet409JSONResponse ProblemList
+
+func (response CloseChangeSet409JSONResponse) VisitCloseChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DropChangeSetItemRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Kind KindParam      `json:"kind"`
+	Id   IdParam        `json:"id"`
+}
+
+type DropChangeSetItemResponseObject interface {
+	VisitDropChangeSetItemResponse(w http.ResponseWriter) error
+}
+
+type DropChangeSetItem204Response struct {
+}
+
+func (response DropChangeSetItem204Response) VisitDropChangeSetItemResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DropChangeSetItem401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response DropChangeSetItem401JSONResponse) VisitDropChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DropChangeSetItem403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DropChangeSetItem403JSONResponse) VisitDropChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DropChangeSetItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DropChangeSetItem404JSONResponse) VisitDropChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DropChangeSetItem409JSONResponse ProblemList
+
+func (response DropChangeSetItem409JSONResponse) VisitDropChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetItemRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Kind KindParam      `json:"kind"`
+	Id   IdParam        `json:"id"`
+}
+
+type GetChangeSetItemResponseObject interface {
+	VisitGetChangeSetItemResponse(w http.ResponseWriter) error
+}
+
+type GetChangeSetItem200JSONResponse ChangeSetDraft
+
+func (response GetChangeSetItem200JSONResponse) VisitGetChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetItem401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetChangeSetItem401JSONResponse) VisitGetChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetItem403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetChangeSetItem403JSONResponse) VisitGetChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetChangeSetItem404JSONResponse) VisitGetChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IncludeChangeSetItemRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Kind KindParam      `json:"kind"`
+	Id   IdParam        `json:"id"`
+	Body *IncludeChangeSetItemJSONRequestBody
+}
+
+type IncludeChangeSetItemResponseObject interface {
+	VisitIncludeChangeSetItemResponse(w http.ResponseWriter) error
+}
+
+type IncludeChangeSetItem204Response struct {
+}
+
+func (response IncludeChangeSetItem204Response) VisitIncludeChangeSetItemResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type IncludeChangeSetItem401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response IncludeChangeSetItem401JSONResponse) VisitIncludeChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IncludeChangeSetItem403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response IncludeChangeSetItem403JSONResponse) VisitIncludeChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IncludeChangeSetItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response IncludeChangeSetItem404JSONResponse) VisitIncludeChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IncludeChangeSetItem409JSONResponse ProblemList
+
+func (response IncludeChangeSetItem409JSONResponse) VisitIncludeChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutChangeSetItemRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Kind KindParam      `json:"kind"`
+	Id   IdParam        `json:"id"`
+	Body *PutChangeSetItemJSONRequestBody
+}
+
+type PutChangeSetItemResponseObject interface {
+	VisitPutChangeSetItemResponse(w http.ResponseWriter) error
+}
+
+type PutChangeSetItem200JSONResponse ChangeSetDraft
+
+func (response PutChangeSetItem200JSONResponse) VisitPutChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutChangeSetItem401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response PutChangeSetItem401JSONResponse) VisitPutChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutChangeSetItem403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response PutChangeSetItem403JSONResponse) VisitPutChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutChangeSetItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response PutChangeSetItem404JSONResponse) VisitPutChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutChangeSetItem409JSONResponse ProblemList
+
+func (response PutChangeSetItem409JSONResponse) VisitPutChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutChangeSetItem422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response PutChangeSetItem422JSONResponse) VisitPutChangeSetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProposeChangeSetRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Body *ProposeChangeSetJSONRequestBody
+}
+
+type ProposeChangeSetResponseObject interface {
+	VisitProposeChangeSetResponse(w http.ResponseWriter) error
+}
+
+type ProposeChangeSet200JSONResponse ChangeSet
+
+func (response ProposeChangeSet200JSONResponse) VisitProposeChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProposeChangeSet401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ProposeChangeSet401JSONResponse) VisitProposeChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProposeChangeSet403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ProposeChangeSet403JSONResponse) VisitProposeChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProposeChangeSet404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ProposeChangeSet404JSONResponse) VisitProposeChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProposeChangeSet409JSONResponse ProblemList
+
+func (response ProposeChangeSet409JSONResponse) VisitProposeChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProposeChangeSet422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response ProposeChangeSet422JSONResponse) VisitProposeChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenChangeSetRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Body *ReopenChangeSetJSONRequestBody
+}
+
+type ReopenChangeSetResponseObject interface {
+	VisitReopenChangeSetResponse(w http.ResponseWriter) error
+}
+
+type ReopenChangeSet200JSONResponse ChangeSet
+
+func (response ReopenChangeSet200JSONResponse) VisitReopenChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenChangeSet401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ReopenChangeSet401JSONResponse) VisitReopenChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenChangeSet403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ReopenChangeSet403JSONResponse) VisitReopenChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenChangeSet404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ReopenChangeSet404JSONResponse) VisitReopenChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenChangeSet409JSONResponse ProblemList
+
+func (response ReopenChangeSet409JSONResponse) VisitReopenChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7435,6 +8951,42 @@ type StrictServerInterface interface {
 	// RevokeAgentGrant Disconnects an agent at once: the caller's own, or anyone's for an administrator.
 	// (DELETE /agents/{grant})
 	RevokeAgentGrant(ctx context.Context, request RevokeAgentGrantRequestObject) (RevokeAgentGrantResponseObject, error)
+	// ListChangeSets Change sets (docs/adr/0022): the caller's own and their agents', newest first; everyone's for an administrator who asks.
+	// (GET /changesets)
+	ListChangeSets(ctx context.Context, request ListChangeSetsRequestObject) (ListChangeSetsResponseObject, error)
+	// StartChangeSet Open a change set for the caller to work in, apart from the record and the shared drafts.
+	// (POST /changesets)
+	StartChangeSet(ctx context.Context, request StartChangeSetRequestObject) (StartChangeSetResponseObject, error)
+	// GetChangeSet A change set as its person reviews it: every item, what it changes against the version it started from, its checks with the rest of the change set, and whether the record has moved on since.
+	// (GET /changesets/{set})
+	GetChangeSet(ctx context.Context, request GetChangeSetRequestObject) (GetChangeSetResponseObject, error)
+	// RetitleChangeSet Change what a change set says it is.
+	// (PATCH /changesets/{set})
+	RetitleChangeSet(ctx context.Context, request RetitleChangeSetRequestObject) (RetitleChangeSetResponseObject, error)
+	// AcceptChangeSet Accept a proposed change set as the person it is for: every included item saved as a version, in one transaction. Trimmed items stay, and the change set is open again with them. Refused with 409 when a manifest in it has changed since it started.
+	// (POST /changesets/{set}/accept)
+	AcceptChangeSet(ctx context.Context, request AcceptChangeSetRequestObject) (AcceptChangeSetResponseObject, error)
+	// CloseChangeSet End a change set without saving it.
+	// (POST /changesets/{set}/close)
+	CloseChangeSet(ctx context.Context, request CloseChangeSetRequestObject) (CloseChangeSetResponseObject, error)
+	// DropChangeSetItem Take an item out of a change set altogether.
+	// (DELETE /changesets/{set}/items/{kind}/{id})
+	DropChangeSetItem(ctx context.Context, request DropChangeSetItemRequestObject) (DropChangeSetItemResponseObject, error)
+	// GetChangeSetItem A manifest as it stands in a change set, its draft there, else the record.
+	// (GET /changesets/{set}/items/{kind}/{id})
+	GetChangeSetItem(ctx context.Context, request GetChangeSetItemRequestObject) (GetChangeSetItemResponseObject, error)
+	// IncludeChangeSetItem Include an item in the change set's next acceptance, or trim it from it, keeping it as a draft for later.
+	// (PATCH /changesets/{set}/items/{kind}/{id})
+	IncludeChangeSetItem(ctx context.Context, request IncludeChangeSetItemRequestObject) (IncludeChangeSetItemResponseObject, error)
+	// PutChangeSetItem Keep a manifest's draft in a change set. With previous (the text the editor last had), only the fields that changed since are applied, so what someone else changed in other fields meanwhile is kept.
+	// (PUT /changesets/{set}/items/{kind}/{id})
+	PutChangeSetItem(ctx context.Context, request PutChangeSetItemRequestObject) (PutChangeSetItemResponseObject, error)
+	// ProposeChangeSet Put a change set up for its person to accept: every included item is checked with the others, open checks refused unless each is left open with a reason.
+	// (POST /changesets/{set}/propose)
+	ProposeChangeSet(ctx context.Context, request ProposeChangeSetRequestObject) (ProposeChangeSetResponseObject, error)
+	// ReopenChangeSet Take a proposed change set back to work, to ask for changes or to withdraw it.
+	// (POST /changesets/{set}/reopen)
+	ReopenChangeSet(ctx context.Context, request ReopenChangeSetRequestObject) (ReopenChangeSetResponseObject, error)
 	// ListFlows The kinds that have a flow (a stepped definition, contract/flows). A kind without one is a sheet: one step, every field.
 	// (GET /flows)
 	ListFlows(ctx context.Context, request ListFlowsRequestObject) (ListFlowsResponseObject, error)
@@ -7814,6 +9366,392 @@ func (sh *strictHandler) RevokeAgentGrant(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(RevokeAgentGrantResponseObject); ok {
 		if err := validResponse.VisitRevokeAgentGrantResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListChangeSets operation middleware
+func (sh *strictHandler) ListChangeSets(w http.ResponseWriter, r *http.Request, params ListChangeSetsParams) {
+	var request ListChangeSetsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListChangeSets(ctx, request.(ListChangeSetsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListChangeSets")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListChangeSetsResponseObject); ok {
+		if err := validResponse.VisitListChangeSetsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// StartChangeSet operation middleware
+func (sh *strictHandler) StartChangeSet(w http.ResponseWriter, r *http.Request) {
+	var request StartChangeSetRequestObject
+
+	var body StartChangeSetJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.StartChangeSet(ctx, request.(StartChangeSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "StartChangeSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(StartChangeSetResponseObject); ok {
+		if err := validResponse.VisitStartChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetChangeSet operation middleware
+func (sh *strictHandler) GetChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam) {
+	var request GetChangeSetRequestObject
+
+	request.Set = set
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetChangeSet(ctx, request.(GetChangeSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetChangeSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetChangeSetResponseObject); ok {
+		if err := validResponse.VisitGetChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RetitleChangeSet operation middleware
+func (sh *strictHandler) RetitleChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam) {
+	var request RetitleChangeSetRequestObject
+
+	request.Set = set
+
+	var body RetitleChangeSetJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RetitleChangeSet(ctx, request.(RetitleChangeSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RetitleChangeSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RetitleChangeSetResponseObject); ok {
+		if err := validResponse.VisitRetitleChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AcceptChangeSet operation middleware
+func (sh *strictHandler) AcceptChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam) {
+	var request AcceptChangeSetRequestObject
+
+	request.Set = set
+
+	var body AcceptChangeSetJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AcceptChangeSet(ctx, request.(AcceptChangeSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AcceptChangeSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AcceptChangeSetResponseObject); ok {
+		if err := validResponse.VisitAcceptChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CloseChangeSet operation middleware
+func (sh *strictHandler) CloseChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam) {
+	var request CloseChangeSetRequestObject
+
+	request.Set = set
+
+	var body CloseChangeSetJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CloseChangeSet(ctx, request.(CloseChangeSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CloseChangeSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CloseChangeSetResponseObject); ok {
+		if err := validResponse.VisitCloseChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DropChangeSetItem operation middleware
+func (sh *strictHandler) DropChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam) {
+	var request DropChangeSetItemRequestObject
+
+	request.Set = set
+	request.Kind = kind
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DropChangeSetItem(ctx, request.(DropChangeSetItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DropChangeSetItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DropChangeSetItemResponseObject); ok {
+		if err := validResponse.VisitDropChangeSetItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetChangeSetItem operation middleware
+func (sh *strictHandler) GetChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam) {
+	var request GetChangeSetItemRequestObject
+
+	request.Set = set
+	request.Kind = kind
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetChangeSetItem(ctx, request.(GetChangeSetItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetChangeSetItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetChangeSetItemResponseObject); ok {
+		if err := validResponse.VisitGetChangeSetItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// IncludeChangeSetItem operation middleware
+func (sh *strictHandler) IncludeChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam) {
+	var request IncludeChangeSetItemRequestObject
+
+	request.Set = set
+	request.Kind = kind
+	request.Id = id
+
+	var body IncludeChangeSetItemJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.IncludeChangeSetItem(ctx, request.(IncludeChangeSetItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "IncludeChangeSetItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(IncludeChangeSetItemResponseObject); ok {
+		if err := validResponse.VisitIncludeChangeSetItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PutChangeSetItem operation middleware
+func (sh *strictHandler) PutChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam) {
+	var request PutChangeSetItemRequestObject
+
+	request.Set = set
+	request.Kind = kind
+	request.Id = id
+
+	var body PutChangeSetItemJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PutChangeSetItem(ctx, request.(PutChangeSetItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutChangeSetItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PutChangeSetItemResponseObject); ok {
+		if err := validResponse.VisitPutChangeSetItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ProposeChangeSet operation middleware
+func (sh *strictHandler) ProposeChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam) {
+	var request ProposeChangeSetRequestObject
+
+	request.Set = set
+
+	var body ProposeChangeSetJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ProposeChangeSet(ctx, request.(ProposeChangeSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ProposeChangeSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ProposeChangeSetResponseObject); ok {
+		if err := validResponse.VisitProposeChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReopenChangeSet operation middleware
+func (sh *strictHandler) ReopenChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam) {
+	var request ReopenChangeSetRequestObject
+
+	request.Set = set
+
+	var body ReopenChangeSetJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReopenChangeSet(ctx, request.(ReopenChangeSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReopenChangeSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReopenChangeSetResponseObject); ok {
+		if err := validResponse.VisitReopenChangeSetResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

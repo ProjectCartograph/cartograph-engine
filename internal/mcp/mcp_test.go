@@ -98,8 +98,8 @@ func callTool(t *testing.T, cs *sdk.ClientSession, name string, args map[string]
 	return res, b.String()
 }
 
-// An agent reads, drafts in sight of everyone on the manifest, and
-// proposes; nothing it does makes the record.
+// An agent reads, drafts in a change set of its own, and proposes it;
+// nothing it does makes the record or touches the shared drafts.
 func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	e, pr, cs := setup(t, nil)
 	ctx := context.Background()
@@ -110,7 +110,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	}
 	for _, tl := range tools.Tools {
 		readOnly := tl.Annotations != nil && tl.Annotations.ReadOnlyHint
-		if !readOnly && tl.Name != "save_draft" && tl.Name != "edit_draft" && !strings.HasPrefix(tl.Name, "propose_") {
+		if !readOnly && tl.Name != "save_draft" && tl.Name != "edit_draft" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
 			t.Errorf("tool %s may change something and is neither a draft nor a proposal", tl.Name)
 		}
 	}
@@ -123,16 +123,23 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t1", "manifest": draft}); res.IsError {
 		t.Fatalf("save_draft: %s", text)
 	}
-	w, found, _ := e.GetWorking(ctx, "Team", "t1")
-	if !found || !strings.Contains(string(w), "Drafted by an agent") {
-		t.Fatalf("the draft is %q", w)
+	if _, found, _ := e.GetWorking(ctx, "Team", "t1"); found {
+		t.Fatal("the agent's draft went into the shared draft")
+	}
+	agentCtx := identity.WithPrincipal(ctx, identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude"})
+	set, found, err := e.CurrentChangeSet(agentCtx, "")
+	if err != nil || !found {
+		t.Fatalf("no change set for the agent: %v", err)
+	}
+	if w, inSet, _ := e.ChangeSetText(ctx, set.ID, "Team", "t1"); !inSet || !strings.Contains(string(w), "Drafted by an agent") {
+		t.Fatalf("the change set's draft is %q", w)
 	}
 	if len(pr.seen) == 0 || pr.seen[0] != "ada@example.org via Claude | Ada's agent (Claude)" {
 		t.Fatalf("announced as %v", pr.seen)
 	}
-	// The draft is announced on the team's document, at the field it
-	// changed, and on Ada's own feed, for her to follow; never on the
-	// presence document everyone joins.
+	// The draft is announced on Ada's own feed, with the change set, for
+	// her to follow; not on the team's shared draft, which it did not
+	// touch, and never on the presence document everyone joins.
 	docs := map[string]bool{}
 	for _, a := range pr.steps {
 		if a.agent["step"] != "draft" {
@@ -146,11 +153,13 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 		if _, ok := a.agent["met"]; !ok {
 			t.Errorf("the draft step carries no check count: %+v", a.agent)
 		}
+		if a.agent["changeSet"] != set.ID {
+			t.Errorf("the draft step does not name its change set: %+v", a.agent)
+		}
 	}
 	feed, _ := e.Shared().AgentFeed(ctx, "ada@example.org")
-	teamDoc, _ := e.Shared().DocumentFor(ctx, "Team", "t1")
-	if !docs[feed] || !docs[teamDoc] || len(docs) != 2 {
-		t.Fatalf("the draft was announced on %v, want the team's and Ada's feed", docs)
+	if !docs[feed] || len(docs) != 1 {
+		t.Fatalf("the draft was announced on %v, want Ada's feed alone", docs)
 	}
 
 	res, text := callTool(t, cs, "propose_save", map[string]any{"kind": "Team", "id": "t1", "reason": "describe the team"})
@@ -160,9 +169,12 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	if vs, _ := e.Versions(ctx, "Team", "t1"); len(vs) != 1 {
 		t.Fatalf("a proposal saved a version: %d versions", len(vs))
 	}
-	open, _ := e.Proposals(identity.WithPrincipal(ctx, ada), store.ProposalFilter{Status: store.ProposalOpen})
-	if len(open) != 1 || open[0].Agent != "Claude" || open[0].For != "ada@example.org" || !strings.Contains(string(open[0].Text), "Drafted by an agent") {
-		t.Fatalf("Ada's open proposals: %+v", open)
+	view, _ := e.ViewChangeSet(ctx, set.ID)
+	if view.ChangeSet.Status != store.ChangeSetProposed || view.ChangeSet.Agent != "Claude" || view.ChangeSet.For != "ada@example.org" || len(view.Items) != 1 {
+		t.Fatalf("Ada's change set: %+v", view)
+	}
+	if _, err := e.ReopenChangeSet(identity.WithPrincipal(ctx, ada), set.ID, "one more thing"); err != nil {
+		t.Fatal(err)
 	}
 
 	// Problems come back by field, for the agent to fix.
@@ -228,25 +240,17 @@ func TestAnAgentsEditKeepsWhatItsPersonChanged(t *testing.T) {
 	ctx := context.Background()
 	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g9", "name": "Cut loss after picking"},
 		"spec": map[string]any{"level": "goal", "objective": "Less fruit is lost"}}
-	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g9", "manifest": goal}); res.IsError {
-		t.Fatalf("save_draft: %s", text)
+	res, out := callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g9", "manifest": goal})
+	if res.IsError {
+		t.Fatalf("save_draft: %s", out)
 	}
-	// Meanwhile, its person writes why it matters in Cartograph.
-	text, _, err := e.GetWorking(ctx, "Goal", "g9")
-	if err != nil {
+	agentCtx := identity.WithPrincipal(ctx, identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude"})
+	set, _, _ := e.CurrentChangeSet(agentCtx, "")
+	// Meanwhile, its person writes why it matters, in the change set.
+	if _, err := e.EditInChangeSet(identity.WithPrincipal(ctx, ada), set.ID, "Goal", "g9", map[string]any{"/spec/whyItMatters": "Members are paid by what arrives sound"}, nil); err != nil {
 		t.Fatal(err)
 	}
-	doc, err := e.Codec().Decode(text)
-	if err != nil {
-		t.Fatal(err)
-	}
-	doc["spec"].(map[string]any)["whyItMatters"] = "Members are paid by what arrives sound"
-	mine, _ := e.Codec().Encode(doc)
-	if err := e.SaveWorking(ctx, "Goal", "g9", mine, "ada@example.org"); err != nil {
-		t.Fatal(err)
-	}
-
-	res, out := callTool(t, cs, "edit_draft", map[string]any{"kind": "Goal", "id": "g9", "set": map[string]any{"/spec/objective": "Fruit arrives sound at every depot"}})
+	res, out = callTool(t, cs, "edit_draft", map[string]any{"kind": "Goal", "id": "g9", "set": map[string]any{"/spec/objective": "Fruit arrives sound at every depot"}})
 	if res.IsError {
 		t.Fatalf("edit_draft: %s", out)
 	}

@@ -102,7 +102,7 @@ func (e *Engine) AgentGrantPrincipal(ctx context.Context, id string) (identity.P
 	if subject == "" {
 		subject = person.Email
 	}
-	return identity.Principal{Subject: subject, Email: person.Email, Name: person.Name, Agent: grant.Label, Delegated: true}, grant, nil
+	return identity.Principal{Subject: subject, Email: person.Email, Name: person.Name, Agent: grant.Label, Delegated: true, Grant: grant.ID}, grant, nil
 }
 
 // AdvanceAgentGrant moves a live grant from generation gen to the next,

@@ -31,6 +31,7 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0019](0019-said-once-as-the-taxonomy-says.md) | Said once, as the taxonomy says | Accepted |
 | [0020](0020-the-purpose-is-the-top-of-the-strategy.md) | The purpose is the top of the strategy | Accepted |
 | [0021](0021-evidence-from-several-sources.md) | Evidence from several sources | Accepted |
+| [0022](0022-change-sets.md) | Change sets | Accepted |
 
 ## Writing one
 

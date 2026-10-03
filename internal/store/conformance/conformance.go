@@ -290,6 +290,80 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 		}
 	})
 
+	t.Run("a change set keeps its own drafts, and moves once", func(t *testing.T) {
+		s := newStore(t)
+		cs, ok := s.(store.ChangeSetStore)
+		if !ok {
+			t.Skip("the adapter keeps no change sets")
+		}
+		at := time.Date(2026, 10, 3, 9, 0, 0, 0, time.UTC)
+		for i, id := range []string{"a", "b"} {
+			must(t, cs.PutChangeSet(ctx, store.ChangeSet{ID: id, Title: "Work " + id, Owner: "grant-" + id, Agent: "Claude", For: "ada@example.org",
+				Status: store.ChangeSetOpen, At: at.Add(time.Duration(i) * time.Minute), Updated: at,
+				Waivers: []store.Waiver{{Check: "owner", Message: "No owner yet.", Reason: "decided next week"}}}))
+		}
+		// Each keeps its own draft of the same manifest.
+		must(t, cs.PutChangeItem(ctx, store.ChangeItem{Set: "a", Kind: "Gap", ID: "g1", Text: []byte("a's"), Base: 2, Included: true, By: "x", At: at}))
+		must(t, cs.PutChangeItem(ctx, store.ChangeItem{Set: "b", Kind: "Gap", ID: "g1", Text: []byte("b's"), Base: 2, Included: true, By: "y", At: at}))
+		must(t, cs.PutChangeItem(ctx, store.ChangeItem{Set: "a", Kind: "KPI", ID: "k1", Text: []byte("new"), Base: 0, Included: false, By: "x", At: at.Add(time.Second)}))
+		it, found, err := cs.GetChangeItem(ctx, "a", "Gap", "g1")
+		must(t, err)
+		if !found || string(it.Text) != "a's" || it.Base != 2 || !it.Included {
+			t.Fatalf("a's item: %+v", it)
+		}
+		if _, found, _ := cs.GetChangeItem(ctx, "b", "KPI", "k1"); found {
+			t.Fatal("b holds a's item")
+		}
+		items, err := cs.ListChangeItems(ctx, "a")
+		must(t, err)
+		if len(items) != 2 || items[0].Kind != "Gap" || items[1].Included {
+			t.Fatalf("a's items, oldest first: %+v", items)
+		}
+		// Replacing keeps one per manifest.
+		must(t, cs.PutChangeItem(ctx, store.ChangeItem{Set: "a", Kind: "Gap", ID: "g1", Text: []byte("a's again"), Base: 2, Included: true, By: "x", At: at}))
+		if items, _ := cs.ListChangeItems(ctx, "a"); len(items) != 2 {
+			t.Fatalf("a replaced item was added: %+v", items)
+		}
+		must(t, cs.DeleteChangeItem(ctx, "a", "KPI", "k1"))
+		must(t, cs.DeleteChangeItem(ctx, "a", "KPI", "nothing"))
+		if items, _ := cs.ListChangeItems(ctx, "a"); len(items) != 1 {
+			t.Fatalf("after a delete: %+v", items)
+		}
+
+		got, err := cs.GetChangeSet(ctx, "a")
+		must(t, err)
+		if got.Title != "Work a" || len(got.Waivers) != 1 || got.Waivers[0].Reason != "decided next week" || !got.At.Equal(at) {
+			t.Fatalf("change set round trip: %+v", got)
+		}
+		list, err := cs.ListChangeSets(ctx, store.ChangeSetFilter{For: "ada@example.org"})
+		must(t, err)
+		if len(list) != 2 || list[0].ID != "b" {
+			t.Fatalf("newest first: %+v", list)
+		}
+		if mine, _ := cs.ListChangeSets(ctx, store.ChangeSetFilter{Owner: "grant-a"}); len(mine) != 1 || mine[0].ID != "a" {
+			t.Fatalf("by owner: %+v", mine)
+		}
+
+		// Of two moves from the same status, one wins.
+		moved, err := cs.MoveChangeSet(ctx, "a", store.ChangeSetOpen, store.ChangeSetMerging, "ada@example.org", "looks right", at.Add(time.Hour))
+		must(t, err)
+		if moved.Status != store.ChangeSetMerging || moved.DecidedBy != "ada@example.org" || moved.DecisionReason != "looks right" {
+			t.Fatalf("moved: %+v", moved)
+		}
+		if _, err := cs.MoveChangeSet(ctx, "a", store.ChangeSetOpen, store.ChangeSetClosed, "bo", "", at); !errors.Is(err, store.ErrChangeSetMoved) {
+			t.Fatalf("a second move from open: %v", err)
+		}
+		if _, err := cs.MoveChangeSet(ctx, "nothing", store.ChangeSetOpen, store.ChangeSetClosed, "bo", "", at); !errors.Is(err, store.ErrNoChangeSet) {
+			t.Fatalf("moving none: %v", err)
+		}
+		if _, err := cs.GetChangeSet(ctx, "nothing"); !errors.Is(err, store.ErrNoChangeSet) {
+			t.Fatalf("getting none: %v", err)
+		}
+		if open, _ := cs.ListChangeSets(ctx, store.ChangeSetFilter{Status: store.ChangeSetOpen}); len(open) != 1 || open[0].ID != "b" {
+			t.Fatalf("by status: %+v", open)
+		}
+	})
+
 	t.Run("a set of proposals is decided whole or not at all", func(t *testing.T) {
 		s := newStore(t)
 		ps, ok := s.(store.ProposalStore)

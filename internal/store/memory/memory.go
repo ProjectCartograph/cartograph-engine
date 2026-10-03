@@ -28,6 +28,7 @@ type ManifestStore struct {
 	series     []store.SeriesItem              // append-only (docs/adr/0013)
 	events     []store.Event                   // append-only; Seq is the index plus one
 	props      proposals
+	sets       changeSets
 }
 
 func NewManifestStore() *ManifestStore {

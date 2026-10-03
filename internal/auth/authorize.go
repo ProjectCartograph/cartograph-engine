@@ -30,11 +30,12 @@ func ActionFor(r *http.Request) Action {
 	switch parts[0] {
 	case ResourceAccess, ResourceVault, ResourceSession:
 		a.Resource = parts[0]
-	case "proposals", "agents":
-		// Proposals and agent grants: the engine decides who may (only
-		// the person a proposal or grant is theirs, or an administrator),
-		// and accepting writes under that person's own access, so here it
-		// is as a read (docs/adr/0016).
+	case "proposals", "agents", "changesets":
+		// Proposals, agent grants and change sets: the engine decides who
+		// may (the person they are theirs, who works in a change set, or
+		// an administrator), and each manifest drafted or accepted is put
+		// to the policy with that person's own access, so here it is as a
+		// read (docs/adr/0016, docs/adr/0022).
 		a.Verb = VerbRead
 	case "mcp":
 		// An MCP request is an agent at work: whether its person may use

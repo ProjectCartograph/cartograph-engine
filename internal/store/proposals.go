@@ -53,6 +53,9 @@ type Proposal struct {
 // Waiver is a check an agent proposed without meeting: the check, what
 // it said, and why the agent left it.
 type Waiver struct {
+	// On is the manifest it is on, as Kind/id, in a change set; empty on
+	// a proposal, which is on one manifest.
+	On      string `json:"on,omitempty"`
 	Check   string `json:"check"`
 	Message string `json:"message"`
 	Reason  string `json:"reason"`

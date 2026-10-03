@@ -263,6 +263,9 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 func (e *Engine) checksInWork(ctx context.Context, r Ref, work []Ref) ([]Check, string, string, error) {
 	docs := map[string]map[string]any{}
 	text := func(ref Ref) []byte {
+		if t, ok := inPlay(ctx, ref.Kind, ref.ID); ok {
+			return t
+		}
 		if t, found, err := e.manifests.GetWorking(ctx, ref.Kind, ref.ID); err == nil && found {
 			return t
 		}
@@ -271,7 +274,7 @@ func (e *Engine) checksInWork(ctx context.Context, r Ref, work []Ref) ([]Check, 
 		}
 		return nil
 	}
-	for _, w := range append([]Ref{r}, work...) {
+	for _, w := range append(append([]Ref{r}, work...), inPlayRefs(ctx)...) {
 		if t := text(w); t != nil {
 			var d map[string]any
 			if e.codec.DecodeInto(t, &d) == nil {

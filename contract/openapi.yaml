@@ -1045,6 +1045,359 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProposalReview"
+  /changesets:
+    get:
+      operationId: listChangeSets
+      summary: >-
+        Change sets (docs/adr/0022): the caller's own and their agents', newest
+        first; everyone's for an administrator who asks.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, proposed, merging, merged, closed]
+        - name: everyone
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChangeSet"
+    post:
+      operationId: startChangeSet
+      summary: Open a change set for the caller to work in, apart from the record and the shared drafts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeSetTitle"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeSet"
+
+  /changesets/{set}:
+    get:
+      operationId: getChangeSet
+      summary: >-
+        A change set as its person reviews it: every item, what it changes
+        against the version it started from, its checks with the rest of the
+        change set, and whether the record has moved on since.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeSetReview"
+    patch:
+      operationId: retitleChangeSet
+      summary: Change what a change set says it is.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeSetTitle"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The change set has moved on, or a manifest in it changed since it started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeSet"
+
+  /changesets/{set}/items/{kind}/{id}:
+    get:
+      operationId: getChangeSetItem
+      summary: A manifest as it stands in a change set, its draft there, else the record.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeSetDraft"
+    put:
+      operationId: putChangeSetItem
+      summary: >-
+        Keep a manifest's draft in a change set. With previous (the text the
+        editor last had), only the fields that changed since are applied, so
+        what someone else changed in other fields meanwhile is kept.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeSetEdit"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The change set has moved on, or a manifest in it changed since it started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeSetDraft"
+    patch:
+      operationId: includeChangeSetItem
+      summary: Include an item in the change set's next acceptance, or trim it from it, keeping it as a draft for later.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeSetInclude"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The change set has moved on, or a manifest in it changed since it started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "204":
+          description: Done
+    delete:
+      operationId: dropChangeSetItem
+      summary: Take an item out of a change set altogether.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The change set has moved on, or a manifest in it changed since it started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "204":
+          description: Dropped
+
+  /changesets/{set}/propose:
+    post:
+      operationId: proposeChangeSet
+      summary: >-
+        Put a change set up for its person to accept: every included item is
+        checked with the others, open checks refused unless each is left
+        open with a reason.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeSetProposal"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The change set has moved on, or a manifest in it changed since it started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "200":
+          description: Proposed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeSet"
+
+  /changesets/{set}/accept:
+    post:
+      operationId: acceptChangeSet
+      summary: >-
+        Accept a proposed change set as the person it is for: every included
+        item saved as a version, in one transaction. Trimmed items stay, and
+        the change set is open again with them. Refused with 409 when a
+        manifest in it has changed since it started.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalDecision"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The change set has moved on, or a manifest in it changed since it started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeSet"
+
+  /changesets/{set}/close:
+    post:
+      operationId: closeChangeSet
+      summary: End a change set without saving it.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalDecision"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The change set has moved on, or a manifest in it changed since it started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "200":
+          description: Closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeSet"
+
+  /changesets/{set}/reopen:
+    post:
+      operationId: reopenChangeSet
+      summary: Take a proposed change set back to work, to ask for changes or to withdraw it.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalDecision"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The change set has moved on, or a manifest in it changed since it started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemList"
+        "200":
+          description: Reopened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeSet"
+
   /proposals/{proposal}/accept:
     post:
       operationId: acceptProposal
@@ -1629,6 +1982,13 @@ components:
       name: grant
       in: path
       required: true
+      schema:
+        type: string
+    ChangeSetParam:
+      name: set
+      in: path
+      required: true
+      description: A change set's id.
       schema:
         type: string
     ProposalParam:
@@ -2326,6 +2686,9 @@ components:
       type: object
       required: [check, message, reason]
       properties:
+        on:
+          type: string
+          description: The manifest it is on, as Kind/id, in a change set.
         check:
           type: string
         message:
@@ -2573,6 +2936,134 @@ components:
           type: string
           description: A goal's parent.
 
+    ChangeSet:
+      type: object
+      description: >-
+        A piece of work kept apart from the record and from every other piece
+        of work until it is accepted, as a pull request is (docs/adr/0022).
+      required: [id, title, status, at, updated]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        agent:
+          type: string
+          description: The agent working in it, if one is.
+        for:
+          type: string
+          description: The person it is for, who accepts it.
+        status:
+          type: string
+          enum: [open, proposed, merging, merged, closed]
+        reason:
+          type: string
+          description: What proposing it said.
+        waivers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Waiver"
+        at:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+        decidedBy:
+          type: string
+        decidedAt:
+          type: string
+          format: date-time
+        decisionReason:
+          type: string
+    ChangeSetTitle:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+    ChangeSetItem:
+      type: object
+      required: [kind, id, base, included, changes, checks]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        base:
+          type: integer
+          description: The version it started from; 0 for a manifest the change set creates.
+        included:
+          type: boolean
+          description: False for an item trimmed from the next acceptance.
+        by:
+          type: string
+        at:
+          type: string
+          format: date-time
+        changes:
+          type: array
+          description: What accepting it would change, against the version it started from.
+          items:
+            $ref: "#/components/schemas/Change"
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManifestCheck"
+        stale:
+          type: integer
+          description: The version saved since it started, when one was; accepting is refused until it is reviewed again.
+    ChangeSetReview:
+      type: object
+      required: [changeSet, items]
+      properties:
+        changeSet:
+          $ref: "#/components/schemas/ChangeSet"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChangeSetItem"
+    ChangeSetDraft:
+      type: object
+      required: [yaml, inChangeSet]
+      properties:
+        yaml:
+          type: string
+        inChangeSet:
+          type: boolean
+          description: Whether the change set has its own draft of it; false when this is the record.
+    ChangeSetEdit:
+      type: object
+      required: [yaml]
+      properties:
+        yaml:
+          type: string
+        previous:
+          type: string
+          description: The text the editor last had, so only what it changed since is applied.
+    ChangeSetInclude:
+      type: object
+      required: [included]
+      properties:
+        included:
+          type: boolean
+    ChangeSetProposal:
+      type: object
+      properties:
+        reason:
+          type: string
+        openChecks:
+          type: object
+          description: Checks left open, by Kind/id, then check id, each with why.
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: string
     ProposalDecision:
       type: object
       properties:

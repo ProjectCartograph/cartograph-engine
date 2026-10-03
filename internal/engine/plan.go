@@ -218,6 +218,9 @@ func (e *Engine) WorkAround(ctx context.Context, kind, id string, also []Ref) ([
 			return d
 		}
 		text, found, err := e.manifests.GetWorking(ctx, k, i)
+		if t, ok := inPlay(ctx, k, i); ok {
+			text, found, err = t, true, nil
+		}
 		if err == nil && found {
 			drafts[key] = true
 		} else {
@@ -240,7 +243,7 @@ func (e *Engine) WorkAround(ctx context.Context, kind, id string, also []Ref) ([
 		s, _ := spec["level"].(string)
 		return s
 	}
-	for _, r := range also {
+	for _, r := range append(also, inPlayRefs(ctx)...) {
 		read(r.Kind, r.ID)
 	}
 	start := read(kind, id)

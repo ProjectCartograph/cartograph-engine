@@ -33,11 +33,15 @@ type Principal struct {
 	// directory groups came with the request, so the person's roles and
 	// teams are the ones recorded at their last sign-in.
 	Delegated bool
+	// Grant is the agent grant an agent connected with, when it connected
+	// through Cartograph's own authorization server: one connection, so
+	// two agents of the same person keep their work apart (ADR 0022).
+	Grant string
 }
 
 // Person is the principal without its agent: the person it acts for.
 func (p Principal) Person() Principal {
-	p.Agent = ""
+	p.Agent, p.Grant = "", ""
 	return p
 }
 
