@@ -82,11 +82,14 @@ Work this way, every time:
    fill in, and the organisation's existing records. Use its words; they
    are the discipline's. If an existing record already says what the
    person wants, work on that one instead of defining another.
-3. Work top-down and make every link the guide names. Reuse what exists
-   before defining anything new: offer the person the guide's candidates
-   by name. When a link has nothing to point at (an outcome with no gap,
-   a gap with no KPI, an aim with no owner role), define that first,
-   with the person, then come back.
+3. Follow the guide's plan, in its order, before the kind's own steps:
+   it is what the new thing answers to, deepest first. Asked for an
+   objective, ask first which gaps it must close (offer the plan's
+   existing gaps by name); for each, how it is measured (a KPI) and where
+   it was found (segments); then the outcome closing each; then the
+   objective. When nothing existing fits, define it with the person, with
+   guide for its kind, then come back. Never leave a link the plan names
+   unmade without asking.
 4. Start the draft at once. As soon as you know the kind and a working
    name, create it with save_draft (its id, name and what little you
    know), before asking anything else, so your person sees it in
@@ -361,6 +364,7 @@ type (
 	editIn struct {
 		Kind  string         `json:"kind"`
 		ID    string         `json:"id"`
+		Work  []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
 		Set   map[string]any `json:"set,omitempty" jsonschema:"fields to set, by JSON pointer, such as {\"/spec/objective\": \"...\"}; in a list, a number replaces that item and - appends one"`
 		Unset []string       `json:"unset,omitempty" jsonschema:"fields or list items to remove, by JSON pointer"`
 	}
@@ -368,6 +372,7 @@ type (
 		Kind     string         `json:"kind"`
 		ID       string         `json:"id"`
 		Manifest map[string]any `json:"manifest" jsonschema:"the whole manifest: apiVersion, kind, metadata and spec"`
+		Work     []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
 	}
 	proposeSaveIn struct {
 		Kind     string         `json:"kind"`
@@ -393,6 +398,7 @@ type (
 		Kind     string         `json:"kind"`
 		ID       string         `json:"id"`
 		Manifest map[string]any `json:"manifest,omitempty" jsonschema:"a manifest to check without saving it; its draft or latest version when left out"`
+		Work     []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
 	}
 	guideIn struct {
 		Kind   string `json:"kind"`
@@ -515,7 +521,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, err
 			}
 			c.announce(step{Step: "checks", Kind: in.Kind, ID: in.ID, Checks: checks})
-			return checkReport(checks), nil
+			return withAround(c, checkReport(checks), in.Kind, in.ID, in.Work), nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "goal_tree", Description: "Every goal, objective and outcome as a tree, with what is aligned to each.", Annotations: readOnly},
@@ -590,7 +596,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, err
 			}
 			c.announce(step{Step: "draft", Kind: in.Kind, ID: in.ID, Text: text, Fields: e.ChangedFields(before, text, 32), Checks: checks})
-			out := checkReport(checks)
+			out := withAround(c, checkReport(checks), in.Kind, in.ID, in.Work)
 			out["saved"], out["problems"] = "draft", problems
 			return out, nil
 		})
@@ -618,7 +624,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			fields = append(fields, in.Unset...)
 			sort.Strings(fields)
 			c.announce(step{Step: "draft", Kind: in.Kind, ID: in.ID, Text: text, Fields: fields, Checks: checks})
-			out := checkReport(checks)
+			out := withAround(c, checkReport(checks), in.Kind, in.ID, in.Work)
 			// The whole draft, as everyone now has it: what the person
 			// changed since the agent last read it is in here to build on.
 			out["saved"], out["problems"], out["draft"] = "draft", problems, string(text)
@@ -757,6 +763,36 @@ func checkReport(checks []engine.Check) map[string]any {
 	return map[string]any{"open": open, "met": met, "next": next}
 }
 
+// withAround adds the work around a manifest to a report: every manifest
+// joined to it along the links the work needs, with what each still
+// lacks, so an agent fixing an outcome hears that the gap it closes has
+// no indicator yet.
+func withAround(c call, out map[string]any, kind, id string, work []string) map[string]any {
+	var also []engine.Ref
+	for _, w := range work {
+		if k, i, ok := strings.Cut(w, "/"); ok && k != "" && i != "" {
+			also = append(also, engine.Ref{Kind: k, ID: i})
+		}
+	}
+	around, err := c.o.Engine.WorkAround(c.ctx, kind, id, also)
+	if err != nil || len(around) == 0 {
+		return out
+	}
+	unfinished := 0
+	for _, a := range around {
+		if len(a.Open) > 0 {
+			unfinished++
+		}
+	}
+	out["around"] = around
+	if unfinished > 0 {
+		out["aroundNext"] = fmt.Sprintf("%d manifest%s joined to this one still lack%s something (around, open). "+
+			"The work is not finished until they are: settle each with your person, then propose them together with propose_set.",
+			unfinished, map[bool]string{true: "", false: "s"}[unfinished == 1], map[bool]string{true: "s", false: ""}[unfinished == 1])
+	}
+	return out
+}
+
 // guided is a guide as an agent reads it: the guide, then what to do with
 // it, where a small model reads it last and remembers it best.
 type guided struct {
@@ -766,10 +802,11 @@ type guided struct {
 
 // nextSteps is the method, named by tool, at the end of every guide.
 var nextSteps = []string{
-	"If an existing record already says what your person wants, work on it (get it, then save_draft your changes) instead of defining another.",
+	"If an existing record already says what your person wants, work on it (get it, then edit_draft your changes) instead of defining another.",
+	"Start with plan, in its order, before this kind's own steps: for each item, ask its question with the existing records offered by name; " +
+		"when none fits, define one with guide for its kind and its own plan. For an objective that means the gaps first, each measured by a KPI and observed in segments, then the outcome closing each.",
 	"Settle each step with your person, in order, using the field guides and their examples; never invent a figure, date, source or owner.",
-	"Make every link the guide names; where there is nothing to link to, define that too, top-down, with guide for its kind.",
-	"save_draft each manifest as you go and meet every open check it returns; checks reads any manifest, saved or not.",
+	"Create each draft with save_draft as soon as you know its name, then edit_draft field by field; pass work (every Kind/id you are defining together) and meet every open check it returns, its own and around.",
 	"Then propose: propose_save for one manifest, propose_set for several that reference each other. Your work is not done until it is proposed; your person accepts it in Cartograph, not in this conversation.",
 }
 

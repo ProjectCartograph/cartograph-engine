@@ -32,7 +32,8 @@
           {
             "kind": "Gap",
             "path": "/spec/segments",
-            "check": "gap-segments"
+            "check": "gap-segments",
+            "needs": "holder"
           },
           {
             "kind": "KPI",

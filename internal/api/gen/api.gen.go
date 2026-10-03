@@ -594,6 +594,9 @@ type Guide struct {
 	Levels *map[string]string `json:"levels,omitempty"`
 	Locale string             `json:"locale"`
 
+	// Plan The work around this kind, in order, from the flows' links: what it answers to, settled before it, deepest first (for an objective, the gaps its outcomes close, each measured by a KPI and observed in segments, then the outcomes).
+	Plan *[]GuidePlanItem `json:"plan,omitempty"`
+
 	// Purpose The organisation's vision and mission, for a Goal.
 	Purpose *struct {
 		Mission *string `json:"mission,omitempty"`
@@ -647,6 +650,24 @@ type GuideLink struct {
 
 	// Path Where on that kind the link is held.
 	Path string `json:"path"`
+}
+
+// GuidePlanItem defines model for GuidePlanItem.
+type GuidePlanItem struct {
+	Ask *string `json:"ask,omitempty"`
+
+	// Check The check that reports whether the link is made.
+	Check    *string           `json:"check,omitempty"`
+	Existing *[]GuideCandidate `json:"existing,omitempty"`
+
+	// For What it is needed for, as Kind or Kind (level).
+	For    string  `json:"for"`
+	IfNone *string `json:"ifNone,omitempty"`
+	Kind   string  `json:"kind"`
+	Level  *string `json:"level,omitempty"`
+
+	// Link How the two are joined, as the holding kind and the path that names the other.
+	Link string `json:"link"`
 }
 
 // GuidePoor defines model for GuidePoor.

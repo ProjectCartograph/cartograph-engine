@@ -183,6 +183,18 @@
         "check": {
           "type": "string",
           "description": "The check that reports whether the link is made."
+        },
+        "needs": {
+          "type": "string",
+          "enum": [
+            "holder",
+            "named"
+          ],
+          "description": "Which side is unfinished without the link, so a guide can lay out the work in order: holder when the kind holding it should name one (a gap should name the indicator that measures it), named when the manifest it names should be named by one (an outcome should be closed by a gap). Absent when neither is: a project citing a gap is work on it, not part of defining it."
+        },
+        "level": {
+          "type": "string",
+          "description": "For a Goal holding the link, the level it is at (a goal's objectives are objectives)."
         }
       }
     },

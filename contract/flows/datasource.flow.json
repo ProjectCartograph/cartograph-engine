@@ -36,7 +36,8 @@
         "links": [
           {
             "kind": "KPI",
-            "path": "/spec/source"
+            "path": "/spec/source",
+            "needs": "holder"
           }
         ]
       },

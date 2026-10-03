@@ -2398,6 +2398,15 @@ components:
         levelIs:
           type: string
           description: What the asked level is.
+        plan:
+          type: array
+          description: >-
+            The work around this kind, in order, from the flows' links: what
+            it answers to, settled before it, deepest first (for an
+            objective, the gaps its outcomes close, each measured by a KPI
+            and observed in segments, then the outcomes).
+          items:
+            $ref: "#/components/schemas/GuidePlanItem"
         levels:
           type: object
           description: What each level is, when no level was asked for.
@@ -2522,6 +2531,31 @@ components:
           items:
             $ref: "#/components/schemas/GuideCandidate"
 
+    GuidePlanItem:
+      type: object
+      required: [kind, for, link]
+      properties:
+        kind:
+          type: string
+        level:
+          type: string
+        for:
+          type: string
+          description: What it is needed for, as Kind or Kind (level).
+        link:
+          type: string
+          description: How the two are joined, as the holding kind and the path that names the other.
+        check:
+          type: string
+          description: The check that reports whether the link is made.
+        ask:
+          type: string
+        ifNone:
+          type: string
+        existing:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuideCandidate"
     GuideCandidate:
       type: object
       required: [id, name]

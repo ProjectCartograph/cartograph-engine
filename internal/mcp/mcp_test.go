@@ -257,3 +257,28 @@ func TestAnAgentsEditKeepsWhatItsPersonChanged(t *testing.T) {
 		t.Fatalf("an edit changed the id: %s", out)
 	}
 }
+
+// Saving one draft tells the agent what the work around it still lacks:
+// the gap its outcome closes has no indicator and no segments yet.
+func TestADraftHearsWhatTheWorkAroundItLacks(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	gap := map[string]any{"apiVersion": "cartograph/v1", "kind": "Gap", "metadata": map[string]any{"id": "gap-bruising", "name": "Bruised on arrival"},
+		"spec": map[string]any{"current": "One crate in five arrives bruised", "desired": "Fewer than one in fifty", "outcomes": []any{"o-sound"}}}
+	outcome := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "o-sound", "name": "Fruit arrives sound"},
+		"spec": map[string]any{"level": "outcome", "objective": "Fruit arrives sound at every depot"}}
+	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Gap", "id": "gap-bruising", "manifest": gap}); res.IsError {
+		t.Fatalf("save_draft gap: %s", text)
+	}
+	res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "o-sound", "manifest": outcome, "work": []string{"Gap/gap-bruising"}})
+	if res.IsError {
+		t.Fatalf("save_draft outcome: %s", text)
+	}
+	for _, want := range []string{`"around"`, "gap-bruising", "gap-measured", "gap-segments", "aroundNext"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("the outcome's report lacks %s: %s", want, text)
+		}
+	}
+	if res, text := callTool(t, cs, "guide", map[string]any{"kind": "Goal", "level": "objective"}); res.IsError || !strings.Contains(text, `"plan"`) || !strings.Contains(text, "gap-measured") {
+		t.Fatalf("the objective's guide has no plan through the gap's indicator: %.400s", text)
+	}
+}

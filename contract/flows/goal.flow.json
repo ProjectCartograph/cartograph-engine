@@ -93,7 +93,9 @@
                 "goal"
               ]
             },
-            "check": "has-objectives"
+            "check": "has-objectives",
+            "needs": "named",
+            "level": "objective"
           },
           {
             "kind": "Goal",
@@ -104,7 +106,9 @@
                 "objective"
               ]
             },
-            "check": "has-outcomes"
+            "check": "has-outcomes",
+            "needs": "named",
+            "level": "outcome"
           },
           {
             "kind": "Gap",
@@ -115,7 +119,8 @@
                 "outcome"
               ]
             },
-            "check": "closes-gap"
+            "check": "closes-gap",
+            "needs": "named"
           }
         ]
       },

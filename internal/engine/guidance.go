@@ -67,6 +67,10 @@ type Guide struct {
 	Definition string            `json:"definition"`
 	Level      string            `json:"level,omitempty"`
 	LevelIs    string            `json:"levelIs,omitempty"`
+	// Plan is the work around it, in order: what it answers to, settled
+	// before it (for an objective: the gaps, measured and scoped, then
+	// the outcomes closing them).
+	Plan []PlanItem `json:"plan,omitempty"`
 	Levels     map[string]string `json:"levels,omitempty"`
 	Purpose    *Purpose          `json:"purpose,omitempty"`
 	// Existing is the records of this kind (at this level) already
@@ -240,6 +244,9 @@ func (e *Engine) Guide(ctx context.Context, kind, level, locale string) (Guide, 
 		g.Existing = same
 	}
 	g.Template = e.template(kind, level)
+	if g.Plan, err = e.Plan(ctx, kind, level, locale); err != nil {
+		return Guide{}, err
+	}
 	below := map[string]string{"goal": "objective", "objective": "outcome"}[level]
 	for _, st := range flow.Spec.Steps {
 		step := GuideStep{Key: st.Key, Title: st.Title, Guide: st.Guide, Fields: []GuideField{}}

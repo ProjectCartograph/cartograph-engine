@@ -52,7 +52,8 @@
           {
             "kind": "Gap",
             "path": "/spec/measure",
-            "check": "gap-measured"
+            "check": "gap-measured",
+            "needs": "holder"
           }
         ]
       },

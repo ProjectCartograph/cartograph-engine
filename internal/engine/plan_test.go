@@ -1,0 +1,83 @@
+package engine_test
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+)
+
+// Defining an objective starts with what it answers to: the gaps its
+// outcomes close, how each is measured and where it was found, then the
+// outcomes; the order comes from the flows' links.
+func TestThePlanForAnObjective(t *testing.T) {
+	e := newTestEngine(t)
+	ctx := context.Background()
+	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := e.Plan(ctx, "Goal", "objective", "en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var order []string
+	at := map[string]engine.PlanItem{}
+	for _, p := range plan {
+		name := p.Kind
+		if p.Level != "" {
+			name += "/" + p.Level
+		}
+		order = append(order, name)
+		at[name] = p
+	}
+	got := strings.Join(order, " ")
+	for _, want := range []string{"Gap KPI", "Goal/outcome"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("plan %q lacks %q", got, want)
+		}
+	}
+	if strings.Index(got, "Gap") > strings.Index(got, "Goal/outcome") || !strings.Contains(got, "Segment") {
+		t.Fatalf("plan %q: the gap, measured and scoped, comes before the outcome that closes it", got)
+	}
+	if g := at["Gap"]; g.Check != "closes-gap" || g.Ask == "" || len(g.Existing) == 0 || g.For != "Goal (outcome)" {
+		t.Fatalf("the gap step says too little: %+v", g)
+	}
+	if k := at["KPI"]; k.Check != "gap-measured" || k.For != "Gap" {
+		t.Fatalf("the indicator step: %+v", k)
+	}
+}
+
+// Whoever works on an outcome is told what the gap closing it still lacks,
+// though both are drafts nobody has saved.
+func TestTheWorkAroundAnOutcome(t *testing.T) {
+	e := newTestEngine(t)
+	ctx := context.Background()
+	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	outcome := []byte("apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: o-sound\n  name: Fruit arrives sound\nspec:\n  level: outcome\n  objective: Fruit arrives sound at every depot\n")
+	gap := []byte("apiVersion: cartograph/v1\nkind: Gap\nmetadata:\n  id: gap-bruising\n  name: Bruised on arrival\nspec:\n  current: One crate in five arrives bruised\n  desired: Fewer than one in fifty arrive bruised\n  outcomes: [o-sound]\n")
+	if err := e.SaveWorking(ctx, "Goal", "o-sound", outcome, "agent"); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.SaveWorking(ctx, "Gap", "gap-bruising", gap, "agent"); err != nil {
+		t.Fatal(err)
+	}
+	around, err := e.WorkAround(ctx, "Goal", "o-sound", []engine.Ref{{Kind: "Gap", ID: "gap-bruising"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var open []string
+	for _, a := range around {
+		if a.Kind == "Gap" && a.ID == "gap-bruising" {
+			for _, c := range a.Open {
+				open = append(open, c.ID)
+			}
+		}
+	}
+	got := strings.Join(open, " ")
+	if !strings.Contains(got, "gap-measured") || !strings.Contains(got, "gap-segments") {
+		t.Fatalf("the gap's open checks %q do not say it is unmeasured and unscoped (around: %+v)", got, around)
+	}
+}
