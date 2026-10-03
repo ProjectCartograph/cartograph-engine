@@ -24,6 +24,7 @@ type GuideBundle struct {
 	Locale     string                     `json:"locale"`
 	Kind       string                     `json:"kind"`
 	Summary    string                     `json:"summary"`
+	KnownAs    []string                   `json:"knownAs,omitempty"`
 	Definition string                     `json:"definition"`
 	Levels     map[string]string          `json:"levels,omitempty"`
 	Steps      map[string]GuideStepWords  `json:"steps,omitempty"`
@@ -398,4 +399,31 @@ func (e *Engine) template(kind, level string) map[string]any {
 		"metadata":   map[string]any{"id": nil, "name": nil},
 		"spec":       spec,
 	}
+}
+
+// TaxonomyEntry is one kind as a document is mapped onto it: what it is,
+// its levels, and what plans often call it instead.
+type TaxonomyEntry struct {
+	Kind    string            `json:"kind"`
+	Summary string            `json:"summary"`
+	Levels  map[string]string `json:"levels,omitempty"`
+	KnownAs []string          `json:"knownAs,omitempty"`
+}
+
+// Taxonomy is every kind a person defines, in the order of the strategy,
+// with what it is and what documents call it, so whatever a document says
+// is recorded as the kind it is, by its definition, not by its label.
+func (e *Engine) Taxonomy(locale string) ([]TaxonomyEntry, error) {
+	var out []TaxonomyEntry
+	for _, kind := range graphKinds() {
+		b, ok, err := GuideBundleFor(kind, locale)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+		out = append(out, TaxonomyEntry{Kind: kind, Summary: b.Summary, Levels: b.Levels, KnownAs: b.KnownAs})
+	}
+	return out, nil
 }

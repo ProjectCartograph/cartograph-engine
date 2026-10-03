@@ -2,6 +2,11 @@
   "locale": "en",
   "kind": "StakeholderMap",
   "summary": "Who has an interest in a piece of work and how much influence they have, placed on a grid.",
+  "knownAs": [
+    "stakeholder analysis",
+    "stakeholder register",
+    "power-interest grid"
+  ],
   "definition": "The stakeholders of one piece of work, and how much power each holds over it: a stakeholder is anyone who can affect the work or is affected by it. A map is scoped to one project, programme or operation (TAXONOMY.md, what a programme carries), and each entry names a Resource from the catalogue, so a party is declared once and scored separately on every piece of work it touches. Each stakeholder is identified first, as primary (directly affected) or secondary (indirectly affected, Clarkson), and placed later by influence and interest, whose grid gives the engagement approach (Mendelow): manage closely, keep satisfied, keep informed, monitor. A stakeholder map is not the list of roles a project staffs (those are its resources), not the beneficiary groups (who gains value), and not a list of persons.",
   "steps": {},
   "fields": {

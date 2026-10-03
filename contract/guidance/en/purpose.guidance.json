@@ -2,6 +2,13 @@
   "locale": "en",
   "kind": "Purpose",
   "summary": "Why everything in the strategy exists: the vision the organisation works towards and its mission.",
+  "knownAs": [
+    "vision",
+    "mission",
+    "purpose statement",
+    "mandate statement",
+    "raison d'être"
+  ],
   "definition": "The purpose is why everything in the strategy exists, stated once at its top: the vision, a future state of the world the organisation serves, and the mission, what the organisation does and for whom to get there. It is not an aim: goals say what the organisation sets out to do, and each is judged Relevant against this. Quote a published plan's words verbatim, with the plan and section as the source.",
   "fields": {
     "/spec/vision": {

@@ -2,6 +2,11 @@
   "locale": "en",
   "kind": "Assumption",
   "summary": "Something the work takes to be true without proof, written down so it can be checked and revisited.",
+  "knownAs": [
+    "assumption",
+    "precondition",
+    "dependency on context"
+  ],
   "definition": "Something that has to be true for a step of the reasoning to hold: the logframe's assumptions column, and the condition on an arrow in a theory of change (TAXONOMY.md D12). It sits on the link between two levels of the work, so it is named where that link is: a programme's pathway step, or a project's success criterion that rests on deliverables. It is stated once and named by every step it conditions. An assumption is not a risk: a risk is something that might go wrong and is mitigated; an assumption is tested, and if it turns out false the answer is a different theory, not a contingency. It is not a constraint (a fixed limit on the work), not a dependency (something the work waits on), and not a hope about the work's own effort.",
   "steps": {},
   "fields": {

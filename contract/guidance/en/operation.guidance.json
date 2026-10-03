@@ -2,6 +2,12 @@
   "locale": "en",
   "kind": "Operation",
   "summary": "A service the organisation runs every day, with the role accountable for it and the hours it is offered.",
+  "knownAs": [
+    "service",
+    "business as usual",
+    "function",
+    "ongoing operation"
+  ],
   "definition": "An operation is continuing work with no end date: a service the organisation runs day in and day out (TAXONOMY.md, the definitions; D14). The first question about any work is whether it ends: work that ends is a project or a programme, work that keeps running is an operation. An operation carries the name of the service (D17); a project that sets it up or changes it is named for that change, hands over to it, and the operation's team accepts the handover. It has a service owner, the role accountable for it end to end (ITIL), and a team that runs it (D23, D27). Its service levels are watched through indicators. Business as usual sits inside a programme's boundary, so an operation names the programmes it is part of, if any (D2). An operation is not a project (it has no closure), not a team (the team runs it; the operation is the service), and not a data source (a source is where records are kept; an operation may read or produce them). Its checks advise and never block.",
   "steps": {},
   "fields": {

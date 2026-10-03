@@ -86,6 +86,15 @@ Work this way, every time:
    room for their own answer, and never pick for them.
 1. Name what the person wants in Cartograph's terms: which kind, and for
    a Goal which level (goal, objective, outcome). Ask if unsure.
+   Documents your person gives you are evidence, not a structure: plans
+   use their own words, and the same word means different things in
+   different plans. Call taxonomy, and record each thing a document says
+   as the Cartograph kind and level it is by definition, whatever the
+   document calls it: a plan's "priority" may be a goal, its "objective"
+   an outcome, its "target" a KPI's target, its "problem" a gap. Keep the
+   document's own wording in the statement and cite it as the source;
+   never add a kind, level or field Cartograph does not have, and when a
+   thing fits no kind, say so to your person rather than forcing it.
 2. Call guide for that kind and level before drafting anything. It gives
    the definition, every step and field in order, what each field must
    say with right and wrong examples, the links to make, the template to
@@ -378,6 +387,9 @@ type (
 		From int    `json:"from" jsonschema:"the earlier version"`
 		To   int    `json:"to" jsonschema:"the later version"`
 	}
+	localeOnly struct {
+		Locale string `json:"locale,omitempty"`
+	}
 	nextIn struct {
 		Work   []string `json:"work" jsonschema:"every manifest in this piece of work, as Kind/id"`
 		Locale string   `json:"locale,omitempty"`
@@ -620,6 +632,18 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			out := withAround(c, checkReport(checks), in.Kind, in.ID, in.Work)
 			out["saved"], out["problems"] = "draft", problems
 			return out, nil
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "taxonomy", Description: "Every kind Cartograph keeps, in the order of the strategy: what each is in one sentence, its levels, " +
+		"and what plans and documents often call it instead. Read it before recording anything from a document, and map each thing the document says " +
+		"onto the kind it is by definition, whatever the document calls it.", Annotations: readOnly},
+		func(c call, in localeOnly) (any, error) {
+			t, err := e.Taxonomy(in.Locale)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"kinds": t, "rule": "Map by what a thing is, against each summary and the guide's definition, never by the word a document uses. " +
+				"Record it as Cartograph's kind and level, keep the document's wording in its statement, and cite the document as its source."}, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "next", Description: "What to do next across a piece of work, in the order Cartograph settles a strategy: " +

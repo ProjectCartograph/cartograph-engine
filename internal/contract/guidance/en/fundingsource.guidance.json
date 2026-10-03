@@ -2,6 +2,13 @@
   "locale": "en",
   "kind": "FundingSource",
   "summary": "A budget work is paid from, with the code finance uses for it and whose budget it is.",
+  "knownAs": [
+    "budget",
+    "budget line",
+    "grant",
+    "fund",
+    "cost centre"
+  ],
   "definition": "A budget, grant, fund or facility that work draws money from (TAXONOMY.md D7): declared once, with the code its holders' ledger gives it, and named by every project funding line that draws on it. The code identifies the budget, not one project's use of it, so it is written once here and never retyped per project. A funding source is not a Resource: a resource is what work draws on to do the work (a role, unit, party, system or facility), and money is what it draws on to pay for it. It is not a funding line either: how much a project draws, in which currency and whether it is approved lives on the project's funding line.",
   "steps": {},
   "fields": {

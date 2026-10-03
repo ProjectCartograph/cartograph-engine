@@ -302,3 +302,13 @@ func TestTheAgentIsToldWhatComesNext(t *testing.T) {
 		t.Fatalf("next: %s", text)
 	}
 }
+
+// An agent reading a document maps it by definition: the taxonomy names
+// every kind with what plans call it instead.
+func TestTheTaxonomyMapsADocumentsWords(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	res, text := callTool(t, cs, "taxonomy", map[string]any{})
+	if res.IsError || !strings.Contains(text, `"Gap"`) || !strings.Contains(text, "problem statement") || !strings.Contains(text, "never by the word") {
+		t.Fatalf("taxonomy: %.600s", text)
+	}
+}

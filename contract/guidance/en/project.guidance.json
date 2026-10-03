@@ -2,6 +2,14 @@
   "locale": "en",
   "kind": "Project",
   "summary": "Temporary work to change something, with its aim, scope, deliverables, measures and who takes it over.",
+  "knownAs": [
+    "initiative",
+    "intervention",
+    "activity",
+    "action",
+    "workstream",
+    "work package"
+  ],
   "definition": "A temporary endeavour producing outputs (TAXONOMY.md, the definitions): work that ends, run by one team under one sponsor and one budget. A project produces outputs, its deliverables; it does not by itself produce benefits, which come once those outputs are in use, so every project names the operation it hands over to. It aligns to outcomes in the strategy, may belong to one or more programmes (it declares them, D1), and may be a component of one other project that shares its sponsor and budget (D15). A project is not an operation (work with no end date, D14), not a programme (which coordinates several pieces of work towards one change), not a goal (an aim), and not a deliverable (one thing the project produces). It is defined in three phases: Initiation, Closure and Handover.",
   "steps": {},
   "fields": {

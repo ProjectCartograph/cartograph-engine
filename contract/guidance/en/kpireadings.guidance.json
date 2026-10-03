@@ -2,6 +2,13 @@
   "locale": "en",
   "kind": "KPIReadings",
   "summary": "The figures an indicator has actually read, one per period of its reporting cycle.",
+  "knownAs": [
+    "actuals",
+    "results",
+    "readings",
+    "performance data",
+    "monitoring data"
+  ],
   "definition": "The actuals of one KPI: what it read, period by period, kept as one series beside the KPI rather than inside it. The KPI says what is measured, in what unit, which way is good and how often, and is written once; a reading says what the number was in one period, and a new one arrives every cycle. Keeping them apart means a new reading never looks like a change to the definition. Which periods exist is derived from the KPI's reporting cycle, never stored here, and a period is named by the month it ends. A period with no reading is one nobody has read yet, which is not a zero. Readings are not a KPI (the definition), not a baseline or a target (the two dated figures on the KPI), and not one file per reading: the series is one thing that grows.",
   "fields": {
     "/spec/kpi": {

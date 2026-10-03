@@ -97,6 +97,13 @@
       "type": "string",
       "maxLength": 160,
       "description": "The kind in one sentence, where a list of kinds names it: a sheet, a picker, an index."
+    },
+    "knownAs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "What plans and documents often call this kind instead, in this language: for recognising one, never for naming it. A document's word is mapped by what the thing is, against the definition, so a plan's \"objective\" may be an outcome here, and the kind's own name is always used."
     }
   },
   "$defs": {
