@@ -1,6 +1,7 @@
 {
   "locale": "en",
   "kind": "Segment",
+  "summary": "A way of slicing up what the organisation serves, such as region or product line, and the slices under it.",
   "definition": "A segment is a way of slicing up what the organisation serves, so a gap can say where it was found and a KPI can be broken down the same way: by region, by depot, by product line, by holding size. Define the slicing first, as a segment with no parent (Region), then each slice under it (the northern region). Both gaps and KPIs name the same segments, so a finding and its measure always cut the work the same way. A segment is not a beneficiary group (people the work is for), not a team (who does the work), not a label (a free cut nobody planned), and not a period of time (the reporting cycle's job).",
   "fields": {
     "/spec/parent": {

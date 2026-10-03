@@ -40,6 +40,8 @@ func (e *Engine) ChecksOf(ctx context.Context, kind, id string, text []byte) ([]
 		advisory = e.gapChecksOf
 	case "StakeholderMap":
 		advisory = e.stakeholderMapChecksOf
+	case "KPI":
+		advisory = e.kpiChecksOf
 	case "Goal", "Project":
 	default:
 		return out, nil

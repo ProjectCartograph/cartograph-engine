@@ -769,6 +769,9 @@ func (s *Server) ListKinds(_ context.Context, _ apigen.ListKindsRequestObject) (
 	out := make(apigen.ListKinds200JSONResponse, len(infos))
 	for i, ki := range infos {
 		out[i] = apigen.KindCount{Kind: ki.Kind, Count: ki.Count}
+		if ki.Summary != "" {
+			out[i].Summary = &ki.Summary
+		}
 	}
 	return out, nil
 }

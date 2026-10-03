@@ -1,6 +1,7 @@
 {
   "locale": "en",
   "kind": "Unit",
+  "summary": "What a number is counted in, such as percent, tonnes or days, defined once so figures can be compared.",
   "definition": "What a measure is counted in, declared once so one quantity is not spelled several ways. A standard set ships with every vault (percent, count, ratio, score, index, days, hours, months), and an organisation declares its own beside them in the same way, such as a currency or a scale it defined. A unit carries its dimension from a closed set (percent, count, money, ratio, duration), so what a unit is called and what kind of quantity it is stay separate: hours and days are both durations. A unit is not what is counted (deliveries, members), which is said in the KPI's definition, not a KPI, and not a data source.",
   "fields": {
     "/spec/dimension": {

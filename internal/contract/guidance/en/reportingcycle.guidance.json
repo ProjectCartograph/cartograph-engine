@@ -1,6 +1,7 @@
 {
   "locale": "en",
   "kind": "ReportingCycle",
+  "summary": "How often indicators are read: the length of a period and when the cycle's year starts.",
   "definition": "How often something is reported, and when each round is due: the length of one period in months, the month the cycle's year starts, and how many days after a period closes the report is due. A KPI names one, and the periods its readings are recorded for are derived from it, never stored again; a period is named by the month it ends. One cycle is shared by every measure read on that rhythm. A reporting cycle is not a data source's refresh (how often the numbers in the source change), not a horizon (the span an aim covers), and not a single report or its audience.",
   "fields": {
     "/spec/periodMonths": {

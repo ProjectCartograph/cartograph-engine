@@ -1,6 +1,7 @@
 {
   "locale": "en",
   "kind": "Team",
+  "summary": "A team that carries work; teams form the organisation's tree, each under the one it answers to.",
   "definition": "A team is a unit in the organisation's structure: a tree of units, each answerable to the one above (TAXONOMY.md D27). It carries work: projects, operations and data sources name the team whose work they are, and a programme names its lead team and supporting teams. That is also what decides who may edit what, since a contributor edits the work of their own teams and the teams beneath them. A team names its parent; the tree in Cartograph should be the one the organisation already keeps, and teams may be enrolled from the directory's groups. A team is not a person and holds no people (people are principals on the access list, never definitions), not a role (a role such as a sponsor or service owner is a Resource), not a beneficiary group (the people work reaches), and not a piece of work (a project or an operation names its team; a team is not made for one project).",
   "steps": {},
   "fields": {

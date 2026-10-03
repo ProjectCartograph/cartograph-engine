@@ -1,6 +1,7 @@
 {
   "locale": "en",
   "kind": "Goal",
+  "summary": "An aim of the strategy: a goal, an objective under it, or an outcome that says what will be true.",
   "definition": "An aim in the organisation's strategy, at one of three levels: a goal (the long-term aim), an objective (a specific aim under a goal), or an outcome (a changed state that will be true once an objective is met). The strategy reads top-down from the purpose (the vision and mission in Settings): goals under the purpose, objectives under goals, outcomes under objectives. A gap is measured against the purpose and closes into an outcome. Numbers belong to the measures (key results and aligned KPIs), never to the statement. A goal is not a project (work that ends), not an operation (work that continues), and not a KPI (a measure).",
   "levels": {
     "goal": "The long-term aim under the purpose, usually spanning the plan (three to five years). Written as an aim: an action and the result it is for.",

@@ -1695,6 +1695,9 @@ components:
           type: string
         count:
           type: integer
+        summary:
+          type: string
+          description: The kind in one sentence, from its guidance, for a list of kinds to show beside its name.
 
     Summary:
       type: object

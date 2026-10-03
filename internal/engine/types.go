@@ -42,6 +42,8 @@ type Change struct {
 type KindInfo struct {
 	Kind  string `json:"kind"`
 	Count int    `json:"count"`
+	// Summary is the kind in one sentence, from its guidance.
+	Summary string `json:"summary,omitempty"`
 }
 
 // Ref is one reference between manifests. Used both as a filter (only Kind

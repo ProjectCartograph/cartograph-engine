@@ -25,7 +25,8 @@
             "checks": [
               "gap-states",
               "gap-measured"
-            ]
+            ],
+            "phase": "align"
           },
           {
             "path": "/spec/current",
@@ -49,7 +50,8 @@
             "hint": "The outcome that would be true once this gap is closed.",
             "checks": [
               "gap-outcome"
-            ]
+            ],
+            "phase": "align"
           }
         ]
       },
@@ -72,12 +74,14 @@
           {
             "kind": "Project",
             "path": "/spec/summary/problems/-/gaps/-/gap",
-            "check": "gap-covered"
+            "check": "gap-covered",
+            "phase": "align"
           },
           {
             "kind": "Programme",
             "path": "/spec/problems/-/gaps/-/gap",
-            "check": "gap-covered"
+            "check": "gap-covered",
+            "phase": "align"
           }
         ]
       },

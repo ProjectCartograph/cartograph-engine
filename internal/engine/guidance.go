@@ -23,6 +23,7 @@ import (
 type GuideBundle struct {
 	Locale     string                     `json:"locale"`
 	Kind       string                     `json:"kind"`
+	Summary    string                     `json:"summary"`
 	Definition string                     `json:"definition"`
 	Levels     map[string]string          `json:"levels,omitempty"`
 	Steps      map[string]GuideStepWords  `json:"steps,omitempty"`
@@ -62,17 +63,17 @@ type GuideLinkWords struct {
 // Guide is a kind's guide for one level, in one language, with the
 // organisation's context.
 type Guide struct {
-	Kind       string            `json:"kind"`
-	Locale     string            `json:"locale"`
-	Definition string            `json:"definition"`
-	Level      string            `json:"level,omitempty"`
-	LevelIs    string            `json:"levelIs,omitempty"`
+	Kind       string `json:"kind"`
+	Locale     string `json:"locale"`
+	Definition string `json:"definition"`
+	Level      string `json:"level,omitempty"`
+	LevelIs    string `json:"levelIs,omitempty"`
 	// Plan is the work around it, in order: what it answers to, settled
 	// before it (for an objective: the gaps, measured and scoped, then
 	// the outcomes closing them).
-	Plan []PlanItem `json:"plan,omitempty"`
-	Levels     map[string]string `json:"levels,omitempty"`
-	Purpose    *Purpose          `json:"purpose,omitempty"`
+	Plan    []PlanItem        `json:"plan,omitempty"`
+	Levels  map[string]string `json:"levels,omitempty"`
+	Purpose *Purpose          `json:"purpose,omitempty"`
 	// Existing is the records of this kind (at this level) already
 	// defined: reuse or improve one before defining another.
 	Existing []Candidate `json:"existing"`

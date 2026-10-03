@@ -1,6 +1,7 @@
 {
   "locale": "en",
   "kind": "Gap",
+  "summary": "The distance between where things are and where they should be, found in evidence and closed by an outcome.",
   "definition": "A shortfall in results: the distance between a current state (what is) and a desired state (what should be), measured against the purpose and the goals above it (Kaufman's needs assessment). A need is a gap in results, not in resources or methods, and it is named as a noun, not a verb. A gap closes into one or more outcomes, named on the gap's side, since a goal never points below itself. Where a KPI measures it, the KPI's dated baseline and target are its two states and are not restated. It lists the segments it was observed in, so work that cites it can say which part it addresses and the register can show which part nobody is working on. It is written once in the gap register and cited by the problems of the projects and programmes that address it. A gap is not a problem (what the shortfall does to a named group, on one piece of work, which cites the gap), not an outcome (the state that will be true once it closes), not a missing resource or a method (no scanners, train the staff), and not a KPI (the measure it may be read on).",
   "fields": {
     "/metadata/name": {

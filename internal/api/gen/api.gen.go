@@ -694,6 +694,9 @@ type Health struct {
 type KindCount struct {
 	Count int    `json:"count"`
 	Kind  string `json:"kind"`
+
+	// Summary The kind in one sentence, from its guidance, for a list of kinds to show beside its name.
+	Summary *string `json:"summary,omitempty"`
 }
 
 // Manifest The generic manifest envelope, mirroring contract/schemas/manifest.schema.json (kept in sync by hand: the authoritative shape and every kind-specific spec shape live under contract/schemas/, since the code generator cannot follow that file's further reference into common.schema.json without a hand-written import mapping). Runtime validation always uses the JSON Schema files directly, never this generated type.

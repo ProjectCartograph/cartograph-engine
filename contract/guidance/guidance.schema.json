@@ -7,6 +7,7 @@
   "required": [
     "locale",
     "kind",
+    "summary",
     "definition",
     "fields"
   ],
@@ -91,6 +92,11 @@
         },
         "minItems": 1
       }
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 160,
+      "description": "The kind in one sentence, where a list of kinds names it: a sheet, a picker, an index."
     }
   },
   "$defs": {

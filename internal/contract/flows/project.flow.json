@@ -47,7 +47,8 @@
             "path": "/spec/team",
             "control": "reference"
           }
-        ]
+        ],
+        "phase": "align"
       },
       {
         "key": "beneficiaries",
@@ -289,7 +290,8 @@
               }
             ]
           }
-        ]
+        ],
+        "phase": "measure"
       },
       {
         "key": "resources",

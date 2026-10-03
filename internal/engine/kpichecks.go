@@ -1,0 +1,51 @@
+package engine
+
+import (
+	"context"
+	"strings"
+)
+
+// kpiChecksOf checks an indicator (TAXONOMY.md D25, D26): a measure is
+// only usable with a baseline (or an admitted unknown), a dated target,
+// somewhere it is read from and how often, and the aims it measures. The
+// schema asks for its definition, unit, direction and source; these are
+// what a person still has to settle, each in the flow step that asks it.
+func (e *Engine) kpiChecksOf(_ context.Context, _ string, doc map[string]any) ([]ProgrammeCheck, error) {
+	spec, _ := doc["spec"].(map[string]any)
+	if spec == nil {
+		spec = map[string]any{}
+	}
+	var out []ProgrammeCheck
+	add := func(id, section string, met bool, ok, warn string) {
+		state, message := programmeCheckOK, ok
+		if !met {
+			state, message = programmeCheckWarn, warn
+		}
+		out = append(out, ProgrammeCheck{ID: id, Section: section, State: state, Message: message})
+	}
+	text := func(m map[string]any, k string) bool {
+		s, _ := m[k].(string)
+		return strings.TrimSpace(s) != ""
+	}
+	has := func(m map[string]any, k string) bool {
+		v, ok := m[k]
+		return ok && v != nil
+	}
+
+	baseline, _ := spec["baseline"].(map[string]any)
+	switch {
+	case baseline != nil && has(baseline, "value") && text(baseline, "date"):
+		add("kpi-baseline", "baseline-target", true, "Today's figure is recorded, with its date.", "")
+	case baseline != nil && text(baseline, "unknownReason"):
+		add("kpi-baseline", "baseline-target", true, "Today's figure is admitted unknown, with the reason.", "")
+	default:
+		add("kpi-baseline", "baseline-target", false, "", "No baseline yet: today's figure and its date, or why it is not known.")
+	}
+	target, _ := spec["target"].(map[string]any)
+	add("kpi-target", "baseline-target", target != nil && has(target, "value") && text(target, "date"),
+		"A target is set, with the date it is to be reached by.", "No dated target yet: the figure to reach, and by when.")
+	add("kpi-cycle", "verification", text(spec, "cycle"), "Read on a reporting cycle.", "No reporting cycle yet: how often it is read.")
+	goals, _ := spec["goals"].([]any)
+	add("kpi-aligned", "result", len(goals) > 0, "Measures at least one aim.", "Measures no aim yet: name the goal, objective or outcome it tells you about.")
+	return out, nil
+}

@@ -41,7 +41,10 @@
           {
             "path": "/spec/goals",
             "control": "references",
-            "hint": "The aims this KPI tells you about, most often outcomes."
+            "hint": "The aims this KPI tells you about, most often outcomes.",
+            "checks": [
+              "kpi-aligned"
+            ]
           },
           {
             "path": "/spec/resultLevel",
@@ -53,9 +56,11 @@
             "kind": "Gap",
             "path": "/spec/measure",
             "check": "gap-measured",
-            "needs": "holder"
+            "needs": "holder",
+            "phase": "align"
           }
-        ]
+        ],
+        "phase": "align"
       },
       {
         "key": "baseline-target",
@@ -65,7 +70,10 @@
           {
             "path": "/spec/baseline/value",
             "control": "number",
-            "hint": "Where it stands today."
+            "hint": "Where it stands today.",
+            "checks": [
+              "kpi-baseline"
+            ]
           },
           {
             "path": "/spec/baseline/date",
@@ -75,7 +83,10 @@
           {
             "path": "/spec/baseline/unknownReason",
             "control": "sentence",
-            "hint": "If today's figure is not known, why, and when it will be."
+            "hint": "If today's figure is not known, why, and when it will be.",
+            "checks": [
+              "kpi-baseline"
+            ]
           },
           {
             "path": "/spec/baseline/expectedBy",
@@ -84,14 +95,18 @@
           {
             "path": "/spec/target/value",
             "control": "number",
-            "hint": "Where it needs to get to."
+            "hint": "Where it needs to get to.",
+            "checks": [
+              "kpi-target"
+            ]
           },
           {
             "path": "/spec/target/date",
             "control": "date",
             "hint": "The month it is due by."
           }
-        ]
+        ],
+        "phase": "measure"
       },
       {
         "key": "verification",
@@ -106,7 +121,10 @@
           {
             "path": "/spec/cycle",
             "control": "reference",
-            "hint": "How often it is read. This sets the periods its readings are recorded for."
+            "hint": "How often it is read. This sets the periods its readings are recorded for.",
+            "checks": [
+              "kpi-cycle"
+            ]
           }
         ],
         "links": [
@@ -114,7 +132,8 @@
             "kind": "KPIReadings",
             "path": "/spec/kpi"
           }
-        ]
+        ],
+        "phase": "measure"
       },
       {
         "key": "disaggregation",

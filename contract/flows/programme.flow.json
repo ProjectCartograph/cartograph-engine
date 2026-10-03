@@ -118,7 +118,8 @@
               "alignment-kpis"
             ]
           }
-        ]
+        ],
+        "phase": "align"
       },
       {
         "key": "components",
@@ -129,12 +130,14 @@
           {
             "kind": "Project",
             "path": "/spec/alignment/programmes",
-            "check": "components-present"
+            "check": "components-present",
+            "phase": "align"
           },
           {
             "kind": "Operation",
             "path": "/spec/programmes",
-            "check": "components-present"
+            "check": "components-present",
+            "phase": "align"
           }
         ]
       },

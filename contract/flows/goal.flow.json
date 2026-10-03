@@ -29,8 +29,7 @@
             "path": "/spec/objective",
             "control": "sentence",
             "checks": [
-              "smart-specific",
-              "smart-attainable"
+              "smart-specific"
             ]
           },
           {
@@ -49,6 +48,7 @@
             "control": "list",
             "key": "id",
             "checks": [
+              "smart-attainable",
               "smart-measurable"
             ],
             "fields": [
@@ -95,7 +95,8 @@
             },
             "check": "has-objectives",
             "needs": "named",
-            "level": "objective"
+            "level": "objective",
+            "phase": "align"
           },
           {
             "kind": "Goal",
@@ -108,7 +109,8 @@
             },
             "check": "has-outcomes",
             "needs": "named",
-            "level": "outcome"
+            "level": "outcome",
+            "phase": "align"
           },
           {
             "kind": "Gap",
@@ -120,9 +122,11 @@
               ]
             },
             "check": "closes-gap",
-            "needs": "named"
+            "needs": "named",
+            "phase": "align"
           }
-        ]
+        ],
+        "phase": "measure"
       },
       {
         "key": "owner",
@@ -178,7 +182,8 @@
             "path": "/spec/contributesTo",
             "control": "references"
           }
-        ]
+        ],
+        "phase": "align"
       }
     ],
     "review": true

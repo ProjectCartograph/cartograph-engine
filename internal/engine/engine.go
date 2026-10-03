@@ -114,7 +114,11 @@ func (e *Engine) Kinds() []KindInfo {
 	counts, _ := e.manifests.Counts(context.Background())
 	out := make([]KindInfo, 0, len(kinds.All))
 	for _, spec := range kinds.All {
-		out = append(out, KindInfo{Kind: spec.Name, Count: counts[spec.Name]})
+		info := KindInfo{Kind: spec.Name, Count: counts[spec.Name]}
+		if g, ok, _ := GuideBundleFor(spec.Name, DefaultLocale); ok {
+			info.Summary = g.Summary
+		}
+		out = append(out, info)
 	}
 	return out
 }

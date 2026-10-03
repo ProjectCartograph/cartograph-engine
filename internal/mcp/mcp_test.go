@@ -282,3 +282,23 @@ func TestADraftHearsWhatTheWorkAroundItLacks(t *testing.T) {
 		t.Fatalf("the objective's guide has no plan through the gap's indicator: %.400s", text)
 	}
 }
+
+// The agent is told what comes next, in Cartograph's order, without
+// anyone telling it the order: a gap's states before the outcome it
+// closes is aligned to anything.
+func TestTheAgentIsToldWhatComesNext(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	gap := map[string]any{"apiVersion": "cartograph/v1", "kind": "Gap", "metadata": map[string]any{"id": "gap-bruising", "name": "Bruised on arrival"},
+		"spec": map[string]any{"outcomes": []any{"o-sound"}}}
+	outcome := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "o-sound", "name": "Fruit arrives sound"},
+		"spec": map[string]any{"level": "outcome"}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "o-sound", "manifest": outcome})
+	res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Gap", "id": "gap-bruising", "manifest": gap, "work": []string{"Goal/o-sound"}})
+	if res.IsError || !strings.Contains(text, `Next (define): Gap`) || !strings.Contains(text, "gap-states") && !strings.Contains(text, "current state") {
+		t.Fatalf("save_draft does not lead with the gap's states: %s", text)
+	}
+	res, text = callTool(t, cs, "next", map[string]any{"work": []string{"Goal/o-sound", "Gap/gap-bruising"}})
+	if res.IsError || !strings.Contains(text, `"then"`) || !strings.Contains(text, `"define"`) {
+		t.Fatalf("next: %s", text)
+	}
+}

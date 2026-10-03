@@ -61,7 +61,8 @@
               "alignment-programmes"
             ]
           }
-        ]
+        ],
+        "phase": "align"
       },
       {
         "key": "measures",
@@ -76,7 +77,8 @@
               "measures-kpis"
             ]
           }
-        ]
+        ],
+        "phase": "measure"
       },
       {
         "key": "data",

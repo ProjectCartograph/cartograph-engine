@@ -96,28 +96,35 @@ Work this way, every time:
    Cartograph and can work on it with you. Every manifest you will
    define for this piece of work gets its draft the same way, as you
    come to it.
-5. Then work field by field with edit_draft, one step of the guide at a
-   time, saving each answer as soon as your person gives it. Your person
+5. Then work field by field with edit_draft, in the order next gives,
+   saving each answer as soon as your person gives it. Your person
    and their colleagues may edit the same draft in Cartograph while you
    work: edit_draft changes only the fields you name and returns the
    draft as it now stands, their changes included. Read it every time,
    build on what they wrote, and never put back a value they changed;
    if you disagree, say so and ask. Use save_draft again only to create.
-6. Ask the person for what only they know (owners, figures, dates,
-   sources), a step at a time, with examples drawn from their own
-   records. Never invent a figure, a date, a source or an owner. Fix
-   every open check edit_draft returns; checks reads the draft at any
-   time.
-7. Propose only when every check is met: propose_save for one manifest,
+6. Cartograph sets the order of the work; you do not have to work it
+   out. Every save_draft, edit_draft and checks you call with work (every
+   Kind/id you are defining together) ends with next: do that, then the
+   next. It settles first what each thing is (every gap's two states,
+   then the outcomes and aims), then the numbers (baselines and targets),
+   then the links (which outcome each gap closes, which aims each KPI
+   measures). The next tool gives the same, with what follows.
+7. Take what the documents your person gave you say: figures, dates,
+   sources and owners, quoting where each came from. Ask your person
+   only for what they do not say, a step at a time, with examples from
+   their own records. Never invent a figure, a date, a source or an
+   owner.
+8. Propose only when every check is met: propose_save for one manifest,
    propose_set for several that reference each other (a KPI, the gap it
    measures and the outcome that closes it), which your person accepts
    whole. An open check refuses the proposal. Leave one open only when
    your person cannot settle it now, naming it with the reason in
    openChecks; your person reads each reason.
-8. Your work ends in a proposal, never in a chat message asking the
+9. Your work ends in a proposal, never in a chat message asking the
    person to accept: they accept in Cartograph, after reading it. Tell
    them what you proposed, and what you left open and why.
-9. Some judgement no check can make: whether an outcome describes a state
+10. Some judgement no check can make: whether an outcome describes a state
    rather than an action, whether an aim says one thing, whether a
    statement is specific. That is yours. Hold every statement to the
    guide's examples before proposing, and tell your person where you are
@@ -361,6 +368,10 @@ type (
 		From int    `json:"from" jsonschema:"the earlier version"`
 		To   int    `json:"to" jsonschema:"the later version"`
 	}
+	nextIn struct {
+		Work   []string `json:"work" jsonschema:"every manifest in this piece of work, as Kind/id"`
+		Locale string   `json:"locale,omitempty"`
+	}
 	editIn struct {
 		Kind  string         `json:"kind"`
 		ID    string         `json:"id"`
@@ -601,6 +612,37 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return out, nil
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "next", Description: "What to do next across a piece of work, in the order Cartograph settles a strategy: " +
+		"first what each thing is (every gap's states, then the outcomes and aims), then the numbers (baselines and targets, from the documents your person gave you), " +
+		"then the links (which outcome each gap closes, which aims each KPI measures). Pass every manifest you are working on. Call it whenever you are unsure what comes next.", Annotations: readOnly},
+		func(c call, in nextIn) (any, error) {
+			var work []engine.Ref
+			for _, w := range in.Work {
+				if k, i, ok := strings.Cut(w, "/"); ok && k != "" && i != "" {
+					work = append(work, engine.Ref{Kind: k, ID: i})
+				}
+			}
+			if len(work) == 0 {
+				return nil, fmt.Errorf("name the manifests you are working on in work, as Kind/id")
+			}
+			w, err := e.Work(c.ctx, work, in.Locale)
+			if err != nil {
+				return nil, err
+			}
+			out := map[string]any{"open": w.Open}
+			if len(w.Tasks) == 0 {
+				out["next"] = "Every check across this work is met. Propose it, with propose_set when there is more than one manifest."
+				return out, nil
+			}
+			out["next"] = nextLine(w.Tasks[0])
+			then := w.Tasks[1:]
+			if len(then) > 8 {
+				then = then[:8]
+			}
+			out["task"], out["then"] = w.Tasks[0], then
+			return out, nil
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "edit_draft", Description: "Set or clear single fields of a manifest's draft, by JSON pointer, leaving every other field as it stands, " +
 		"so changes people make in Cartograph at the same time are kept. Returns the draft as it now stands, their changes included, and its checks. " +
 		"Starts the draft when the manifest has none. Use it for every change after save_draft creates a manifest.", Annotations: drafting},
@@ -774,6 +816,15 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 			also = append(also, engine.Ref{Kind: k, ID: i})
 		}
 	}
+	// What to do next across the whole piece of work, so the agent is led
+	// one step at a time without being told the order.
+	if w, err := c.o.Engine.Work(c.ctx, append([]engine.Ref{{Kind: kind, ID: id}}, also...), ""); err == nil {
+		if len(w.Tasks) > 0 {
+			out["next"] = nextLine(w.Tasks[0])
+		} else {
+			out["next"] = "Every check across this work is met. Propose it, with propose_set when there is more than one manifest."
+		}
+	}
 	around, err := c.o.Engine.WorkAround(c.ctx, kind, id, also)
 	if err != nil || len(around) == 0 {
 		return out
@@ -791,6 +842,19 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 			unfinished, map[bool]string{true: "", false: "s"}[unfinished == 1], map[bool]string{true: "s", false: ""}[unfinished == 1])
 	}
 	return out
+}
+
+// nextLine is one task as an agent reads it: what, where, and how.
+func nextLine(t engine.Task) string {
+	name := t.Name
+	if name == "" {
+		name = t.ID
+	}
+	line := fmt.Sprintf("Next (%s): %s %q (%s/%s), step %s: %s", t.Phase, t.Kind, name, t.Kind, t.ID, orNone(t.Step), t.Message)
+	if t.Do != "" {
+		line += " " + t.Do
+	}
+	return line
 }
 
 // guided is a guide as an agent reads it: the guide, then what to do with

@@ -1,6 +1,7 @@
 {
   "locale": "en",
   "kind": "DataSource",
+  "summary": "Somewhere a number is read from: who keeps it, how often it changes and what is wrong with it today.",
   "definition": "A data source is somewhere a number actually comes from: a register, a system, a survey, a record or a document store that an indicator, a key result, a gap or a success criterion is read from. It is the means of verification, named once in the register so every measure that reads from it points at the same place. It says what form it takes (category) and, separately, who runs it (provenance), the way DCAT keeps a dataset apart from its publisher (TAXONOMY.md D25). It says how records get into it, because that decides how soon anything read from it can be known (TAXONOMY.md D18). A data source is not an indicator: the indicator is the measure, and the source is where its readings come from. It is not a report, which is made from sources, and it is not the team that keeps it, which it names.",
   "steps": {},
   "fields": {
