@@ -1,0 +1,42 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "purpose",
+    "name": "Purpose"
+  },
+  "spec": {
+    "for": "Purpose",
+    "steps": [
+      {
+        "key": "purpose",
+        "title": "Purpose",
+        "guide": "Why everything below exists: the vision and mission every goal serves, stated once.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/vision",
+            "control": "sentence",
+            "title": "Vision",
+            "hint": "The future the organisation is working towards."
+          },
+          {
+            "path": "/spec/mission",
+            "control": "sentence",
+            "title": "Mission",
+            "hint": "What the organisation does to get there."
+          },
+          {
+            "path": "/spec/source",
+            "control": "text",
+            "title": "Source"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

@@ -87,7 +87,7 @@
               "description": "Where the vision and mission are published."
             }
           },
-          "description": "Why everything below exists, stated once at the top: the vision and mission every goal serves (Kaufman's ideal vision, the Balanced Scorecard's mission and vision). See TAXONOMY.md D24."
+          "description": "Deprecated: the vision and mission are the Purpose kind's, at the top of the strategy (TAXONOMY.md D24, ADR 0020). Read where no Purpose manifest exists, from a workspace saved before 2.7.0; never written."
         }
       }
     }

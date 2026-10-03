@@ -11,6 +11,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/programme"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/project"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/segment"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/purpose"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/settings"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/stakeholdermap"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/team"
@@ -39,6 +40,7 @@ var All = []Spec{
 	{Name: "Segment", SchemaFile: "segment.schema.json", Rules: segment.Rules},
 	{Name: "Gap", SchemaFile: "gap.schema.json"},
 	{Name: "Assumption", SchemaFile: "assumption.schema.json"},
+	{Name: "Purpose", SchemaFile: "purpose.schema.json", Rules: purpose.Rules},
 	{Name: "Goal", SchemaFile: "goal.schema.json", Rules: goal.Rules},
 	{Name: "Unit", SchemaFile: "unit.schema.json"},
 	{Name: "KPI", SchemaFile: "kpi.schema.json"},

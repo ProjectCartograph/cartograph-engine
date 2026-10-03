@@ -545,8 +545,13 @@ results (Kaufman), so a gap is only useful once it says which result would
 close it.
 
 **What Cartograph does.**
-- `Settings.spec.purpose` holds the vision and mission, with their source,
-  stated once above every goal. The Strategy view at `/` reads the tree
+- The `Purpose` kind holds the vision and mission, with their source,
+  stated once above every goal (one per workspace, id `default`). It is
+  the top of the strategy, versioned and proposed like the goals beneath
+  it, and edited at the top of the Strategy view by whoever may edit
+  goals. Until 2.7.0 it was `Settings.spec.purpose`; a workspace that
+  still holds it there is read from there until a Purpose is saved (ADR
+  0020). The Strategy view at `/` reads the tree
   top-down: purpose, each goal with its reason, its objectives, the
   outcomes under each, and the gaps each outcome closes (current state to
   desired state) with the work aligned to it. The board that edits the tree

@@ -1,0 +1,62 @@
+{
+  "locale": "en",
+  "kind": "Purpose",
+  "definition": "The purpose is why everything in the strategy exists, stated once at its top: the vision, a future state of the world the organisation serves, and the mission, what the organisation does and for whom to get there. It is not an aim: goals say what the organisation sets out to do, and each is judged Relevant against this. Quote a published plan's words verbatim, with the plan and section as the source.",
+  "fields": {
+    "/spec/vision": {
+      "guide": "The future the organisation is working towards, in one or two sentences: the state of the world it wants, not what it does. No figures: those belong to the goals' measures.",
+      "good": [
+        "Every member can make a dependable living from what they grow."
+      ],
+      "poor": [
+        {
+          "text": "Raise member earnings by 15% by 2028.",
+          "why": "A target, not a vision: the figure and the date belong in a key result under a goal."
+        },
+        {
+          "text": "To be the best cooperative.",
+          "why": "Says nothing a goal could be judged against: best at what, for whom?"
+        },
+        {
+          "text": "We collect, check and sell our members' produce.",
+          "why": "What the organisation does is the mission; the vision is the future it is working towards."
+        }
+      ]
+    },
+    "/spec/mission": {
+      "guide": "What the organisation does to get there, and for whom, in one or two sentences. It names the standing work, not a list of projects.",
+      "good": [
+        "We collect, check and sell our members' produce together, so each member gets a fair and dependable price for a season's work."
+      ],
+      "poor": [
+        {
+          "text": "Roll out quality checks at every depot and open two new depots.",
+          "why": "A list of pieces of work that end, which are projects; the mission is what the organisation does all the time."
+        },
+        {
+          "text": "Excellence, integrity and teamwork.",
+          "why": "Values, not a mission: they do not say what the organisation does."
+        }
+      ]
+    },
+    "/spec/source": {
+      "guide": "Where the vision and mission are published, precisely enough to find again: the document, and the section or page. Leave it empty when they are written here first.",
+      "good": [
+        "Cooperative plan for 2025 to 2028, foreword"
+      ],
+      "poor": [
+        {
+          "text": "The website",
+          "why": "Not precise enough to find again, and a page that changes is not a source."
+        }
+      ]
+    },
+    "/metadata/name": {
+      "guide": "What to call it on screen, such as Purpose, or the plan's own word for its vision and mission.",
+      "good": [
+        "Purpose",
+        "Our purpose"
+      ]
+    }
+  }
+}

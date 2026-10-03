@@ -22,7 +22,7 @@ func WithLayout(l layout.Layout) Option {
 // the strategy, the work that serves it, then what the work draws on.
 // Placing them in the engine draws the graph alike in every interface.
 var graphOrder = []string{
-	"Goal", "KPI", "Gap", "Programme", "Project", "Operation", "StakeholderMap", "Assumption",
+	"Purpose", "Goal", "KPI", "Gap", "Programme", "Project", "Operation", "StakeholderMap", "Assumption",
 	"Team", "Resource", "FundingSource", "DataSource", "ReportingCycle", "Unit", "Segment", "BeneficiaryGroup",
 }
 

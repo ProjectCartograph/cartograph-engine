@@ -10,54 +10,6 @@
     "/spec/purpose": {
       "guide": "The vision and mission, with where they are published. When they come from a published plan, quote them word for word and give the plan's section as the source."
     },
-    "/spec/purpose/vision": {
-      "guide": "The future the organisation is working towards, in one or two sentences: the state of the world it wants, not what it does. No figures: those belong to the goals' measures.",
-      "good": [
-        "Every member can make a dependable living from what they grow."
-      ],
-      "poor": [
-        {
-          "text": "Raise member earnings by 15% by 2028.",
-          "why": "A target, not a vision: the figure and the date belong in a key result under a goal."
-        },
-        {
-          "text": "To be the best cooperative.",
-          "why": "Says nothing a goal could be judged against: best at what, for whom?"
-        },
-        {
-          "text": "We collect, check and sell our members' produce.",
-          "why": "What the organisation does is the mission; the vision is the future it is working towards."
-        }
-      ]
-    },
-    "/spec/purpose/mission": {
-      "guide": "What the organisation does to get there, and for whom, in one or two sentences. It names the standing work, not a list of projects.",
-      "good": [
-        "We collect, check and sell our members' produce together, so each member gets a fair and dependable price for a season's work."
-      ],
-      "poor": [
-        {
-          "text": "Roll out quality checks at every depot and open two new depots.",
-          "why": "A list of pieces of work that end, which are projects; the mission is what the organisation does all the time."
-        },
-        {
-          "text": "Excellence, integrity and teamwork.",
-          "why": "Values, not a mission: they do not say what the organisation does."
-        }
-      ]
-    },
-    "/spec/purpose/source": {
-      "guide": "Where the vision and mission are published, precisely enough to find again: the document, and the section or page. Leave it empty when they are written here first.",
-      "good": [
-        "Cooperative plan for 2025 to 2028, foreword"
-      ],
-      "poor": [
-        {
-          "text": "The website",
-          "why": "Not precise enough to find again, and a page that changes is not a source."
-        }
-      ]
-    },
     "/spec/goalLevels": {
       "guide": "The names this vault shows for the three levels of the strategy, in order: goal, objective, outcome. Change them only to use the words of the organisation's own plan; the meaning of each level stays the same. Leave it empty to keep Goal, Objective and Outcome.",
       "good": [

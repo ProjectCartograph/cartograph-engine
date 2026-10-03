@@ -1,0 +1,23 @@
+{
+  "$id": "purpose.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Purpose",
+  "description": "Why everything below exists, stated once at the top of the strategy: the vision and mission every goal serves (Kaufman's ideal vision; the Balanced Scorecard's mission and vision). One per workspace, metadata.id always \"default\". Not an aim: a goal says what the organisation sets out to do, the purpose says what for. See TAXONOMY.md D24.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": { "const": "cartograph/v1" },
+    "kind": { "const": "Purpose" },
+    "metadata": { "$ref": "common.schema.json#/$defs/Metadata" },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vision": { "type": "string", "maxLength": 600, "description": "The future the organisation is working towards, as a state of the world it serves, not of itself." },
+        "mission": { "type": "string", "maxLength": 600, "description": "What the organisation does, and for whom, to get there." },
+        "source": { "type": "string", "maxLength": 160, "description": "Where the vision and mission are published, so a reader can check them: a plan and its section." }
+      }
+    }
+  }
+}

@@ -90,7 +90,7 @@ func (p Policy) Scope(ctx context.Context, pr auth.Principal, kind string) (auth
 		return auth.ScopeTeams, nil
 	case slices.Contains(registers, kind) && has(g, auth.RoleContributor):
 		return auth.ScopeAll, nil
-	case (kind == "Goal" || kind == "Settings") && has(g, auth.RoleStrategyEditor):
+	case (kind == "Goal" || kind == "Purpose" || kind == "Settings") && has(g, auth.RoleStrategyEditor):
 		return auth.ScopeAll, nil
 	}
 	return auth.ScopeNone, nil
@@ -142,6 +142,11 @@ func decide(g auth.Grants, a auth.Action) error {
 	case a.Kind == "Goal":
 		if !has(g, auth.RoleStrategyEditor) {
 			return refuse("only a strategy editor may change a goal, objective or outcome")
+		}
+		return nil
+	case a.Kind == "Purpose":
+		if !has(g, auth.RoleStrategyEditor) {
+			return refuse("only a strategy editor may change the vision and mission")
 		}
 		return nil
 	case a.Kind == "Settings":

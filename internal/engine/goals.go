@@ -43,8 +43,40 @@ func defaultSettings() Settings {
 }
 
 // GetSettings returns the current Settings, defaulted where the imported
-// document (if any) leaves a field empty.
+// document (if any) leaves a field empty. Its Purpose is the Purpose
+// manifest's where there is one, else what Settings held before 2.7.0
+// (ADR 0020), so every reader of the vision and mission reads one place.
 func (e *Engine) GetSettings(ctx context.Context) (Settings, error) {
+	out, err := e.settingsOnly(ctx)
+	if err != nil {
+		return Settings{}, err
+	}
+	p, found, err := e.statedPurpose(ctx)
+	if err != nil {
+		return Settings{}, err
+	}
+	if found {
+		out.Purpose = p
+	}
+	return out, nil
+}
+
+// statedPurpose reads the Purpose manifest, its draft where there is one.
+func (e *Engine) statedPurpose(ctx context.Context) (*Purpose, bool, error) {
+	v, found, err := e.manifests.GetCurrent(ctx, "Purpose", "default")
+	if err != nil || !found {
+		return nil, false, err
+	}
+	var doc struct {
+		Spec Purpose `yaml:"spec"`
+	}
+	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
+		return nil, false, fmt.Errorf("parse purpose: %w", err)
+	}
+	return &doc.Spec, true, nil
+}
+
+func (e *Engine) settingsOnly(ctx context.Context) (Settings, error) {
 	out := defaultSettings()
 	v, found, err := e.manifests.GetCurrent(ctx, "Settings", "default")
 	if err != nil {

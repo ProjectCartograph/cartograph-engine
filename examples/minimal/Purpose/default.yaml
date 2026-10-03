@@ -1,0 +1,9 @@
+apiVersion: cartograph/v1
+kind: Purpose
+metadata:
+  id: default
+  name: Purpose
+spec:
+  vision: Every member family earns a fair and dependable living from what it grows.
+  mission: We collect, check and sell our members' produce together, so it reaches buyers sound and members are paid on time for every crate.
+  source: Cooperative plan 2025 to 2028, section 1
