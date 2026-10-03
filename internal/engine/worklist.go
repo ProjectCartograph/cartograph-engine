@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // The order of work across many manifests. A strategy is settled in
@@ -32,6 +33,9 @@ type Task struct {
 	// to do about it.
 	Step string `json:"step,omitempty"`
 	Do   string `json:"do,omitempty"`
+	// Choices are the records that already exist to settle it with, where
+	// a reference or a link settles it: offered before defining another.
+	Choices []Candidate `json:"choices,omitempty"`
 }
 
 // Worklist is a piece of work's open checks, in order.
@@ -46,6 +50,9 @@ type checkPlace struct {
 	phase, step string
 	// order is the step's place in its flow.
 	order int
+	// field is the field that settles it, or for a link the kind that
+	// holds it, prefixed "link:".
+	field string
 }
 
 // checkPlaces reads, from every flow, the phase and step of each check:
@@ -66,10 +73,12 @@ func (e *Engine) checkPlaces() (map[string]map[string]checkPlace, error) {
 					Key    string `json:"key"`
 					Phase  string `json:"phase"`
 					Fields []struct {
+						Path   string   `json:"path"`
 						Phase  string   `json:"phase"`
 						Checks []string `json:"checks"`
 					} `json:"fields"`
 					Links []struct {
+						Kind  string `json:"kind"`
 						Phase string `json:"phase"`
 						Check string `json:"check"`
 					} `json:"links"`
@@ -88,13 +97,13 @@ func (e *Engine) checkPlaces() (map[string]map[string]checkPlace, error) {
 		}
 		for i, st := range flow.Spec.Steps {
 			// A check a step's section names, with no field claiming it.
-			m["section:"+st.Key] = checkPlace{or(st.Phase, "define"), st.Key, i}
+			m["section:"+st.Key] = checkPlace{or(st.Phase, "define"), st.Key, i, ""}
 			for _, f := range st.Fields {
 				for _, c := range f.Checks {
 					// A check several fields can settle (a gap's states,
 					// written or read from its KPI) is placed at the
 					// earliest of them.
-					pl := checkPlace{or(f.Phase, or(st.Phase, "define")), st.Key, i}
+					pl := checkPlace{or(f.Phase, or(st.Phase, "define")), st.Key, i, f.Path}
 					if have, ok := m[c]; !ok || phaseOrder[pl.phase] < phaseOrder[have.phase] {
 						m[c] = pl
 					}
@@ -102,7 +111,7 @@ func (e *Engine) checkPlaces() (map[string]map[string]checkPlace, error) {
 			}
 			for _, l := range st.Links {
 				if l.Check != "" {
-					m[l.Check] = checkPlace{or(l.Phase, "align"), st.Key, i}
+					m[l.Check] = checkPlace{or(l.Phase, "align"), st.Key, i, "link:" + l.Kind}
 				}
 			}
 		}
@@ -182,6 +191,7 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 		records[w] = &record{ref: w, name: name, level: level, open: open}
 	}
 	words := map[string]GuideBundle{}
+	l := &lookup{ctx: ctx, store: e.manifests, codec: e.codec}
 	out := Worklist{Tasks: []Task{}, Open: map[string]int{"define": 0, "measure": 0, "align": 0}}
 	rankOf := map[Ref]int{}
 	stepOrder := map[int]int{}
@@ -207,11 +217,11 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 				pl, ok = places[r.Kind]["section:"+c.Section]
 			}
 			if !ok {
-				pl = checkPlace{"define", c.Section, 99}
+				pl = checkPlace{"define", c.Section, 99, ""}
 			}
 			stepOrder[len(out.Tasks)] = pl.order
 			out.Tasks = append(out.Tasks, Task{Phase: pl.phase, Kind: r.Kind, ID: r.ID, Name: rec.name, Check: c.ID, State: c.State,
-				Message: c.Message, Step: pl.step, Do: words[r.Kind].Checks[c.ID]})
+				Message: c.Message, Step: pl.step, Do: words[r.Kind].Checks[c.ID], Choices: e.choices(l, r.Kind, rec.level, pl.field)})
 			out.Open[pl.phase]++
 		}
 	}
@@ -283,4 +293,44 @@ func (e *Engine) checksInWork(ctx context.Context, r Ref, work []Ref) ([]Check, 
 	}
 	checks, err := e.ChecksOf(withProposed(ctx, docs), r.Kind, r.ID, own)
 	return checks, name, level, err
+}
+
+// maxChoices bounds the records offered for one task; search finds more.
+const maxChoices = 6
+
+// choices are the existing records a task could be settled with: those a
+// reference field names, or those that could hold a link.
+func (e *Engine) choices(l *lookup, kind, level, field string) []Candidate {
+	var cs []Candidate
+	switch {
+	case strings.HasPrefix(field, "link:"):
+		holder := strings.TrimPrefix(field, "link:")
+		cs = e.candidates(l, holder, "", "", "")
+		// The goals that would sit under this one are of the level below.
+		if holder == "Goal" && kind == "Goal" {
+			below := map[string]string{"goal": "objective", "objective": "outcome"}[level]
+			under := cs[:0]
+			for _, c := range cs {
+				if c.Detail == below {
+					under = append(under, c)
+				}
+			}
+			cs = under
+		}
+	case field != "":
+		ref := e.refKindAt(kind, field)
+		if ref == "" {
+			// A list of references names its kind on its items.
+			field += "/-"
+			ref = e.refKindAt(kind, field)
+		}
+		if ref == "" || ref == "*" {
+			return nil
+		}
+		cs = e.candidates(l, ref, kind, field, level)
+	}
+	if len(cs) > maxChoices {
+		cs = cs[:maxChoices]
+	}
+	return cs
 }

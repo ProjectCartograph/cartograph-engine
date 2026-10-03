@@ -63,6 +63,9 @@ func TestTheOrderOfWork(t *testing.T) {
 	if !(states < statement && statement < target && target < measured && target < aligned) {
 		t.Fatalf("out of order: gap states %d, outcome statement %d, KPI target %d, gap measured %d, KPI aligned %d", states, statement, target, measured, aligned)
 	}
+	if len(w.Tasks[measured].Choices) == 0 || len(w.Tasks[index("Gap", "gap-segments")].Choices) == 0 {
+		t.Fatalf("linking a gap offers no existing KPIs or segments: %+v", w.Tasks[measured])
+	}
 	if w.Tasks[target].Do == "" || w.Open["measure"] == 0 || w.Open["align"] == 0 {
 		t.Fatalf("a task says what to do, and the phases are counted: %+v %v", w.Tasks[target], w.Open)
 	}

@@ -74,6 +74,16 @@ recording a reading and moving a project are proposals your person
 accepts or declines in Cartograph, after reading them.
 
 Work this way, every time:
+0. Ask your person once, at the start, how they want to work, as a
+   choice: with suggestions, or step by step. With suggestions, at every
+   step you offer two to four concrete options, drawn from the documents
+   they gave you, their existing records (next's choices) and the
+   guide's good examples, and they pick one or write their own; it is
+   quicker. Step by step, you ask and they answer in their own words.
+   When your client has a tool for asking a multiple-choice question
+   (Claude Code's AskUserQuestion, for one), ask with it, so your person
+   picks rather than types; otherwise number the options. Always leave
+   room for their own answer, and never pick for them.
 1. Name what the person wants in Cartograph's terms: which kind, and for
    a Goal which level (goal, objective, outcome). Ask if unsure.
 2. Call guide for that kind and level before drafting anything. It gives
@@ -853,6 +863,13 @@ func nextLine(t engine.Task) string {
 	line := fmt.Sprintf("Next (%s): %s %q (%s/%s), step %s: %s", t.Phase, t.Kind, name, t.Kind, t.ID, orNone(t.Step), t.Message)
 	if t.Do != "" {
 		line += " " + t.Do
+	}
+	if len(t.Choices) > 0 {
+		names := make([]string, 0, len(t.Choices))
+		for _, c := range t.Choices {
+			names = append(names, fmt.Sprintf("%s (%s)", c.Name, c.ID))
+		}
+		line += " Existing to choose from: " + strings.Join(names, "; ") + "."
 	}
 	return line
 }
