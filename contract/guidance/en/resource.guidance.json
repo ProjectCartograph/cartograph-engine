@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "Resource",
-  "summary": "A kind of resource work can need: a role somebody fills, a unit, an outside party, a system or a facility.",
+  "summary": "Something work needs to get done: a role someone fills, an outside partner, a system or a place.",
+  "example": "Data analyst (a role), analytics partner (an outside partner), handheld scanner (a system), cold store (a place).",
   "knownAs": [
     "role",
     "staff",

@@ -95,7 +95,16 @@ Work this way, every time:
    say where to start, or the workspace is new, call next without work:
    it names the stage to write now, from the purpose down. Then name what
    the person wants in Cartograph's terms: which kind, and for a Goal
-   which level (goal, objective, outcome). Ask if unsure.
+   which level (goal, objective, outcome). Ask if unsure. Two choices
+   decide most work. A service: one running today is an Operation with
+   status running, recorded as it stands, whatever else exists; a new
+   one is an Operation with status planned, written before the project
+   that sets it up, which names it as where it lands. Work that ends:
+   one accountable person and one budget make one Project, and a part
+   under the same person and budget is a component of it (partOf); work
+   that needs its own person or budget is a Project of its own, and
+   several of those sharing aims are a Programme. Recording what already
+   exists follows the same order as defining something new.
    Documents your person gives you are evidence, not a structure: plans
    use their own words, and the same word means different things in
    different plans. Call taxonomy, and record each thing a document says

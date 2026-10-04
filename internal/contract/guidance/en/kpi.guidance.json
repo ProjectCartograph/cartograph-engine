@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "KPI",
-  "summary": "An indicator: one number, read from a source on a cycle, with today's figure and a dated target.",
+  "summary": "A number you track over time to see whether an aim is being met.",
+  "example": "Quality pass rate: 62 percent today, aiming for 75 percent by June 2027.",
   "knownAs": [
     "indicator",
     "performance indicator",

@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "DataSource",
-  "summary": "Somewhere a number is read from: who keeps it, how often it changes and what is wrong with it today.",
+  "summary": "Where a number comes from, such as a system, a register, a ledger or a survey.",
+  "example": "Sales Ledger, where member season earnings are read from.",
   "knownAs": [
     "data source",
     "system of record",

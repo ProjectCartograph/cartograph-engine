@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "BeneficiaryGroup",
-  "summary": "A group of people the work is for, described once so every project means the same people by it.",
+  "summary": "A group of people your work is meant to help.",
+  "example": "Depot staff, whom the Quality Check Rollout is meant to help.",
   "knownAs": [
     "target group",
     "beneficiaries",

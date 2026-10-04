@@ -26,6 +26,15 @@
             ]
           },
           {
+            "path": "/spec/status",
+            "control": "choice",
+            "title": "Status",
+            "hint": "Planned until the project that sets it up hands it over; running once it is in use.",
+            "checks": [
+              "service-status"
+            ]
+          },
+          {
             "path": "/spec/serviceOwner",
             "control": "reference",
             "title": "Service owner",
@@ -45,6 +54,14 @@
             "checks": [
               "service-hours"
             ]
+          }
+        ],
+        "links": [
+          {
+            "kind": "Project",
+            "path": "/spec/operation",
+            "check": "service-status",
+            "phase": "align"
           }
         ]
       },

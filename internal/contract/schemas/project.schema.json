@@ -602,7 +602,7 @@
         "operation": {
           "$ref": "common.schema.json#/$defs/Slug",
           "x-cartograph-ref": "Operation",
-          "description": "The literal value 'new' is exempt from reference resolution."
+          "description": "The operation that runs the result once the project closes. For a service that does not run yet, name it as a planned operation (TAXONOMY.md D30). Deprecated: the literal value 'new', which stood for a service not yet defined, is exempt from reference resolution and still read; a planned operation replaces it."
         },
         "data": {
           "$ref": "common.schema.json#/$defs/DataUse"

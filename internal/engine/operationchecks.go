@@ -7,8 +7,8 @@ import (
 
 // OperationChecks says whether an operation is described well enough to be
 // run and measured, step by step. Advisory only, like a programme's (D6):
-// an operation is a service that already runs, and nothing about how it is
-// written down should stop anything.
+// nothing about how a service is written down should stop anything. A
+// service may be planned, running or retired (TAXONOMY.md D30).
 func (e *Engine) OperationChecks(ctx context.Context, id string) ([]ProgrammeCheck, error) {
 	v, found, err := e.manifests.GetCurrent(ctx, "Operation", id)
 	if err != nil {
@@ -51,6 +51,9 @@ func (e *Engine) operationChecksOf(ctx context.Context, id string, doc map[strin
 	}
 	// The service owner is the role accountable for the service end to end
 	// (ITIL 4); the team that runs it is required by the schema already.
+	if err := e.addServiceStatus(ctx, id, spec, add); err != nil {
+		return nil, err
+	}
 	if has("serviceOwner") {
 		add("service-owner", "service", programmeCheckOK, "Service owner named.")
 	} else {
@@ -73,4 +76,44 @@ func (e *Engine) operationChecksOf(ctx context.Context, id string, doc map[strin
 		add("measures-kpis", "measures", programmeCheckWarn, "No indicator yet.")
 	}
 	return out, nil
+}
+
+// addServiceStatus says where a service is in its life (TAXONOMY.md D30). A
+// planned service is set up by a project that names it as where it lands,
+// written after it in the order of work; once that project has handed
+// over, the service runs and should say so. A running or retired service
+// asks for nothing.
+func (e *Engine) addServiceStatus(ctx context.Context, id string, spec map[string]any, add func(checkID, section, state, message string)) error {
+	status, _ := spec["status"].(string)
+	switch status {
+	case "", "running":
+		add("service-status", "service", programmeCheckOK, "Running.")
+		return nil
+	case "retired":
+		add("service-status", "service", programmeCheckOK, "Retired.")
+		return nil
+	}
+	naming, err := e.manifests.ListReferencing(ctx, "Operation", id)
+	if err != nil {
+		return err
+	}
+	var setUp, handedOver []string
+	for _, s := range naming {
+		if s.Kind != "Project" {
+			continue
+		}
+		setUp = append(setUp, s.Name)
+		if st, err := e.GetProjectState(ctx, s.ID); err == nil && st.State == ProjectStateHandedOff {
+			handedOver = append(handedOver, s.Name)
+		}
+	}
+	switch {
+	case len(handedOver) > 0:
+		add("service-status", "service", programmeCheckWarn, fmt.Sprintf("Planned, and %s has handed it over. Mark it running.", englishList(handedOver)))
+	case len(setUp) > 0:
+		add("service-status", "service", programmeCheckOK, fmt.Sprintf("Planned, and set up by %s.", englishList(setUp)))
+	default:
+		add("service-status", "service", programmeCheckWarn, "Planned, and no project sets it up yet. Start the project that does, naming this service as where it lands.")
+	}
+	return nil
 }

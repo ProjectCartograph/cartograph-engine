@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "Unit",
-  "summary": "What a number is counted in, such as percent, tonnes or days, defined once so figures can be compared.",
+  "summary": "What a number is counted in, such as percent, hours or tonnes.",
+  "example": "Hours, as in the hours between produce arriving at a depot and being collected.",
   "knownAs": [
     "unit of measure",
     "unit"

@@ -80,12 +80,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 		kindLine = "Component of " + n.of("Project", parent)
 	}
 
-	operation := ""
-	if op := str(spec["operation"]); op == "new" {
-		operation = "A new service, not yet defined"
-	} else {
-		operation = n.of("Operation", op)
-	}
+	operation := landsIn(ctx, e, n, str(spec["operation"]))
 	resources := list(spec["resources"])
 	timeline := obj(spec["timeline"])
 	phaseRows, finish := milestones(str(timeline["start"]), list(timeline["phases"]))

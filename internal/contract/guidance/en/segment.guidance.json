@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "Segment",
-  "summary": "A way of slicing up what the organisation serves, such as region or product line, and the slices under it.",
+  "summary": "A way of splitting up what you serve so you can compare the parts, such as by region or product line.",
+  "example": "Region: members are split by the growing region they farm in, so regions can be compared.",
   "knownAs": [
     "region",
     "area",

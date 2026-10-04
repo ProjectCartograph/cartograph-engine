@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "Gap",
-  "summary": "The distance between where things are and where they should be, found in evidence and closed by an outcome.",
+  "summary": "The difference between how things are today and how they should be.",
+  "example": "Today the depot finds one fault in five and buyers find the rest. The aim is for the depot to find most faults, before produce leaves.",
   "knownAs": [
     "problem",
     "problem statement",

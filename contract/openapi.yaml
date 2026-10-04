@@ -541,6 +541,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/Order"
 
+  /glossary:
+    get:
+      operationId: getGlossary
+      summary: Every word of the taxonomy, defined as a dictionary defines it, in the order of work
+      description: >-
+        One entry per stage of the order of work (a kind, or a Goal at a
+        level), then per register: what it is in one plain sentence, and
+        one example (TAXONOMY.md D29). An interface shows an entry wherever its word
+        appears, so a person meeting the word for the first time reads
+        the same definition everywhere.
+      parameters:
+        - name: locale
+          in: query
+          required: false
+          description: A language the guidance is written in; English when left out or unknown.
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GlossaryEntry"
+
   /kinds:
     get:
       operationId: listKinds
@@ -2125,6 +2156,33 @@ components:
           description: The stages it waits on, while it waits.
           items:
             type: string
+
+    GlossaryEntry:
+      type: object
+      required: [key, kind, summary]
+      properties:
+        key:
+          type: string
+          description: The stage's key in the order of work, or for a register its kind.
+        kind:
+          type: string
+        level:
+          type: string
+          description: For a Goal, the level the entry defines.
+        summary:
+          type: string
+          description: What it is, in one plain sentence that does not repeat its name.
+        example:
+          type: string
+          description: One instance of it, from the example workspace.
+        after:
+          type: array
+          description: The stages it comes after in the order of work.
+          items:
+            type: string
+        register:
+          type: boolean
+          description: A root kind, added when a field first asks for one.
 
     KindCount:
       type: object

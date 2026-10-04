@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "Purpose",
-  "summary": "Why everything in the strategy exists: the vision the organisation works towards and its mission.",
+  "summary": "Why your organisation exists. The vision says where it wants to get to, and the mission says what it does to get there.",
+  "example": "Vision: every member family earns a fair living from what it grows. Mission: we collect, check and sell our members' produce together.",
   "knownAs": [
     "vision",
     "mission",

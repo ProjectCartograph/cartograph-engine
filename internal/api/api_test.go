@@ -864,8 +864,30 @@ func TestTheOrderOfAnEmptyWorkspace(t *testing.T) {
 		t.Fatalf("order: %+v", o)
 	}
 	for _, st := range o.Stages[1:] {
+		// A service waits on nothing: one already running can be recorded
+		// first (TAXONOMY.md D30).
+		if st.Key == "operation" {
+			if st.State != "ready" {
+				t.Fatalf("a service is %s in an empty workspace", st.State)
+			}
+			continue
+		}
 		if st.State != "waiting" || st.Waiting == nil {
 			t.Fatalf("stage %s is %s in an empty workspace", st.Key, st.State)
 		}
+	}
+}
+
+// The glossary defines every word, in the order of work, with an example
+// (TAXONOMY.md D29).
+func TestTheGlossary(t *testing.T) {
+	_, base := newTestServer(t)
+	resp := doJSON(t, http.MethodGet, base+"/glossary", nil, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	g := decode[[]apigen.GlossaryEntry](t, resp)
+	if len(g) < 3 || g[0].Key != "purpose" || g[1].Level == nil || *g[1].Level != "goal" || g[1].Example == nil {
+		t.Fatalf("glossary: %+v", g[:3])
 	}
 }

@@ -433,11 +433,21 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	}
 
 	// landing
+	// A service that does not run yet is named as a planned operation
+	// (TAXONOMY.md D30). "new" stood for one before that, and is still read:
+	// it advises, and never blocks a handoff it did not block before.
 	operation, _ := spec["operation"].(string)
-	if strings.TrimSpace(operation) != "" {
-		c.add("landing-operation", "landing", phaseLanding, checkOK, "An operation is named (or 'new').")
-	} else {
+	switch status := e.operationStatus(ctx, operation); {
+	case strings.TrimSpace(operation) == "":
 		c.add("landing-operation", "landing", phaseLanding, checkBlock, "No operation is named yet.")
+	case operation == "new":
+		c.add("landing-operation", "landing", phaseLanding, checkWarn, "Lands in a service not defined yet. Define it as a planned operation and name it here.")
+	case status == "retired":
+		c.add("landing-operation", "landing", phaseLanding, checkWarn, "Lands in a retired service. Name the service that will run the result.")
+	case status == "planned":
+		c.add("landing-operation", "landing", phaseLanding, checkOK, "Lands in a planned service, which this project sets up.")
+	default:
+		c.add("landing-operation", "landing", phaseLanding, checkOK, "Lands in a running service.")
 	}
 	if isComponent && !criterionExists(criteria, "atLanding") && !criterionExists(criteria, "postClosingCycle") {
 		// A component is accepted into its parent and lands with it: the
@@ -1157,4 +1167,25 @@ func partOf(holder any, field string) string {
 	}
 	s, _ := m[field].(string)
 	return strings.TrimSpace(s)
+}
+
+// operationStatus is an operation's status, running when it says none (every
+// operation saved before 2.7), and empty when there is no such operation.
+func (e *Engine) operationStatus(ctx context.Context, id string) string {
+	if id == "" || id == "new" {
+		return ""
+	}
+	v, found, err := e.manifests.GetCurrent(ctx, "Operation", id)
+	if err != nil || !found {
+		return ""
+	}
+	var doc map[string]any
+	if e.codec.DecodeInto(v.YAML, &doc) != nil {
+		return ""
+	}
+	spec, _ := doc["spec"].(map[string]any)
+	if s, _ := spec["status"].(string); s != "" {
+		return s
+	}
+	return "running"
 }

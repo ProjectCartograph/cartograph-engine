@@ -519,12 +519,15 @@ func TestProjectChecksClosingAndLandingSection(t *testing.T) {
 
 	// closing-criteria reads the deliverables' own acceptance criteria
 	// since 2026-09-27, not a second list written on the closing step.
-	good := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-cl-good\n  name: P\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n  operation: \"new\"\n" +
+	good := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-cl-good\n  name: P\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n  operation: svc-planned\n" +
 		"  deliverables:\n    - {id: dv-1, name: Training pack, acceptance: [{by: {external: Quality reviewer}, outcome: signs it off}]}\n" +
 		"  successCriteria:\n" +
 		"    - {id: sc-1, statement: A, metric: compliance, confirmedBy: {external: Sponsor}, when: atClosing}\n" +
 		"    - {id: sc-2, statement: B, metric: business, confirmedBy: {external: Sponsor}, when: atLanding}\n" +
 		"  resources:\n    - {role: serviceOwner}\n"
+	// The service it sets up does not run yet, so it is a planned
+	// operation the project names (TAXONOMY.md D30).
+	mustCommit(t, e, "Operation", "svc-planned", "p1", "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: svc-planned\n  name: Planned service\nspec:\n  purpose: Check deliveries\n  status: planned\n  team: t1\n")
 	mustCommit(t, e, "Project", "proj-cl-good", "p1", good)
 	checks, err = e.ProjectChecks(ctx, "proj-cl-good", false)
 	if err != nil {
@@ -535,6 +538,12 @@ func TestProjectChecksClosingAndLandingSection(t *testing.T) {
 		if byID[id].State != "ok" {
 			t.Fatalf("expected %s ok, got %+v", id, byID[id])
 		}
+	}
+
+	// The old "new" still reads, and advises rather than blocks.
+	mustCommit(t, e, "Project", "proj-cl-legacy", "p1", strings.Replace(strings.Replace(good, "proj-cl-good", "proj-cl-legacy", 1), "operation: svc-planned", `operation: "new"`, 1))
+	if legacy, err := e.ProjectChecks(ctx, "proj-cl-legacy", false); err != nil || checksByID(legacy.Items)["landing-operation"].State != "warn" {
+		t.Fatalf("a project landing in \"new\": %+v %v", checksByID(legacy.Items)["landing-operation"], err)
 	}
 
 	// "postClosingCycle" also satisfies landing-criteria.

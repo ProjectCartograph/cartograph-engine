@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "Team",
-  "summary": "A team that carries work; teams form the organisation's tree, each under the one it answers to.",
+  "summary": "A group of people in your organisation who own and carry out work. Teams sit under other teams, as on an org chart.",
+  "example": "Depot Network Team, which sits under the Operations Team.",
   "knownAs": [
     "department",
     "unit",

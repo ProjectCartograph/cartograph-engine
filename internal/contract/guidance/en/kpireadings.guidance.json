@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "KPIReadings",
-  "summary": "The figures an indicator has actually read, one per period of its reporting cycle.",
+  "summary": "The figures an indicator actually recorded, one for each reporting period.",
+  "example": "Quality pass rate: 63 percent in November 2025, 64.5 in February 2026, 66 in May 2026.",
   "knownAs": [
     "actuals",
     "results",

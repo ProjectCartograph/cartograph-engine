@@ -1,14 +1,15 @@
 {
   "locale": "en",
   "kind": "Operation",
-  "summary": "A service the organisation runs every day, with the role accountable for it and the hours it is offered.",
+  "summary": "Work that keeps running with no end date, such as a service you provide every day.",
+  "example": "Collection Service, which moves produce from every depot to the buyer, every day of the season.",
   "knownAs": [
     "service",
     "business as usual",
     "function",
     "ongoing operation"
   ],
-  "definition": "An operation is continuing work with no end date: a service the organisation runs day in and day out (TAXONOMY.md, the definitions; D14). The first question about any work is whether it ends: work that ends is a project or a programme, work that keeps running is an operation. An operation carries the name of the service (D17); a project that sets it up or changes it is named for that change, hands over to it, and the operation's team accepts the handover. It has a service owner, the role accountable for it end to end (ITIL), and a team that runs it (D23, D27). Its service levels are watched through indicators. Business as usual sits inside a programme's boundary, so an operation names the programmes it is part of, if any (D2). An operation is not a project (it has no closure), not a team (the team runs it; the operation is the service), and not a data source (a source is where records are kept; an operation may read or produce them). Its checks advise and never block.",
+  "definition": "An operation is continuing work with no end date: a service the organisation runs day in and day out, or one it has decided on and is setting up (planned), or one it has stopped (retired) (TAXONOMY.md, the definitions; D14). The first question about any work is whether it ends: work that ends is a project or a programme, work that keeps running is an operation. An operation carries the name of the service (D17); a project that sets it up or changes it is named for that change, hands over to it, and the operation's team accepts the handover. It has a service owner, the role accountable for it end to end (ITIL), and a team that runs it (D23, D27). Its service levels are watched through indicators. Business as usual sits inside a programme's boundary, so an operation names the programmes it is part of, if any (D2). An operation is not a project (it has no closure), not a team (the team runs it; the operation is the service), and not a data source (a source is where records are kept; an operation may read or produce them). Its checks advise and never block.",
   "steps": {},
   "fields": {
     "/metadata/name": {
@@ -50,6 +51,9 @@
           "why": "A topic, not a service: say what it does and for whom."
         }
       ]
+    },
+    "/spec/status": {
+      "guide": "Where the service is in its life. Planned: decided on and being set up, not yet run; the project that sets it up names it and hands it over. Running: in use today, which is how a service already running is recorded when it is first brought into Cartograph. Retired: no longer offered."
     },
     "/spec/serviceOwner": {
       "guide": "The role accountable for the service end to end (ITIL's service owner), from the Resource catalogue. It is the role that accepts a project's handover into the service. A role, never a person; when no role fits, define the role first.",
@@ -204,12 +208,18 @@
       "guide": "Anything a reader needs that has no field of its own. Not a place for what a field already holds."
     }
   },
-  "links": {},
+  "links": {
+    "Project:/spec/operation": {
+      "ask": "Which project sets this service up, or changes it?",
+      "ifNone": "For a planned service, start the project that sets it up, naming this service as where it lands. A running service needs none until something about it has to change."
+    }
+  },
   "checks": {
     "service-purpose": "Say what the service does, day in and day out.",
     "service-owner": "Name the role accountable for the service end to end as its service owner, from the Resource catalogue.",
     "service-hours": "Give the hours and days the service runs.",
     "alignment-programmes": "Name a programme only when the service is one of its components; an operation outside any programme needs nothing here.",
-    "measures-kpis": "Name at least one indicator that shows the service's level."
+    "measures-kpis": "Name at least one indicator that shows the service's level.",
+    "service-status": "A planned service is set up by a project that names it as where it lands; once that project hands over, mark the service running."
   }
 }

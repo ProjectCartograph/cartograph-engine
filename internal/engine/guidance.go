@@ -21,17 +21,30 @@ import (
 
 // GuideBundle is a guidance file as written: words only, in one language.
 type GuideBundle struct {
-	Locale     string                     `json:"locale"`
-	Kind       string                     `json:"kind"`
-	Summary    string                     `json:"summary"`
-	KnownAs    []string                   `json:"knownAs,omitempty"`
-	Definition string                     `json:"definition"`
-	Levels     map[string]string          `json:"levels,omitempty"`
+	Locale     string            `json:"locale"`
+	Kind       string            `json:"kind"`
+	Summary    string            `json:"summary"`
+	Example    string            `json:"example,omitempty"`
+	KnownAs    []string          `json:"knownAs,omitempty"`
+	Definition string            `json:"definition"`
+	Levels     map[string]string `json:"levels,omitempty"`
+	// LevelExamples are one instance of each level, as Example is for the
+	// kind.
+	LevelExamples map[string]string `json:"levelExamples,omitempty"`
+	// Terms are other words the kind holds, each defined as the kind is.
+	Terms      map[string]GuideTerm       `json:"terms,omitempty"`
 	Steps      map[string]GuideStepWords  `json:"steps,omitempty"`
 	Fields     map[string]GuideFieldWords `json:"fields"`
 	Links      map[string]GuideLinkWords  `json:"links,omitempty"`
 	Checks     map[string]string          `json:"checks,omitempty"`
 	Vocabulary map[string][]string        `json:"vocabulary,omitempty"`
+}
+
+// GuideTerm is one word a kind holds besides its own name: a project's
+// component, say.
+type GuideTerm struct {
+	Summary string `json:"summary"`
+	Example string `json:"example"`
 }
 
 // GuideStepWords are a step's title and guide in one language.
@@ -406,6 +419,7 @@ func (e *Engine) template(kind, level string) map[string]any {
 type TaxonomyEntry struct {
 	Kind    string            `json:"kind"`
 	Summary string            `json:"summary"`
+	Example string            `json:"example,omitempty"`
 	Levels  map[string]string `json:"levels,omitempty"`
 	KnownAs []string          `json:"knownAs,omitempty"`
 	// Names are the kinds it may name, which come before it in the order
@@ -439,7 +453,7 @@ func (e *Engine) Taxonomy(locale string) ([]TaxonomyEntry, error) {
 		if !ok {
 			continue
 		}
-		entry := TaxonomyEntry{Kind: kind, Summary: b.Summary, Levels: b.Levels, KnownAs: b.KnownAs, Register: rank(kind, "") < len(registers)}
+		entry := TaxonomyEntry{Kind: kind, Summary: b.Summary, Example: b.Example, Levels: b.Levels, KnownAs: b.KnownAs, Register: rank(kind, "") < len(registers)}
 		named := map[string]bool{}
 		for _, r := range e.refRules[kind] {
 			if r.kind != "*" && r.kind != kind && !named[r.kind] {

@@ -646,6 +646,28 @@ type GapSegmentCoverage struct {
 	Segment     string      `json:"segment"`
 }
 
+// GlossaryEntry defines model for GlossaryEntry.
+type GlossaryEntry struct {
+	// After The stages it comes after in the order of work.
+	After *[]string `json:"after,omitempty"`
+
+	// Example One instance of it, from the example workspace.
+	Example *string `json:"example,omitempty"`
+
+	// Key The stage's key in the order of work, or for a register its kind.
+	Key  string `json:"key"`
+	Kind string `json:"kind"`
+
+	// Level For a Goal, the level the entry defines.
+	Level *string `json:"level,omitempty"`
+
+	// Register A root kind, added when a field first asks for one.
+	Register *bool `json:"register,omitempty"`
+
+	// Summary What it is, in one plain sentence that does not repeat its name.
+	Summary string `json:"summary"`
+}
+
 // GoalAligned defines model for GoalAligned.
 type GoalAligned struct {
 	Kpis       int `json:"kpis"`
@@ -1458,6 +1480,12 @@ type ListChangeSetsParams struct {
 // ListChangeSetsParamsStatus defines parameters for ListChangeSets.
 type ListChangeSetsParamsStatus string
 
+// GetGlossaryParams defines parameters for GetGlossary.
+type GetGlossaryParams struct {
+	// Locale A language the guidance is written in; English when left out or unknown.
+	Locale *string `form:"locale,omitempty" json:"locale,omitempty"`
+}
+
 // GetGraphParams defines parameters for GetGraph.
 type GetGraphParams struct {
 	// Focus A manifest as Kind/id, to measure every node's distance from.
@@ -1758,6 +1786,9 @@ type ServerInterface interface {
 	// GetFlow The flow document for a kind, as written in the contract
 	// (GET /flows/{kind})
 	GetFlow(w http.ResponseWriter, r *http.Request, kind KindParam)
+	// GetGlossary Every word of the taxonomy, defined as a dictionary defines it, in the order of work
+	// (GET /glossary)
+	GetGlossary(w http.ResponseWriter, r *http.Request, params GetGlossaryParams)
 	// GetGoalTree The goal tree, computed from every Goal manifest and the reference index
 	// (GET /goals/tree)
 	GetGoalTree(w http.ResponseWriter, r *http.Request)
@@ -2514,6 +2545,39 @@ func (siw *ServerInterfaceWrapper) GetFlow(w http.ResponseWriter, r *http.Reques
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetFlow(w, r, kind)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGlossary operation middleware
+func (siw *ServerInterfaceWrapper) GetGlossary(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetGlossaryParams
+
+	// ------------- Optional query parameter "locale" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "locale", r.URL.Query(), &params.Locale, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "locale"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "locale", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGlossary(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4186,6 +4250,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/manifests/{kind}/{id}/working", wrapper.PutWorking)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/order", wrapper.GetOrder)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/glossary", wrapper.GetGlossary)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/kinds", wrapper.ListKinds)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/flows", wrapper.ListFlows)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/flows/{kind}", wrapper.GetFlow)
@@ -5738,6 +5803,56 @@ func (response GetFlow404JSONResponse) VisitGetFlowResponse(w http.ResponseWrite
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGlossaryRequestObject struct {
+	Params GetGlossaryParams
+}
+
+type GetGlossaryResponseObject interface {
+	VisitGetGlossaryResponse(w http.ResponseWriter) error
+}
+
+type GetGlossary200JSONResponse []GlossaryEntry
+
+func (response GetGlossary200JSONResponse) VisitGetGlossaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGlossary401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetGlossary401JSONResponse) VisitGetGlossaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGlossary403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetGlossary403JSONResponse) VisitGetGlossaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9148,6 +9263,9 @@ type StrictServerInterface interface {
 	// GetFlow The flow document for a kind, as written in the contract
 	// (GET /flows/{kind})
 	GetFlow(ctx context.Context, request GetFlowRequestObject) (GetFlowResponseObject, error)
+	// GetGlossary Every word of the taxonomy, defined as a dictionary defines it, in the order of work
+	// (GET /glossary)
+	GetGlossary(ctx context.Context, request GetGlossaryRequestObject) (GetGlossaryResponseObject, error)
 	// GetGoalTree The goal tree, computed from every Goal manifest and the reference index
 	// (GET /goals/tree)
 	GetGoalTree(ctx context.Context, request GetGoalTreeRequestObject) (GetGoalTreeResponseObject, error)
@@ -9960,6 +10078,32 @@ func (sh *strictHandler) GetFlow(w http.ResponseWriter, r *http.Request, kind Ki
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetFlowResponseObject); ok {
 		if err := validResponse.VisitGetFlowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetGlossary operation middleware
+func (sh *strictHandler) GetGlossary(w http.ResponseWriter, r *http.Request, params GetGlossaryParams) {
+	var request GetGlossaryRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetGlossary(ctx, request.(GetGlossaryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetGlossary")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetGlossaryResponseObject); ok {
+		if err := validResponse.VisitGetGlossaryResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -30,6 +30,7 @@ func OperationCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 	var d doc
 	d.head(name, "Operation", vers)
 	d.facts(
+		field{"Status", serviceStatus(spec)},
 		field{"Service owner", n.of("Resource", str(spec["serviceOwner"]))},
 		field{"Team", n.of("Team", str(spec["team"]))},
 		field{"Service hours", str(spec["serviceWindow"])},
@@ -72,4 +73,32 @@ func OperationCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 	}
 	d.signOff([]string{owner})
 	return d.end(), nil
+}
+
+// serviceStatus is where a service is in its life, as a charter prints it
+// (TAXONOMY.md D30): running when it says none, as every service saved
+// before 2.7 does.
+func serviceStatus(spec map[string]any) string {
+	switch str(spec["status"]) {
+	case "planned":
+		return "Planned"
+	case "retired":
+		return "Retired"
+	}
+	return "Running"
+}
+
+// landsIn is the service a project hands over to, as its charter names it:
+// marked planned when the project is what sets it up.
+func landsIn(ctx context.Context, e *engine.Engine, n names, id string) string {
+	if id == "new" {
+		return "A new service, not yet defined"
+	}
+	name := n.of("Operation", id)
+	if vers, err := e.Get(ctx, "Operation", id); err == nil {
+		if _, spec, err := manifestOf(e, vers, id); err == nil && str(spec["status"]) == "planned" {
+			return name + " (planned, set up by this project)"
+		}
+	}
+	return name
 }

@@ -1,7 +1,7 @@
 {
   "locale": "en",
   "kind": "Settings",
-  "summary": "How this workspace is set up: its words for the goal levels, and how it runs.",
+  "summary": "How this workspace is set up, such as what it calls each level of aim.",
   "definition": "Settings is the vault's one configuration manifest; there is only ever one, and its id is always default. Its first purpose is the purpose: the vision and mission every goal serves, stated once above the whole strategy (TAXONOMY.md D24; the balanced scorecard's mission and vision, Kaufman's ideal vision). The strategy reads top-down from it: the purpose, then goals, objectives and outcomes, and a gap is measured against it. A goal with no vision or mission above it cannot be judged Relevant. Its other fields are configuration: the vault's own words for the levels of the strategy and for a project, the author recorded when no one is signed in, the browser used to render documents, and examples in the vault's own words. Settings is not a goal (the purpose sits above the goals and has no measures of its own), not a programme or a project, and not a place for any one team's aims.",
   "steps": {},
   "fields": {

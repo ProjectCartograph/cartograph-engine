@@ -54,7 +54,10 @@ var stages = []Stage{
 	{Key: "gap", Kind: "Gap", After: []string{"outcome", "kpi"}},
 	{Key: "assumption", Kind: "Assumption", After: []string{"kpi"}, Optional: true},
 	{Key: "programme", Kind: "Programme", After: []string{"gap"}, Optional: true},
-	{Key: "operation", Kind: "Operation", After: []string{"outcome"}, Optional: true},
+	// A service names nothing in the strategy it must wait for: one already
+	// running is recorded as it stands, and a planned one before the
+	// project that sets it up (TAXONOMY.md D30).
+	{Key: "operation", Kind: "Operation", Optional: true},
 	{Key: "project", Kind: "Project", After: []string{"outcome"}},
 	{Key: "stakeholders", Kind: "StakeholderMap", After: []string{"project"}, Optional: true},
 }

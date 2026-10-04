@@ -1427,6 +1427,36 @@ func nameOf(c codec.Codec, text []byte) string {
 	return name
 }
 
+// GetGlossary is every word of the taxonomy, defined plainly, in the order
+// of work.
+func (s *Server) GetGlossary(_ context.Context, req apigen.GetGlossaryRequestObject) (apigen.GetGlossaryResponseObject, error) {
+	locale := ""
+	if req.Params.Locale != nil {
+		locale = *req.Params.Locale
+	}
+	g, err := s.Engine.Glossary(locale)
+	if err != nil {
+		return nil, err
+	}
+	out := make(apigen.GetGlossary200JSONResponse, len(g))
+	for i, e := range g {
+		out[i] = apigen.GlossaryEntry{Key: e.Key, Kind: e.Kind, Summary: e.Summary}
+		if e.Level != "" {
+			out[i].Level = &e.Level
+		}
+		if e.Example != "" {
+			out[i].Example = &e.Example
+		}
+		if len(e.After) > 0 {
+			out[i].After = &e.After
+		}
+		if e.Register {
+			out[i].Register = &e.Register
+		}
+	}
+	return out, nil
+}
+
 // GetOrder is the order of work and how far the workspace has got.
 func (s *Server) GetOrder(ctx context.Context, _ apigen.GetOrderRequestObject) (apigen.GetOrderResponseObject, error) {
 	o, err := s.Engine.WorkspaceOrder(ctx)

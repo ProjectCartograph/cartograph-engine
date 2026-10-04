@@ -37,6 +37,15 @@
           "type": "string",
           "minLength": 1
         },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "running",
+            "retired"
+          ],
+          "description": "Where the service is in its life (ITIL's service portfolio: pipeline, live, retired; TAXONOMY.md D30). planned: decided on and being set up, not yet run, so the project that sets it up can name it before it exists. running: in use; a service without a status is running, as every operation saved before 2.7 was. retired: no longer offered, kept so the work that named it still reads."
+        },
         "serviceOwner": {
           "$ref": "common.schema.json#/$defs/Slug",
           "x-cartograph-ref": "Resource",

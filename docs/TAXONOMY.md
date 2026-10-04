@@ -792,3 +792,108 @@ reading gap, which names both. The Early Reading Programme cites the gap
 and is judged on the KPI. The two projects name the programme and the
 outcome, and the reading check names the assessment service it lands
 in. Nothing written earlier is opened again.
+
+### D29. Every word is defined as a dictionary defines it, where it appears. *(resolved)*
+
+**The problem.** Each kind's summary was written for a reader who already
+knew the record: "an indicator: one number, read from a source on a
+cycle, with today's figure and a dated target." That is accurate, and a
+newcomer cannot use it. It assumes they know what a source, a cycle and a
+dated target are, and it describes the shape of the record rather than
+the thing. An agent can follow a definition like that. A person meeting
+the word for the first time cannot.
+
+**What products do.** Applications with a vocabulary of their own define
+it the way a dictionary does, where the word appears. Obsidian's help
+defines a vault in one line, as the folder where your notes live. Google
+puts a "?" beside a term in its products, and a click opens a sentence
+and an example; a glossary page lists every term in one place. The shape
+repeats: the word, one sentence in everyday words that does not repeat
+it, and one instance of it.
+
+**What Cartograph does.**
+- Every kind's `summary`, and every Goal level's entry in `levels`, is a
+  dictionary sentence: what it is, in everyday words, without its own
+  name, naming no standard, field or identifier. Each has an `example`
+  (`levelExamples` for the levels), from the example workspace, that
+  shows every part the sentence names: a gap's example gives both how
+  things are and how they should be, a team's gives the team it sits
+  under. An example is written in words a newcomer knows, so a record's
+  own shorthand ("put right") is spelt out ("sorted, repacked or
+  cooled"). A test holds the entries to the parts it can check.
+- `GET /glossary` serves them in the order of work, the order a person
+  meets them, so every interface shows the same definition. The
+  discipline's longer `definition` stays in the guide, for agents and
+  for anyone who wants the detail.
+- The interface shows the entry behind a "?" beside the word wherever a
+  kind is introduced (New, the sheets), and lists them all on a Glossary
+  page.
+
+In the running example, a newcomer reading "Indicator" sees: *a number you
+track over time to see whether an aim is being met*, and the example *the
+share of grade 3 learners reading at the expected level*.
+
+### D30. A service is planned before the project that sets it up, and a part is told from a project by who answers for it. *(resolved)*
+
+**The problem.** Two places in the New flow had no honest answer.
+
+A new service. An operation was "a service that already runs", and a
+project that set one up named the literal `new` as where it landed. The
+service could only be written once it ran, so the finished project had
+to be opened again to name it, which is the loop D28 removes. Nothing
+recorded that the service was coming.
+
+A bigger piece of work. New asked how big the work was and offered "part
+of a bigger project" beside "several pieces of work", with no way to
+tell them apart. D15 has the test, but the question did not ask it.
+
+**The discipline.** ITIL's service portfolio keeps a service through its
+whole life: in the pipeline while it is decided on and built, live once
+in use, retired when withdrawn. A service is defined before it runs,
+which is what lets the work that builds it hand over to something. For
+the second question, PMI's subproject and the World Bank's component
+rest on one test (D15): one accountable person and one budget make one
+project, however many parts it has; parts that need their own are
+projects of their own, and a group of those steered towards shared aims
+is a programme (MSP).
+
+**What Cartograph does.**
+- `Operation.spec.status` is `planned`, `running` or `retired`. A
+  service without one is running, as every operation saved before 2.7
+  is. A new service is written first as planned (what it will do, who
+  will own and run it), then the project that sets it up names it as
+  where it lands. The service's `service-status` check asks for that
+  project while there is none, and once it has handed over, asks for the
+  service to be marked running. A running service is recorded as it
+  stands, and a change to it later is a project that names it.
+- A service waits on no stage of the strategy, so a workspace can
+  start by recording the services it runs today.
+- `Project.spec.operation: new` is deprecated. It is still read, and its
+  `landing-operation` check now advises naming a planned service; it
+  blocks nothing it did not block before.
+- New asks about work in the standards' terms. Does it keep running?
+  Then, does the service run today (running) or is it new (planned,
+  then its project)? Does it finish? Then, is it one piece of work, a
+  part of an existing project under the same accountable person and
+  budget (a component), or several pieces each with their own (separate
+  projects in a programme)?
+- The glossary defines Component beside Project, and the Project and
+  Programme entries say who answers for each, so the two read apart.
+  A kind's guidance may define words it holds besides its own name
+  (`terms`).
+
+**Recording what exists.** Bringing an organisation's current work into
+Cartograph uses the same order and the same questions. A service that
+runs today is a running operation. A project already under way is a
+project, named as it is, landing in the service it will hand to (planned
+if that service is not running yet). Nothing about porting needs a path
+of its own.
+
+In the running example, the national assessment service already runs:
+it is recorded as running. The ministry decides to add a grade 2 reading
+check as a service of its own, so it writes the check as a planned
+operation, then the project that sets it up, which names it. Printing
+the check booklets, under the same accountable person and budget, is a
+component of that project. The coaching project has its own sponsor and
+budget, so it is a project in the Early Reading Programme, beside the
+check project, and not a part of it.

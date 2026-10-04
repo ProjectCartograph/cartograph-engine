@@ -1,7 +1,14 @@
 {
   "locale": "en",
   "kind": "Programme",
-  "summary": "Several projects and operations run together towards shared aims, judged on the benefits they realise.",
+  "summary": "A group of projects and services, each with its own accountable person and budget, run together towards one change, as its theory of change sets out.",
+  "example": "Quality Improvement Programme, which runs its projects, such as the Quality Check Rollout, together towards one quality standard.",
+  "terms": {
+    "theory of change": {
+      "summary": "How a programme expects its projects' results to add up to the change it wants: each step, what must be true before it, and why it follows.",
+      "example": "Depot staff apply the standard alike, so faults are found before produce leaves, so produce meets one standard, if depots release staff for training."
+    }
+  },
   "knownAs": [
     "programme of work",
     "portfolio of initiatives",

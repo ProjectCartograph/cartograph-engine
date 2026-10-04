@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "Goal",
-  "summary": "An aim of the strategy: a goal, an objective under it, or an outcome that says what will be true.",
+  "summary": "Something your organisation sets out to achieve. Aims come in three levels: goals, the objectives under them, and the outcomes under those.",
+  "example": "Goal: Raise produce quality. Objective under it: Hold every depot to one standard. Outcome under that: Depot staff apply the standard alike.",
   "knownAs": [
     "priority",
     "pillar",
@@ -15,9 +16,14 @@
   ],
   "definition": "An aim in the organisation's strategy, at one of three levels: a goal (the long-term aim), an objective (a specific aim under a goal), or an outcome (a changed state that will be true once an objective is met). The strategy reads top-down from the purpose (the vision and mission in Settings): goals under the purpose, objectives under goals, outcomes under objectives. A gap is measured against the purpose and closes into an outcome. Numbers belong to the measures (key results and aligned KPIs), never to the statement. A goal is not a project (work that ends), not an operation (work that continues), and not a KPI (a measure).",
   "levels": {
-    "goal": "The long-term aim under the purpose, usually spanning the plan (three to five years). Written as an aim: an action and the result it is for.",
-    "objective": "A specific aim under one goal, usually one to three years inside the goal's horizon. Written as an aim: an action and the result it is for.",
-    "outcome": "A changed state under one objective: what will be true once the objective is met. Written as a state, never as an action. It closes one or more gaps, each named on the gap's side."
+    "goal": "A broad aim your organisation works towards for several years, written as something to do.",
+    "objective": "A specific aim under a goal, usually for the next one to three years, written as something to do.",
+    "outcome": "The state of things once an objective is met, written as a result, not a task."
+  },
+  "levelExamples": {
+    "goal": "Raise produce quality, over the cooperative's 2025 to 2028 plan.",
+    "objective": "Hold every depot to one standard, under the goal Raise produce quality.",
+    "outcome": "Depot staff apply the standard alike, once every depot is held to one standard."
   },
   "steps": {},
   "fields": {

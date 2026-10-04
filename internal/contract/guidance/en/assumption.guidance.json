@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "Assumption",
-  "summary": "Something the work takes to be true without proof, written down so it can be checked and revisited.",
+  "summary": "Something your plans rely on that you expect to be true but have not proved.",
+  "example": "Produce that fails a check at the depot can be sorted, repacked or cooled the same day instead of thrown away. The Quality Check Rollout relies on this.",
   "knownAs": [
     "assumption",
     "precondition",

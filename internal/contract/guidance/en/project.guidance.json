@@ -1,7 +1,18 @@
 {
   "locale": "en",
   "kind": "Project",
-  "summary": "Temporary work to change something, with its aim, scope, deliverables, measures and who takes it over.",
+  "summary": "Work with a start and an end that changes something, then hands the result over. One person is accountable for it, and it has one budget.",
+  "example": "Quality Check Rollout, which gets every depot checking deliveries against one standard, then hands the checks to the Quality Check Service.",
+  "terms": {
+    "results framework": {
+      "summary": "A project's plan as one table: what it delivers, what that changes, how each is measured, and what must hold true for it to work.",
+      "example": "Quality Check Rollout: a training pack and a results view, so every depot checks deliveries against one standard, measured by the quality pass rate."
+    },
+    "component": {
+      "summary": "A part of a bigger project, under its accountable person and budget, counted in its results framework. A part needing its own is a separate project.",
+      "example": "Depot staff training, run as a part of the Quality Check Rollout, with the same accountable person and budget."
+    }
+  },
   "knownAs": [
     "initiative",
     "intervention",
@@ -533,7 +544,7 @@
       ]
     },
     "/spec/operation": {
-      "guide": "The operation that runs the result once the project closes, whose service owner accepts the handover (D17). Choose \"new\" when the operation has to be defined alongside.",
+      "guide": "The operation that runs the result once the project closes, whose service owner accepts the handover (D17). When the project sets up a service that does not run yet, define that service first as a planned operation and name it here; the handover is what makes it running (D30).",
       "good": [
         "quality-check-service"
       ]

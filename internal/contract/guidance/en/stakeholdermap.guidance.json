@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "StakeholderMap",
-  "summary": "Who has an interest in a piece of work and how much influence they have, placed on a grid.",
+  "summary": "A list of the people and organisations who care about a piece of work, and how much say each has in it.",
+  "example": "Quality Check Rollout stakeholders: the analytics partner cares a lot and has some say; the transport contractor has little of either.",
   "knownAs": [
     "stakeholder analysis",
     "stakeholder register",

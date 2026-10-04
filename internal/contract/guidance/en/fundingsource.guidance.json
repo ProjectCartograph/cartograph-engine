@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "FundingSource",
-  "summary": "A budget work is paid from, with the code finance uses for it and whose budget it is.",
+  "summary": "A pot of money that pays for work, such as a budget line or a grant.",
+  "example": "Cooperative operating budget, which pays for the Quality Check Rollout.",
   "knownAs": [
     "budget",
     "budget line",

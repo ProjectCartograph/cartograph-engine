@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "kind": "ReportingCycle",
-  "summary": "How often indicators are read: the length of a period and when the cycle's year starts.",
+  "summary": "How often numbers are checked, such as every month, every season or every year.",
+  "example": "Monthly Cycle: the numbers on it are checked once a month.",
   "knownAs": [
     "reporting period",
     "reporting frequency",

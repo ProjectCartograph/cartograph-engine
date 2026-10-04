@@ -27,9 +27,39 @@
     },
     "levels": {
       "type": "object",
-      "description": "For a kind with levels (Goal: goal, objective, outcome): what each level is.",
+      "description": "For a kind with levels (Goal: goal, objective, outcome): what each level is, as a dictionary gives it, in one plain sentence that does not repeat the level's name.",
       "additionalProperties": {
         "type": "string"
+      }
+    },
+    "levelExamples": {
+      "type": "object",
+      "description": "For a kind with levels: one real instance of each level, held to the same rule as example.",
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 160
+      }
+    },
+    "terms": {
+      "type": "object",
+      "description": "Other words this kind holds that a person meets on screen, each defined as summary and example are (TAXONOMY.md D29): a project's component, say. The glossary lists them after the kind.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "summary",
+          "example"
+        ],
+        "properties": {
+          "summary": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "example": {
+            "type": "string",
+            "maxLength": 160
+          }
+        }
       }
     },
     "steps": {
@@ -96,7 +126,12 @@
     "summary": {
       "type": "string",
       "maxLength": 160,
-      "description": "The kind in one sentence, where a list of kinds names it: a sheet, a picker, an index."
+      "description": "What the kind is, as a dictionary gives it, for a person meeting the word for the first time: one plain sentence in everyday words that does not repeat the kind's name, and names no standard, field or identifier (TAXONOMY.md D29). Shown wherever a list of kinds names it, beside a \"?\" where the word appears, and in the glossary."
+    },
+    "example": {
+      "type": "string",
+      "maxLength": 160,
+      "description": "One real instance of the kind, from the example workspace, that shows every part the summary names (a gap's state today and the state it should reach, not only one) in words a newcomer knows. Shown under the summary."
     },
     "knownAs": {
       "type": "array",
