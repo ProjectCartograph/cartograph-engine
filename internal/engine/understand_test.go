@@ -97,33 +97,60 @@ func TestAStatementIsJudgedByWhatItSays(t *testing.T) {
 }
 
 // What a person types is matched against the record, asking of each
-// existing record on its own whether it says the same; without a model,
-// by the words they share.
+// existing record on its own whether it says the same, and the three
+// flows likeliest to define it are offered, one per kind; without a model,
+// matches are by the words they share and no flow is offered.
 func TestUnderstandingWhatAPersonTyped(t *testing.T) {
 	ctx := context.Background()
 	m := &model{answer: func(state string, q decide.Question) decide.Answer {
-		same := 0.1
-		if strings.Contains(q.Options[0].Description, "Faults are found before produce leaves the depot") {
-			same = 0.93
+		switch q.Options[0].Key {
+		case "same":
+			same := 0.1
+			if strings.Contains(q.Options[0].Description, "Faults are found before produce leaves the depot") {
+				same = 0.93
+			}
+			return decide.Answer{Probabilities: map[string]float64{"same": same, "other": 1 - same}}
+		case "yes":
+			// The cues: a gap first, then a goal's level, then a project.
+			// The goal's levels are asked by their definitions, and the
+			// broadest ranks the flow, but the level question chooses
+			// outcome, so the flow opens there.
+			yes := map[string]float64{
+				"a problem today compared with where it should be":                     0.9,
+				"A broad direction your organisation keeps working towards.":           0.8,
+				"A fact about people or things once that change is made.":              0.6,
+				"a one-off job to build, set up, replace, train or roll out something": 0.7,
+			}[q.Options[0].Description]
+			return decide.Answer{Probabilities: map[string]float64{"yes": yes, "no": 1 - yes}}
+		case "goal":
+			if q.Instructions != "Which level of the strategy is this?" || len(q.Options) != 3 {
+				t.Errorf("the level question: %+v", q)
+			}
+			return decide.Answer{Choice: "outcome", Probabilities: map[string]float64{"goal": 0.2, "objective": 0.2, "outcome": 0.6}}
 		}
-		if q.Options[0].Key != "same" {
-			t.Errorf("same was not asked first: %+v", q.Options)
-		}
-		return decide.Answer{Probabilities: map[string]float64{"same": same, "other": 1 - same}}
+		t.Errorf("an unexpected question: %+v", q.Options)
+		return decide.Answer{}
 	}}
 	u, err := engineWith(t, m).Understand(ctx, "Faults are caught before produce goes out", "en")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !u.Available || len(u.Matches) != 1 || u.Matches[0].ID != "faults-found-before-dispatch" || u.Matches[0].By != "model" {
-		t.Fatalf("with a model: %+v", u)
+		t.Fatalf("with a model, matches: %+v", u)
+	}
+	var got []string
+	for _, r := range u.Routes {
+		got = append(got, r.Key)
+	}
+	if strings.Join(got, " ") != "gap outcome project" || u.Routes[1].Kind != "Goal" || u.Routes[1].Level != "outcome" {
+		t.Fatalf("with a model, routes: %+v", u.Routes)
 	}
 
 	u, err = engineWith(t, nil).Understand(ctx, "Faults are found before produce leaves the depot", "en")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if u.Available || len(u.Matches) == 0 || u.Matches[0].By != "words" || u.Matches[0].ID != "faults-found-before-dispatch" {
+	if u.Available || len(u.Routes) != 0 || len(u.Matches) == 0 || u.Matches[0].By != "words" || u.Matches[0].ID != "faults-found-before-dispatch" {
 		t.Fatalf("without a model: %+v", u)
 	}
 }

@@ -234,14 +234,21 @@ helm-lint:
 helm-kind:
     scripts/helm-kind
 
-# Serve a copy of the example on 127.0.0.1:8080
-serve addr="127.0.0.1:8080": embed
+# Serve a copy of the example on 127.0.0.1:8080. Arguments in any order:
+# an address, laya to run the Laya sidecar beside it (stopped with the
+# server), laya_port=N to move the sidecar: `just serve laya`,
+# `just serve 0.0.0.0:8080 laya` (scripts/serve)
+serve *args: embed
     rm -rf /tmp/cartograph-example && cp -r examples/minimal /tmp/cartograph-example
-    go run ./cmd/cartograph serve /tmp/cartograph-example -addr {{addr}}
+    scripts/serve /tmp/cartograph-example {{args}}
 
-# Serve any vault directory
-serve-vault dir addr="127.0.0.1:8080": embed
-    go run ./cmd/cartograph serve "{{dir}}" -addr {{addr}}
+# Serve any vault directory, with the arguments serve takes
+serve-vault dir *args: embed
+    scripts/serve "{{dir}}" {{args}}
+
+# Run the Laya sidecar on its own (deploy/laya, docs/adr/0023)
+laya port="8411":
+    LAYA_PORT={{port}} scripts/laya
 
 # Validate a directory of manifests
 validate dir="examples/minimal": embed

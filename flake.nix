@@ -150,6 +150,9 @@
               curl
               git
               postgresql # `just test-postgres` starts a throwaway server
+              # The Laya sidecar (deploy/laya): `just serve laya`
+              # starts it beside the server (docs/adr/0023).
+              nodejs_22
               # The Helm chart in deploy/helm: `just helm-lint` renders and
               # validates it, `just helm-kind` installs it on a kind cluster
               # (Docker comes from the host).

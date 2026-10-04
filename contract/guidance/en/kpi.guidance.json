@@ -13,6 +13,9 @@
     "success measure"
   ],
   "definition": "A key performance indicator, shown as Indicator: a measure written once that says what is counted, in which declared unit, which way is good, where the number is read from and how often (the means of verification). Its dated baseline and target are where things stand and where they should get to; for a measured gap they are the gap's two states. Aligned to an aim, it makes the aim measurable, and with the aim and the group who perceives the change it is how Cartograph holds a benefit. What it read in each period is not part of it: readings arrive every cycle and live in the KPI's own KPIReadings, so the definition changes only when the measure does. A KPI is not a key result (a measure that belongs to one aim and is written on it), not an aim or a target sentence (Raise the pass rate to 75 percent), not a reading (this season's 66), and not a data source (where the number comes from).",
+  "cues": {
+    "kpi": "the name of a number to measure, such as a rate, a share, an average or a count"
+  },
   "fields": {
     "/spec/definition": {
       "guide": "Exactly what gets counted, over what, where and when, precisely enough that two people would get the same number from the same records. No target and no direction.",

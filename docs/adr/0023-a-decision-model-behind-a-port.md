@@ -45,6 +45,12 @@ things, in the shapes measured to work (below):
   0.05, or none: a lower bar named a wrong record for one sentence in
   four. Without a model, both fall
   back to the words the texts share, and say so (`by: words`).
+- *Routing* (`POST /understand`): the three flows likeliest to define
+  what a person typed, offered for the person to choose, each opening
+  its flow with the text in it. Each stage is asked on its own whether
+  the text is what its cue describes (`cues` in each kind's guidance),
+  "yes" first; a goal's three levels share one flow. The model never
+  picks the flow: see below.
 
 **Laya runs as a sidecar** (`deploy/laya`), reached over HTTP by the
 `decide/laya` adapter, because its runtime needs cgo and a static binary
@@ -76,12 +82,50 @@ guidance and the example workspace whose answers are known
 | Which record says the same | each record on its own, "same" first | 7 of 8 |
 | Which record says the same, if any, among all 35 | as above, by name, sure (0.85) and clear of the next (0.05) | 10 of 12, no wrong record named |
 
-So: the two contrasts that measured well are the judgements; reading
-what kind of thing a sentence is was dropped, and New's questions,
-answered by the person, do it; matching asks of each record on its own.
+Routing was measured on 50 sentences a person might type, five for each
+of ten stages, half outside the example's domain, and then, without any
+change, on 30 more written afterwards for other kinds of organisation:
+
+| Asked | First flow right | Right flow in the first three |
+|---|---|---|
+| One choice among the stages | 24 of 50 | 32 of 50 |
+| Each stage on its own, first wording | 26 of 50 | 39 of 50 |
+| As close to each example as to others of its stage | 18 to 22 of 50 | 31 or 32 of 50 |
+| Eleven two-way properties, combined by a fitted model (left out one at a time) | 15 of 50 | 30 of 50 |
+| Each stage on its own, plain cues (kept) | 28 of 50 | 47 of 50 |
+| The same cues, on the 30 not used to write them | 15 of 30 | 27 of 30 |
+
+A goal's level was the weakest part, and the cause was the definitions,
+not the model: goal and objective differed only by "broad" and "several
+years" against "specific" and "one to three years", which no sentence
+shows. Rewritten so each level has one test that tells it apart, and
+measured on 15 sentences written to the new definitions in two domains
+the example does not use, before any wording was tuned:
+
+| Level definitions | Right level of 15 |
+|---|---|
+| The glossary's, by scale | 6 |
+| Longer, with "never finished" and "concrete enough to plan projects for" | 10 |
+| "A broad direction your organisation keeps working towards" / "One concrete change your organisation sets out to make" / "A fact about people or things once that change is made" (kept) | 13 |
+| The same, objective adding "under a goal" | 9 |
+
+The kept definitions are both what a person reads in the glossary and
+what the model is asked: a goal's flow is ranked by them, and its level
+chosen among them in one question. Ranking by them rather than by
+separate cues left routing as it was (27 of 30 unseen sentences had the
+right flow in three; 28 with the definitions).
+
+No confidence picked out a first flow that could be trusted (the surest
+were still wrong a third of the time on the 30), so three are offered
+and the person chooses.
+
+So: the two contrasts that measured well are the judgements; matching
+asks of each record on its own; routing asks of each stage on its own
+and offers three flows, never one. A sentence's kind is never decided
+for the person.
 The model reads the options' order and keys (the same contrast, good
 option second, fell from 9 to 7 of 10), so the adapter sends them in the
-order given. A new judgement is added only with its own measurement.
+order given. A new judgement, or a changed cue, comes with its own measurement.
 
 ## Consequences
 
@@ -105,5 +149,5 @@ order given. A new judgement is added only with its own measurement.
   sidecar's URL anywhere it chooses.
 - *A generating model for the home page.* Cartograph understands and
   routes; conversation is what agents over MCP are for.
-- *Reading what kind of thing a sentence is.* Measured above, it was
-  right too rarely to lead anyone.
+- *Picking the flow for the person.* Measured above, the first flow is
+  right half the time; it is offered, never taken.

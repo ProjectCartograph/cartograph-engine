@@ -14,11 +14,11 @@
     "intended outcome",
     "impact"
   ],
-  "definition": "An aim in the organisation's strategy, at one of three levels: a goal (the long-term aim), an objective (a specific aim under a goal), or an outcome (a changed state that will be true once an objective is met). The strategy reads top-down from the purpose (the vision and mission in Settings): goals under the purpose, objectives under goals, outcomes under objectives. A gap is measured against the purpose and closes into an outcome. Numbers belong to the measures (key results and aligned KPIs), never to the statement. A goal is not a project (work that ends), not an operation (work that continues), and not a KPI (a measure).",
+  "definition": "An aim in the organisation's strategy, at one of three levels. A goal is a broad direction, never finished: raise produce quality. An objective is one concrete change made for a goal, done once it is made: hold every depot to one standard. An outcome is not something to do but what is then true of people or things: depot staff apply the standard alike. The strategy reads top-down from the purpose (the vision and mission in Settings): goals under the purpose, objectives under goals, outcomes under objectives. A gap is measured against the purpose and closes into an outcome. Numbers belong to the measures (key results and aligned KPIs), never to the statement. A goal is not a project (work that ends), not an operation (work that continues), and not a KPI (a measure).",
   "levels": {
-    "goal": "A broad aim your organisation works towards for several years, written as something to do.",
-    "objective": "A specific aim under a goal, usually for the next one to three years, written as something to do.",
-    "outcome": "The state of things once an objective is met, written as a result, not a task."
+    "goal": "A broad direction your organisation keeps working towards.",
+    "objective": "One concrete change your organisation sets out to make.",
+    "outcome": "A fact about people or things once that change is made."
   },
   "levelExamples": {
     "goal": "Raise produce quality, over the cooperative's 2025 to 2028 plan.",

@@ -12,19 +12,36 @@ Cartograph had before is unchanged.
 
 ## Run it
 
-Node 20 or later:
+From the repository, through the flake like every recipe:
+
+    just serve laya
+
+`laya` starts the sidecar, waits until the model is loaded, then serves
+a copy of the example on 127.0.0.1:8080 with `CARTOGRAPH_DECIDE=laya`;
+stopping the server stops the sidecar. The arguments come in any order:
+an address to listen elsewhere (`just serve laya 0.0.0.0:8080`), and
+`laya_port=N` to move the sidecar from 8411. `just serve-vault <dir>
+laya` does the same for your own vault, and `just laya` runs the
+sidecar on its own.
+
+The sidecar is installed with the flake's Node, from the lockfile here,
+into `~/.cache/cartograph/laya` (`CARTOGRAPH_LAYA_HOME`), never into the
+repository. The first start downloads the model (about 1.7 GB) there and
+takes a few minutes; later starts take seconds. onnxruntime-node's
+install script is skipped: the package ships its CPU binaries, and the
+script only fetches GPU ones.
+
+Without the recipes, Node 20 or later:
 
     cd deploy/laya
-    npm install
+    npm ci --ignore-scripts
     npm start
 
-npm 11 warns that onnxruntime-node's install script is not approved.
-Leave it unapproved: the package ships its CPU binaries, and the script
-only fetches GPU ones. The first start downloads the model (about 1.7 GB) into Laya's cache,
-then answers on http://127.0.0.1:8411. `GET /ready` answers 200 once the
-model is loaded. Then start Cartograph with:
+and start Cartograph with:
 
     CARTOGRAPH_DECIDE=laya CARTOGRAPH_DECIDE_URL=http://127.0.0.1:8411 cartograph serve <vault>
+
+`GET /ready` answers 200 once the model is loaded.
 
 With compose, `docker compose --profile decide up -d` starts it beside
 Cartograph and keeps the model in a volume.

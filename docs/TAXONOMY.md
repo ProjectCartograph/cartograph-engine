@@ -551,13 +551,21 @@ close it.
   it, and edited at the top of the Strategy view by whoever may edit
   goals. Until 2.7.0 it was `Settings.spec.purpose`; a workspace that
   still holds it there is read from there until a Purpose is saved (ADR
-  0020). The Strategy view at `/` reads the tree
+  0020). The Strategy view at `/strategy` reads the tree
   top-down: purpose, each goal with its reason, its objectives, the
   outcomes under each, and the gaps each outcome closes (current state to
   desired state) with the work aligned to it. The board that edits the tree
   moved to `/goals`.
 - Goals and objectives are aims and start with a verb; outcomes are
   states. The editor's hint changes with the level.
+- Each level is defined by the one thing that tells it from the others,
+  since scale and dates do not show in a statement: a goal is a broad
+  direction, never finished; an objective is one concrete change, done
+  once it is made; an outcome is a fact about people or things once that
+  change is made. Defined by scale alone ("broad", "specific", "several
+  years"), a decision model placed 6 of 15 sentences at the right level;
+  defined this way, 13 of 15 (docs/adr/0023). A definition a model cannot
+  apply is taken as one a newcomer cannot apply either.
 - `Gap.spec.outcomes` names the outcome goals that would be true once the
   gap is closed. It is the link from a gap to the goals above it; the gap's
   check asks for one.

@@ -16,6 +16,9 @@
     "flagship"
   ],
   "definition": "A programme is the coordinated management of projects and business-as-usual activities to achieve beneficial change (APM; PMI's programmes turn project outputs into outcomes). It is temporary and strategic, and what makes it a programme is that it coordinates the work inside it: its components, the projects and operations that each name it (TAXONOMY.md D1, D2). So it holds only what is its own: the change it seeks (aim), the problems that change answers (citing gaps), the outcomes and indicators it is judged on, its theory of change, its programme-level risks and its governance. A programme is not a project (one piece of work that ends, delivered by one team under one sponsor and one budget), not an operation (work that keeps running), not a goal (an aim in the strategy; the top level of the strategy does portfolio duty, and Cartograph has no portfolio kind, D3), and not a benefit (a benefit is an outcome, measured by a KPI, perceived by a beneficiary group, D4). Shared goals are the test of whether a grouping deserves to be a programme, not the definition of membership in one. Its checks advise and never block (D6).",
+  "cues": {
+    "programme": "several projects grouped under one programme"
+  },
   "steps": {},
   "fields": {
     "/metadata/name": {

@@ -18,7 +18,7 @@ func TestTheGuideForAnOutcome(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if g.Locale != "en" || !strings.Contains(g.LevelIs, "state") || g.Definition == "" {
+	if g.Locale != "en" || !strings.Contains(g.LevelIs, "people or things") || g.Definition == "" {
 		t.Fatalf("the guide's head: %+v", g)
 	}
 	fields := map[string]bool{}

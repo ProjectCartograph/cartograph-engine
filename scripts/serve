@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Serve a vault: scripts/serve <dir> [addr] [laya|off] [laya_port=N]
+#
+# The arguments after the vault come in any order: laya or off says
+# whether to run with the decision model (off), laya_port=N where its
+# sidecar listens (8411), and anything else is the address to listen on
+# (127.0.0.1:8080). With laya, the sidecar (scripts/laya) starts
+# first, the server waits until its model is loaded, and the sidecar stops
+# when the server does. The first start downloads the model (about
+# 1.7 GB), so it takes a few minutes; later ones take seconds.
+set -euo pipefail
+
+dir=$1
+shift
+addr=127.0.0.1:8080 decide=off port=8411
+for arg in "$@"; do
+    case "$arg" in
+    laya | off) decide=$arg ;;
+    laya_port=*) port=${arg#laya_port=} ;;
+    *) addr=$arg ;;
+    esac
+done
+
+case "$decide" in
+off) ;;
+laya)
+    LAYA_PORT=$port scripts/laya &
+    sidecar=$!
+    trap 'kill "$sidecar" 2>/dev/null || true' EXIT INT TERM
+    echo "serve: waiting for the Laya model on 127.0.0.1:$port" >&2
+    until curl -sf -m 2 "http://127.0.0.1:$port/ready" >/dev/null; do
+        if ! kill -0 "$sidecar" 2>/dev/null; then
+            echo "serve: the Laya sidecar stopped before it was ready" >&2
+            exit 1
+        fi
+        sleep 1
+    done
+    export CARTOGRAPH_DECIDE=laya CARTOGRAPH_DECIDE_URL="http://127.0.0.1:$port"
+    ;;
+esac
+
+go run ./cmd/cartograph serve "$dir" -addr "$addr"

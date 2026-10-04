@@ -22,6 +22,7 @@ terminal interfaces are in [cartograph-ui](https://github.com/ProjectCartograph/
 
 ```
 just serve        # a copy of examples/minimal on 127.0.0.1:8080
+just serve laya   # the same, with the Laya decision model (deploy/laya)
 ```
 
 Open http://localhost:8080. `cartograph serve -h` lists every setting

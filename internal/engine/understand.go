@@ -356,21 +356,109 @@ func (e *Engine) MatchExisting(ctx context.Context, kind, level, text string) []
 }
 
 // Understanding is what Cartograph makes of a text a person typed: the
-// existing records that say the same.
+// existing record that says the same, and the flows likeliest to define
+// it.
 type Understanding struct {
-	// Available is false when no decision model answered, and Matches are
-	// then the records that share the text's words.
+	// Available is false when no decision model answered: Matches are
+	// then the records that share the text's words, and there are no
+	// Routes.
 	Available bool    `json:"available"`
 	Matches   []Match `json:"matches"`
+	Routes    []Route `json:"routes"`
 }
 
-// Understand reads a text a person typed against the record, across every
-// stage a person writes: which existing records say the same. It does not
-// say what kind of thing the text is. Measured, the model read that right
-// three or four times in ten, which is not good enough to lead anyone;
-// New's questions, answered by the person, do that.
-func (e *Engine) Understand(ctx context.Context, text, _ string) (Understanding, error) {
-	out := Understanding{Matches: []Match{}}
+// Route is a flow that may define what a person typed: a stage of the
+// order of work, and how likely the model found it.
+type Route struct {
+	Key        string  `json:"key"`
+	Kind       string  `json:"kind"`
+	Level      string  `json:"level,omitempty"`
+	Likelihood float64 `json:"likelihood"`
+}
+
+// maxRoutes is how many flows are offered. Measured (docs/adr/0023), the
+// model's first flow was right half the time, and the right one was among
+// its three likeliest nine times in ten, at any confidence: so three are
+// offered, and the person chooses.
+const maxRoutes = 3
+
+// levelQuestion is the key of the question that picks a kind's level.
+const levelQuestion = "level"
+
+// routesFor asks the model, of each stage on its own, whether the text is
+// what the stage's cue describes, "yes" first, and returns the likeliest
+// flows, one per kind. A stage with levels is asked by its level's own
+// definition, the words a person reads, and the level a flow opens at is
+// chosen among those definitions in one question: measured
+// (docs/adr/0023), definitions that tell the levels apart for the model
+// are the ones that tell them apart for a person.
+func (e *Engine) routesFor(ctx context.Context, text, locale string) ([]Route, bool) {
+	qs := map[string]decide.Question{}
+	at := map[string]Stage{}
+	var levels []decide.Option
+	for _, st := range stages {
+		words, ok, _ := GuideBundleFor(st.Kind, locale)
+		if !ok {
+			continue
+		}
+		cue := words.Cues[st.Key]
+		if cue == "" && st.Level != "" {
+			cue = words.Levels[st.Level]
+			if cue != "" {
+				levels = append(levels, decide.Option{Key: st.Level, Description: cue})
+			}
+		}
+		if cue == "" {
+			continue
+		}
+		qs[st.Key] = decide.Question{Type: decide.Choice, Instructions: "Which describes this text?",
+			Options: []decide.Option{{Key: "yes", Description: cue}, {Key: "no", Description: "something else"}}}
+		at[st.Key] = st
+	}
+	if len(qs) == 0 {
+		return nil, false
+	}
+	if len(levels) > 1 {
+		qs[levelQuestion] = decide.Question{Type: decide.Choice, Instructions: "Which level of the strategy is this?", Options: levels}
+	}
+	answers, ok := e.ask(ctx, text, qs)
+	if !ok {
+		return nil, false
+	}
+	best := map[string]Route{}
+	for key, st := range at {
+		p := answers[key].Probabilities["yes"]
+		if r, seen := best[st.Kind]; !seen || p > r.Likelihood || (p == r.Likelihood && key < r.Key) {
+			best[st.Kind] = Route{Key: key, Kind: st.Kind, Level: st.Level, Likelihood: p}
+		}
+	}
+	out := make([]Route, 0, len(best))
+	for _, r := range best {
+		// The level is the one its definitions choose, not the stage
+		// that happened to rank the flow.
+		if lv := answers[levelQuestion].Choice; r.Level != "" && lv != "" {
+			r.Key, r.Level = lv, lv
+		}
+		out = append(out, r)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Likelihood != out[j].Likelihood {
+			return out[i].Likelihood > out[j].Likelihood
+		}
+		return rank(out[i].Kind, out[i].Level) < rank(out[j].Kind, out[j].Level)
+	})
+	if len(out) > maxRoutes {
+		out = out[:maxRoutes]
+	}
+	return out, true
+}
+
+// Understand reads a text a person typed against the record and the order
+// of work: which existing record says the same, and which three flows are
+// likeliest to define it. It never picks a flow for the person: measured,
+// the first was right only half the time.
+func (e *Engine) Understand(ctx context.Context, text, locale string) (Understanding, error) {
+	out := Understanding{Matches: []Match{}, Routes: []Route{}}
 	if strings.TrimSpace(text) == "" {
 		return out, nil
 	}
@@ -387,10 +475,16 @@ func (e *Engine) Understand(ctx context.Context, text, _ string) (Understanding,
 	if len(pool) > matchPool {
 		pool = pool[:matchPool]
 	}
-	if found, ok := e.sameAs(ctx, text, pool); ok {
-		out.Available, out.Matches = true, found
+	found, ok := e.sameAs(ctx, text, pool)
+	if !ok {
+		out.Matches = byWords(pool)
 		return out, nil
 	}
-	out.Matches = byWords(pool)
+	routes, ok := e.routesFor(ctx, text, locale)
+	if !ok {
+		out.Matches = byWords(pool)
+		return out, nil
+	}
+	out.Available, out.Matches, out.Routes = true, found, routes
 	return out, nil
 }

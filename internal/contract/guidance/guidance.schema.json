@@ -189,6 +189,17 @@
         }
       }
     },
+    "cues": {
+      "type": "object",
+      "description": "How a decision model recognises a text a person typed as this kind (docs/adr/0023), by stage key. Asked of each stage on its own, good option first, against \"something else\"; the three likeliest stages are offered to the person, who chooses. A stage with levels and no cue is asked by its level's definition (levels), the same words a person reads, and its level is chosen among them. Changed only with a new measurement against sentences whose stage is known.",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[a-z]+$": {
+          "type": "string",
+          "maxLength": 160
+        }
+      }
+    },
     "vocabulary": {
       "type": "object",
       "description": "Words an interface offers to help write a field in this language, such as the verbs an aim opens with or the word that introduces an objective's means. Offered, never used to judge: no check or mark depends on them, and a language without them gets plain fields.",

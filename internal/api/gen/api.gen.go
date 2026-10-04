@@ -1281,6 +1281,15 @@ type Report struct {
 // Role A role on the access list (TAXONOMY.md D27). A reader sees everything and changes nothing; a contributor changes the work of their teams and the teams beneath them and keeps the shared registers; a strategy editor shapes the goals and the vision and mission; an administrator does everything, for every team, and manages access.
 type Role string
 
+// Route defines model for Route.
+type Route struct {
+	// Key The stage of the order of work (GET /order).
+	Key        string  `json:"key"`
+	Kind       string  `json:"kind"`
+	Level      *string `json:"level,omitempty"`
+	Likelihood float32 `json:"likelihood"`
+}
+
 // SeriesAppend defines model for SeriesAppend.
 type SeriesAppend struct {
 	// Item The item, as the series' schema has it: for a reading, period and value, and provisional and note when they apply.
@@ -1416,9 +1425,12 @@ type Summary struct {
 
 // Understanding defines model for Understanding.
 type Understanding struct {
-	// Available False when no decision model answered; matches are then by the words they share.
+	// Available False when no decision model answered; matches are then by the words they share, and there are no routes.
 	Available bool    `json:"available"`
 	Matches   []Match `json:"matches"`
+
+	// Routes The flows likeliest to define the text, likeliest first, one per kind: offered to the person, who chooses. Measured, the first was right half the time and the right one was among the three nine times in ten (docs/adr/0023).
+	Routes []Route `json:"routes"`
 }
 
 // ValidateRequest Exactly one of yaml or manifest must be supplied.
@@ -1990,7 +2002,7 @@ type ServerInterface interface {
 	// Sync The sync socket (automerge-repo network protocol, version 1)
 	// (GET /sync)
 	Sync(w http.ResponseWriter, r *http.Request)
-	// Understand Which existing records say what a text a person typed says
+	// Understand Which existing record says what a text a person typed says, and which flows may define it
 	// (POST /understand)
 	Understand(w http.ResponseWriter, r *http.Request)
 	// ValidateManifest Validate a manifest without storing it
@@ -9603,7 +9615,7 @@ type StrictServerInterface interface {
 	// Sync The sync socket (automerge-repo network protocol, version 1)
 	// (GET /sync)
 	Sync(ctx context.Context, request SyncRequestObject) (SyncResponseObject, error)
-	// Understand Which existing records say what a text a person typed says
+	// Understand Which existing record says what a text a person typed says, and which flows may define it
 	// (POST /understand)
 	Understand(ctx context.Context, request UnderstandRequestObject) (UnderstandResponseObject, error)
 	// ValidateManifest Validate a manifest without storing it

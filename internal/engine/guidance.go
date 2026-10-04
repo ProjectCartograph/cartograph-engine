@@ -34,7 +34,10 @@ type GuideBundle struct {
 	// Terms are other words the kind holds, each defined as the kind is.
 	Terms map[string]GuideTerm `json:"terms,omitempty"`
 	// Judgements are checks a decision model answers, by check id.
-	Judgements map[string]GuideJudgement  `json:"judgements,omitempty"`
+	Judgements map[string]GuideJudgement `json:"judgements,omitempty"`
+	// Cues are how a decision model recognises a typed text as this kind,
+	// by stage key.
+	Cues       map[string]string          `json:"cues,omitempty"`
 	Steps      map[string]GuideStepWords  `json:"steps,omitempty"`
 	Fields     map[string]GuideFieldWords `json:"fields"`
 	Links      map[string]GuideLinkWords  `json:"links,omitempty"`

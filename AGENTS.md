@@ -25,7 +25,7 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 | Everything CI runs, in CI's order | `just ci` |
 | Regenerate from the contract | `just generate` |
 | Format, lint, dependency rule | `just fmt`, `just lint`, `just arch` |
-| Serve a copy of the example | `just serve` |
+| Serve a copy of the example | `just serve` (`just serve laya` with the decision model) |
 | Release binaries for both architectures | `just release` |
 | The container image, from the flake | `just image` |
 
