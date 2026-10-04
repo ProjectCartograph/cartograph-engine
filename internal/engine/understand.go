@@ -488,3 +488,104 @@ func (e *Engine) Understand(ctx context.Context, text, locale string) (Understan
 	out.Available, out.Matches, out.Routes = true, found, routes
 	return out, nil
 }
+
+// DecisionModel is whether a decision model is configured, and whether it
+// answers now: what an agent asks first, to know whether to lean on it.
+type DecisionModel struct {
+	Configured bool `json:"configured"`
+	Ready      bool `json:"ready"`
+}
+
+// DecisionModel reports the decision port's state, whatever is behind it.
+func (e *Engine) DecisionModel(ctx context.Context) DecisionModel {
+	if e.decider == nil {
+		return DecisionModel{}
+	}
+	return DecisionModel{Configured: true, Ready: e.decider.Ready(ctx) == nil}
+}
+
+// How relevance is judged, as measured (docs/adr/0023): of each candidate
+// on its own, whether the work is about the same thing; per kind, the
+// likeliest few at or above an even chance. A ranking to put first in a
+// picker, never a filter: everything else stays where it was.
+const (
+	relevantFloor   = 0.5
+	relevantPerKind = 3
+	relevantPool    = 120
+)
+
+// RelevantKinds are the kinds relevance is asked across when none are
+// named: the work and strategy a piece of work names, and the registers
+// it draws on.
+var RelevantKinds = []string{"Goal", "KPI", "Gap", "Assumption", "Portfolio", "Programme", "Operation", "Project", "BeneficiaryGroup", "DataSource", "FundingSource", "Resource"}
+
+// Relevance is what in the workspace is relevant to a text.
+type Relevance struct {
+	// Available is false when no decision model answered: Matches are
+	// then by shared words.
+	Available bool    `json:"available"`
+	Matches   []Match `json:"matches"`
+}
+
+// Relevant ranks the records of kinds (a goal's level, when level is
+// set) by how relevant they are to text, and returns up to limit of each,
+// likeliest first.
+func (e *Engine) Relevant(ctx context.Context, text string, kinds []string, level string, limit int) (Relevance, error) {
+	out := Relevance{Matches: []Match{}}
+	if strings.TrimSpace(text) == "" {
+		return out, nil
+	}
+	if len(kinds) == 0 {
+		kinds = RelevantKinds
+	}
+	if limit <= 0 || limit > 10 {
+		limit = relevantPerKind
+	}
+	perKind := relevantPool / len(kinds)
+	if perKind < 8 {
+		perKind = 8
+	}
+	var pool []Match
+	for _, k := range kinds {
+		lv := ""
+		if k == "Goal" {
+			lv = level
+		}
+		pool = append(pool, e.matchCandidates(ctx, k, lv, text, perKind)...)
+	}
+	if len(pool) == 0 {
+		return out, nil
+	}
+	qs := make(map[string]decide.Question, len(pool))
+	for i, m := range pool {
+		qs[fmt.Sprintf("r%d", i)] = decide.Question{Type: decide.Choice, Instructions: "Is the work about the same thing as the record?",
+			Options: []decide.Option{{Key: "relevant", Description: "about the same thing as: " + m.Name}, {Key: "other", Description: "about something else"}}}
+	}
+	answers, ok := e.ask(ctx, text, qs)
+	if ok {
+		out.Available = true
+		for i := range pool {
+			pool[i].Likelihood = answers[fmt.Sprintf("r%d", i)].Probabilities["relevant"]
+			pool[i].By = "model"
+		}
+	}
+	floor := relevantFloor
+	if !ok {
+		floor = 0.2 // shared words, as a match falls back to them
+	}
+	byKind := map[string][]Match{}
+	for _, m := range pool {
+		if m.Likelihood >= floor {
+			byKind[m.Kind] = append(byKind[m.Kind], m)
+		}
+	}
+	for _, k := range kinds {
+		list := byKind[k]
+		sort.SliceStable(list, func(i, j int) bool { return list[i].Likelihood > list[j].Likelihood })
+		if len(list) > limit {
+			list = list[:limit]
+		}
+		out.Matches = append(out.Matches, list...)
+	}
+	return out, nil
+}

@@ -557,6 +557,18 @@
     },
     "/spec/alignment/portfolios": {
       "guide": "The portfolios that select and fund this project, if any. A project may sit in a portfolio and a programme at once."
+    },
+    "/spec/summary/about": {
+      "guide": "What is this project about? One sentence, as you would tell a colleague. Cartograph reads it to suggest what in the workspace is relevant: the outcomes it serves, its programme, indicators and the rest.",
+      "good": [
+        "Train depot staff to apply one quality checklist the same way at every depot."
+      ],
+      "poor": [
+        {
+          "text": "Quality project.",
+          "why": "Too short to tell what it touches: say what the work does, and where."
+        }
+      ]
     }
   },
   "links": {

@@ -53,6 +53,10 @@ type Decider interface {
 	// Decide answers every question asked of state, by the question's
 	// name, in one call.
 	Decide(ctx context.Context, state string, questions map[string]Question) (map[string]Answer, error)
+	// Ready reports whether the model would answer now: nil when it is
+	// loaded and reachable, ErrUnavailable when it is not. Callers that
+	// can choose a way of working (an agent over MCP) ask it first.
+	Ready(ctx context.Context) error
 }
 
 // ErrUnavailable is a decider that cannot answer now (its model not

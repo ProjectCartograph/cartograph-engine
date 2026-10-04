@@ -18,6 +18,8 @@ type model struct {
 	asked  int
 }
 
+func (m *model) Ready(context.Context) error { return nil }
+
 func (m *model) Decide(_ context.Context, state string, qs map[string]decide.Question) (map[string]decide.Answer, error) {
 	m.asked++
 	out := map[string]decide.Answer{}
@@ -152,5 +154,53 @@ func TestUnderstandingWhatAPersonTyped(t *testing.T) {
 	}
 	if u.Available || len(u.Routes) != 0 || len(u.Matches) == 0 || u.Matches[0].By != "words" || u.Matches[0].ID != "faults-found-before-dispatch" {
 		t.Fatalf("without a model: %+v", u)
+	}
+}
+
+// What in the workspace is relevant to a piece of work: each record asked
+// on its own whether the work is about the same thing, the likeliest few
+// of each kind at an even chance or more, and nothing below it; without a
+// model, by shared words.
+func TestRelevantRanksTheWorkspace(t *testing.T) {
+	ctx := context.Background()
+	m := &model{answer: func(state string, q decide.Question) decide.Answer {
+		if q.Instructions != "Is the work about the same thing as the record?" || q.Options[0].Key != "relevant" {
+			t.Errorf("an unexpected question: %+v", q)
+		}
+		p := 0.2
+		switch q.Options[0].Description {
+		case "about the same thing as: Faults are found before produce leaves the depot":
+			p = 0.9
+		case "about the same thing as: Quality pass rate":
+			p = 0.7
+		}
+		return decide.Answer{Probabilities: map[string]float64{"relevant": p, "other": 1 - p}}
+	}}
+	e := engineWith(t, m)
+	r, err := e.Relevant(ctx, "Check every delivery at intake", []string{"Goal", "KPI"}, "outcome", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, x := range r.Matches {
+		got = append(got, x.Kind+"/"+x.ID)
+	}
+	if !r.Available || strings.Join(got, " ") != "Goal/faults-found-before-dispatch KPI/quality-pass-rate" {
+		t.Fatalf("with a model: %+v", r)
+	}
+	if s := e.DecisionModel(ctx); !s.Configured || !s.Ready {
+		t.Fatalf("status with a model: %+v", s)
+	}
+
+	plain := engineWith(t, nil)
+	r, err = plain.Relevant(ctx, "Faults are found before produce leaves the depot", []string{"Goal"}, "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Available || len(r.Matches) == 0 || r.Matches[0].By != "words" {
+		t.Fatalf("without a model: %+v", r)
+	}
+	if s := plain.DecisionModel(ctx); s.Configured || s.Ready {
+		t.Fatalf("status without a model: %+v", s)
 	}
 }

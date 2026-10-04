@@ -38,6 +38,11 @@ things, in the shapes measured to work (below):
   each as an advisory check, on the step that holds the field. Without a
   model, they are not asked. Only contrasts measured against examples
   whose answer is known are kept.
+- *Relevance* (`POST /relevant`, MCP `relevant`): the likeliest few
+  records of each kind for a piece of work, asked of each record on its
+  own whether the work is about the same thing, for a shortlist put first
+  in every picker. `GET /decision-model` (MCP `decision_model`) says
+  whether a model is configured and ready.
 - *Matching* (`POST /match`, MCP `match`, and `POST /understand` across
   every stage, for the home page): of each existing record on its own,
   whether a text says the same, by its name. The answer is the one
@@ -131,6 +136,30 @@ sentences of the other stages:
 One more stage is one more for the three places: the other stages had
 their right flow among three 85 percent of the time with it, against 89
 without it. The kept pair tells programmes and portfolios apart best.
+
+Relevance across the workspace (`POST /relevant`) was measured on ten
+project briefs, seven in the example's domain and three about work the
+workspace does not touch, each labelled with the records of eight kinds
+a person would want suggested, before any question was tried. Shown is
+each kind's top three at or above the floor:
+
+| Asked of each record | Floor | First right, larger kinds | Shown on unrelated briefs | Shown that was labelled |
+|---|---|---|---|---|
+| Shared words (no model) | 0.5 | 17 of 28 | 1 | 24 of 42 |
+| "Is this record relevant to the work described?" | 0.5 | 19 of 28 | 22 | 30 of 113 |
+| "Is the work about the same thing as the record?" (kept) | 0.5 | 22 of 28 | 3 | 30 of 81 |
+
+The model ranks better than shared words and the kept question keeps
+quiet about unrelated work; much of what it shows beyond the labels is a
+plausible neighbour (another outcome under the same objective). So it is
+a ranking to put first, as a shortlist, and never a filter: everything
+else stays searchable, and the person chooses. Its limits stay what they
+are: no reasons, about 512 tokens of context, two-way questions only.
+
+Agents are told to ask `decision_model` first (MCP), whatever is behind
+the port, and when it is ready to call `relevant` with what the work is
+about before choosing what a draft names; the port gained `Ready` for
+it.
 
 No confidence picked out a first flow that could be trusted (the surest
 were still wrong a third of the time on the 30), so three are offered

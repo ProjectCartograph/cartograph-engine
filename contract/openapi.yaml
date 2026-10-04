@@ -604,6 +604,74 @@ paths:
               schema:
                 $ref: "#/components/schemas/Understanding"
 
+  /relevant:
+    post:
+      operationId: relevant
+      summary: What in the workspace is relevant to a piece of work
+      description: >-
+        Ranks the records of the kinds asked for (every kind a piece of work
+        names, when none are) by how relevant they are to the text, and
+        returns the likeliest few of each, likeliest first. Where a decision
+        model is configured (docs/adr/0023) it is asked of each record on
+        its own whether the work is about the same thing; without one,
+        available is false and the ranking is by shared words. A shortlist
+        to put first, never a filter or a choice: everything else stays
+        searchable. Nothing is stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 2000
+                  description: What the work is about, and as much of what has been written of it as helps.
+                kinds:
+                  type: array
+                  maxItems: 12
+                  items:
+                    type: string
+                level:
+                  type: string
+                  description: For Goal, the level to rank among.
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  description: How many of each kind, 3 when left out.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Relevance"
+
+  /decision-model:
+    get:
+      operationId: getDecisionModel
+      summary: Whether a decision model is configured, and answering now
+      description: >-
+        Whatever is behind the decision port (docs/adr/0023). An agent asks
+        this first, to know whether relevant, match and understand rank by
+        meaning or only by shared words.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionModel"
+
   /match:
     post:
       operationId: matchExisting
@@ -2279,6 +2347,25 @@ components:
             nine times in ten (docs/adr/0023).
           items:
             $ref: "#/components/schemas/Route"
+    Relevance:
+      type: object
+      required: [available, matches]
+      properties:
+        available:
+          type: boolean
+          description: False when no decision model answered; the ranking is then by shared words.
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/Match"
+    DecisionModel:
+      type: object
+      required: [configured, ready]
+      properties:
+        configured:
+          type: boolean
+        ready:
+          type: boolean
     Route:
       type: object
       required: [key, kind, likelihood]

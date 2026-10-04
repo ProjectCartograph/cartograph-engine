@@ -1556,6 +1556,36 @@ func (s *Server) Understand(ctx context.Context, req apigen.UnderstandRequestObj
 	return apigen.Understand200JSONResponse(out), nil
 }
 
+// Relevant is what in the workspace is relevant to a piece of work.
+func (s *Server) Relevant(ctx context.Context, req apigen.RelevantRequestObject) (apigen.RelevantResponseObject, error) {
+	var kinds []string
+	if req.Body.Kinds != nil {
+		kinds = *req.Body.Kinds
+	}
+	level, limit := "", 0
+	if req.Body.Level != nil {
+		level = *req.Body.Level
+	}
+	if req.Body.Limit != nil {
+		limit = *req.Body.Limit
+	}
+	r, err := s.Engine.Relevant(ctx, req.Body.Text, kinds, level, limit)
+	if err != nil {
+		return nil, err
+	}
+	var out apigen.Relevance
+	if err := convertJSON(r, &out); err != nil {
+		return nil, err
+	}
+	return apigen.Relevant200JSONResponse(out), nil
+}
+
+// GetDecisionModel is whether a decision model is configured and ready.
+func (s *Server) GetDecisionModel(ctx context.Context, _ apigen.GetDecisionModelRequestObject) (apigen.GetDecisionModelResponseObject, error) {
+	m := s.Engine.DecisionModel(ctx)
+	return apigen.GetDecisionModel200JSONResponse(apigen.DecisionModel{Configured: m.Configured, Ready: m.Ready}), nil
+}
+
 // MatchExisting is the records of a kind that say what a text says.
 func (s *Server) MatchExisting(ctx context.Context, req apigen.MatchExistingRequestObject) (apigen.MatchExistingResponseObject, error) {
 	level := ""

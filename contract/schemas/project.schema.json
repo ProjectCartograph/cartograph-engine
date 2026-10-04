@@ -35,6 +35,11 @@
             "problems"
           ],
           "properties": {
+            "about": {
+              "type": "string",
+              "maxLength": 300,
+              "description": "What the project is about, in one sentence a newcomer would follow: the first thing asked, and what Cartograph reads to suggest the outcomes, programmes, indicators and registers relevant to it (docs/adr/0023). Not the problem, which says what is wrong and for whom; not the objective, which says what will change."
+            },
             "problems": {
               "type": "array",
               "minItems": 1,

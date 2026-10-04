@@ -260,7 +260,7 @@
       {
         "key": "governance",
         "title": "Governance",
-        "guide": "The roles accountable for the programme, and the teams that run it, and the mandate it works under.",
+        "guide": "The roles accountable for the programme, the teams that run it, and the mandate it works under.",
         "fields": [
           {
             "path": "/spec/sponsor",

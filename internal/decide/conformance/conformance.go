@@ -45,6 +45,11 @@ func Run(t *testing.T, d decide.Decider) {
 			t.Fatalf("the yes or no: %v", y)
 		}
 	})
+	t.Run("is ready before it is asked", func(t *testing.T) {
+		if err := d.Ready(context.Background()); err != nil {
+			t.Fatalf("not ready: %v", err)
+		}
+	})
 	t.Run("stops when its context is cancelled", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()

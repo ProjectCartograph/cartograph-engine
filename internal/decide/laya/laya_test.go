@@ -18,6 +18,10 @@ import (
 // every statement more likely than not.
 func sidecar(t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/ready" && r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"ready":true}`))
+			return
+		}
 		if r.URL.Path != "/decide" || r.Method != http.MethodPost {
 			http.NotFound(w, r)
 			return

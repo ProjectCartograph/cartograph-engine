@@ -609,6 +609,12 @@ type ConflictResponse struct {
 	Theirs string `json:"theirs"`
 }
 
+// DecisionModel defines model for DecisionModel.
+type DecisionModel struct {
+	Configured bool `json:"configured"`
+	Ready      bool `json:"ready"`
+}
+
 // DeleteGoalRequest defines model for DeleteGoalRequest.
 type DeleteGoalRequest struct {
 	Reason string `json:"reason"`
@@ -1269,6 +1275,13 @@ type References struct {
 	Outgoing []Ref     `json:"outgoing"`
 }
 
+// Relevance defines model for Relevance.
+type Relevance struct {
+	// Available False when no decision model answered; the ranking is then by shared words.
+	Available bool    `json:"available"`
+	Matches   []Match `json:"matches"`
+}
+
 // Report defines model for Report.
 type Report struct {
 	Columns []string `json:"columns"`
@@ -1638,6 +1651,20 @@ type ListProposalsParams struct {
 // ListProposalsParamsStatus defines parameters for ListProposals.
 type ListProposalsParamsStatus string
 
+// RelevantJSONBody defines parameters for Relevant.
+type RelevantJSONBody struct {
+	Kinds *[]string `json:"kinds,omitempty"`
+
+	// Level For Goal, the level to rank among.
+	Level *string `json:"level,omitempty"`
+
+	// Limit How many of each kind, 3 when left out.
+	Limit *int `json:"limit,omitempty"`
+
+	// Text What the work is about, and as much of what has been written of it as helps.
+	Text string `json:"text"`
+}
+
 // GetReportParams defines parameters for GetReport.
 type GetReportParams struct {
 	// Format json (the default) or csv, for a spreadsheet.
@@ -1724,6 +1751,9 @@ type AcceptProposalJSONRequestBody = ProposalDecision
 
 // DeclineProposalJSONRequestBody defines body for DeclineProposal for application/json ContentType.
 type DeclineProposalJSONRequestBody = ProposalDecision
+
+// RelevantJSONRequestBody defines body for Relevant for application/json ContentType.
+type RelevantJSONRequestBody RelevantJSONBody
 
 // UnderstandJSONRequestBody defines body for Understand for application/json ContentType.
 type UnderstandJSONRequestBody UnderstandJSONBody
@@ -1858,6 +1888,9 @@ type ServerInterface interface {
 	// ReopenChangeSet Take a proposed change set back to work, to ask for changes or to withdraw it.
 	// (POST /changesets/{set}/reopen)
 	ReopenChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// GetDecisionModel Whether a decision model is configured, and answering now
+	// (GET /decision-model)
+	GetDecisionModel(w http.ResponseWriter, r *http.Request)
 	// ListFlows The kinds that have a flow (a stepped definition, contract/flows). A kind without one is a sheet: one step, every field.
 	// (GET /flows)
 	ListFlows(w http.ResponseWriter, r *http.Request)
@@ -1987,6 +2020,9 @@ type ServerInterface interface {
 	// DeclineProposal Decline a proposal. Only the person it was made for may.
 	// (POST /proposals/{proposal}/decline)
 	DeclineProposal(w http.ResponseWriter, r *http.Request, proposal ProposalParam)
+	// Relevant What in the workspace is relevant to a piece of work
+	// (POST /relevant)
+	Relevant(w http.ResponseWriter, r *http.Request)
 	// GetReport A report over the current record, answered by the deployment's reporter (docs/adr/0014): projects (with team, state and the goals they serve), kpi-readings (every reading in force, with who recorded it and when), alignment (what serves each goal) and teams (each team with every team above it). Every reporter gives the same columns and rows. 404 when the deployment turned reporting off. Every listed person reads every report.
 	// (GET /reports/{name})
 	GetReport(w http.ResponseWriter, r *http.Request, name GetReportParamsName, params GetReportParams)
@@ -2592,6 +2628,20 @@ func (siw *ServerInterfaceWrapper) ReopenChangeSet(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReopenChangeSet(w, r, set)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDecisionModel operation middleware
+func (siw *ServerInterfaceWrapper) GetDecisionModel(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDecisionModel(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3984,6 +4034,20 @@ func (siw *ServerInterfaceWrapper) DeclineProposal(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// Relevant operation middleware
+func (siw *ServerInterfaceWrapper) Relevant(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Relevant(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetReport operation middleware
 func (siw *ServerInterfaceWrapper) GetReport(w http.ResponseWriter, r *http.Request) {
 
@@ -4393,6 +4457,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/order", wrapper.GetOrder)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/understand", wrapper.Understand)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/relevant", wrapper.Relevant)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/decision-model", wrapper.GetDecisionModel)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/match", wrapper.MatchExisting)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/glossary", wrapper.GetGlossary)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/kinds", wrapper.ListKinds)
@@ -5834,6 +5900,41 @@ func (response ReopenChangeSet409JSONResponse) VisitReopenChangeSetResponse(w ht
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetDecisionModelRequestObject struct {
+}
+
+type GetDecisionModelResponseObject interface {
+	VisitGetDecisionModelResponse(w http.ResponseWriter) error
+}
+
+type GetDecisionModel200JSONResponse DecisionModel
+
+func (response GetDecisionModel200JSONResponse) VisitGetDecisionModelResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetDecisionModel401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetDecisionModel401JSONResponse) VisitGetDecisionModelResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8712,6 +8813,56 @@ func (response DeclineProposal409JSONResponse) VisitDeclineProposalResponse(w ht
 	return err
 }
 
+type RelevantRequestObject struct {
+	Body *RelevantJSONRequestBody
+}
+
+type RelevantResponseObject interface {
+	VisitRelevantResponse(w http.ResponseWriter) error
+}
+
+type Relevant200JSONResponse Relevance
+
+func (response Relevant200JSONResponse) VisitRelevantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Relevant401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response Relevant401JSONResponse) VisitRelevantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Relevant403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response Relevant403JSONResponse) VisitRelevantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetReportRequestObject struct {
 	Name   GetReportParamsName `json:"name"`
 	Params GetReportParams
@@ -9565,6 +9716,9 @@ type StrictServerInterface interface {
 	// ReopenChangeSet Take a proposed change set back to work, to ask for changes or to withdraw it.
 	// (POST /changesets/{set}/reopen)
 	ReopenChangeSet(ctx context.Context, request ReopenChangeSetRequestObject) (ReopenChangeSetResponseObject, error)
+	// GetDecisionModel Whether a decision model is configured, and answering now
+	// (GET /decision-model)
+	GetDecisionModel(ctx context.Context, request GetDecisionModelRequestObject) (GetDecisionModelResponseObject, error)
 	// ListFlows The kinds that have a flow (a stepped definition, contract/flows). A kind without one is a sheet: one step, every field.
 	// (GET /flows)
 	ListFlows(ctx context.Context, request ListFlowsRequestObject) (ListFlowsResponseObject, error)
@@ -9694,6 +9848,9 @@ type StrictServerInterface interface {
 	// DeclineProposal Decline a proposal. Only the person it was made for may.
 	// (POST /proposals/{proposal}/decline)
 	DeclineProposal(ctx context.Context, request DeclineProposalRequestObject) (DeclineProposalResponseObject, error)
+	// Relevant What in the workspace is relevant to a piece of work
+	// (POST /relevant)
+	Relevant(ctx context.Context, request RelevantRequestObject) (RelevantResponseObject, error)
 	// GetReport A report over the current record, answered by the deployment's reporter (docs/adr/0014): projects (with team, state and the goals they serve), kpi-readings (every reading in force, with who recorded it and when), alignment (what serves each goal) and teams (each team with every team above it). Every reporter gives the same columns and rows. 404 when the deployment turned reporting off. Every listed person reads every report.
 	// (GET /reports/{name})
 	GetReport(ctx context.Context, request GetReportRequestObject) (GetReportResponseObject, error)
@@ -10345,6 +10502,30 @@ func (sh *strictHandler) ReopenChangeSet(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ReopenChangeSetResponseObject); ok {
 		if err := validResponse.VisitReopenChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetDecisionModel operation middleware
+func (sh *strictHandler) GetDecisionModel(w http.ResponseWriter, r *http.Request) {
+	var request GetDecisionModelRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetDecisionModel(ctx, request.(GetDecisionModelRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetDecisionModel")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetDecisionModelResponseObject); ok {
+		if err := validResponse.VisitGetDecisionModelResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -11546,6 +11727,37 @@ func (sh *strictHandler) DeclineProposal(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(DeclineProposalResponseObject); ok {
 		if err := validResponse.VisitDeclineProposalResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Relevant operation middleware
+func (sh *strictHandler) Relevant(w http.ResponseWriter, r *http.Request) {
+	var request RelevantRequestObject
+
+	var body RelevantJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Relevant(ctx, request.(RelevantRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Relevant")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RelevantResponseObject); ok {
+		if err := validResponse.VisitRelevantResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

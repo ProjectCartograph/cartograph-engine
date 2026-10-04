@@ -76,6 +76,14 @@ accepts it whole in Cartograph after reviewing every change in it.
 Recording a reading and moving a project are proposals of their own.
 
 Work this way, every time:
+- First, call decision_model. When it is ready, call relevant with what
+  the work is about before you choose what a draft names (the outcomes it
+  serves, its programme, indicators, groups, data sources), and offer
+  that shortlist first: the decision model is Cartograph's way of finding
+  what in the workspace is relevant, and it is quicker and more complete
+  than reading every register. It ranks and never decides. When it is
+  not ready, relevant still ranks by shared words, so read the register
+  more fully before offering choices.
 0. Ask your person once, at the start, how they want to work, as a
    choice: with suggestions, or step by step. With suggestions, at every
    step you offer two to four concrete options, drawn from the documents
@@ -496,6 +504,11 @@ type (
 		Level string `json:"level,omitempty" jsonschema:"for a Goal, the level: goal, objective or outcome"`
 		Text  string `json:"text" jsonschema:"what the new thing would say: its name and statement, in the document's words"`
 	}
+	relevantIn struct {
+		Text  string   `json:"text" jsonschema:"what the work is about, and what has been written of it so far"`
+		Kinds []string `json:"kinds,omitempty" jsonschema:"the kinds to rank, such as Goal, KPI, Programme, BeneficiaryGroup, DataSource; every kind a piece of work names when left out"`
+		Level string   `json:"level,omitempty" jsonschema:"for Goal, the level to rank among: goal, objective or outcome"`
+	}
 	startWorkIn struct {
 		Title       string `json:"title" jsonschema:"what this piece of work is, as your person would say it"`
 		Description string `json:"description,omitempty" jsonschema:"what it is for, and what it will hold"`
@@ -704,6 +717,19 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 		"judged by Cartograph's decision model where one is configured, else by the words they share (by says which). Work on a match instead of defining another.", Annotations: readOnly},
 		func(c call, in matchIn) (any, error) {
 			return map[string]any{"matches": e.MatchExisting(c.ctx, in.Kind, in.Level, in.Text)}, nil
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "decision_model", Description: "Call first, once a session: whether Cartograph has a decision model configured and answering now, whatever backs it. " +
+		"When it is ready, relevant, match and understand rank by meaning; when it is not, by shared words only, so read the registers more fully yourself.", Annotations: readOnly},
+		func(c call, _ struct{}) (any, error) {
+			return e.DecisionModel(c.ctx), nil
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "relevant", Description: "What in the workspace is relevant to a piece of work: the likeliest few records of each kind, likeliest first, " +
+		"ranked by the decision model where one answers, else by shared words (available says which). Call it with what the work is about before choosing what a draft names, " +
+		"and offer its shortlist first. It ranks; it never decides: your person still chooses, and anything else in the register remains a choice.", Annotations: readOnly},
+		func(c call, in relevantIn) (any, error) {
+			return e.Relevant(c.ctx, in.Text, in.Kinds, in.Level, 0)
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "history", Description: "Every saved version of a manifest: who saved it, when and why.", Annotations: readOnly},

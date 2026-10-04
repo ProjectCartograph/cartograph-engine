@@ -78,6 +78,24 @@ type answer struct {
 }
 
 // Decide asks the sidecar every question in one call.
+// Ready asks the sidecar's GET /ready, which answers 200 once its model
+// is loaded.
+func (d *Decider) Ready(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.url+"/ready", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := d.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("%w: %v", decide.ErrUnavailable, err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%w: the sidecar answered %s", decide.ErrUnavailable, resp.Status)
+	}
+	return nil
+}
+
 func (d *Decider) Decide(ctx context.Context, state string, questions map[string]decide.Question) (map[string]decide.Answer, error) {
 	body := struct {
 		State     string              `json:"state"`
