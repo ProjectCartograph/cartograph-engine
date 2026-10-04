@@ -9,10 +9,12 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
-// A piece of work is settled in phases, and within each, what a thing
-// answers to before the thing: every gap's states before the outcomes, the
-// indicators' figures after everything is defined, and the links last. Nobody
-// has to tell an agent this; the work says it.
+// A piece of work walks the order once, from the top (TAXONOMY.md D28):
+// the objective, then the outcome under it, then the indicator measuring
+// it, then the gap that names both. Each is finished in one visit (what it
+// is, its figures, its links), and a check that a later manifest settles
+// by naming an earlier one waits for that later one. Nobody has to tell an
+// agent this; the work says it.
 func TestTheOrderOfWork(t *testing.T) {
 	e := newTestEngine(t)
 	ctx := context.Background()
@@ -55,13 +57,27 @@ func TestTheOrderOfWork(t *testing.T) {
 			fmt.Printf("%2d %-7s %-5s %-18s %-22s %s\n", i+1, task.Phase, task.Kind, task.Name, task.Check, task.Message)
 		}
 	}
-	if w.Tasks[0].Kind != "Gap" || w.Tasks[0].Phase != "define" {
-		t.Fatalf("the work starts with %+v, want the gap's definition", w.Tasks[0])
+	if w.Tasks[0].Kind != "Goal" || w.Tasks[0].ID != "obj-sound" {
+		t.Fatalf("the work starts with %+v, want the objective", w.Tasks[0])
 	}
-	states, statement := index("Gap", "gap-states"), index("Goal", "smart-specific")
-	target, measured, aligned := index("KPI", "kpi-target"), index("Gap", "gap-measured"), index("KPI", "kpi-aligned")
-	if !(states < statement && statement < target && target < measured && target < aligned) {
-		t.Fatalf("out of order: gap states %d, outcome statement %d, KPI target %d, gap measured %d, KPI aligned %d", states, statement, target, measured, aligned)
+	// One visit per manifest: once the work moves on from one, it never
+	// comes back to it.
+	left := map[string]bool{}
+	for i, task := range w.Tasks {
+		key := task.Kind + "/" + task.ID
+		if left[key] {
+			t.Fatalf("task %d goes back to %s: %+v", i, key, task)
+		}
+		if i > 0 {
+			if prev := w.Tasks[i-1].Kind + "/" + w.Tasks[i-1].ID; prev != key {
+				left[prev] = true
+			}
+		}
+	}
+	statement, target, aligned := index("Goal", "smart-specific"), index("KPI", "kpi-target"), index("KPI", "kpi-aligned")
+	states, measured := index("Gap", "gap-states"), index("Gap", "gap-measured")
+	if !(statement < target && target < aligned && aligned < states && states < measured) {
+		t.Fatalf("out of order: outcome statement %d, KPI target %d, KPI aligned %d, gap states %d, gap measured %d", statement, target, aligned, states, measured)
 	}
 	if len(w.Tasks[measured].Choices) == 0 || len(w.Tasks[index("Gap", "gap-segments")].Choices) == 0 {
 		t.Fatalf("linking a gap offers no existing KPIs or segments: %+v", w.Tasks[measured])

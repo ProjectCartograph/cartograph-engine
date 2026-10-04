@@ -632,8 +632,10 @@ needs assessment; problem tree to objective tree; a plan's situational
 analysis before its goals). The outcome names the change; a gap's desired
 state is where that change should land on one measure, and may be an
 ideal that a dated target approaches over several periods. One outcome can
-close several gaps. In practice the two are revisited together, which is
-why Cartograph lets either be recorded first and linked from the gap's side.
+close several gaps. In practice the two used to be revisited together, and
+Cartograph let either be recorded first and linked from the gap's side.
+D28 settles the order: the outcome is written first, as the state the
+purpose calls for, and the gap after it, naming it.
 
 ### D26. Attainable, measures first, and each aim's context: owner and horizon. *(resolved)*
 
@@ -712,3 +714,81 @@ holds. Permissions per manifest (an access list on each project): the
 team a manifest names already says whose work it is. Provisioning by
 SCIM: enrolment at sign-in covers what Cartograph needs; a SCIM
 endpoint is an adapter a deployment may add later.
+
+### D28. The record is a directed acyclic graph, written from the top down. *(resolved)*
+
+**The discipline.** A results chain and a strategy map read in one
+direction: purpose, goals, objectives, outcomes, then the measures and
+the work that delivers them (logframe, results-based management, the
+balanced scorecard's strategy map). Planning walks it top-down: what
+the organisation sets out to do comes before what it will do about it.
+A reference that goes both ways is a loop, and a loop has no first
+step.
+
+**What was wrong.** The links all pointed one way (a gap names its
+outcome, a KPI its aims, a project its programme), but the order of
+work ran the other way. The plan for an objective started with its gaps,
+which name an outcome that did not exist yet, so the gap was saved half
+done and opened again once the outcome was written. The worklist settled
+every record's definition, then every record's figures, then every
+record's links, so each record was visited three times. The graph was
+drawn round a ring. People and agents alike went back and forth, and a
+new workspace showed no first step at all: "New" asked only about
+projects, programmes and operations, with nothing in the strategy for
+them to serve.
+
+**What Cartograph does.**
+- One order of work, held by the engine (`internal/engine/order.go`) and
+  served at `GET /order`: Purpose; Goal at each level (goal, objective,
+  outcome); KPI; Gap; Assumption; Programme; Operation; Project;
+  StakeholderMap; then KPIReadings, which are a KPI's data. The
+  registers (Team, Resource, Unit, ReportingCycle, Segment, DataSource,
+  FundingSource, BeneficiaryGroup) are the roots: anything may name
+  them, they name only each other, and they are added when a field
+  first asks for one.
+- **A manifest names only what comes before it**, or one of its own kind
+  in a tree (a team's parent, a goal's parent at the level above, a
+  project's parent). A test fails the build on a schema reference that
+  points downstream. Saving a version refuses one that does, through a
+  generic reference such as a risk's dependency, and refuses a reference
+  that closes a loop. Until now a loop was advice. The save that closes
+  one is now refused. Only a reference being added is refused: one a
+  record already held is kept, and an import brings records in as they
+  were saved, so no deployed record is broken (VERSIONING.md). A loop
+  already in a store is still reported by its check until somebody
+  removes it. A programme that waits on a project
+  says so from the project's side, with `direction: neededBy`, so
+  nothing is lost.
+- **The work walks the order once.** What a new thing names exists
+  before it is written; what will name it is written after it. The
+  guide's plan says which is which (`when`: before or after), and the
+  worklist finishes each record in one visit (what it is, its figures,
+  its links to what is already there) before the next one down. A check
+  that a later record settles by naming an earlier one (an outcome
+  waiting for the gap that closes it) is listed where that later record
+  is written, so it reads as the next thing to write, not as something
+  to go back to.
+- **A new workspace starts at its purpose.** "New" shows the stages in
+  order, with the one to write now first and the ones still waiting on a
+  stage before them marked, and MCP's `next` with no work says the same.
+- **The graph is drawn in layers**, the registers in the first band and
+  one band per stage below them, so every edge runs upwards
+  (`CARTOGRAPH_GRAPH_LAYOUT`, `layered` by default).
+
+**Departure.** Kaufman's needs assessment finds gaps before outcomes are
+written (D24's addendum). Cartograph writes the outcome first, as the
+state the purpose calls for, and the gap after it, naming it. A finding
+recorded before anyone has written the outcome it bears on waits in the
+documents until the outcome is written. This is the price of never
+opening a finished record again. The discipline's order of discovery is
+kept in what the gap says (where things are now, measured against the
+purpose); only the order of writing changes.
+
+In the running example, the ministry writes its purpose, the goal *make
+sure every child can read with understanding*, the objective under it,
+and the outcome *children read fluently by the end of grade 3*. Next it
+writes the grade 3 reading KPI that measures the outcome, then the
+reading gap, which names both. The Early Reading Programme cites the gap
+and is judged on the KPI. The two projects name the programme and the
+outcome, and the reading check names the assessment service it lands
+in. Nothing written earlier is opened again.

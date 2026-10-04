@@ -70,7 +70,7 @@ func adapter(own string) []string {
 		"internal/store/conformance", "internal/codec/conformance", "internal/fanout/conformance",
 		"internal/crdt/automerge", "internal/crdt/conformance",
 		"internal/reporting/postgres", "internal/reporting/conformance",
-		"internal/layout/force", "internal/layout/conformance",
+		"internal/layout/force", "internal/layout/layered", "internal/layout/conformance",
 	}
 	var forbid []string
 	for _, s := range siblings {
@@ -148,6 +148,7 @@ var rules = map[string][]string{
 	// A layout places points; it knows its port and nothing else, and its
 	// suite holds any layout to the same promises.
 	"internal/layout/force":       join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/force")),
+	"internal/layout/layered":     join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/layered")),
 	"internal/layout/conformance": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/conformance")),
 	"internal/auth/access":        join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/access")),
 	"internal/auth/proxy":         join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/proxy")),

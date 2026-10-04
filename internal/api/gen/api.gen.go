@@ -84,6 +84,24 @@ func (e GoalCheckState) Valid() bool {
 	}
 }
 
+// Defines values for GuidePlanItemWhen.
+const (
+	After  GuidePlanItemWhen = "after"
+	Before GuidePlanItemWhen = "before"
+)
+
+// Valid indicates whether the value is a known member of the GuidePlanItemWhen enum.
+func (e GuidePlanItemWhen) Valid() bool {
+	switch e {
+	case After:
+		return true
+	case Before:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ManifestCheckState.
 const (
 	ManifestCheckStateBlock ManifestCheckState = "block"
@@ -99,6 +117,30 @@ func (e ManifestCheckState) Valid() bool {
 	case ManifestCheckStateOk:
 		return true
 	case ManifestCheckStateWarn:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OrderStageState.
+const (
+	Done    OrderStageState = "done"
+	Next    OrderStageState = "next"
+	Ready   OrderStageState = "ready"
+	Waiting OrderStageState = "waiting"
+)
+
+// Valid indicates whether the value is a known member of the OrderStageState enum.
+func (e OrderStageState) Valid() bool {
+	switch e {
+	case Done:
+		return true
+	case Next:
+		return true
+	case Ready:
+		return true
+	case Waiting:
 		return true
 	default:
 		return false
@@ -703,11 +745,17 @@ type GraphNode struct {
 	Id       string `json:"id"`
 	Kind     string `json:"kind"`
 
+	// Layer Its band in the graph: 0 for the registers, then one per stage, in the order of work. Every edge runs to a lower layer or along its own.
+	Layer *int `json:"layer,omitempty"`
+
 	// Level A goal's level (goal, objective, outcome); absent for every other kind.
 	Level *string `json:"level,omitempty"`
 
 	// Name metadata.name
 	Name string `json:"name"`
+
+	// Stage The key of the stage of the order of work it is written in; absent for a register.
+	Stage *string `json:"stage,omitempty"`
 
 	// X Where the engine's layout placed it, in units an interface scales to its screen.
 	X float64 `json:"x"`
@@ -734,7 +782,7 @@ type Guide struct {
 	Levels *map[string]string `json:"levels,omitempty"`
 	Locale string             `json:"locale"`
 
-	// Plan The work around this kind, in order, from the flows' links: what it answers to, settled before it, deepest first (for an objective, the gaps its outcomes close, each measured by a KPI and observed in segments, then the outcomes).
+	// Plan The work around this kind, in the order of work, from the flows' links: what it names, which must exist before it (when before), then what will name it, each after what it names in turn (when after; for an objective, its outcomes, the KPI measuring each, then the gaps they close).
 	Plan *[]GuidePlanItem `json:"plan,omitempty"`
 
 	// Purpose The organisation's vision and mission, for a Goal.
@@ -808,7 +856,13 @@ type GuidePlanItem struct {
 
 	// Link How the two are joined, as the holding kind and the path that names the other.
 	Link string `json:"link"`
+
+	// When before for what the new thing names, which must exist first; after for what will name it, written once it exists.
+	When GuidePlanItemWhen `json:"when"`
 }
+
+// GuidePlanItemWhen before for what the new thing names, which must exist first; after for what will name it, written once it exists.
+type GuidePlanItemWhen string
 
 // GuidePoor defines model for GuidePoor.
 type GuidePoor struct {
@@ -898,6 +952,40 @@ type ManifestView struct {
 	Version  Version  `json:"version"`
 	Yaml     string   `json:"yaml"`
 }
+
+// Order defines model for Order.
+type Order struct {
+	// Next The key of the stage to write now; absent once every stage a plan needs has a record.
+	Next *string `json:"next,omitempty"`
+
+	// Registers The root kinds, each with how many records it has.
+	Registers []KindCount  `json:"registers"`
+	Stages    []OrderStage `json:"stages"`
+}
+
+// OrderStage defines model for OrderStage.
+type OrderStage struct {
+	// After The stages that need a record before this one can be written well.
+	After *[]string `json:"after,omitempty"`
+	Count int       `json:"count"`
+	Key   string    `json:"key"`
+	Kind  string    `json:"kind"`
+
+	// Level For a Goal, the level the stage writes.
+	Level *string `json:"level,omitempty"`
+
+	// Optional A stage a workspace may leave empty.
+	Optional *bool `json:"optional,omitempty"`
+
+	// State done when it has a record; next for the stage to write now; ready when what it names is there; waiting while a stage before it has no record.
+	State OrderStageState `json:"state"`
+
+	// Waiting The stages it waits on, while it waits.
+	Waiting *[]string `json:"waiting,omitempty"`
+}
+
+// OrderStageState done when it has a record; next for the stage to write now; ready when what it names is there; waiting while a stage before it has no record.
+type OrderStageState string
 
 // Person One entry on the access list: someone who may sign in, never a manifest (TAXONOMY.md D27).
 type Person struct {
@@ -1766,6 +1854,9 @@ type ServerInterface interface {
 	// PutWorking Stage a draft. Writes to the vault's staging directory, not to the vault's own tree, and does not include the ref: autosave is not a decision to add something to the vault. A save promotes it.
 	// (PUT /manifests/{kind}/{id}/working)
 	PutWorking(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
+	// GetOrder The order of work, and how far the workspace has got along it
+	// (GET /order)
+	GetOrder(w http.ResponseWriter, r *http.Request)
 	// GetPresenceDocument The document that carries presence for screens not about one manifest
 	// (GET /presence)
 	GetPresenceDocument(w http.ResponseWriter, r *http.Request)
@@ -3537,6 +3628,20 @@ func (siw *ServerInterfaceWrapper) PutWorking(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
+// GetOrder operation middleware
+func (siw *ServerInterfaceWrapper) GetOrder(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrder(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetPresenceDocument operation middleware
 func (siw *ServerInterfaceWrapper) GetPresenceDocument(w http.ResponseWriter, r *http.Request) {
 
@@ -4080,6 +4185,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/working", wrapper.GetWorking)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/manifests/{kind}/{id}/working", wrapper.PutWorking)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/order", wrapper.GetOrder)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/kinds", wrapper.ListKinds)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/flows", wrapper.ListFlows)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/flows/{kind}", wrapper.GetFlow)
@@ -7849,6 +7955,55 @@ func (response PutWorking422JSONResponse) VisitPutWorkingResponse(w http.Respons
 	return err
 }
 
+type GetOrderRequestObject struct {
+}
+
+type GetOrderResponseObject interface {
+	VisitGetOrderResponse(w http.ResponseWriter) error
+}
+
+type GetOrder200JSONResponse Order
+
+func (response GetOrder200JSONResponse) VisitGetOrderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrder401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetOrder401JSONResponse) VisitGetOrderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrder403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetOrder403JSONResponse) VisitGetOrderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetPresenceDocumentRequestObject struct {
 }
 
@@ -9089,6 +9244,9 @@ type StrictServerInterface interface {
 	// PutWorking Stage a draft. Writes to the vault's staging directory, not to the vault's own tree, and does not include the ref: autosave is not a decision to add something to the vault. A save promotes it.
 	// (PUT /manifests/{kind}/{id}/working)
 	PutWorking(ctx context.Context, request PutWorkingRequestObject) (PutWorkingResponseObject, error)
+	// GetOrder The order of work, and how far the workspace has got along it
+	// (GET /order)
+	GetOrder(ctx context.Context, request GetOrderRequestObject) (GetOrderResponseObject, error)
 	// GetPresenceDocument The document that carries presence for screens not about one manifest
 	// (GET /presence)
 	GetPresenceDocument(ctx context.Context, request GetPresenceDocumentRequestObject) (GetPresenceDocumentResponseObject, error)
@@ -10698,6 +10856,30 @@ func (sh *strictHandler) PutWorking(w http.ResponseWriter, r *http.Request, kind
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PutWorkingResponseObject); ok {
 		if err := validResponse.VisitPutWorkingResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetOrder operation middleware
+func (sh *strictHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
+	var request GetOrderRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOrder(ctx, request.(GetOrderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOrder")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetOrderResponseObject); ok {
+		if err := validResponse.VisitGetOrderResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

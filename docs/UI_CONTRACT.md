@@ -48,6 +48,11 @@ through the client port.
 | Problems | the `Refused` error of a validating save | `{path, message}`, landed on the field at `path` |
 | Settings | `Settings()` | The organisation's words for levels and kinds, examples per field |
 
+Beside them, the order of work (`GET /order`, TAXONOMY.md D28) says which
+stage of the strategy to write now and which stages are still waiting on
+one before them. An interface leads a person with it ("New" starts
+there) rather than ordering the kinds itself.
+
 A kind with no flow is a sheet: one step, every field of the schema in
 the schema's order. The directory kinds (Team, DataSource, Resource,
 ReportingCycle) are sheets.

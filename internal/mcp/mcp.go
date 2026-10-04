@@ -86,8 +86,16 @@ Work this way, every time:
    (Claude Code's AskUserQuestion, for one), ask with it, so your person
    picks rather than types; otherwise number the options. Always leave
    room for their own answer, and never pick for them.
-1. Name what the person wants in Cartograph's terms: which kind, and for
-   a Goal which level (goal, objective, outcome). Ask if unsure.
+1. Cartograph's record is a directed acyclic graph, written from the top
+   down in one order: purpose, goals, objectives, outcomes, the KPIs
+   that measure them, the gaps they close, then programmes, operations
+   and projects. Each thing names only what comes before it, so what it
+   names already exists when it is written, and nothing finished is
+   opened again to link it to something later. When your person does not
+   say where to start, or the workspace is new, call next without work:
+   it names the stage to write now, from the purpose down. Then name what
+   the person wants in Cartograph's terms: which kind, and for a Goal
+   which level (goal, objective, outcome). Ask if unsure.
    Documents your person gives you are evidence, not a structure: plans
    use their own words, and the same word means different things in
    different plans. Call taxonomy, and record each thing a document says
@@ -103,14 +111,16 @@ Work this way, every time:
    fill in, and the organisation's existing records. Use its words; they
    are the discipline's. If an existing record already says what the
    person wants, work on that one instead of defining another.
-3. Follow the guide's plan, in its order, before the kind's own steps:
-   it is what the new thing answers to, deepest first. Asked for an
-   objective, ask first which gaps it must close (offer the plan's
-   existing gaps by name); for each, how it is measured (a KPI) and where
-   it was found (segments); then the outcome closing each; then the
-   objective. When nothing existing fits, define it with the person, with
-   guide for its kind, then come back. Never leave a link the plan names
-   unmade without asking.
+3. Follow the guide's plan, in its order. Its "before" items are what
+   the new thing names: each must exist before the new thing is written
+   (offer the existing records by name; define one with guide for its
+   kind only when none fits). Then define the new thing, whole. Its
+   "after" items are what will name it, written next, each after what it
+   names in turn: for an objective, its outcomes, the KPI measuring each,
+   then the gaps they close. A link is always made from the later thing
+   to the earlier one, as that later thing is written; never go back to
+   an earlier record to add it. Never leave a link the plan names unmade
+   without asking.
 4. Start each piece of work with start_work, titled as your person
    would say it, so it is one change set they review on its own. Then
    start the draft at once: as soon as you know the kind and a working
@@ -129,10 +139,11 @@ Work this way, every time:
 6. Cartograph sets the order of the work; you do not have to work it
    out. Every save_draft, edit_draft and checks you call with work (every
    Kind/id you are defining together) ends with next: do that, then the
-   next. It settles first what each thing is (every gap's two states,
-   then the outcomes and aims), then the numbers (baselines and targets),
-   then the links (which outcome each gap closes, which aims each KPI
-   measures). The next tool gives the same, with what follows.
+   next. It walks the work once, from the top: each manifest is finished
+   in one visit (what it is, then its numbers, then its links to what is
+   already there) before the next one down, and a check that something
+   later settles by naming it is placed with that later thing. The next
+   tool gives the same, with what follows.
 7. Take what the documents your person gave you say: figures, dates,
    sources and owners, quoting where each came from. Ask your person
    only for what they do not say, a step at a time, with examples from
@@ -470,7 +481,7 @@ type (
 	}
 	nextIn struct {
 		ChangeSet string   `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
-		Work      []string `json:"work" jsonschema:"every manifest in this piece of work, as Kind/id"`
+		Work      []string `json:"work,omitempty" jsonschema:"every manifest in this piece of work, as Kind/id; leave it out for the stage of the workspace to write now"`
 		Locale    string   `json:"locale,omitempty"`
 	}
 	editIn struct {
@@ -749,9 +760,11 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				"Record it as Cartograph's kind and level, keep the document's wording in its statement, and cite the document as its source."}, nil
 		})
 
-	tool(s, o, person, &sdk.Tool{Name: "next", Description: "What to do next across a piece of work, in the order Cartograph settles a strategy: " +
-		"first what each thing is (every gap's states, then the outcomes and aims), then the numbers (baselines and targets, from the documents your person gave you), " +
-		"then the links (which outcome each gap closes, which aims each KPI measures). Pass every manifest you are working on. Call it whenever you are unsure what comes next.", Annotations: readOnly},
+	tool(s, o, person, &sdk.Tool{Name: "next", Description: "What to do next, in the order of work: the record is a directed acyclic graph, written from the top down " +
+		"(purpose, goals, objectives, outcomes, KPIs, gaps, then programmes, operations and projects), each thing naming only what comes before it. " +
+		"With work (every manifest you are working on), the next open check across it: each manifest is finished in one visit, what it is, its numbers " +
+		"(from the documents your person gave you), then its links to what is already there, before the next one down. Without work, the stage of the workspace " +
+		"to write now, and how far each has got: an empty workspace starts at its purpose. Call it whenever you are unsure what comes next.", Annotations: readOnly},
 		func(c call, in nextIn) (any, error) {
 			cs, c, found, err := c.inChangeSet(in.ChangeSet, false)
 			if err != nil {
@@ -773,7 +786,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				}
 			}
 			if len(work) == 0 {
-				return nil, fmt.Errorf("name the manifests you are working on in work, as Kind/id, or draft one into your change set first")
+				return workspaceNext(c.ctx, e)
 			}
 			w, err := e.Work(c.ctx, work, in.Locale)
 			if err != nil {
@@ -1005,6 +1018,32 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 }
 
 // nextLine is one task as an agent reads it: what, where, and how.
+// workspaceNext is where a workspace stands in the order of work, and the
+// stage to write now.
+func workspaceNext(ctx context.Context, e *engine.Engine) (any, error) {
+	o, err := e.WorkspaceOrder(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]any{"stages": o.Stages, "registers": o.Registers}
+	if o.Next == "" {
+		out["next"] = "Every stage a plan needs has a record. Ask your person what they want to define, and start with what it names."
+		return out, nil
+	}
+	for _, st := range o.Stages {
+		if st.Key != o.Next {
+			continue
+		}
+		what := st.Kind
+		if st.Level != "" {
+			what += " at level " + st.Level
+		}
+		out["next"] = fmt.Sprintf("Next: the %s stage. Nothing after it can be written well until it has a record, because what comes later names it. "+
+			"Call guide for %s, start_work, and define one with your person.", st.Key, what)
+	}
+	return out, nil
+}
+
 func nextLine(t engine.Task) string {
 	name := t.Name
 	if name == "" {
@@ -1034,8 +1073,9 @@ type guided struct {
 // nextSteps is the method, named by tool, at the end of every guide.
 var nextSteps = []string{
 	"If an existing record already says what your person wants, work on it (get it, then edit_draft your changes) instead of defining another.",
-	"Start with plan, in its order, before this kind's own steps: for each item, ask its question with the existing records offered by name; " +
-		"when none fits, define one with guide for its kind and its own plan. For an objective that means the gaps first, each measured by a KPI and observed in segments, then the outcome closing each.",
+	"Follow plan in its order: its before items are what this kind names, which must exist first (ask its question with the existing records offered by name; " +
+		"when none fits, define one with guide for its kind); then this kind's own steps; then its after items, each naming what came before it. " +
+		"For an objective that means the objective, then its outcomes, the KPI measuring each, and the gaps they close. Never go back to a finished record to link it to a later one: the later one names it.",
 	"Settle each step with your person, in order, using the field guides and their examples; never invent a figure, date, source or owner.",
 	"Create each draft with save_draft as soon as you know its name, then edit_draft field by field; pass work (every Kind/id you are defining together) and meet every open check it returns, its own and around.",
 	"Then propose: propose_save for one manifest, propose_set for several that reference each other. Your work is not done until it is proposed; your person accepts it in Cartograph, not in this conversation.",

@@ -9,11 +9,14 @@ import (
 )
 
 // The work around a manifest. Defining one thing well means defining what
-// it answers to as well: an objective is met through outcomes, an outcome
+// it leads to as well: an objective is met through outcomes, an outcome
 // is the closing of a gap, and a gap is only usable once it is measured
 // and scoped. The flows say which links finish which side (a link's
-// needs), so the order of work is read from the contract, never written
-// per kind here, and every agent and interface is led through it alike.
+// needs), and the order of work says which comes first (TAXONOMY.md D28):
+// what a thing names exists before it, and what names it comes after, so
+// nothing is opened again to be linked. Both are read from the contract,
+// never written per kind here, and every agent and interface is led
+// through it alike.
 
 // relation is one link a flow describes: Holder holds Path naming Named.
 type relation struct {
@@ -85,6 +88,9 @@ type PlanItem struct {
 	// Existing is the organisation's records of that kind (and level) to
 	// offer before defining another.
 	Existing []Candidate `json:"existing,omitempty"`
+	// When is "before" for what the new thing names, which must exist
+	// first, and "after" for what will name it, written once it exists.
+	When string `json:"when"`
 }
 
 type planNode struct{ kind, level string }
@@ -97,10 +103,12 @@ func (n planNode) String() string {
 }
 
 // Plan is the order of work for defining kind at level: everything the
-// flows say it needs, deepest first, so the person is asked first about
-// what the new thing answers to (for an objective: the gaps, how each is
-// measured and where it was found, the outcome closing each) and the
-// thing itself last.
+// flows say it needs, in the order of work. What it names comes before it
+// (a KPI's source and cycle, a gap's indicator and segments), then the
+// thing itself, then what will name it, each after what it names in turn
+// (for an objective: the outcomes under it, the indicator measuring each,
+// and the gaps each closes). A register asked for on the way is placed
+// just before what asks for it.
 func (e *Engine) Plan(ctx context.Context, kind, level, locale string) ([]PlanItem, error) {
 	rels, err := e.relations()
 	if err != nil {
@@ -158,8 +166,42 @@ func (e *Engine) Plan(ctx context.Context, kind, level, locale string) ([]PlanIt
 		}
 	}
 	expand(planNode{kind, level}, 0)
+	for i := range out {
+		out[i].When = "after"
+	}
+	n := len(out)
 	e.holderNeeds(rels, planNode{kind, level}, &out, seen, bundle, existing)
+	for i := n; i < len(out); i++ {
+		out[i].When = "before"
+	}
+	sortPlan(out)
 	return out, nil
+}
+
+// sortPlan puts a plan in the order of work: what comes before the new
+// thing, then what comes after it, each by its place in the order, and a
+// register just before the first item that asks for it.
+func sortPlan(out []PlanItem) {
+	place := func(p PlanItem) (int, int) {
+		r := rank(p.Kind, p.Level)
+		if r < len(registers) {
+			k, l, _ := strings.Cut(p.For, " (")
+			return rank(k, strings.TrimSuffix(l, ")")), 0
+		}
+		return r, 1
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if a.When != b.When {
+			return a.When == "before"
+		}
+		ra, sa := place(a)
+		rb, sb := place(b)
+		if ra != rb {
+			return ra < rb
+		}
+		return sa < sb
+	})
 }
 
 // holderNeeds adds what n should name itself: a gap's indicator and

@@ -5,7 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 // seededEngine returns an engine with one Team, DataSource,
@@ -15,7 +18,17 @@ import (
 // every subtest below shares this one instance safely.
 func seededEngine(t *testing.T) *engine.Engine {
 	t.Helper()
-	e := newTestEngine(t)
+	return seededEngineOver(t, memory.NewManifestStore())
+}
+
+// seededEngineOver is seededEngine over a store the test keeps, to write
+// into it behind the engine's back what an older engine allowed.
+func seededEngineOver(t *testing.T, ms store.ManifestStore) *engine.Engine {
+	t.Helper()
+	e, err := engine.New(ms, memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.Background()
 
 	commit := func(kind, id, actor, y string) {

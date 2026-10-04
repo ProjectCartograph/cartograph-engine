@@ -190,10 +190,25 @@ func (e *Engine) validate(ctx context.Context, kind string, yamlBytes []byte, ov
 		return doc, problems, nil
 	}
 
+	id, _ := docID(doc)
 	if spec.Rules != nil {
-		id, _ := docID(doc)
 		for _, p := range spec.Rules(doc, kit.RuleContext{ID: id, Lookup: l}) {
 			problems = append(problems, Problem(p))
+		}
+	}
+	// The record stays a directed acyclic graph (TAXONOMY.md D28). A kind
+	// rule that already refuses a loop on a path has said it once. An
+	// import brings in records as they were saved, so it is held to what
+	// they held then.
+	if overlay == nil {
+		said := map[string]bool{}
+		for _, p := range problems {
+			said[p.Path] = true
+		}
+		for _, p := range e.orderProblems(kind, id, doc, l) {
+			if !said[p.Path] {
+				problems = append(problems, p)
+			}
 		}
 	}
 

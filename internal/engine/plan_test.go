@@ -8,9 +8,11 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
-// Defining an objective starts with what it answers to: the gaps its
-// outcomes close, how each is measured and where it was found, then the
-// outcomes; the order comes from the flows' links.
+// Defining an objective leads to what comes after it, in the order of
+// work (TAXONOMY.md D28): the outcomes under it, the indicator measuring
+// each, then the gaps they close, each found somewhere. Everything is
+// written after what it names, so nothing is opened again to be linked;
+// the links come from the flows.
 func TestThePlanForAnObjective(t *testing.T) {
 	e := newTestEngine(t)
 	ctx := context.Background()
@@ -32,13 +34,18 @@ func TestThePlanForAnObjective(t *testing.T) {
 		at[name] = p
 	}
 	got := strings.Join(order, " ")
-	for _, want := range []string{"Gap KPI", "Goal/outcome"} {
+	for _, want := range []string{"Goal/outcome", "KPI", "Segment Gap"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("plan %q lacks %q", got, want)
 		}
 	}
-	if strings.Index(got, "Gap") > strings.Index(got, "Goal/outcome") || !strings.Contains(got, "Segment") {
-		t.Fatalf("plan %q: the gap, measured and scoped, comes before the outcome that closes it", got)
+	if !(strings.Index(got, "Goal/outcome") < strings.Index(got, "KPI") && strings.Index(got, "KPI") < strings.Index(got, "Gap")) {
+		t.Fatalf("plan %q: the outcome comes first, then the indicator, then the gap that names both", got)
+	}
+	for _, p := range plan {
+		if p.When != "after" {
+			t.Fatalf("an objective names nothing the plan holds, so all of it comes after: %+v", p)
+		}
 	}
 	if g := at["Gap"]; g.Check != "closes-gap" || g.Ask == "" || len(g.Existing) == 0 || g.For != "Goal (outcome)" {
 		t.Fatalf("the gap step says too little: %+v", g)

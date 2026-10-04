@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 func programmeChecksByID(t *testing.T, e *engine.Engine, id string) map[string]engine.ProgrammeCheck {
@@ -114,7 +115,8 @@ func TestProgrammeChecksJudgeable(t *testing.T) {
 // A loop between programmes is the fact a programme's own definition
 // cannot show, and no check on a programme may ever refuse a save.
 func TestProgrammeChecksCycle(t *testing.T) {
-	e := seededEngine(t)
+	ms := memory.NewManifestStore()
+	e := seededEngineOver(t, ms)
 	named := func(id, name, extra string) string {
 		return strings.Replace(programmeYAML(id, extra), "  name: "+id+"\n", "  name: "+name+"\n", 1)
 	}
@@ -126,8 +128,9 @@ func TestProgrammeChecksCycle(t *testing.T) {
 	if got := programmeChecksByID(t, e, "alpha")["risks-dependency-cycle"]; got.State != "ok" {
 		t.Fatalf("one edge is not a loop, got %+v", got)
 	}
-	mustCommit(t, e, "Programme", "beta", "local",
-		named("beta", "Curriculum", dependsOn("Programme", "alpha", "")))
+	// Closing it is refused now (TAXONOMY.md D28); a store written before
+	// may hold the loop, and the check still reads it.
+	writeBehind(t, ms, "Programme", "beta", named("beta", "Curriculum", dependsOn("Programme", "alpha", "")))
 
 	got := programmeChecksByID(t, e, "alpha")["risks-dependency-cycle"]
 	if got.State != "warn" {

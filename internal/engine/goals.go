@@ -507,7 +507,7 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 				Message: "Closes " + englishList(closing) + "."})
 		} else {
 			checks = append(checks, GoalCheck{ID: "closes-gap", State: goalCheckWarn,
-				Message: "No gap names this outcome yet. Say which gap it closes, or define the gap first."})
+				Message: "No gap names this outcome yet. Write the gap it closes next; the gap names it."})
 		}
 	}
 

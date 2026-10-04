@@ -288,8 +288,9 @@ func TestADraftHearsWhatTheWorkAroundItLacks(t *testing.T) {
 }
 
 // The agent is told what comes next, in Cartograph's order, without
-// anyone telling it the order: a gap's states before the outcome it
-// closes is aligned to anything.
+// anyone telling it the order: the record is written from the top down
+// (TAXONOMY.md D28), so the outcome is finished before the gap that
+// names it.
 func TestTheAgentIsToldWhatComesNext(t *testing.T) {
 	_, _, cs := setup(t, nil)
 	gap := map[string]any{"apiVersion": "cartograph/v1", "kind": "Gap", "metadata": map[string]any{"id": "gap-bruising", "name": "Bruised on arrival"},
@@ -298,12 +299,26 @@ func TestTheAgentIsToldWhatComesNext(t *testing.T) {
 		"spec": map[string]any{"level": "outcome"}}
 	callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "o-sound", "manifest": outcome})
 	res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Gap", "id": "gap-bruising", "manifest": gap, "work": []string{"Goal/o-sound"}})
-	if res.IsError || !strings.Contains(text, `Next (define): Gap`) || !strings.Contains(text, "gap-states") && !strings.Contains(text, "current state") {
-		t.Fatalf("save_draft does not lead with the gap's states: %s", text)
+	if res.IsError || !strings.Contains(text, `Next (define): Goal \"Fruit arrives sound\"`) {
+		t.Fatalf("save_draft does not lead with the outcome the gap names: %s", text)
 	}
 	res, text = callTool(t, cs, "next", map[string]any{"work": []string{"Goal/o-sound", "Gap/gap-bruising"}})
 	if res.IsError || !strings.Contains(text, `"then"`) || !strings.Contains(text, `"define"`) {
 		t.Fatalf("next: %s", text)
+	}
+}
+
+// With no work named, next says where the workspace stands in the order
+// of work: one that has only a team starts at its purpose.
+func TestANewWorkspaceStartsAtItsPurpose(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	res, text := callTool(t, cs, "next", map[string]any{})
+	if res.IsError || !strings.Contains(text, "Next: the purpose stage") || !strings.Contains(text, `"stages"`) || !strings.Contains(text, `"waiting"`) {
+		t.Fatalf("next on a new workspace: %s", text)
+	}
+	res, text = callTool(t, cs, "taxonomy", map[string]any{})
+	if res.IsError || strings.Index(text, `"Purpose"`) > strings.Index(text, `"Gap"`) || strings.Index(text, `"Gap"`) > strings.Index(text, `"Project"`) {
+		t.Fatalf("taxonomy is not in the order of work: %.600s", text)
 	}
 }
 

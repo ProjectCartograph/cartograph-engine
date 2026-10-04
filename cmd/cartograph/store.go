@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/access"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout/force"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout/layered"
 	"log/slog"
 	"os"
 	"sync"
@@ -82,6 +84,9 @@ type storeOptions struct {
 	// Reports is the reporting adapter: "computed" (the default),
 	// "postgres" (views, beside a Postgres store) or "off".
 	Reports string
+	// GraphLayout places the workspace graph: "layered" (the default) or
+	// "force".
+	GraphLayout string
 	// Access, when set, is access by role and team (docs/adr/0011): the
 	// store's access list, this mapping, and the access policy.
 	Access *engine.Directory
@@ -144,7 +149,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		counted := &countedBus{Bus: bus}
 		accessOpts, authz, bind := accessControl(o, postgres.NewAccessStore(pool))
 		e, err := engine.New(postgres.NewManifestStore(pool), postgres.NewOperationalStore(pool),
-			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(force.New()), engine.WithBundles(postgres.NewBundleStore(pool)))...)
+			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), engine.WithBundles(postgres.NewBundleStore(pool)))...)
 		if err != nil {
 			bus.Close()
 			pool.Close()
@@ -183,7 +188,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		bus := fanoutmemory.New()
 		counted := &countedBus{Bus: bus}
 		accessOpts, authz, bind := accessControl(o, v.Index().Access())
-		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(force.New()))...)
+		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)))...)
 		if err != nil {
 			bus.Close()
 			v.Close()
@@ -215,7 +220,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 	docs := sqlite.NewDocStore(db)
 	counted := &countedBus{Bus: bus}
 	accessOpts, authz, bind := accessControl(o, sqlite.NewAccessStore(db))
-	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(force.New()))...)
+	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)))...)
 	if err != nil {
 		bus.Close()
 		db.Close()
@@ -382,4 +387,13 @@ func localReports(o storeOptions, e *engine.Engine) reporting.Reporter {
 		return nil
 	}
 	return computed.Reporter{E: e}
+}
+
+// graphLayout is the layout the configuration names: layered unless it
+// asks for force.
+func graphLayout(name string) layout.Layout {
+	if name == "force" {
+		return force.New()
+	}
+	return layered.New()
 }

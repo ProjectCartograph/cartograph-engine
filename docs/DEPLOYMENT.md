@@ -33,6 +33,7 @@ prints the same table.
 | `CARTOGRAPH_DOC_CACHE` | `-doc-cache` | `1000` | Shared documents a replica keeps in memory, least recently used dropped first. A cache only: the store holds every change |
 | `CARTOGRAPH_COMPACT_AFTER` | `-compact-after` | `24h` | With a Postgres store, how old a version (never a manifest's latest) must be before it is kept as a patch against the one before it instead of whole. It is also how long a rolling upgrade from 2.2 has to finish, since a 2.2 replica cannot read a compacted version. `0` turns compaction off |
 | `CARTOGRAPH_REPORTS` | `-reports` | `computed` | Reporting (ADR 0014): `computed` from the engine on any store, `postgres` as views in a Postgres store, or `off` |
+| `CARTOGRAPH_GRAPH_LAYOUT` | `-graph-layout` | `layered` | How the workspace graph is placed: `layered`, a band per stage of the order of work from the top down, so every edge runs upwards (TAXONOMY.md D28), or `force`, a force-directed layout |
 | `CARTOGRAPH_MCP` | `-mcp` | `off` | `on` serves agents over MCP at `/api/v1/mcp` (ADR 0016) |
 | `CARTOGRAPH_MCP_AUTH` | `-mcp-auth` | `proxy` | Who authorizes agents: `cartograph`, Cartograph's own authorization server, or `proxy`, whatever authenticates every other request ("Agents" below) |
 | `CARTOGRAPH_MCP_ISSUER` | `-mcp-issuer` | empty | The authorization server MCP clients sign in with, published as protected resource metadata at `/.well-known/oauth-protected-resource`. With `CARTOGRAPH_MCP_AUTH=cartograph`, Cartograph's own public address |

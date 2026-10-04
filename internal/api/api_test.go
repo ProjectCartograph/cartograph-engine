@@ -850,3 +850,22 @@ func TestGuides(t *testing.T) {
 		t.Fatalf("an unknown kind: %d", got.StatusCode)
 	}
 }
+
+// An empty workspace starts at its purpose, and nothing after it is ready
+// before what it names has a record (TAXONOMY.md D28).
+func TestTheOrderOfAnEmptyWorkspace(t *testing.T) {
+	_, base := newTestServer(t)
+	resp := doJSON(t, http.MethodGet, base+"/order", nil, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	o := decode[apigen.Order](t, resp)
+	if o.Next == nil || *o.Next != "purpose" || o.Stages[0].State != "next" || len(o.Registers) == 0 {
+		t.Fatalf("order: %+v", o)
+	}
+	for _, st := range o.Stages[1:] {
+		if st.State != "waiting" || st.Waiting == nil {
+			t.Fatalf("stage %s is %s in an empty workspace", st.Key, st.State)
+		}
+	}
+}

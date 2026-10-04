@@ -18,19 +18,17 @@ func WithLayout(l layout.Layout) Option {
 	return func(e *Engine) { e.layout = l }
 }
 
-// graphOrder is the kinds in the order their groups go round the graph:
-// the strategy, the work that serves it, then what the work draws on.
-// Placing them in the engine draws the graph alike in every interface.
-var graphOrder = []string{
-	"Purpose", "Goal", "KPI", "Gap", "Programme", "Project", "Operation", "StakeholderMap", "Assumption",
-	"Team", "Resource", "FundingSource", "DataSource", "ReportingCycle", "Unit", "Segment", "BeneficiaryGroup",
-}
-
 // GraphNode is one manifest in the workspace graph.
 type GraphNode struct {
 	Kind, ID, Name string
 	// Level is a goal's level (goal, objective, outcome); empty otherwise.
 	Level string
+	// Stage is the stage of the order of work it is written in; empty
+	// for a register. Layer is its band in the graph: 0 for the
+	// registers, then one per stage, so every edge runs to a lower layer
+	// or along its own (TAXONOMY.md D28).
+	Stage string
+	Layer int
 	// X and Y are where the layout put it.
 	X, Y float64
 	// Distance is how many edges, either way, it is from the focus asked
@@ -38,7 +36,8 @@ type GraphNode struct {
 	Distance int
 }
 
-// GraphEdge is one reference: From names To somewhere in its spec.
+// GraphEdge is one reference: From names To somewhere in its spec, so To
+// comes before From in the order of work.
 type GraphEdge struct {
 	From, To Ref
 }
@@ -59,8 +58,8 @@ var notInGraph = map[string]bool{"Settings": true, "KPIReadings": true}
 // lookup per kind, never a manifest read. An edge whose ends are not
 // both in the graph is left out. Every node carries where the layout
 // placed it, and, with a focus, how far it is from that one; the nodes
-// come grouped by kind in graphOrder and by id, so the same workspace is
-// always placed alike.
+// come grouped by kind in the order of work and by id, so the same
+// workspace is always placed alike.
 func (e *Engine) Graph(ctx context.Context, focus *Ref) (Graph, error) {
 	if e.layout == nil {
 		return Graph{}, ErrNoLayout
@@ -87,6 +86,10 @@ func (e *Engine) Graph(ctx context.Context, focus *Ref) (Graph, error) {
 			n := GraphNode{Kind: kind, ID: s.ID, Name: s.Name}
 			if kind == "Goal" {
 				n.Level = levels[s.ID]
+			}
+			n.Layer = layerOf(kind, n.Level)
+			if st, ok := stageOf(kind, n.Level); ok {
+				n.Stage = st.Key
 			}
 			g.Nodes = append(g.Nodes, n)
 			present[Ref{Kind: kind, ID: s.ID}] = true
@@ -130,12 +133,12 @@ func (e *Engine) Graph(ctx context.Context, focus *Ref) (Graph, error) {
 	return g, nil
 }
 
-// graphKinds is every kind in the graph, in graphOrder, then any kind the
-// order does not name yet.
+// graphKinds is every kind in the graph, in the order of work, then any
+// kind the order does not name yet.
 func graphKinds() []string {
 	out := []string{}
 	named := map[string]bool{}
-	for _, k := range graphOrder {
+	for _, k := range orderedKinds() {
 		if _, ok := kinds.ByName(k); ok && !notInGraph[k] {
 			out = append(out, k)
 			named[k] = true
@@ -149,18 +152,24 @@ func graphKinds() []string {
 	return out
 }
 
-// place asks the layout where each node goes, and measures every node's
-// distance from the focus.
+// layerOf is a node's band: the registers share the first, the roots
+// everything may name, and each stage has its own below.
+func layerOf(kind, level string) int {
+	r := rank(kind, level)
+	if r < len(registers) {
+		return 0
+	}
+	return r - len(registers) + 1
+}
+
+// place asks the layout where each node goes, a layer to a group, and
+// measures every node's distance from the focus.
 func (e *Engine) place(g *Graph, focus *Ref) {
 	index := map[Ref]int{}
-	group := map[string]int{}
-	for i, k := range graphKinds() {
-		group[k] = i
-	}
 	nodes := make([]layout.Node, len(g.Nodes))
 	for i, n := range g.Nodes {
 		index[Ref{Kind: n.Kind, ID: n.ID}] = i
-		nodes[i] = layout.Node{Group: group[n.Kind]}
+		nodes[i] = layout.Node{Group: n.Layer}
 	}
 	edges := make([]layout.Edge, 0, len(g.Edges))
 	near := make([][]int, len(g.Nodes))

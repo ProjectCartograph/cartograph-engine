@@ -1427,6 +1427,37 @@ func nameOf(c codec.Codec, text []byte) string {
 	return name
 }
 
+// GetOrder is the order of work and how far the workspace has got.
+func (s *Server) GetOrder(ctx context.Context, _ apigen.GetOrderRequestObject) (apigen.GetOrderResponseObject, error) {
+	o, err := s.Engine.WorkspaceOrder(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := apigen.Order{Stages: make([]apigen.OrderStage, len(o.Stages)), Registers: make([]apigen.KindCount, len(o.Registers))}
+	for i, st := range o.Stages {
+		out.Stages[i] = apigen.OrderStage{Key: st.Key, Kind: st.Kind, Count: st.Count, State: apigen.OrderStageState(st.State)}
+		if st.Level != "" {
+			out.Stages[i].Level = &st.Level
+		}
+		if len(st.After) > 0 {
+			out.Stages[i].After = &st.After
+		}
+		if st.Optional {
+			out.Stages[i].Optional = &st.Optional
+		}
+		if len(st.Waiting) > 0 {
+			out.Stages[i].Waiting = &st.Waiting
+		}
+	}
+	for i, r := range o.Registers {
+		out.Registers[i] = apigen.KindCount{Kind: r.Kind, Count: r.Count}
+	}
+	if o.Next != "" {
+		out.Next = &o.Next
+	}
+	return apigen.GetOrder200JSONResponse(out), nil
+}
+
 func (s *Server) GetGraph(ctx context.Context, req apigen.GetGraphRequestObject) (apigen.GetGraphResponseObject, error) {
 	var focus *engine.Ref
 	if req.Params.Focus != nil {
@@ -1447,6 +1478,10 @@ func (s *Server) GetGraph(ctx context.Context, req apigen.GetGraphRequestObject)
 		if n.Distance >= 0 {
 			out.Nodes[i].Distance = &n.Distance
 		}
+		if n.Stage != "" {
+			out.Nodes[i].Stage = &n.Stage
+		}
+		out.Nodes[i].Layer = &n.Layer
 	}
 	for i, e := range g.Edges {
 		out.Edges[i] = apigen.GraphEdge{From: apigen.Ref{Kind: e.From.Kind, Id: e.From.ID}, To: apigen.Ref{Kind: e.To.Kind, Id: e.To.ID}}

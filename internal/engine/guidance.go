@@ -69,9 +69,9 @@ type Guide struct {
 	Definition string `json:"definition"`
 	Level      string `json:"level,omitempty"`
 	LevelIs    string `json:"levelIs,omitempty"`
-	// Plan is the work around it, in order: what it answers to, settled
-	// before it (for an objective: the gaps, measured and scoped, then
-	// the outcomes closing them).
+	// Plan is the work around it, in the order of work: what it names,
+	// before it, then what will name it (for an objective: its outcomes,
+	// the KPI measuring each, then the gaps they close).
 	Plan    []PlanItem        `json:"plan,omitempty"`
 	Levels  map[string]string `json:"levels,omitempty"`
 	Purpose *Purpose          `json:"purpose,omitempty"`
@@ -408,14 +408,30 @@ type TaxonomyEntry struct {
 	Summary string            `json:"summary"`
 	Levels  map[string]string `json:"levels,omitempty"`
 	KnownAs []string          `json:"knownAs,omitempty"`
+	// Names are the kinds it may name, which come before it in the order
+	// of work; a register names only other registers.
+	Names []string `json:"names,omitempty"`
+	// Register is true for a root kind, added when a field asks for one.
+	Register bool `json:"register,omitempty"`
 }
 
-// Taxonomy is every kind a person defines, in the order of the strategy,
-// with what it is and what documents call it, so whatever a document says
-// is recorded as the kind it is, by its definition, not by its label.
+// Taxonomy is every kind a person defines, in the order of work (the
+// stages from the purpose down, then the registers), with what it is,
+// what it names and what documents call it, so whatever a document says
+// is recorded as the kind it is, by its definition, not by its label, and
+// in an order where everything it names is already there.
 func (e *Engine) Taxonomy(locale string) ([]TaxonomyEntry, error) {
+	var order []string
+	seen := map[string]bool{}
+	for _, s := range stages {
+		if !seen[s.Kind] {
+			seen[s.Kind] = true
+			order = append(order, s.Kind)
+		}
+	}
+	order = append(order, registers...)
 	var out []TaxonomyEntry
-	for _, kind := range graphKinds() {
+	for _, kind := range order {
 		b, ok, err := GuideBundleFor(kind, locale)
 		if err != nil {
 			return nil, err
@@ -423,7 +439,16 @@ func (e *Engine) Taxonomy(locale string) ([]TaxonomyEntry, error) {
 		if !ok {
 			continue
 		}
-		out = append(out, TaxonomyEntry{Kind: kind, Summary: b.Summary, Levels: b.Levels, KnownAs: b.KnownAs})
+		entry := TaxonomyEntry{Kind: kind, Summary: b.Summary, Levels: b.Levels, KnownAs: b.KnownAs, Register: rank(kind, "") < len(registers)}
+		named := map[string]bool{}
+		for _, r := range e.refRules[kind] {
+			if r.kind != "*" && r.kind != kind && !named[r.kind] {
+				named[r.kind] = true
+				entry.Names = append(entry.Names, r.kind)
+			}
+		}
+		sort.Slice(entry.Names, func(i, j int) bool { return rank(entry.Names[i], "") < rank(entry.Names[j], "") })
+		out = append(out, entry)
 	}
 	return out, nil
 }

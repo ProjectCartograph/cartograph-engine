@@ -84,6 +84,11 @@ type Config struct {
 	// CARTOGRAPH_REPORTS, default computed.
 	Reports string
 
+	// GraphLayout places the workspace graph: "layered" (the default), a
+	// band per stage of the order of work from the top down, or "force",
+	// a force-directed layout. CARTOGRAPH_GRAPH_LAYOUT.
+	GraphLayout string
+
 	// MCP serves agents at /api/v1/mcp (docs/adr/0016): "off" (the
 	// default) or "on". With an access list, only the roles its
 	// mapping's agents key names may use one. CARTOGRAPH_MCP.
@@ -186,6 +191,7 @@ func Defaults() Config {
 		DocCache:        1000,
 		CompactAfter:    24 * time.Hour,
 		Reports:         "computed",
+		GraphLayout:     "layered",
 		MCP:             "off",
 		MCPAuth:         "proxy",
 		Auth:            "none",
@@ -279,6 +285,9 @@ func FromEnv(getenv Getenv) (Config, error) {
 	if v := getenv("CARTOGRAPH_REPORTS"); v != "" {
 		c.Reports = v
 	}
+	if v := getenv("CARTOGRAPH_GRAPH_LAYOUT"); v != "" {
+		c.GraphLayout = v
+	}
 	if v := getenv("CARTOGRAPH_AUTH"); v != "" {
 		c.Auth = v
 	}
@@ -328,6 +337,7 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.MCPAuth, "mcp-auth", c.MCPAuth, "who authenticates agents: proxy or cartograph (CARTOGRAPH_MCP_AUTH)")
 	fs.StringVar(&c.MCPIssuer, "mcp-issuer", c.MCPIssuer, "the authorization server MCP clients sign in with (CARTOGRAPH_MCP_ISSUER)")
 	fs.StringVar(&c.Reports, "reports", c.Reports, "reporting: computed, postgres (views, with a Postgres store) or off (CARTOGRAPH_REPORTS)")
+	fs.StringVar(&c.GraphLayout, "graph-layout", c.GraphLayout, "how the workspace graph is placed: layered or force (CARTOGRAPH_GRAPH_LAYOUT)")
 	fs.DurationVar(&c.CompactAfter, "compact-after", c.CompactAfter, "age at which a Postgres store keeps an old version as a patch; 0 is off (CARTOGRAPH_COMPACT_AFTER)")
 	fs.DurationVar(&c.ShutdownTimeout, "shutdown-timeout", c.ShutdownTimeout, "grace period for in-flight requests on shutdown (CARTOGRAPH_SHUTDOWN_TIMEOUT)")
 	fs.StringVar(&c.Auth, "auth", c.Auth, "none or proxy (CARTOGRAPH_AUTH)")
@@ -404,6 +414,9 @@ func (c Config) Validate() error {
 	}
 	if c.SyncPing < 0 || (c.SyncPing > 0 && c.SyncPing < time.Second) {
 		return fmt.Errorf("sync ping %s: want 0 (off) or at least 1s", c.SyncPing)
+	}
+	if c.GraphLayout != "layered" && c.GraphLayout != "force" {
+		return fmt.Errorf("graph layout %q: want layered or force", c.GraphLayout)
 	}
 	if c.MCP != "off" && c.MCP != "on" {
 		return fmt.Errorf("mcp %q: want off or on", c.MCP)

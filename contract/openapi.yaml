@@ -53,10 +53,13 @@ paths:
         Read from the reference index: a node per manifest of every kind
         but Settings and KPIReadings, and an edge wherever one names
         another in its spec. An edge points from the manifest that holds
-        the reference to the one it names. The engine places every node
-        (x, y), the same way for the same workspace, so every interface
-        draws the graph alike; with focus, each node also says how many
-        edges it is from that one.
+        the reference to the one it names, which comes before it in the
+        order of work, so the graph is directed and acyclic (TAXONOMY.md
+        D28). Each node carries its layer: the registers first, then one
+        per stage of the order. The engine places every node (x, y), the
+        same way for the same workspace, so every interface draws the
+        graph alike; with focus, each node also says how many edges it is
+        from that one.
       parameters:
         - name: focus
           in: query
@@ -511,6 +514,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+
+  /order:
+    get:
+      operationId: getOrder
+      summary: The order of work, and how far the workspace has got along it
+      description: >-
+        The record is a directed acyclic graph, written from the top down
+        (TAXONOMY.md D28): purpose, goals, objectives, outcomes, the KPIs
+        that measure them, the gaps they close, then programmes,
+        operations and projects. Each stage names only stages before it.
+        Every stage says how many records it has and whether it is done,
+        the one to write next, ready, or waiting on a stage before it;
+        next is the first stage a plan needs that has no record. An empty
+        workspace starts at its purpose. The registers are the roots any
+        stage may name, added when a field asks for one.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
 
   /kinds:
     get:
@@ -2047,6 +2076,56 @@ components:
         status:
           type: string
 
+    Order:
+      type: object
+      required: [stages, registers]
+      properties:
+        stages:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderStage"
+        next:
+          type: string
+          description: The key of the stage to write now; absent once every stage a plan needs has a record.
+        registers:
+          type: array
+          description: The root kinds, each with how many records it has.
+          items:
+            $ref: "#/components/schemas/KindCount"
+    OrderStage:
+      type: object
+      required: [key, kind, count, state]
+      properties:
+        key:
+          type: string
+        kind:
+          type: string
+        level:
+          type: string
+          description: For a Goal, the level the stage writes.
+        after:
+          type: array
+          description: The stages that need a record before this one can be written well.
+          items:
+            type: string
+        optional:
+          type: boolean
+          description: A stage a workspace may leave empty.
+        count:
+          type: integer
+        state:
+          type: string
+          enum: [done, next, ready, waiting]
+          description: >-
+            done when it has a record; next for the stage to write now;
+            ready when what it names is there; waiting while a stage before
+            it has no record.
+        waiting:
+          type: array
+          description: The stages it waits on, while it waits.
+          items:
+            type: string
+
     KindCount:
       type: object
       required: [kind, count]
@@ -2767,10 +2846,11 @@ components:
         plan:
           type: array
           description: >-
-            The work around this kind, in order, from the flows' links: what
-            it answers to, settled before it, deepest first (for an
-            objective, the gaps its outcomes close, each measured by a KPI
-            and observed in segments, then the outcomes).
+            The work around this kind, in the order of work, from the
+            flows' links: what it names, which must exist before it
+            (when before), then what will name it, each after what it names
+            in turn (when after; for an objective, its outcomes, the KPI
+            measuring each, then the gaps they close).
           items:
             $ref: "#/components/schemas/GuidePlanItem"
         levels:
@@ -2899,8 +2979,12 @@ components:
 
     GuidePlanItem:
       type: object
-      required: [kind, for, link]
+      required: [kind, for, link, when]
       properties:
+        when:
+          type: string
+          enum: [before, after]
+          description: before for what the new thing names, which must exist first; after for what will name it, written once it exists.
         kind:
           type: string
         level:
@@ -3240,6 +3324,15 @@ components:
         level:
           type: string
           description: A goal's level (goal, objective, outcome); absent for every other kind.
+        stage:
+          type: string
+          description: The key of the stage of the order of work it is written in; absent for a register.
+        layer:
+          type: integer
+          description: >-
+            Its band in the graph: 0 for the registers, then one per stage,
+            in the order of work. Every edge runs to a lower layer or along
+            its own.
     GraphEdge:
       type: object
       required: [from, to]

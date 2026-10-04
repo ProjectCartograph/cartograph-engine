@@ -8,15 +8,18 @@ import (
 	"strings"
 )
 
-// The order of work across many manifests. A strategy is settled in
-// phases, the same for a person in the editor and an agent over MCP: first
-// what each thing is (a gap's states, an outcome's statement), then its
-// numbers (baselines and targets, from the documents at hand), then how
-// it links to the rest (which outcome a gap closes, which aims a KPI
-// measures). Within a phase, what something answers to comes first: gaps
-// before the outcomes they close, outcomes before their objectives. The
-// flows say each check's phase (a field's, its step's, or a link's) and
-// the plan says the order of kinds, so nothing here is written per kind.
+// The order of work across many manifests. The record is a directed
+// acyclic graph (TAXONOMY.md D28), and the work walks it once from the
+// top: what a thing names comes before it, so each manifest is finished
+// in one visit (what it is, its numbers, and its links to what is already
+// there) and nothing finished is opened again. A check that a later
+// manifest settles by naming this one (an outcome waits for the gap that
+// names it, a goal for the KPI that measures it) is placed where that
+// later manifest is written, so it reads as the next thing to write, not
+// as something to go back to. Within one manifest the flow's own order
+// holds: its phases (define, measure, align) and then its steps. The
+// flows say each check's phase and step and the order says the order of
+// kinds, so nothing here is written per kind.
 
 var phaseOrder = map[string]int{"define": 0, "measure": 1, "align": 2}
 
@@ -51,8 +54,8 @@ type checkPlace struct {
 	// order is the step's place in its flow.
 	order int
 	// field is the field that settles it, or for a link the kind that
-	// holds it, prefixed "link:".
-	field string
+	// holds it, prefixed "link:", and level that kind's level, for a Goal.
+	field, level string
 }
 
 // checkPlaces reads, from every flow, the phase and step of each check:
@@ -81,6 +84,7 @@ func (e *Engine) checkPlaces() (map[string]map[string]checkPlace, error) {
 						Kind  string `json:"kind"`
 						Phase string `json:"phase"`
 						Check string `json:"check"`
+						Level string `json:"level"`
 					} `json:"links"`
 				} `json:"steps"`
 			} `json:"spec"`
@@ -97,13 +101,13 @@ func (e *Engine) checkPlaces() (map[string]map[string]checkPlace, error) {
 		}
 		for i, st := range flow.Spec.Steps {
 			// A check a step's section names, with no field claiming it.
-			m["section:"+st.Key] = checkPlace{or(st.Phase, "define"), st.Key, i, ""}
+			m["section:"+st.Key] = checkPlace{or(st.Phase, "define"), st.Key, i, "", ""}
 			for _, f := range st.Fields {
 				for _, c := range f.Checks {
 					// A check several fields can settle (a gap's states,
 					// written or read from its KPI) is placed at the
 					// earliest of them.
-					pl := checkPlace{or(f.Phase, or(st.Phase, "define")), st.Key, i, f.Path}
+					pl := checkPlace{or(f.Phase, or(st.Phase, "define")), st.Key, i, f.Path, ""}
 					if have, ok := m[c]; !ok || phaseOrder[pl.phase] < phaseOrder[have.phase] {
 						m[c] = pl
 					}
@@ -111,7 +115,7 @@ func (e *Engine) checkPlaces() (map[string]map[string]checkPlace, error) {
 			}
 			for _, l := range st.Links {
 				if l.Check != "" {
-					m[l.Check] = checkPlace{or(l.Phase, "align"), st.Key, i, "link:" + l.Kind}
+					m[l.Check] = checkPlace{or(l.Phase, "align"), st.Key, i, "link:" + l.Kind, l.Level}
 				}
 			}
 		}
@@ -120,31 +124,14 @@ func (e *Engine) checkPlaces() (map[string]map[string]checkPlace, error) {
 	return out, nil
 }
 
-// kindRanks is the order kinds are settled in within a phase: the plan for
-// a top-level goal, deepest first, then the goal, then every other kind.
-func (e *Engine) kindRanks(ctx context.Context) map[string]int {
-	ranks := map[string]int{}
-	plan, _ := e.Plan(ctx, "Goal", "goal", DefaultLocale)
-	for _, p := range plan {
-		key := p.Kind
-		if p.Level != "" {
-			key += "/" + p.Level
-		}
-		if _, ok := ranks[key]; !ok {
-			ranks[key] = len(ranks)
-		}
+// placeOf is where a task falls in the order of work: at its own
+// manifest's place, or for a check settled by a link, at the place of the
+// kind that holds the link and is written to make it.
+func placeOf(kind, level string, pl checkPlace) int {
+	if holder, ok := strings.CutPrefix(pl.field, "link:"); ok {
+		return rank(holder, pl.level)
 	}
-	for _, k := range []string{"Goal/goal", "Purpose"} {
-		if _, ok := ranks[k]; !ok {
-			ranks[k] = len(ranks)
-		}
-	}
-	for _, k := range graphKinds() {
-		if _, ok := ranks[k]; !ok {
-			ranks[k] = len(ranks)
-		}
-	}
-	return ranks
+	return rank(kind, level)
 }
 
 // Work lists the open checks of the manifests named and of everything the
@@ -155,7 +142,6 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 	if err != nil {
 		return Worklist{}, err
 	}
-	ranks := e.kindRanks(ctx)
 	type record struct {
 		ref   Ref
 		name  string
@@ -193,21 +179,15 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 	words := map[string]GuideBundle{}
 	l := &lookup{ctx: ctx, store: e.manifests, codec: e.codec}
 	out := Worklist{Tasks: []Task{}, Open: map[string]int{"define": 0, "measure": 0, "align": 0}}
-	rankOf := map[Ref]int{}
+	// Where each task falls: its place in the order, and the place of its
+	// own manifest, which keeps a manifest's tasks together.
+	placed := map[int]int{}
+	own := map[int]int{}
 	stepOrder := map[int]int{}
 	for r, rec := range records {
 		if rec.level == "" && r.Kind == "Goal" {
 			_, _, rec.level, _ = e.checksInWork(ctx, r, work)
 		}
-		key := r.Kind
-		if rec.level != "" {
-			key += "/" + rec.level
-		}
-		rk, ok := ranks[key]
-		if !ok {
-			rk = ranks[r.Kind]
-		}
-		rankOf[r] = rk
 		if _, ok := words[r.Kind]; !ok {
 			words[r.Kind], _, _ = GuideBundleFor(r.Kind, locale)
 		}
@@ -217,8 +197,10 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 				pl, ok = places[r.Kind]["section:"+c.Section]
 			}
 			if !ok {
-				pl = checkPlace{"define", c.Section, 99, ""}
+				pl = checkPlace{"define", c.Section, 99, "", ""}
 			}
+			placed[len(out.Tasks)] = placeOf(r.Kind, rec.level, pl)
+			own[len(out.Tasks)] = rank(r.Kind, rec.level)
 			stepOrder[len(out.Tasks)] = pl.order
 			out.Tasks = append(out.Tasks, Task{Phase: pl.phase, Kind: r.Kind, ID: r.ID, Name: rec.name, Check: c.ID, State: c.State,
 				Message: c.Message, Step: pl.step, Do: words[r.Kind].Checks[c.ID], Choices: e.choices(l, r.Kind, rec.level, pl.field)})
@@ -232,18 +214,20 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 	sort.SliceStable(idx, func(x, y int) bool {
 		i, j := idx[x], idx[y]
 		a, b := out.Tasks[i], out.Tasks[j]
-		if phaseOrder[a.Phase] != phaseOrder[b.Phase] {
-			return phaseOrder[a.Phase] < phaseOrder[b.Phase]
+		if placed[i] != placed[j] {
+			return placed[i] < placed[j]
 		}
-		ra, rb := rankOf[Ref{Kind: a.Kind, ID: a.ID}], rankOf[Ref{Kind: b.Kind, ID: b.ID}]
-		if ra != rb {
-			return ra < rb
+		if own[i] != own[j] {
+			return own[i] < own[j]
 		}
 		if a.Name != b.Name {
 			return a.Name < b.Name
 		}
 		if a.ID != b.ID {
 			return a.ID < b.ID
+		}
+		if phaseOrder[a.Phase] != phaseOrder[b.Phase] {
+			return phaseOrder[a.Phase] < phaseOrder[b.Phase]
 		}
 		if stepOrder[i] != stepOrder[j] {
 			return stepOrder[i] < stepOrder[j]

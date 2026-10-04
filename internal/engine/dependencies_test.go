@@ -2,11 +2,15 @@ package engine_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 // programmeYAML builds a Programme manifest with extra spec-level lines
@@ -28,16 +32,60 @@ func dependsOn(kind, id, needBy string) string {
 	return risk
 }
 
-// A cycle is the thing no single manifest can show: each end looks fine on
-// its own, and only the graph says they are waiting on each other.
-func TestDependencyGraphAndCycles(t *testing.T) {
+// writeBehind stores a version without the engine's validation, as an
+// older engine allowed it: a loop was advice until the record became a
+// directed acyclic graph (TAXONOMY.md D28), so a store may still hold one.
+func writeBehind(t *testing.T, ms store.ManifestStore, kind, id, y string) {
+	t.Helper()
+	ctx := context.Background()
+	versions, err := ms.ListVersions(ctx, kind, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ms.PutVersion(ctx, store.Version{Kind: kind, ID: id, Number: len(versions) + 1, YAML: []byte(y), Actor: "local", On: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A loop in the record is refused where it would close (TAXONOMY.md D28):
+// the save that closes it names the loop, and the record stays acyclic.
+func TestADependencyLoopIsRefused(t *testing.T) {
 	e := seededEngine(t)
+	ctx := context.Background()
+	for _, id := range []string{"alpha", "beta"} {
+		mustCommit(t, e, "Programme", id, "local", programmeYAML(id, ""))
+	}
+	mustCommit(t, e, "Programme", "alpha", "local", programmeYAML("alpha", dependsOn("Programme", "beta", "")))
+	_, err := e.Commit(ctx, "Programme", "beta", []byte(programmeYAML("beta", dependsOn("Programme", "alpha", ""))), "local", "close the loop")
+	var ve *engine.ValidationError
+	if !errors.As(err, &ve) || len(ve.Problems) != 1 || ve.Problems[0].Path != "/spec/risks/0/depends/on/id" ||
+		!strings.Contains(ve.Problems[0].Message, "beta → alpha → beta") {
+		t.Fatalf("closing a loop: %v", err)
+	}
+	// A programme waiting on a project names what comes after it: the
+	// project declares that the programme needs it instead.
+	mustCommit(t, e, "Project", "p1", "local", projectYAML("p1", ""))
+	_, err = e.Commit(ctx, "Programme", "beta", []byte(programmeYAML("beta", dependsOn("Project", "p1", ""))), "local", "downstream")
+	if !errors.As(err, &ve) || !strings.Contains(ve.Problems[0].Message, "comes after it") {
+		t.Fatalf("a programme naming a project: %v", err)
+	}
+}
+
+// A cycle is the thing no single manifest can show: each end looks fine on
+// its own, and only the graph says they are waiting on each other. A store
+// written before loops were refused may hold one, and the check finds it.
+func TestDependencyGraphAndCycles(t *testing.T) {
+	ms := memory.NewManifestStore()
+	e := seededEngineOver(t, ms)
 	ctx := context.Background()
 
 	for _, id := range []string{"alpha", "beta", "gamma"} {
 		mustCommit(t, e, "Programme", id, "local", programmeYAML(id, ""))
 	}
 	mustCommit(t, e, "Programme", "alpha", "local", programmeYAML("alpha", dependsOn("Programme", "beta", "")))
+	writeBehind(t, ms, "Programme", "beta", programmeYAML("beta", dependsOn("Programme", "alpha", "")))
+	// A record saved before loops were refused still saves as it stands:
+	// only a reference being added is held to the order (VERSIONING.md).
 	mustCommit(t, e, "Programme", "beta", "local", programmeYAML("beta", dependsOn("Programme", "alpha", "")))
 
 	edges, err := e.DependencyGraph(ctx)
@@ -167,7 +215,8 @@ func TestDependencyScheduleConflicts(t *testing.T) {
 // on the message as well as the state: the whole point of both checks is
 // the sentence, and a state alone tells nobody which project is late.
 func TestDependencyChecksOnTheProject(t *testing.T) {
-	e := seededEngine(t)
+	ms := memory.NewManifestStore()
+	e := seededEngineOver(t, ms)
 	ctx := context.Background()
 	named := func(id, name, extra string) string {
 		return strings.Replace(projectYAML(id, extra), "  name: P\n", "  name: "+name+"\n", 1)
@@ -217,10 +266,14 @@ func TestDependencyChecksOnTheProject(t *testing.T) {
 		}
 	}
 
-	// Now close the loop from the other end and read it back as a cycle.
-	mustCommit(t, e, "Project", "conn", "local",
-		named("conn", "Connectivity", "  timeline:\n    start: \"2026-01\"\n    phases:\n      - {id: build, name: Build, months: 48}\n"+
-			dependsOn("Project", "learn", "")))
+	// Closing the loop from the other end is refused; a store written
+	// before it was may hold one, and the check reads it as a cycle.
+	closing := named("conn", "Connectivity", "  timeline:\n    start: \"2026-01\"\n    phases:\n      - {id: build, name: Build, months: 48}\n"+
+		dependsOn("Project", "learn", ""))
+	if _, err := e.Commit(ctx, "Project", "conn", []byte(closing), "local", "close the loop"); err == nil {
+		t.Fatal("a save that closes a loop was accepted")
+	}
+	writeBehind(t, ms, "Project", "conn", closing)
 	checks, err = e.ProjectChecks(ctx, "learn", false)
 	if err != nil {
 		t.Fatal(err)

@@ -350,6 +350,20 @@ descriptions said "exactly as spec.resources names it"), and renaming a role lef
 three stale copies with nothing to notice. The first run of the migration found one in
 the example vault that had already drifted.
 
+## The record is a directed acyclic graph
+
+A manifest names only what comes before it in the order of work
+(TAXONOMY.md D28): purpose, goals, objectives, outcomes, KPIs, gaps,
+then programmes, operations and projects, with the registers as roots
+anything may name. So the end that declares an edge is always the later
+one. Whatever it names already exists when it is written, and nothing
+finished is opened again to be linked. A schema reference that points
+downstream fails the build. A version that adds a reference to
+something later, or one that closes a loop, is refused, naming the
+loop; a reference the record already held is kept. The order is the engine's
+(`GET /order`), so the editor's "New", the worklist, the guide's plan,
+the graph's layers and an agent's `next` all lead the same way.
+
 ## Declare an edge at one end only
 
 The far end is derived. A dependency says `direction: needs` on the project that
