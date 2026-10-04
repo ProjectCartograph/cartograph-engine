@@ -1,0 +1,71 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "portfoliodecisions",
+    "name": "Portfolio decisions"
+  },
+  "spec": {
+    "for": "PortfolioDecisions",
+    "steps": [
+      {
+        "key": "portfolio",
+        "title": "Portfolio",
+        "guide": "The portfolio these decisions belong to.",
+        "fields": [
+          {
+            "path": "/spec/portfolio",
+            "control": "reference"
+          },
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          }
+        ]
+      },
+      {
+        "key": "decisions",
+        "title": "Decisions",
+        "guide": "For each thing the portfolio holds: its priority, and whether to invest in it, hold it or stop it.",
+        "fields": [
+          {
+            "path": "/spec/decisions",
+            "control": "list",
+            "key": "id",
+            "hint": "One row for each thing the portfolio holds.",
+            "checks": [
+              "portfolio-decided"
+            ],
+            "fields": [
+              {
+                "path": "/kind",
+                "control": "choice"
+              },
+              {
+                "path": "/id",
+                "control": "reference"
+              },
+              {
+                "path": "/priority",
+                "control": "number"
+              },
+              {
+                "path": "/decision",
+                "control": "choice"
+              },
+              {
+                "path": "/reason",
+                "control": "sentence"
+              },
+              {
+                "path": "/decidedOn",
+                "control": "date"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

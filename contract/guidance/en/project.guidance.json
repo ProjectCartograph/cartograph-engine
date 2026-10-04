@@ -554,6 +554,9 @@
     },
     "/spec/notes": {
       "guide": "Anything a reader needs that has no field of its own. Not a place for what a field already holds."
+    },
+    "/spec/alignment/portfolios": {
+      "guide": "The portfolios that select and fund this project, if any. A project may sit in a portfolio and a programme at once."
     }
   },
   "links": {

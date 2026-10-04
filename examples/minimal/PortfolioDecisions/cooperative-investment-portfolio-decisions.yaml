@@ -1,0 +1,20 @@
+apiVersion: cartograph/v1
+kind: PortfolioDecisions
+metadata:
+  id: cooperative-investment-portfolio-decisions
+  name: 2025 season review
+spec:
+  portfolio: cooperative-investment-portfolio
+  decisions:
+    - kind: Programme
+      id: quality-improvement-programme
+      priority: 1
+      decision: invest
+      reason: A rejected delivery costs members the whole consignment, so quality moves earnings most this season.
+      decidedOn: 2025-03
+    - kind: Programme
+      id: market-access-programme
+      priority: 2
+      decision: hold
+      reason: Its theory of change is not written yet; commit nothing more until it says how new buyers lead to higher earnings.
+      decidedOn: 2025-03

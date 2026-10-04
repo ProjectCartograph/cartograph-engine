@@ -1,0 +1,91 @@
+{
+  "$id": "portfoliodecisions.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PortfolioDecisions",
+  "description": "What a portfolio decided about what it holds, at its latest review: for each project, programme or portfolio, a priority and whether to invest in it, hold it or stop it, with the reason and the date. Its own file beside the portfolio, as a KPI's readings are beside the KPI (TAXONOMY.md D8): decisions change at every review while the portfolio's definition does not, and they name what the portfolio holds, which is written after it in the order of work (D28, D32).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "PortfolioDecisions"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "portfolio"
+      ],
+      "properties": {
+        "portfolio": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Portfolio",
+          "description": "The portfolio these are the decisions of."
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "id",
+              "decision"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "Project",
+                  "Programme",
+                  "Portfolio"
+                ],
+                "description": "What kind of thing the decision is about."
+              },
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "*",
+                "description": "The project, programme or portfolio decided on. It should name this portfolio; a decision about something the portfolio does not hold is advised."
+              },
+              "priority": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Its rank in the portfolio, 1 first. Two things may share a rank."
+              },
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "invest",
+                  "hold",
+                  "stop"
+                ],
+                "description": "Invest: fund it and let it go on. Hold: keep it, but commit nothing more until it is reviewed again. Stop: end it, and release what it holds."
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 400,
+                "description": "Why, in a sentence a reader would accept: what it advances, or what has to change first."
+              },
+              "decidedOn": {
+                "$ref": "common.schema.json#/$defs/MandateDate",
+                "description": "When the decision was made."
+              }
+            }
+          },
+          "description": "One decision per thing the portfolio holds; one each (a kind rule)."
+        }
+      }
+    }
+  }
+}

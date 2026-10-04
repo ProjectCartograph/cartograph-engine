@@ -78,20 +78,19 @@ func (e *Engine) programmeChecksOf(ctx context.Context, id string, doc map[strin
 	if err != nil {
 		return nil, err
 	}
-	switch {
-	case len(projects) == 0 && len(operations) == 0:
+	// Sub-programmes are components too (TAXONOMY.md D32).
+	subs, err := e.namedBy(ctx, "Programme", func(spec map[string]any) []any {
+		out, _ := spec["programmes"].([]any)
+		return out
+	}, id)
+	if err != nil {
+		return nil, err
+	}
+	if counted := countedList([]counted{{len(projects), "project"}, {len(subs), "sub-programme"}, {len(operations), "operation"}}); counted == "" {
 		add("components-present", "components", programmeCheckWarn,
-			"No project or operation has named this programme yet, so it coordinates nothing.")
-	case len(operations) == 0:
-		add("components-present", "components", programmeCheckOK,
-			fmt.Sprintf("%d project%s named.", len(projects), plural(len(projects))))
-	case len(projects) == 0:
-		add("components-present", "components", programmeCheckOK,
-			fmt.Sprintf("%d operation%s named.", len(operations), plural(len(operations))))
-	default:
-		add("components-present", "components", programmeCheckOK,
-			fmt.Sprintf("%d project%s and %d operation%s named.",
-				len(projects), plural(len(projects)), len(operations), plural(len(operations))))
+			"No project, sub-programme or operation has named this programme yet, so it coordinates nothing.")
+	} else {
+		add("components-present", "components", programmeCheckOK, counted+" named.")
 	}
 
 	// A member project serves the programme by moving one of its aims,
@@ -138,7 +137,10 @@ func (e *Engine) programmeChecksOf(ctx context.Context, id string, doc map[strin
 	if steps, _ := spec["pathway"].([]any); len(steps) > 0 {
 		add("pathway-steps", "pathway", programmeCheckOK, fmt.Sprintf("%d pathway step%s.", len(steps), plural(len(steps))))
 	} else {
-		add("pathway-steps", "pathway", programmeCheckWarn, "No pathway yet: what must hold before the change happens.")
+		// The theory of change is what makes it a programme rather than a
+		// portfolio (TAXONOMY.md D32), so its absence says which it may be.
+		add("pathway-steps", "pathway", programmeCheckWarn,
+			"No theory of change yet: what must hold before the change happens. Without one this may be a portfolio, work grouped to fund and prioritise rather than to bring about one change.")
 	}
 	if lead, _ := spec["leadTeam"].(string); lead != "" {
 		add("governance-lead", "governance", programmeCheckOK, "A lead team is named.")
@@ -385,4 +387,48 @@ func strs(list []any) []string {
 		}
 	}
 	return out
+}
+
+// namedBy lists, sorted, the manifests of kind whose list (read from their
+// spec) names id: what a programme or a portfolio holds, read back from
+// what declares it (TAXONOMY.md D1, D32).
+func (e *Engine) namedBy(ctx context.Context, kind string, read func(spec map[string]any) []any, id string) ([]string, error) {
+	l := &lookup{ctx: ctx, store: e.manifests, codec: e.codec}
+	docs, err := l.Documents(kind)
+	if err != nil {
+		return nil, err
+	}
+	var found []string
+	for docID, doc := range docs {
+		spec, _ := doc["spec"].(map[string]any)
+		if spec == nil {
+			continue
+		}
+		for _, p := range read(spec) {
+			if named, _ := p.(string); strings.TrimSpace(named) == id {
+				found = append(found, docID)
+				break
+			}
+		}
+	}
+	sort.Strings(found)
+	return found, nil
+}
+
+// counted is a number of things and the word for one of them.
+type counted struct {
+	n    int
+	noun string
+}
+
+// countedList says the non-zero counts as a sentence's subject:
+// "2 projects and 1 operation". Empty when every count is zero.
+func countedList(cs []counted) string {
+	var parts []string
+	for _, c := range cs {
+		if c.n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s%s", c.n, c.noun, plural(c.n)))
+		}
+	}
+	return joinAnd(parts)
 }

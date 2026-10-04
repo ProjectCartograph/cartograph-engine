@@ -53,6 +53,9 @@ var stages = []Stage{
 	{Key: "kpi", Kind: "KPI", After: []string{"outcome"}},
 	{Key: "gap", Kind: "Gap", After: []string{"outcome", "kpi"}},
 	{Key: "assumption", Kind: "Assumption", After: []string{"kpi"}, Optional: true},
+	// A portfolio is prioritised against the strategy, and holds what names
+	// it: programmes and projects come after it (TAXONOMY.md D32).
+	{Key: "portfolio", Kind: "Portfolio", After: []string{"objective"}, Optional: true},
 	{Key: "programme", Kind: "Programme", After: []string{"gap"}, Optional: true},
 	// A service names nothing in the strategy it must wait for: one already
 	// running is recorded as it stands, and a planned one before the
@@ -63,8 +66,9 @@ var stages = []Stage{
 }
 
 // afterStages are kinds that hold a record's data rather than a step of
-// the work: a KPI's readings come after the KPI.
-var afterStages = []string{"KPIReadings"}
+// the work: a KPI's readings come after the KPI, and a portfolio's
+// decisions after everything they decide on.
+var afterStages = []string{"KPIReadings", "PortfolioDecisions"}
 
 // goalLevels are a Goal's levels, in order.
 var goalLevels = []string{"goal", "objective", "outcome"}

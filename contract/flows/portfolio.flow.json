@@ -1,0 +1,92 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "portfolio",
+    "name": "Portfolio"
+  },
+  "spec": {
+    "for": "Portfolio",
+    "steps": [
+      {
+        "key": "aim",
+        "title": "Aim",
+        "guide": "What the portfolio invests in, and to what end.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/aim",
+            "control": "sentence"
+          }
+        ]
+      },
+      {
+        "key": "strategy",
+        "title": "Strategy",
+        "guide": "The strategic objectives it is prioritised against.",
+        "fields": [
+          {
+            "path": "/spec/objectives",
+            "control": "references",
+            "title": "Strategic objectives",
+            "checks": [
+              "portfolio-objectives"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "holds",
+        "title": "Holds",
+        "guide": "The projects, programmes and portfolios it holds, each of which names it.",
+        "fields": [],
+        "links": [
+          {
+            "kind": "Programme",
+            "path": "/spec/portfolios",
+            "check": "portfolio-holds"
+          },
+          {
+            "kind": "Project",
+            "path": "/spec/alignment/portfolios",
+            "check": "portfolio-holds"
+          },
+          {
+            "kind": "Portfolio",
+            "path": "/spec/portfolios",
+            "check": "portfolio-holds"
+          }
+        ]
+      },
+      {
+        "key": "governance",
+        "title": "Governance",
+        "guide": "Who decides, with which budgets, and how often.",
+        "fields": [
+          {
+            "path": "/spec/leadTeam",
+            "control": "reference"
+          },
+          {
+            "path": "/spec/funding",
+            "control": "references",
+            "title": "Budgets"
+          },
+          {
+            "path": "/spec/reviewCycle",
+            "control": "reference"
+          },
+          {
+            "path": "/spec/portfolios",
+            "control": "references",
+            "title": "Part of"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

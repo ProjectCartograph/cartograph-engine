@@ -384,6 +384,26 @@ func (s *Server) GetProgrammeChecks(ctx context.Context, req apigen.GetProgramme
 	return out, nil
 }
 
+// GetPortfolioChecks answers in the programme's shape: every check is
+// advice read from other manifests (TAXONOMY.md D32).
+func (s *Server) GetPortfolioChecks(ctx context.Context, req apigen.GetPortfolioChecksRequestObject) (apigen.GetPortfolioChecksResponseObject, error) {
+	checks, err := s.Engine.PortfolioChecks(ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, engine.ErrNotFound) {
+			return apigen.GetPortfolioChecks404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+		}
+		return nil, err
+	}
+	out := make(apigen.GetPortfolioChecks200JSONResponse, len(checks))
+	for i, c := range checks {
+		out[i] = apigen.ProgrammeCheck{
+			Id: c.ID, Section: c.Section,
+			State: apigen.ProgrammeCheckState(c.State), Message: c.Message,
+		}
+	}
+	return out, nil
+}
+
 func (s *Server) GetProjectChecks(ctx context.Context, req apigen.GetProjectChecksRequestObject) (apigen.GetProjectChecksResponseObject, error) {
 	checks, err := s.Engine.ProjectChecks(ctx, req.Id, false)
 	if err != nil {

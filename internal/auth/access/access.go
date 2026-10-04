@@ -29,8 +29,9 @@ var (
 )
 
 // teamKinds are the kinds a team owns: a contributor writes those of
-// their teams and of the teams beneath them.
-var teamKinds = []string{"Project", "Programme", "Operation", "DataSource"}
+// their teams and of the teams beneath them. A portfolio's decisions are
+// its lead team's (TAXONOMY.md D32).
+var teamKinds = []string{"Project", "Portfolio", "PortfolioDecisions", "Programme", "Operation", "DataSource"}
 
 // registers are the shared registers every contributor keeps.
 var registers = []string{

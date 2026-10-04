@@ -200,6 +200,32 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /manifests/Portfolio/{id}/checks:
+    get:
+      operationId: getPortfolioChecks
+      summary: >-
+        Whether a portfolio can make the decisions a portfolio exists for:
+        what it is prioritised against, what it holds, and whether each of
+        those has a decision (TAXONOMY.md D32). Advisory only, in the
+        programme's shape, because each is read from other manifests.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProgrammeCheck"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /manifests/Goal/{id}:
     delete:
       operationId: deleteGoal

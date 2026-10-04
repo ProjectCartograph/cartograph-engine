@@ -1900,6 +1900,9 @@ type ServerInterface interface {
 	// GetOperationChecks Whether an operation is described well enough to be run and measured, step by step. Advisory only.
 	// (GET /manifests/Operation/{id}/checks)
 	GetOperationChecks(w http.ResponseWriter, r *http.Request, id IdParam)
+	// GetPortfolioChecks Whether a portfolio can make the decisions a portfolio exists for: what it is prioritised against, what it holds, and whether each of those has a decision (TAXONOMY.md D32). Advisory only, in the programme's shape, because each is read from other manifests.
+	// (GET /manifests/Portfolio/{id}/checks)
+	GetPortfolioChecks(w http.ResponseWriter, r *http.Request, id IdParam)
 	// GetProgrammeCharterHtml Programme charter rendered as HTML from the working copy: what it is for, what is wrong, what it serves, how it believes the change happens, what is inside it and who runs it. Derived, like every other view, so there is nothing to keep in step.
 	// (GET /manifests/Programme/{id}/charter.html)
 	GetProgrammeCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam)
@@ -2948,6 +2951,32 @@ func (siw *ServerInterfaceWrapper) GetOperationChecks(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetOperationChecks(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPortfolioChecks operation middleware
+func (siw *ServerInterfaceWrapper) GetPortfolioChecks(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPortfolioChecks(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4349,6 +4378,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Gap/{id}/coverage", wrapper.GetGapCoverage)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Operation/{id}/checks", wrapper.GetOperationChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Programme/{id}/checks", wrapper.GetProgrammeChecks)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Portfolio/{id}/checks", wrapper.GetPortfolioChecks)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/manifests/Goal/{id}", wrapper.DeleteGoal)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/checks", wrapper.GetProjectChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.GetProjectState)
@@ -6621,6 +6651,70 @@ func (response GetOperationChecks403JSONResponse) VisitGetOperationChecksRespons
 type GetOperationChecks404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response GetOperationChecks404JSONResponse) VisitGetOperationChecksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPortfolioChecksRequestObject struct {
+	Id IdParam `json:"id"`
+}
+
+type GetPortfolioChecksResponseObject interface {
+	VisitGetPortfolioChecksResponse(w http.ResponseWriter) error
+}
+
+type GetPortfolioChecks200JSONResponse []ProgrammeCheck
+
+func (response GetPortfolioChecks200JSONResponse) VisitGetPortfolioChecksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPortfolioChecks401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetPortfolioChecks401JSONResponse) VisitGetPortfolioChecksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPortfolioChecks403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetPortfolioChecks403JSONResponse) VisitGetPortfolioChecksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPortfolioChecks404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetPortfolioChecks404JSONResponse) VisitGetPortfolioChecksResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9513,6 +9607,9 @@ type StrictServerInterface interface {
 	// GetOperationChecks Whether an operation is described well enough to be run and measured, step by step. Advisory only.
 	// (GET /manifests/Operation/{id}/checks)
 	GetOperationChecks(ctx context.Context, request GetOperationChecksRequestObject) (GetOperationChecksResponseObject, error)
+	// GetPortfolioChecks Whether a portfolio can make the decisions a portfolio exists for: what it is prioritised against, what it holds, and whether each of those has a decision (TAXONOMY.md D32). Advisory only, in the programme's shape, because each is read from other manifests.
+	// (GET /manifests/Portfolio/{id}/checks)
+	GetPortfolioChecks(ctx context.Context, request GetPortfolioChecksRequestObject) (GetPortfolioChecksResponseObject, error)
 	// GetProgrammeCharterHtml Programme charter rendered as HTML from the working copy: what it is for, what is wrong, what it serves, how it believes the change happens, what is inside it and who runs it. Derived, like every other view, so there is nothing to keep in step.
 	// (GET /manifests/Programme/{id}/charter.html)
 	GetProgrammeCharterHtml(ctx context.Context, request GetProgrammeCharterHtmlRequestObject) (GetProgrammeCharterHtmlResponseObject, error)
@@ -10612,6 +10709,32 @@ func (sh *strictHandler) GetOperationChecks(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetOperationChecksResponseObject); ok {
 		if err := validResponse.VisitGetOperationChecksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPortfolioChecks operation middleware
+func (sh *strictHandler) GetPortfolioChecks(w http.ResponseWriter, r *http.Request, id IdParam) {
+	var request GetPortfolioChecksRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPortfolioChecks(ctx, request.(GetPortfolioChecksRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPortfolioChecks")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPortfolioChecksResponseObject); ok {
+		if err := validResponse.VisitGetPortfolioChecksResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

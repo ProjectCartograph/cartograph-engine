@@ -22,9 +22,10 @@ import (
 func WithAuthorizer(z identity.Authorizer) Option { return func(e *Engine) { e.authz = z } }
 
 // teamKinds name, for each kind a team owns, the spec field naming the
-// owner. A programme belongs to its lead team.
+// owner. A programme and a portfolio belong to their lead teams.
 var teamKinds = map[string]string{
 	"Project":    "team",
+	"Portfolio":  "leadTeam",
 	"Programme":  "leadTeam",
 	"Operation":  "team",
 	"DataSource": "team",
@@ -105,6 +106,21 @@ func (t *teamTree) chain(team string) []string {
 // owning team and every team above it. Nil for a kind no team owns, or a
 // manifest that names no team.
 func (e *Engine) teamChain(ctx context.Context, kind string, doc map[string]any) ([]string, error) {
+	if kind == "PortfolioDecisions" && doc != nil {
+		// A portfolio's decisions are its lead team's to make (TAXONOMY.md
+		// D32): they belong to whoever governs the portfolio they decide for.
+		spec, _ := doc["spec"].(map[string]any)
+		id, _ := spec["portfolio"].(string)
+		l := &lookup{ctx: ctx, store: e.manifests, codec: e.codec}
+		portfolios, err := l.Documents("Portfolio")
+		if err != nil {
+			return nil, err
+		}
+		doc, kind = portfolios[id], "Portfolio"
+		if doc == nil {
+			return nil, nil
+		}
+	}
 	field, ok := teamKinds[kind]
 	if !ok || doc == nil {
 		return nil, nil

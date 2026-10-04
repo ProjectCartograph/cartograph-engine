@@ -1,0 +1,54 @@
+{
+  "locale": "en",
+  "kind": "PortfolioDecisions",
+  "summary": "What a portfolio decided about each thing it holds: its priority, and whether to invest in it, hold it or stop it.",
+  "example": "This season: invest in the Quality Improvement Programme first; hold the member app until its pilot reports.",
+  "knownAs": [
+    "portfolio review",
+    "investment decisions",
+    "prioritisation"
+  ],
+  "definition": "The decisions a portfolio has made at its latest review, one for each project, programme or portfolio it holds: a priority, a decision (invest: fund it and let it go on; hold: keep it, but commit nothing more until the next review; stop: end it and release what it holds), the reason and the date. Kept in a file of its own beside the portfolio, as a KPI's readings are, because decisions change at every review while the portfolio's definition does not (TAXONOMY.md D8, D32).",
+  "steps": {},
+  "fields": {
+    "/spec/portfolio": {
+      "guide": "The portfolio these decisions belong to."
+    },
+    "/metadata/name": {
+      "guide": "A name for this set of decisions, usually the review it came from.",
+      "good": [
+        "2025 season review"
+      ]
+    },
+    "/spec/decisions": {
+      "guide": "One row for each thing the portfolio holds, and nothing else."
+    },
+    "/spec/decisions/-/kind": {
+      "guide": "Whether the decision is about a project, a programme or a portfolio."
+    },
+    "/spec/decisions/-/id": {
+      "guide": "The project, programme or portfolio decided on. It names this portfolio itself."
+    },
+    "/spec/decisions/-/priority": {
+      "guide": "Its rank: 1 is first. Two things may share a rank."
+    },
+    "/spec/decisions/-/decision": {
+      "guide": "Invest, hold or stop."
+    },
+    "/spec/decisions/-/reason": {
+      "guide": "Why, in a sentence a reader would accept.",
+      "good": [
+        "Moves the pass rate most for the least spend this season."
+      ],
+      "poor": [
+        {
+          "text": "Strategic.",
+          "why": "Says nothing a reader can check: say what it advances, or what has to change first."
+        }
+      ]
+    },
+    "/spec/decisions/-/decidedOn": {
+      "guide": "When the decision was made."
+    }
+  }
+}

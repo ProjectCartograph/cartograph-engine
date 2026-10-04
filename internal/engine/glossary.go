@@ -26,7 +26,7 @@ type GlossaryEntry struct {
 }
 
 // afterOf is what each kind that holds a stage's data comes after.
-var afterOf = map[string][]string{"KPIReadings": {"kpi"}}
+var afterOf = map[string][]string{"KPIReadings": {"kpi"}, "PortfolioDecisions": {"portfolio"}}
 
 // Glossary is every word of the taxonomy in locale, in the order of work:
 // the stages from the purpose down, then the registers, then what holds a

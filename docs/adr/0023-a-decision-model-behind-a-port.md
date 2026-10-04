@@ -115,6 +115,23 @@ chosen among them in one question. Ranking by them rather than by
 separate cues left routing as it was (27 of 30 unseen sentences had the
 right flow in three; 28 with the definitions).
 
+Portfolios (TAXONOMY.md D32) added a stage, and the programme's cue had
+to change with its definition. Measured on 10 sentences written to D32
+before any cue was tried (5 programmes, 5 portfolios), and on the 72
+sentences of the other stages:
+
+| Programme cue / portfolio cue | D32 sentences, right flow in three | Other stages, in three |
+|---|---|---|
+| "several projects that each need the others to bring about one change" / "projects and programmes grouped to decide which to fund first" | 7 of 10 | 64 of 72 |
+| "related projects coordinated together towards one shared change" / "a set of projects ranked and funded against the strategy" (kept) | 9 of 10 | 61 of 72 |
+| "several projects grouped under one programme" / "work grouped to decide what to invest in, hold or stop" | 7 of 10 | 64 of 72 |
+| kept programme cue / "projects and programmes grouped to decide which to fund first" | 8 of 10 | 59 of 72 |
+| kept programme cue / "a set of projects the organisation chooses between and funds" | 8 of 10 | 60 of 72 |
+
+One more stage is one more for the three places: the other stages had
+their right flow among three 85 percent of the time with it, against 89
+without it. The kept pair tells programmes and portfolios apart best.
+
 No confidence picked out a first flow that could be trusted (the surest
 were still wrong a third of the time on the 30), so three are offered
 and the person chooses.

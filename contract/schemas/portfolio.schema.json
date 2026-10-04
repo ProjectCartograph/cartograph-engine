@@ -1,0 +1,75 @@
+{
+  "$id": "portfolio.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Portfolio",
+  "description": "A group of projects, programmes and other portfolios selected, prioritised and overseen together against strategic objectives: a strategic investment and prioritisation construct. What it holds need not depend on one another or share a benefit (that is a programme); what it holds declares itself so, as programme membership is declared. Its decisions (what to invest in, hold or stop, and in what order) are a file of their own, PortfolioDecisions. See TAXONOMY.md D32.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Portfolio"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aim",
+        "leadTeam"
+      ],
+      "properties": {
+        "aim": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "What this portfolio invests in, and to what end, in a sentence: the strategic purpose its selection and prioritisation serve. Not a change it brings about itself; that is what a programme has."
+        },
+        "objectives": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "Goal"
+          },
+          "description": "The strategic objectives this portfolio is selected and prioritised against: goals at the goal or objective level (a kind rule). What it holds is judged by how it advances these, not by depending on one another."
+        },
+        "leadTeam": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Team",
+          "description": "The team that governs the portfolio: selects what goes in, sets priorities and decides what to invest in, hold or stop."
+        },
+        "funding": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "FundingSource"
+          },
+          "description": "The budgets this portfolio allocates. A thing it holds may draw on its own besides."
+        },
+        "reviewCycle": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "ReportingCycle",
+          "description": "How often the portfolio's decisions are reviewed. Optional; without one, the decisions' own dates say when they were last made."
+        },
+        "portfolios": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "Portfolio"
+          },
+          "description": "The portfolios this one is part of. Declared here and read back on the parent, as everything a portfolio holds is. A tree: a portfolio that would contain itself is refused."
+        }
+      }
+    }
+  }
+}

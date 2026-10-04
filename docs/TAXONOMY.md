@@ -93,8 +93,8 @@ Differences](https://www.pmi.org/learning/library/program-project-management-rel
 | Discipline | Cartograph | Notes |
 |---|---|---|
 | Project | `Project` | Matches. |
-| Programme | `Programme` | Matches, minus subsidiary programmes (D5). What it carries is derived below. |
-| Portfolio | *no kind* | Deliberate. See D3. |
+| Programme | `Programme` | Matches, subsidiary programmes included (D32). What it carries is derived below. |
+| Portfolio | `Portfolio`, `PortfolioDecisions` | Added by D32, which revisits D3. |
 | Benefit | `Goal` + `KeyResult` + `KPI` + `BeneficiaryGroup` | Decomposed, not absent. See D4. |
 | Operation | `Operation` | Matches; names its programmes (D2). |
 | Blueprint / target operating model | *nothing* | Out of scope: Cartograph captures, it does not design the future state. |
@@ -187,7 +187,7 @@ this programme?" with only its projects. The national assessment service
 names the Early Reading Programme, and the programme shows it beside the two
 projects.
 
-### D3. Cartograph has no portfolio kind, on purpose. *(resolved)*
+### D3. Cartograph has no portfolio kind, on purpose. *(superseded by D32)*
 
 The top level of a strategic plan does portfolio duty, and it is made of
 `Goal`s at the top level, not containers. *Make sure every child can read
@@ -199,6 +199,9 @@ capture boundary.
 
 **Do not add a Portfolio kind** without revisiting this. If a fourth tier is
 ever needed, it is a goal level, not a container.
+
+*Revisited in D32: the goal tree aligns work but holds no decision about
+what to fund, and a programme was being asked to stand in for that.*
 
 ### D4. There is no Benefit kind, and the parts are already here. *(resolved)*
 
@@ -215,7 +218,7 @@ say what counts as enough.
 question `relatesTo` already settled. If benefits realisation is ever wanted,
 it is readings against existing KPIs, not a new noun.
 
-### D5. Subsidiary programmes are not built, and the shape is known. *(deferred)*
+### D5. Subsidiary programmes are not built, and the shape is known. *(resolved by D32)*
 
 PMI lists subsidiary programmes as components. The plans Cartograph captures
 run goal → programme → project and do not nest programmes, so this is not
@@ -885,9 +888,11 @@ is a programme (MSP).
 - New asks about work one yes or no at a time, in plain words. Does it
   keep running? Then, does the service run today (running) or is it new
   (planned, then its project)? Does it finish? Then, is one person in
-  charge of all of it, with one budget? No: several projects each with
-  their own make a programme. Yes: is it part of a bigger project? A
-  part is a component; otherwise it is a project of its own. The
+  charge of all of it, with one budget? Yes: is it part of a bigger
+  project? A part is a component; otherwise it is a project of its own.
+  No: D32 asks whether the projects need one another for the same
+  change (a programme) or are grouped to decide what to fund (a
+  portfolio). The
   standards' terms (sponsor, results framework, theory of change) stay
   in the glossary, behind the word they explain.
 - The glossary defines Component beside Project, and the Project and
@@ -950,3 +955,81 @@ service it will join. They record the placeholder "national assessment
 service", finish the project's other steps, define the service from New,
 and come back to name it. An agent asked to do the same defines the
 service first.
+
+### D32. A portfolio decides what to fund, a programme brings about one change, and a project delivers. *(resolved)*
+
+**The problem.** New called a programme "several projects, each with
+its own person in charge and budget, run together towards one change",
+which any cluster of projects passes. Projects grouped because they
+share a budget, a sponsor or a strategic objective, but that run apart
+and do not need one another, were recorded as programmes, and nothing
+in Cartograph could hold the decision those groupings exist to make:
+what to fund, in what order, and what to stop. D3 had left that outside
+on purpose.
+
+**The discipline.** Three constructs, told apart by their management
+purpose and the relationships between what they hold, not by the fact
+that things are grouped:
+
+- A **portfolio** is a strategic investment and prioritisation
+  construct: projects, programmes and other portfolios, selected,
+  prioritised and overseen together against strategic objectives, with
+  no causal link required between them (PMI, The Standard for Portfolio
+  Management; Axelos MoP). It may hold programmes, projects and other
+  portfolios.
+- A **programme** coordinates related projects, and sub-programmes, to
+  realise outcomes and benefits they share (MSP; PMI, The Standard for
+  Program Management). It has a coherent theory of change and results
+  framework, linking activities to outputs, outputs to outcomes, and
+  outcomes to impact (UNSDG; the EU logframe). Causal coherence and
+  shared benefits are what make it a programme.
+- A **project** is the delivery unit, producing defined outputs (D14,
+  D15).
+
+A grouping that meets neither test is a collection: a descriptive label
+that assumes nothing about governance, dependence or shared benefits.
+It is how a person organises what they look at, not a fact about the
+work, so it is not a kind. A cluster may be informal, a governed
+portfolio, or a programme still forming, and the record says which only
+once its management purpose does.
+
+**What Cartograph does.**
+- `Portfolio` is a kind: the strategic objectives it serves (goals at
+  the goal or objective level), the budgets it draws on, and the team
+  that governs it. What it holds is declared by what is in it, as
+  programme membership is (D1): `Project.spec.alignment.portfolios[]`,
+  `Programme.spec.portfolios[]`, and `Portfolio.spec.portfolios[]` for a
+  portfolio inside another. Nesting is a tree, and a loop is refused.
+- A portfolio's decisions are their own file, `PortfolioDecisions`, as a
+  KPI's readings are (D8): for each thing the portfolio holds, a
+  priority and a decision (invest, hold or stop), with the reason and
+  the date. They change at every review while the portfolio's
+  definition does not, and they name what is in the portfolio, which is
+  written after it in the order of work (D28). A decision about
+  something the portfolio does not hold is advised.
+- A programme is held to its theory of change: its `pathway` is what
+  makes it one. A programme without a pathway is advised to write one,
+  or that it may be a portfolio. Sub-programmes are built in the shape
+  D5 recorded: `Programme.spec.programmes[]`, declared on the
+  sub-programme, read back on the parent, and a loop refused.
+- The order of work places a portfolio after the objectives it serves
+  and before the programmes and projects that name it; its decisions
+  come after everything they name, with the readings.
+- New tells them apart by management purpose, one question at a time,
+  for work that finishes. Is one person in charge of all of it, with one
+  budget? Then it is a project (and may be a component, D15). If not,
+  does each project need the others to bring about the same change?
+  Then it is a programme, and its theory of change comes next. If not,
+  are they grouped to decide what to fund and in what order? Then it is
+  a portfolio. If not, they are a collection.
+- Nothing is removed. Every programme and project saved before keeps
+  reading and saving; the new advice is advice.
+
+In the running example, the ministry's education plan is a portfolio:
+it holds the Early Reading Programme and the school meals project, which
+share a budget line and the strategic objective *every child can read
+with understanding*, but not a theory of change. The Early Reading
+Programme is a programme, because coaching teachers and the grade 2
+check both have to hold for children to read fluently by grade 3. The
+portfolio's decisions this year: invest in the programme, hold the
+meals project until its pilot reports.

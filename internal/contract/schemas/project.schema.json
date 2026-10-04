@@ -408,6 +408,14 @@
               },
               "description": "The programmes this project is part of. Belonging to one is a declaration, not a derivation: a programme coordinates the work inside it, which only means something if the work says which programme it is in. Declared here and read back on the programme, so there is one place to change it. Sharing a goal with a programme corroborates the claim and a check says so when it is missing, but it does not constitute it: an enabling component can belong to a programme and serve no goal the programme lists. That check is advisory: it shows a missing shared goal and never refuses the save. See TAXONOMY.md."
             },
+            "portfolios": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "Portfolio"
+              },
+              "description": "The portfolios this project is part of: where it is selected, prioritised and funded against strategic objectives. Declared here and read back on the portfolio, as programme membership is. Independent of programmes: a project in a programme may sit in a portfolio too, and a portfolio may hold the programme instead (TAXONOMY.md D32)."
+            },
             "partOf": {
               "$ref": "common.schema.json#/$defs/Slug",
               "x-cartograph-ref": "Project",

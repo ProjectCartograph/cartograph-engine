@@ -10,6 +10,7 @@ spec:
     change: Bring every part of the delivery quality experience up to the same standard, checks included
   leadTeam: quality-team
   supportingTeams: [operations-team]
+  portfolios: [cooperative-investment-portfolio]
   goals: [raise-produce-quality]
   # How the programme believes the change happens. A step resting on
   # nothing is where the programme's own work does it directly; every

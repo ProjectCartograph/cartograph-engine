@@ -238,6 +238,22 @@
             "x-cartograph-ref": "Team"
           }
         },
+        "programmes": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "Programme"
+          },
+          "description": "The programmes this one is a sub-programme of: part of a larger change it shares outcomes and benefits with. Declared here and read back on the parent, as a project's programme is (TAXONOMY.md D1, D32). A tree: a programme that would contain itself is refused."
+        },
+        "portfolios": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "Portfolio"
+          },
+          "description": "The portfolios this programme is part of: where it is selected, prioritised and funded against strategic objectives (TAXONOMY.md D32)."
+        },
         "goals": {
           "type": "array",
           "items": {
@@ -248,7 +264,7 @@
         },
         "pathway": {
           "type": "array",
-          "description": "How this programme believes the change happens: one step per intermediate outcome, each naming what must hold before it and why that produces it. Backwards mapping written forwards: the method is to start from the aim and ask what preconditions it needs, then what those need, until the answer is something the components actually do. Every outcome except the last is also a precondition for the next.\n\nDeliberately a separate edge set from the goal tree. Goal.parent is alignment (it says where a goal files, allows one parent, and carries no reason), where a pathway says what produces what, routinely has several inputs converging and one outcome feeding several, and exists to make the reasoning examinable (TAXONOMY.md D12). It lives on the programme rather than the goal because a goal outlives any one programme's theory of how to reach it, and two programmes may hold different theories about the same goal.\n\nAdvisory: a programme without one is a programme nobody has thought through yet, which is worth showing rather than refusing.",
+          "description": "How this programme believes the change happens: one step per intermediate outcome, each naming what must hold before it and why that produces it. Backwards mapping written forwards: the method is to start from the aim and ask what preconditions it needs, then what those need, until the answer is something the components actually do. Every outcome except the last is also a precondition for the next.\n\nDeliberately a separate edge set from the goal tree. Goal.parent is alignment (it says where a goal files, allows one parent, and carries no reason), where a pathway says what produces what, routinely has several inputs converging and one outcome feeding several, and exists to make the reasoning examinable (TAXONOMY.md D12). It lives on the programme rather than the goal because a goal outlives any one programme's theory of how to reach it, and two programmes may hold different theories about the same goal.\n\nWhat makes it a programme: causal coherence and shared benefits (TAXONOMY.md D32). Advisory: a programme without one is a programme nobody has thought through yet, or a portfolio, which is worth showing rather than refusing.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -315,5 +331,6 @@
         }
       }
     }
-  }
+  },
+  "description": ""
 }

@@ -1,7 +1,7 @@
 {
   "locale": "en",
   "kind": "Programme",
-  "summary": "A group of projects and services, each with its own person in charge and its own budget, run together towards one change.",
+  "summary": "Related projects coordinated together to bring about one change and the benefits it brings, each one a step the change needs.",
   "example": "Quality Improvement Programme, which runs its projects, such as the Quality Check Rollout, together towards one quality standard.",
   "terms": {
     "theory of change": {
@@ -11,13 +11,12 @@
   },
   "knownAs": [
     "programme of work",
-    "portfolio of initiatives",
-    "strategy",
-    "flagship"
+    "flagship",
+    "strategic programme"
   ],
-  "definition": "A programme is the coordinated management of projects and business-as-usual activities to achieve beneficial change (APM; PMI's programmes turn project outputs into outcomes). It is temporary and strategic, and what makes it a programme is that it coordinates the work inside it: its components, the projects and operations that each name it (TAXONOMY.md D1, D2). So it holds only what is its own: the change it seeks (aim), the problems that change answers (citing gaps), the outcomes and indicators it is judged on, its theory of change, its programme-level risks and its governance. A programme is not a project (one piece of work that ends, delivered by one team under one sponsor and one budget), not an operation (work that keeps running), not a goal (an aim in the strategy; the top level of the strategy does portfolio duty, and Cartograph has no portfolio kind, D3), and not a benefit (a benefit is an outcome, measured by a KPI, perceived by a beneficiary group, D4). Shared goals are the test of whether a grouping deserves to be a programme, not the definition of membership in one. Its checks advise and never block (D6).",
+  "definition": "A programme coordinates related projects, and sub-programmes, to realise outcomes and benefits they share (MSP; PMI, The Standard for Program Management). What makes it a programme is causal coherence: a theory of change linking what its projects deliver to the outcomes and the change it seeks, so each project is a step the change needs. It holds only what is its own: the change it seeks (aim), the problems that change answers (citing gaps), the outcomes and indicators it is judged on, its theory of change, its programme-level risks and its governance. What is in it says so itself: its components, the projects, sub-programmes and operations that each name it (TAXONOMY.md D1, D2, D32). A programme is not a portfolio (work grouped to decide what to fund, which need not depend on one another), not a project (one piece of work producing outputs, under one person in charge and one budget), not an operation (work that keeps running), and not a goal (an aim in the strategy).",
   "cues": {
-    "programme": "several projects grouped under one programme"
+    "programme": "related projects coordinated together towards one shared change"
   },
   "steps": {},
   "fields": {
@@ -435,6 +434,12 @@
     },
     "/spec/notes": {
       "guide": "Anything a reader needs that has no field of its own. Not a place for what a field already holds."
+    },
+    "/spec/programmes": {
+      "guide": "The programmes this one is a sub-programme of: a larger change it shares outcomes and benefits with. Leave empty for a programme that stands on its own."
+    },
+    "/spec/portfolios": {
+      "guide": "The portfolios that select and fund this programme, if any."
     }
   },
   "links": {
@@ -445,10 +450,14 @@
     "Operation:/spec/programmes": {
       "ask": "Which operations sit inside this programme? Business as usual is inside the programme boundary, and an operation names the programmes it is part of, so open the operation and choose this programme.",
       "ifNone": "Define the programme first, then define each service that keeps running as an operation and have it name this programme. A service that runs without the programme stays outside it."
+    },
+    "Programme:/spec/programmes": {
+      "ask": "Which sub-programmes does this programme coordinate? A sub-programme names the programmes it is part of, so open it and choose this programme.",
+      "ifNone": "Most programmes have none. A sub-programme shares this programme's outcomes and its theory of change; work that does not is better its own programme, or a portfolio's."
     }
   },
   "checks": {
-    "components-present": "Have at least one project or operation name this programme, from its own definition; the programme never lists them itself.",
+    "components-present": "Have at least one project, sub-programme or operation name this programme, from its own definition; the programme never lists them itself.",
     "problems-stated": "State at least one problem the programme answers, with the change that answers it.",
     "problems-groups": "Name the beneficiary groups each problem lands on.",
     "problems-gaps": "Cite the gap each problem answers from the gap register, or define the gap first.",
@@ -459,7 +468,7 @@
     "risks-dependency-cycle": "Break the loop by removing or redirecting one of the dependencies, so nothing this programme waits on is waiting on it.",
     "components-serve-outcomes": "Each project that names this programme aligns to one of its outcomes; if it serves none, it belongs elsewhere or the programme is missing an outcome.",
     "aim-change": "State the change the programme exists to bring about, as how things will stand once it has worked.",
-    "pathway-steps": "Write the pathway: each intermediate outcome, what must hold before it, and why that produces it.",
+    "pathway-steps": "Write the theory of change: each intermediate outcome, what must hold before it, and why that produces it. If the work does not need one another to bring about one change, it may be a portfolio.",
     "governance-lead": "Name the team that leads the programme."
   }
 }

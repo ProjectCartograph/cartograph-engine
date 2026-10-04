@@ -88,8 +88,8 @@ Work this way, every time:
    room for their own answer, and never pick for them.
 1. Cartograph's record is a directed acyclic graph, written from the top
    down in one order: purpose, goals, objectives, outcomes, the KPIs
-   that measure them, the gaps they close, then programmes, operations
-   and projects. Each thing names only what comes before it, so what it
+   that measure them, the gaps they close, then portfolios, programmes,
+   operations and projects, and last a portfolio's decisions. Each thing names only what comes before it, so what it
    names already exists when it is written, and nothing finished is
    opened again to link it to something later. When your person does not
    say where to start, or the workspace is new, call next without work:
@@ -102,9 +102,16 @@ Work this way, every time:
    that sets it up, which names it as where it lands. Work that ends:
    one accountable person and one budget make one Project, and a part
    under the same person and budget is a component of it (partOf); work
-   that needs its own person or budget is a Project of its own, and
-   several of those sharing aims are a Programme. Recording what already
-   exists follows the same order as defining something new.
+   that needs its own person or budget is a Project of its own. Projects
+   that each need the others to bring about one change, with a theory of
+   change linking what they deliver to that change, are a Programme
+   (it may hold sub-programmes). Projects and programmes grouped to
+   decide what to fund and in what order, against strategic objectives,
+   with no causal link needed, are a Portfolio, and its invest, hold or
+   stop decisions are a PortfolioDecisions file written after them. A
+   grouping that is neither is not recorded as a kind: never make a
+   Programme or a Portfolio only because things are grouped. Recording
+   what already exists follows the same order as defining something new.
    Documents your person gives you are evidence, not a structure: plans
    use their own words, and the same word means different things in
    different plans. Call taxonomy, and record each thing a document says
@@ -786,7 +793,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "next", Description: "What to do next, in the order of work: the record is a directed acyclic graph, written from the top down " +
-		"(purpose, goals, objectives, outcomes, KPIs, gaps, then programmes, operations and projects), each thing naming only what comes before it. " +
+		"(purpose, goals, objectives, outcomes, KPIs, gaps, then portfolios, programmes, operations and projects), each thing naming only what comes before it. " +
 		"With work (every manifest you are working on), the next open check across it: each manifest is finished in one visit, what it is, its numbers " +
 		"(from the documents your person gave you), then its links to what is already there, before the next one down. Without work, the stage of the workspace " +
 		"to write now, and how far each has got: an empty workspace starts at its purpose. Call it whenever you are unsure what comes next.", Annotations: readOnly},

@@ -347,3 +347,62 @@ func ParentCycleProblems(doc map[string]any, ctx RuleContext, kind, noun string)
 	}
 	return nil
 }
+
+// ParentsCycleProblems is ParentCycleProblems for a kind that names its
+// parents in a list (spec.<field>[]), as a sub-programme names its
+// programmes and a portfolio the portfolios it is in: refused when any of
+// them is, or has as an ancestor, the manifest itself. Several parents
+// make a graph rather than a tree, so every path up is walked, each
+// manifest once.
+func ParentsCycleProblems(doc map[string]any, ctx RuleContext, kind, field, noun string) []Problem {
+	spec, _ := doc["spec"].(map[string]any)
+	parents := stringList(spec[field])
+	if len(parents) == 0 {
+		return nil
+	}
+	path := "/spec/" + field
+	for i, p := range parents {
+		if p == ctx.ID && p != "" {
+			return []Problem{{Path: fmt.Sprintf("%s/%d", path, i), Message: "a " + noun + " cannot be part of itself"}}
+		}
+	}
+	if ctx.Lookup == nil || ctx.ID == "" {
+		return nil
+	}
+	others, err := ctx.Lookup.Documents(kind)
+	if err != nil {
+		return nil
+	}
+	parentsOf := func(id string) []string {
+		s, _ := others[id]["spec"].(map[string]any)
+		return stringList(s[field])
+	}
+	for i, start := range parents {
+		seen := map[string]bool{}
+		stack := []string{start}
+		for len(stack) > 0 {
+			at := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if at == ctx.ID {
+				return []Problem{{Path: fmt.Sprintf("%s/%d", path, i), Message: fmt.Sprintf("this would make %q part of itself", ctx.ID)}}
+			}
+			if seen[at] {
+				continue
+			}
+			seen[at] = true
+			stack = append(stack, parentsOf(at)...)
+		}
+	}
+	return nil
+}
+
+func stringList(v any) []string {
+	list, _ := v.([]any)
+	out := make([]string, 0, len(list))
+	for _, x := range list {
+		if s, ok := x.(string); ok && s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}

@@ -51,7 +51,7 @@ type Graph struct {
 // notInGraph are kinds that are not elements of the workspace: the
 // deployment's settings, and the readings that are a KPI's data rather
 // than something it is connected to.
-var notInGraph = map[string]bool{"Settings": true, "KPIReadings": true}
+var notInGraph = map[string]bool{"Settings": true, "KPIReadings": true, "PortfolioDecisions": true}
 
 // Graph returns every manifest and every reference between them, from
 // the reference index the store already keeps: a list and one reverse

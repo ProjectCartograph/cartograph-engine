@@ -27,6 +27,11 @@
             ]
           },
           {
+            "path": "/spec/alignment/portfolios",
+            "control": "references",
+            "hint": "The portfolios that select and fund this project, if any. Independent of its programmes."
+          },
+          {
             "path": "/spec/alignment/partOf",
             "control": "reference",
             "hint": "Choose this only if it shares that project's sponsor and budget.",

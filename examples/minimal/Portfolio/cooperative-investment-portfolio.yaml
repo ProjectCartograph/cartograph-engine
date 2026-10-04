@@ -1,0 +1,11 @@
+apiVersion: cartograph/v1
+kind: Portfolio
+metadata:
+  id: cooperative-investment-portfolio
+  name: Cooperative Investment Portfolio
+spec:
+  aim: Fund first the work that most raises what members earn from each season's produce.
+  objectives: [raise-produce-quality, grow-member-livelihoods]
+  leadTeam: finance-team
+  funding: [operating-budget]
+  reviewCycle: seasonal-cycle

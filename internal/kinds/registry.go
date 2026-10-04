@@ -8,6 +8,8 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/goal"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kpireadings"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/portfolio"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/portfoliodecisions"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/programme"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/project"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/purpose"
@@ -45,10 +47,12 @@ var All = []Spec{
 	{Name: "Unit", SchemaFile: "unit.schema.json"},
 	{Name: "KPI", SchemaFile: "kpi.schema.json"},
 	{Name: "KPIReadings", SchemaFile: "kpireadings.schema.json", Rules: kpireadings.Rules},
+	{Name: "Portfolio", SchemaFile: "portfolio.schema.json", Rules: portfolio.Rules},
 	{Name: "Programme", SchemaFile: "programme.schema.json", Rules: programme.Rules},
 	{Name: "Operation", SchemaFile: "operation.schema.json"},
 	{Name: "Project", SchemaFile: "project.schema.json", Rules: project.Rules},
 	{Name: "StakeholderMap", SchemaFile: "stakeholdermap.schema.json", Rules: stakeholdermap.Rules},
+	{Name: "PortfolioDecisions", SchemaFile: "portfoliodecisions.schema.json", Rules: portfoliodecisions.Rules},
 	{Name: "Settings", SchemaFile: "settings.schema.json", Rules: settings.Rules},
 }
 

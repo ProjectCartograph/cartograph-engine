@@ -10,5 +10,6 @@ spec:
     change: Sell more of the season direct to retail buyers, at terms the cooperative sets rather than accepts
   leadTeam: member-services-team
   supportingTeams: [finance-team, quality-team]
+  portfolios: [cooperative-investment-portfolio]
   goals: [grow-member-livelihoods, members-reach-more-buyers]
   kpis: [member-season-earnings]

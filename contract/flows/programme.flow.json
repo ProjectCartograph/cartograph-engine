@@ -117,6 +117,16 @@
             "checks": [
               "alignment-kpis"
             ]
+          },
+          {
+            "path": "/spec/programmes",
+            "control": "references",
+            "title": "Part of programmes"
+          },
+          {
+            "path": "/spec/portfolios",
+            "control": "references",
+            "title": "Portfolios"
           }
         ],
         "phase": "align"
@@ -124,12 +134,18 @@
       {
         "key": "components",
         "title": "Components",
-        "guide": "The projects and operations the programme coordinates, each of which names it.",
+        "guide": "The projects, sub-programmes and operations the programme coordinates, each of which names it.",
         "fields": [],
         "links": [
           {
             "kind": "Project",
             "path": "/spec/alignment/programmes",
+            "check": "components-present",
+            "phase": "align"
+          },
+          {
+            "kind": "Programme",
+            "path": "/spec/programmes",
             "check": "components-present",
             "phase": "align"
           },
