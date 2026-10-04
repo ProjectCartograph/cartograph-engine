@@ -1033,3 +1033,55 @@ Programme is a programme, because coaching teachers and the grade 2
 check both have to hold for children to read fluently by grade 3. The
 portfolio's decisions this year: invest in the programme, hold the
 meals project until its pilot reports.
+
+### D33. A walk is told in stages, each settling one thing, governance among them. *(resolved)*
+
+**The problem.** The project walk had fourteen steps in four stages
+named for effort (align, target, refine, polish), not for what each
+settles, so nobody could say which stage held the budget or the
+mandate. Governance was in five places: the owning team in alignment,
+the mandate inside the problem, roles and funding, stakeholders, and
+escalation inside the risks. One stage held results, people and outputs
+together. Two steps asked nothing new: closure showed the deliverables'
+acceptance again, and handover showed the success criteria and roles
+again around the one field it owned. Scope sat four steps before the
+deliverables it bounds.
+
+**The discipline.** A charter and a project initiation document are
+read by what each part settles: why, what, who governs, how it is
+planned, how success is known (PRINCE2's PID; PMBOK's charter, whose
+scope statement is the deliverables, their acceptance and the
+exclusions). Governance is one part: who decides, who pays, on whose
+authority, and who holds power.
+
+**What Cartograph does.**
+- A flow may group its steps into `stages`, each naming its steps; read
+  in order, the stages give every step once, in the order of the steps
+  (a contract test). A stage comes after every stage whose answers it
+  needs. A flow without stages is walked step by step.
+- The project walk is seven stages: Context (alignment); Problem
+  (beneficiaries, problem); Objectives (objectives and indicators);
+  Governance (roles and funding, now with the mandate, and
+  stakeholders); Scope (scope, deliverables with their acceptance);
+  Plan (schedule, data, risks); Success and handover (success criteria,
+  the service it lands in). Governance comes before everything that
+  names a role (acceptance, success criteria, escalation). Scope moves
+  beside the deliverables it bounds. Success criteria move after the
+  plan, so a criterion can read from data the project produces.
+- Closure leaves the walk. Its page stays for the closing phase, and
+  the closing and landing checks still point there.
+- The programme walk folds its mandate into its governance step.
+- Step keys and check ids are unchanged, so every client, check and
+  agent guide that names one still finds it; the mandate check now
+  answers on the governance step that holds the field.
+
+In the running example, the reading check is written in seven stages:
+it sits in the Early Reading Programme and serves *children read
+fluently by grade 3* (context); early-grade learners fall behind
+unseen (problem); a grade 2 check every teacher can run (objectives);
+the ministry's reading lead sponsors it from the reading grant, under
+the minister's mandate (governance); the check and its booklets (scope);
+two terms of piloting and roll-out, the results data, the risk that
+schools lack time (plan); the check runs in the national assessment
+service (success and handover).
+

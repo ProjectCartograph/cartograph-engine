@@ -116,11 +116,11 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	}
 	mandate, _ := spec["mandate"].([]any)
 	if len(mandate) > 0 {
-		c.add("aim-mandate", "aim", phaseInitiation, checkOK, "A mandate is named.")
+		c.add("aim-mandate", "resources", phaseInitiation, checkOK, "A mandate is named.")
 	} else if isComponent {
-		c.add("aim-mandate", "aim", phaseInitiation, checkOK, "Works under the mandate of the project it is part of.")
+		c.add("aim-mandate", "resources", phaseInitiation, checkOK, "Works under the mandate of the project it is part of.")
 	} else {
-		c.add("aim-mandate", "aim", phaseInitiation, checkWarn, "No mandate named yet.")
+		c.add("aim-mandate", "resources", phaseInitiation, checkWarn, "No mandate named yet.")
 	}
 	// Projects align to outcomes only: the work aligned to an outcome is
 	// what the strategy reads under it (TAXONOMY.md D24). This check blocks

@@ -43,7 +43,7 @@ through the client port.
 | Document | Client method | What an interface takes from it |
 |---|---|---|
 | JSON Schema per kind | `Schema(kind)` | Field types, enums, reference targets (`x-cartograph-ref`), titles and descriptions, which lists are keyed (`x-cartograph-list-key`) |
-| Flow per kind | `Flow(kind)` | The steps in order, the fields each step asks for, how each is asked (`control`), the guide sentence, which checks a field answers |
+| Flow per kind | `Flow(kind)` | The steps in order, the fields each step asks for, how each is asked (`control`), the guide sentence, which checks a field answers, and the stages the steps are walked in (TAXONOMY.md D33) |
 | Checks | `Checks(kind, id)` | What is wrong or missing, as `{path, message, state, fix}`; `fix` names the flow step that holds the field; in process, conflict notes read from the shared draft arrive here too |
 | Problems | the `Refused` error of a validating save | `{path, message}`, landed on the field at `path` |
 | Settings | `Settings()` | The organisation's words for levels and kinds, examples per field |

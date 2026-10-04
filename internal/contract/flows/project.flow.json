@@ -141,59 +141,6 @@
                 ]
               }
             ]
-          },
-          {
-            "path": "/spec/mandate",
-            "control": "list",
-            "key": "title",
-            "title": "Mandate",
-            "checks": [
-              "aim-mandate"
-            ],
-            "fields": [
-              {
-                "path": "/kind",
-                "control": "choice"
-              },
-              {
-                "path": "/title",
-                "control": "text"
-              },
-              {
-                "path": "/reference",
-                "control": "text"
-              },
-              {
-                "path": "/date",
-                "control": "date"
-              },
-              {
-                "path": "/issuedBy",
-                "control": "text"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "key": "scope",
-        "title": "Scope",
-        "guide": "Where the work starts and stops.",
-        "fields": [
-          {
-            "path": "/spec/summary/scopeIn",
-            "control": "list",
-            "title": "In scope",
-            "hint": "Write one sentence each.",
-            "checks": [
-              "scope-in"
-            ]
-          },
-          {
-            "path": "/spec/summary/scopeOut",
-            "control": "list",
-            "title": "Out of scope",
-            "hint": "What people might expect that this will not do."
           }
         ]
       },
@@ -301,7 +248,7 @@
       {
         "key": "resources",
         "title": "Resources",
-        "guide": "The roles the project needs and the money it draws on.",
+        "guide": "The roles the project needs, the money it draws on, and the mandate it works under.",
         "fields": [
           {
             "path": "/spec/resources",
@@ -363,6 +310,37 @@
                 "control": "choice"
               }
             ]
+          },
+          {
+            "path": "/spec/mandate",
+            "control": "list",
+            "key": "title",
+            "title": "Mandate",
+            "checks": [
+              "aim-mandate"
+            ],
+            "fields": [
+              {
+                "path": "/kind",
+                "control": "choice"
+              },
+              {
+                "path": "/title",
+                "control": "text"
+              },
+              {
+                "path": "/reference",
+                "control": "text"
+              },
+              {
+                "path": "/date",
+                "control": "date"
+              },
+              {
+                "path": "/issuedBy",
+                "control": "text"
+              }
+            ]
           }
         ]
       },
@@ -375,6 +353,28 @@
           {
             "kind": "StakeholderMap",
             "path": "/spec/scope"
+          }
+        ]
+      },
+      {
+        "key": "scope",
+        "title": "Scope",
+        "guide": "Where the work starts and stops.",
+        "fields": [
+          {
+            "path": "/spec/summary/scopeIn",
+            "control": "list",
+            "title": "In scope",
+            "hint": "Write one sentence each.",
+            "checks": [
+              "scope-in"
+            ]
+          },
+          {
+            "path": "/spec/summary/scopeOut",
+            "control": "list",
+            "title": "Out of scope",
+            "hint": "What people might expect that this will not do."
           }
         ]
       },
@@ -424,106 +424,6 @@
                   }
                 ]
               }
-            ]
-          }
-        ]
-      },
-      {
-        "key": "success",
-        "title": "Success criteria",
-        "guide": "What has to be true for the project to have succeeded, not merely to have finished.",
-        "fields": [
-          {
-            "path": "/spec/successCriteria",
-            "control": "list",
-            "key": "id",
-            "checks": [
-              "success-criteria",
-              "success-measured",
-              "success-owner",
-              "landing-criteria"
-            ],
-            "fields": [
-              {
-                "path": "/id",
-                "control": "readonly"
-              },
-              {
-                "path": "/statement",
-                "control": "sentence",
-                "title": "Criterion",
-                "hint": "Something that will be true once this has worked, that someone else could check."
-              },
-              {
-                "path": "/metric",
-                "control": "choice",
-                "title": "Type"
-              },
-              {
-                "path": "/standard",
-                "control": "text",
-                "title": "Target"
-              },
-              {
-                "path": "/source",
-                "control": "reference",
-                "title": "Read from",
-                "checks": [
-                  "data-capture-decided"
-                ]
-              },
-              {
-                "path": "/cycle",
-                "control": "reference",
-                "title": "Read each"
-              },
-              {
-                "path": "/owner",
-                "control": "reference",
-                "title": "Measured by",
-                "checks": [
-                  "success-owner"
-                ]
-              },
-              {
-                "path": "/confirmedBy",
-                "control": "reference",
-                "title": "Signed off by"
-              },
-              {
-                "path": "/from",
-                "control": "references",
-                "title": "Deliverables",
-                "hint": "Only if a deliverable produces it."
-              },
-              {
-                "path": "/assumes",
-                "control": "references",
-                "title": "Assumptions"
-              },
-              {
-                "path": "/when",
-                "control": "choice",
-                "title": "Assessed",
-                "checks": [
-                  "landing-criteria"
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "key": "closing",
-        "title": "Closure",
-        "guide": "What the outputs are accepted against when the project closes.",
-        "fields": [
-          {
-            "path": "/spec/deliverables",
-            "control": "readonly",
-            "title": "Acceptance criteria",
-            "checks": [
-              "closing-criteria"
             ]
           }
         ]
@@ -755,6 +655,91 @@
         ]
       },
       {
+        "key": "success",
+        "title": "Success criteria",
+        "guide": "What has to be true for the project to have succeeded, not merely to have finished.",
+        "fields": [
+          {
+            "path": "/spec/successCriteria",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "success-criteria",
+              "success-measured",
+              "success-owner",
+              "landing-criteria"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/statement",
+                "control": "sentence",
+                "title": "Criterion",
+                "hint": "Something that will be true once this has worked, that someone else could check."
+              },
+              {
+                "path": "/metric",
+                "control": "choice",
+                "title": "Type"
+              },
+              {
+                "path": "/standard",
+                "control": "text",
+                "title": "Target"
+              },
+              {
+                "path": "/source",
+                "control": "reference",
+                "title": "Read from",
+                "checks": [
+                  "data-capture-decided"
+                ]
+              },
+              {
+                "path": "/cycle",
+                "control": "reference",
+                "title": "Read each"
+              },
+              {
+                "path": "/owner",
+                "control": "reference",
+                "title": "Measured by",
+                "checks": [
+                  "success-owner"
+                ]
+              },
+              {
+                "path": "/confirmedBy",
+                "control": "reference",
+                "title": "Signed off by"
+              },
+              {
+                "path": "/from",
+                "control": "references",
+                "title": "Deliverables",
+                "hint": "Only if a deliverable produces it."
+              },
+              {
+                "path": "/assumes",
+                "control": "references",
+                "title": "Assumptions"
+              },
+              {
+                "path": "/when",
+                "control": "choice",
+                "title": "Assessed",
+                "checks": [
+                  "landing-criteria"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
         "key": "landing",
         "title": "Handover",
         "guide": "The operation that runs the result, and what has to be true once it is in use.",
@@ -788,6 +773,70 @@
             "path": "/spec/notes",
             "control": "sentence"
           }
+        ]
+      }
+    ],
+    "stages": [
+      {
+        "key": "context",
+        "title": "Context",
+        "guide": "Where the project sits: what it is part of, the outcomes it serves and the team that owns it.",
+        "steps": [
+          "goals"
+        ]
+      },
+      {
+        "key": "problem",
+        "title": "Problem",
+        "guide": "Who it is for, and what is wrong for them today.",
+        "steps": [
+          "beneficiaries",
+          "aim"
+        ]
+      },
+      {
+        "key": "objectives",
+        "title": "Objectives",
+        "guide": "The change it makes, and the measures that show it happened.",
+        "steps": [
+          "measures"
+        ]
+      },
+      {
+        "key": "governance",
+        "title": "Governance",
+        "guide": "Who decides, who pays, on whose authority, and who holds power over it.",
+        "steps": [
+          "resources",
+          "stakeholders"
+        ]
+      },
+      {
+        "key": "scope",
+        "title": "Scope",
+        "guide": "What it produces, what it leaves out, and what each output is accepted against.",
+        "steps": [
+          "scope",
+          "deliverables"
+        ]
+      },
+      {
+        "key": "plan",
+        "title": "Plan",
+        "guide": "When it runs, the data it reads and makes, and what could go wrong.",
+        "steps": [
+          "timeline",
+          "data",
+          "risks"
+        ]
+      },
+      {
+        "key": "handover",
+        "title": "Success and handover",
+        "guide": "What has to be true for it to have succeeded, and the service that runs the result.",
+        "steps": [
+          "success",
+          "landing"
         ]
       }
     ],

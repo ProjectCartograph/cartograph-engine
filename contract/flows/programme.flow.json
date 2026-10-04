@@ -260,7 +260,7 @@
       {
         "key": "governance",
         "title": "Governance",
-        "guide": "The roles accountable for the programme, and the teams that run it.",
+        "guide": "The roles accountable for the programme, the teams that run it, and the mandate it works under.",
         "fields": [
           {
             "path": "/spec/sponsor",
@@ -286,15 +286,7 @@
             "path": "/spec/supportingTeams",
             "control": "references",
             "title": "Supporting teams"
-          }
-        ]
-      },
-      {
-        "key": "mandate",
-        "title": "Mandate",
-        "guide": "The decisions, policies or laws that authorise the programme.",
-        "optional": true,
-        "fields": [
+          },
           {
             "path": "/spec/mandate",
             "control": "list",

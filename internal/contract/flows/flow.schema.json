@@ -52,6 +52,42 @@
             "$ref": "#/$defs/step"
           }
         },
+        "stages": {
+          "type": "array",
+          "description": "The steps grouped into stages, the walk a person sees: each stage names its steps, and read in order the stages give every step once, in the order of steps. A stage gathers steps that decide one thing (who governs, what is produced), and comes after every stage whose answers it needs. Optional: a flow without stages is walked step by step.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "title",
+              "steps"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z][a-zA-Z0-9]*$"
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 60
+              },
+              "guide": {
+                "type": "string",
+                "maxLength": 240,
+                "description": "What the stage settles, in a sentence."
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                },
+                "description": "The keys of its steps, in order."
+              }
+            }
+          }
+        },
         "review": {
           "type": "boolean",
           "default": true,

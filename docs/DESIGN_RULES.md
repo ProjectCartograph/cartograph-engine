@@ -29,10 +29,13 @@ early-grade learners, learners in rural schools and early-grade teachers.
 3. **Three phases, three questions.** Initiation (how does this project
    start), Closing (how does it close), Landing (how does it land). Nothing
    else is a step.
-4. **One section on screen at a time.** Inside a phase, a section rail lists
-   the sections with their state; the main pane shows only the current
-   section; the right rail shows what this section feeds and its own checks.
-   Nothing else. A person is never shown the whole phase at once.
+4. **One stage on screen at a time.** Inside a phase, a rail lists the
+   stages and their steps, each step with its state; the main pane shows the
+   current stage, its steps one after another under their own headings; the
+   right rail shows the checks of that stage's steps. A stage settles one
+   thing (TAXONOMY.md D33), so its steps belong on one screen; opened at a
+   step, the screen scrolls to it. Nothing else. A person is never shown
+   the whole phase at once.
 5. **One visual per section, matched to its data type.** Goals: chips, one
    per goal a project may align to.
    Aim: sentence cards on a baseline-to-target scale. Scope: in and out as

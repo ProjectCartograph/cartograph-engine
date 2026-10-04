@@ -233,3 +233,49 @@ func TestEveryKindIsGuided(t *testing.T) {
 		}
 	}
 }
+
+// A flow's stages are the walk a person sees: read in order they give every
+// step once, in the order of the steps, so grouping never reorders the
+// work or drops a step from it.
+func TestStagesWalkEveryStepOnce(t *testing.T) {
+	staged := 0
+	for kind := range kindSchemas(t) {
+		path := "flows/" + strings.ToLower(kind) + ".flow.json"
+		raw, _ := readJSON(t, contract.Flows, path)
+		if raw == nil {
+			continue
+		}
+		var flow struct {
+			Spec struct {
+				Steps []struct {
+					Key string `json:"key"`
+				} `json:"steps"`
+				Stages []struct {
+					Key   string   `json:"key"`
+					Steps []string `json:"steps"`
+				} `json:"stages"`
+			} `json:"spec"`
+		}
+		b, _ := json.Marshal(raw)
+		if err := json.Unmarshal(b, &flow); err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		if len(flow.Spec.Stages) == 0 {
+			continue
+		}
+		staged++
+		var walked, want []string
+		for _, st := range flow.Spec.Stages {
+			walked = append(walked, st.Steps...)
+		}
+		for _, s := range flow.Spec.Steps {
+			want = append(want, s.Key)
+		}
+		if strings.Join(walked, " ") != strings.Join(want, " ") {
+			t.Errorf("%s: the stages walk %v, the steps are %v", path, walked, want)
+		}
+	}
+	if staged == 0 {
+		t.Fatal("no flow has stages")
+	}
+}
