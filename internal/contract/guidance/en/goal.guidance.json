@@ -168,7 +168,7 @@
     },
     "Gap:/spec/outcomes": {
       "ask": "Which gap does this outcome close? A gap is a shortfall measured against the purpose: where things are now, where they should be, and on what measure.",
-      "ifNone": "Define the gap first: its current state, its desired state, the KPI that measures it (with a dated baseline and target), the segments it was observed in, and the source of the evidence. Then the gap names this outcome."
+      "ifNone": "Define the gap next, once this outcome is written: its current state, its desired state, the KPI that measures it (with a dated baseline and target), the segments it was observed in, and the source of the evidence. The gap names this outcome as it is written; the outcome is not opened again."
     }
   },
   "checks": {
@@ -179,7 +179,7 @@
     "smart-time-bound": "Date every target, inside the horizon.",
     "owner": "Name the accountable role.",
     "horizon": "Give the period, inside the one above it.",
-    "closes-gap": "Name this outcome on the gap it closes, or define the gap first.",
+    "closes-gap": "Write the gap this outcome closes next, naming this outcome, or name it on an existing gap.",
     "key-results-count": "Keep one to three key results; more blur the focus.",
     "contributes-to": "Point each link at a higher objective other than the parent, with a reason.",
     "has-objectives": "Define the objectives under this goal, or place existing ones under it.",
