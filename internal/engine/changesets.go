@@ -204,6 +204,22 @@ func (e *Engine) writeItem(ctx context.Context, set, kind, id string, change fun
 		return err
 	}
 	p := identity.PrincipalFrom(ctx)
+	// An agent is held to the order of work (TAXONOMY.md D31): what it
+	// names is in the record or in its change set already, and it leaves
+	// no placeholder.
+	if p.Agent != "" {
+		items, err := s.ListChangeItems(ctx, cs.ID)
+		if err != nil {
+			return err
+		}
+		set := map[string]bool{kind + "/" + id: true}
+		for _, other := range items {
+			set[other.Kind+"/"+other.ID] = true
+		}
+		if problems := e.agentOrderProblems(ctx, set, kind, id, after); len(problems) > 0 {
+			return &ValidationError{Problems: problems}
+		}
+	}
 	it.Text, it.By, it.At = text, p.Actor(e.operator(ctx)), timeNow().UTC()
 	if err := s.PutChangeItem(ctx, it); err != nil {
 		return err

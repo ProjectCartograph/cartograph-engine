@@ -129,7 +129,12 @@ Work this way, every time:
    then the gaps they close. A link is always made from the later thing
    to the earlier one, as that later thing is written; never go back to
    an earlier record to add it. Never leave a link the plan names unmade
-   without asking.
+   without asking. This order is enforced, not advised: a draft that
+   names anything that is neither in the record nor already drafted in
+   your change set is refused, and so is a placeholder (metadata.pending,
+   which is for people alone). When something the plan needs does not
+   exist, define it first, in this change set, with guide for its kind,
+   and only then the thing that names it.
 4. Start each piece of work with start_work, titled as your person
    would say it, so it is one change set they review on its own. Then
    start the draft at once: as soon as you know the kind and a working
@@ -479,6 +484,11 @@ type (
 	localeOnly struct {
 		Locale string `json:"locale,omitempty"`
 	}
+	matchIn struct {
+		Kind  string `json:"kind" jsonschema:"the kind to look in"`
+		Level string `json:"level,omitempty" jsonschema:"for a Goal, the level: goal, objective or outcome"`
+		Text  string `json:"text" jsonschema:"what the new thing would say: its name and statement, in the document's words"`
+	}
 	startWorkIn struct {
 		Title       string `json:"title" jsonschema:"what this piece of work is, as your person would say it"`
 		Description string `json:"description,omitempty" jsonschema:"what it is for, and what it will hold"`
@@ -682,6 +692,12 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 
 	tool(s, o, person, &sdk.Tool{Name: "references", Description: "What a manifest references, and what references it.", Annotations: readOnly},
 		func(c call, in manifestRef) (any, error) { return e.References(c.ctx, in.Kind, in.ID) })
+
+	tool(s, o, person, &sdk.Tool{Name: "match", Description: "Before defining anything, the existing records of a kind that already say what it would say, most likely first: " +
+		"judged by Cartograph's decision model where one is configured, else by the words they share (by says which). Work on a match instead of defining another.", Annotations: readOnly},
+		func(c call, in matchIn) (any, error) {
+			return map[string]any{"matches": e.MatchExisting(c.ctx, in.Kind, in.Level, in.Text)}, nil
+		})
 
 	tool(s, o, person, &sdk.Tool{Name: "history", Description: "Every saved version of a manifest: who saved it, when and why.", Annotations: readOnly},
 		func(c call, in manifestRef) (any, error) {
@@ -1081,10 +1097,11 @@ type guided struct {
 
 // nextSteps is the method, named by tool, at the end of every guide.
 var nextSteps = []string{
-	"If an existing record already says what your person wants, work on it (get it, then edit_draft your changes) instead of defining another.",
+	"If an existing record already says what your person wants, work on it (get it, then edit_draft your changes) instead of defining another: call match with what the new thing would say to find one.",
 	"Follow plan in its order: its before items are what this kind names, which must exist first (ask its question with the existing records offered by name; " +
 		"when none fits, define one with guide for its kind); then this kind's own steps; then its after items, each naming what came before it. " +
-		"For an objective that means the objective, then its outcomes, the KPI measuring each, and the gaps they close. Never go back to a finished record to link it to a later one: the later one names it.",
+		"For an objective that means the objective, then its outcomes, the KPI measuring each, and the gaps they close. Never go back to a finished record to link it to a later one: the later one names it. " +
+		"A before item with no existing record must be defined first, in this change set: a draft that names what does not exist yet is refused.",
 	"Settle each step with your person, in order, using the field guides and their examples; never invent a figure, date, source or owner.",
 	"Create each draft with save_draft as soon as you know its name, then edit_draft field by field; pass work (every Kind/id you are defining together) and meet every open check it returns, its own and around.",
 	"Then propose: propose_save for one manifest, propose_set for several that reference each other. Your work is not done until it is proposed; your person accepts it in Cartograph, not in this conversation.",

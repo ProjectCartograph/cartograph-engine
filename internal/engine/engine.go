@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -43,6 +44,10 @@ type Engine struct {
 	refRules  map[string][]refRule
 	// seriesRules are the series each kind's schema marks.
 	seriesRules map[string][]seriesRule
+	// decider answers typed questions about text (docs/adr/0023); nil
+	// when the deployment chose none, and decisions caches its answers.
+	decider   decide.Decider
+	decisions *decisionCache
 }
 
 // Option configures an Engine beyond its two required stores.
@@ -211,6 +216,7 @@ func (e *Engine) validate(ctx context.Context, kind string, yamlBytes []byte, ov
 			}
 		}
 	}
+	problems = append(problems, e.pendingProblems(kind, doc)...)
 
 	return doc, problems, nil
 }

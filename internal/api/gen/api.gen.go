@@ -123,6 +123,24 @@ func (e ManifestCheckState) Valid() bool {
 	}
 }
 
+// Defines values for MatchBy.
+const (
+	Model MatchBy = "model"
+	Words MatchBy = "words"
+)
+
+// Valid indicates whether the value is a known member of the MatchBy enum.
+func (e MatchBy) Valid() bool {
+	switch e {
+	case Model:
+		return true
+	case Words:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OrderStageState.
 const (
 	Done    OrderStageState = "done"
@@ -879,6 +897,9 @@ type GuidePlanItem struct {
 	// Link How the two are joined, as the holding kind and the path that names the other.
 	Link string `json:"link"`
 
+	// Missing True for a before item no record of which exists yet, which is defined first; an agent's draft naming what does not exist is refused.
+	Missing *bool `json:"missing,omitempty"`
+
 	// When before for what the new thing names, which must exist first; after for what will name it, written once it exists.
 	When GuidePlanItemWhen `json:"when"`
 }
@@ -974,6 +995,25 @@ type ManifestView struct {
 	Version  Version  `json:"version"`
 	Yaml     string   `json:"yaml"`
 }
+
+// Match defines model for Match.
+type Match struct {
+	// By Whether the decision model judged it, or the words the two share.
+	By MatchBy `json:"by"`
+
+	// Detail What the record says, beside its name.
+	Detail *string `json:"detail,omitempty"`
+	Id     string  `json:"id"`
+	Kind   string  `json:"kind"`
+	Level  *string `json:"level,omitempty"`
+
+	// Likelihood How likely it is to say the same thing, from 0 to 1.
+	Likelihood float64 `json:"likelihood"`
+	Name       string  `json:"name"`
+}
+
+// MatchBy Whether the decision model judged it, or the words the two share.
+type MatchBy string
 
 // Order defines model for Order.
 type Order struct {
@@ -1374,6 +1414,13 @@ type Summary struct {
 	Version   int       `json:"version"`
 }
 
+// Understanding defines model for Understanding.
+type Understanding struct {
+	// Available False when no decision model answered; matches are then by the words they share.
+	Available bool    `json:"available"`
+	Matches   []Match `json:"matches"`
+}
+
 // ValidateRequest Exactly one of yaml or manifest must be supplied.
 type ValidateRequest struct {
 	Manifest *map[string]interface{} `json:"manifest,omitempty"`
@@ -1560,6 +1607,13 @@ type PutWorkingJSONBody struct {
 	Yaml string `json:"yaml"`
 }
 
+// MatchExistingJSONBody defines parameters for MatchExisting.
+type MatchExistingJSONBody struct {
+	Kind  string  `json:"kind"`
+	Level *string `json:"level,omitempty"`
+	Text  string  `json:"text"`
+}
+
 // ListProposalsParams defines parameters for ListProposals.
 type ListProposalsParams struct {
 	Kind *string `form:"kind,omitempty" json:"kind,omitempty"`
@@ -1591,6 +1645,12 @@ type ListSnapshotsParams struct {
 
 	// Cursor Pagination cursor from a prior response's nextCursor
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// UnderstandJSONBody defines parameters for Understand.
+type UnderstandJSONBody struct {
+	Locale *string `json:"locale,omitempty"`
+	Text   string  `json:"text"`
 }
 
 // GrantPersonJSONRequestBody defines body for GrantPerson for application/json ContentType.
@@ -1644,11 +1704,17 @@ type PostSnapshotJSONRequestBody PostSnapshotJSONBody
 // PutWorkingJSONRequestBody defines body for PutWorking for application/json ContentType.
 type PutWorkingJSONRequestBody PutWorkingJSONBody
 
+// MatchExistingJSONRequestBody defines body for MatchExisting for application/json ContentType.
+type MatchExistingJSONRequestBody MatchExistingJSONBody
+
 // AcceptProposalJSONRequestBody defines body for AcceptProposal for application/json ContentType.
 type AcceptProposalJSONRequestBody = ProposalDecision
 
 // DeclineProposalJSONRequestBody defines body for DeclineProposal for application/json ContentType.
 type DeclineProposalJSONRequestBody = ProposalDecision
+
+// UnderstandJSONRequestBody defines body for Understand for application/json ContentType.
+type UnderstandJSONRequestBody UnderstandJSONBody
 
 // ValidateManifestJSONRequestBody defines body for ValidateManifest for application/json ContentType.
 type ValidateManifestJSONRequestBody = ValidateRequest
@@ -1885,6 +1951,9 @@ type ServerInterface interface {
 	// PutWorking Stage a draft. Writes to the vault's staging directory, not to the vault's own tree, and does not include the ref: autosave is not a decision to add something to the vault. A save promotes it.
 	// (PUT /manifests/{kind}/{id}/working)
 	PutWorking(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
+	// MatchExisting The existing records of a kind that say what a text says
+	// (POST /match)
+	MatchExisting(w http.ResponseWriter, r *http.Request)
 	// GetOrder The order of work, and how far the workspace has got along it
 	// (GET /order)
 	GetOrder(w http.ResponseWriter, r *http.Request)
@@ -1921,6 +1990,9 @@ type ServerInterface interface {
 	// Sync The sync socket (automerge-repo network protocol, version 1)
 	// (GET /sync)
 	Sync(w http.ResponseWriter, r *http.Request)
+	// Understand Which existing records say what a text a person typed says
+	// (POST /understand)
+	Understand(w http.ResponseWriter, r *http.Request)
 	// ValidateManifest Validate a manifest without storing it
 	// (POST /validate/{kind})
 	ValidateManifest(w http.ResponseWriter, r *http.Request, kind KindParam)
@@ -3692,6 +3764,20 @@ func (siw *ServerInterfaceWrapper) PutWorking(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
+// MatchExisting operation middleware
+func (siw *ServerInterfaceWrapper) MatchExisting(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MatchExisting(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetOrder operation middleware
 func (siw *ServerInterfaceWrapper) GetOrder(w http.ResponseWriter, r *http.Request) {
 
@@ -4013,6 +4099,20 @@ func (siw *ServerInterfaceWrapper) Sync(w http.ResponseWriter, r *http.Request) 
 	handler.ServeHTTP(w, r)
 }
 
+// Understand operation middleware
+func (siw *ServerInterfaceWrapper) Understand(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Understand(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ValidateManifest operation middleware
 func (siw *ServerInterfaceWrapper) ValidateManifest(w http.ResponseWriter, r *http.Request) {
 
@@ -4250,6 +4350,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/manifests/{kind}/{id}/working", wrapper.PutWorking)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/order", wrapper.GetOrder)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/understand", wrapper.Understand)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/match", wrapper.MatchExisting)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/glossary", wrapper.GetGlossary)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/kinds", wrapper.ListKinds)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/flows", wrapper.ListFlows)
@@ -8070,6 +8172,56 @@ func (response PutWorking422JSONResponse) VisitPutWorkingResponse(w http.Respons
 	return err
 }
 
+type MatchExistingRequestObject struct {
+	Body *MatchExistingJSONRequestBody
+}
+
+type MatchExistingResponseObject interface {
+	VisitMatchExistingResponse(w http.ResponseWriter) error
+}
+
+type MatchExisting200JSONResponse []Match
+
+func (response MatchExisting200JSONResponse) VisitMatchExistingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MatchExisting401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response MatchExisting401JSONResponse) VisitMatchExistingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MatchExisting403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response MatchExisting403JSONResponse) VisitMatchExistingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetOrderRequestObject struct {
 }
 
@@ -8802,6 +8954,56 @@ func (response Sync426Response) VisitSyncResponse(w http.ResponseWriter) error {
 	return nil
 }
 
+type UnderstandRequestObject struct {
+	Body *UnderstandJSONRequestBody
+}
+
+type UnderstandResponseObject interface {
+	VisitUnderstandResponse(w http.ResponseWriter) error
+}
+
+type Understand200JSONResponse Understanding
+
+func (response Understand200JSONResponse) VisitUnderstandResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Understand401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response Understand401JSONResponse) VisitUnderstandResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Understand403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response Understand403JSONResponse) VisitUnderstandResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ValidateManifestRequestObject struct {
 	Kind KindParam `json:"kind"`
 	Body *ValidateManifestJSONRequestBody
@@ -9362,6 +9564,9 @@ type StrictServerInterface interface {
 	// PutWorking Stage a draft. Writes to the vault's staging directory, not to the vault's own tree, and does not include the ref: autosave is not a decision to add something to the vault. A save promotes it.
 	// (PUT /manifests/{kind}/{id}/working)
 	PutWorking(ctx context.Context, request PutWorkingRequestObject) (PutWorkingResponseObject, error)
+	// MatchExisting The existing records of a kind that say what a text says
+	// (POST /match)
+	MatchExisting(ctx context.Context, request MatchExistingRequestObject) (MatchExistingResponseObject, error)
 	// GetOrder The order of work, and how far the workspace has got along it
 	// (GET /order)
 	GetOrder(ctx context.Context, request GetOrderRequestObject) (GetOrderResponseObject, error)
@@ -9398,6 +9603,9 @@ type StrictServerInterface interface {
 	// Sync The sync socket (automerge-repo network protocol, version 1)
 	// (GET /sync)
 	Sync(ctx context.Context, request SyncRequestObject) (SyncResponseObject, error)
+	// Understand Which existing records say what a text a person typed says
+	// (POST /understand)
+	Understand(ctx context.Context, request UnderstandRequestObject) (UnderstandResponseObject, error)
 	// ValidateManifest Validate a manifest without storing it
 	// (POST /validate/{kind})
 	ValidateManifest(ctx context.Context, request ValidateManifestRequestObject) (ValidateManifestResponseObject, error)
@@ -11007,6 +11215,37 @@ func (sh *strictHandler) PutWorking(w http.ResponseWriter, r *http.Request, kind
 	}
 }
 
+// MatchExisting operation middleware
+func (sh *strictHandler) MatchExisting(w http.ResponseWriter, r *http.Request) {
+	var request MatchExistingRequestObject
+
+	var body MatchExistingJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MatchExisting(ctx, request.(MatchExistingRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MatchExisting")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MatchExistingResponseObject); ok {
+		if err := validResponse.VisitMatchExistingResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetOrder operation middleware
 func (sh *strictHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	var request GetOrderRequestObject
@@ -11323,6 +11562,37 @@ func (sh *strictHandler) Sync(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(SyncResponseObject); ok {
 		if err := validResponse.VisitSyncResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Understand operation middleware
+func (sh *strictHandler) Understand(w http.ResponseWriter, r *http.Request) {
+	var request UnderstandRequestObject
+
+	var body UnderstandJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Understand(ctx, request.(UnderstandRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Understand")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UnderstandResponseObject); ok {
+		if err := validResponse.VisitUnderstandResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

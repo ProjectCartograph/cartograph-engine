@@ -37,5 +37,8 @@ func (e *Engine) stakeholderMapChecksOf(_ context.Context, _ string, doc map[str
 		add("stakeholders-placed", "assess", programmeCheckWarn,
 			fmt.Sprintf("%d of %d stakeholders not placed by influence and interest yet.", unplaced, len(entries)))
 	}
+	if pc, ok := pendingCheck(doc); ok {
+		out = append(out, pc)
+	}
 	return out, nil
 }

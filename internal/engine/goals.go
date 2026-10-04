@@ -564,6 +564,17 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 		}
 	}
 
+	// What a decision model makes of the statement, where there is one.
+	for _, j := range e.judgedChecks(ctx, "Goal", doc) {
+		state := goalCheckOK
+		if j.State != programmeCheckOK {
+			state = goalCheckWarn
+		}
+		checks = append(checks, GoalCheck{ID: j.ID, State: state, Message: j.Message})
+	}
+	if pc, ok := pendingCheck(doc); ok {
+		checks = append(checks, GoalCheck{ID: pc.ID, State: goalCheckWarn, Message: pc.Message})
+	}
 	return checks, nil
 }
 

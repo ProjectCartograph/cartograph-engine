@@ -97,6 +97,24 @@ func TestGuidanceNamesOnlyRealChecks(t *testing.T) {
 			ids[m[1]] = true
 		}
 	}
+	// A judgement is a check the engine reports from the guidance itself,
+	// asked of a decision model (judgedChecks).
+	judged, _ := filepath.Glob("../contract/guidance/*/*.guidance.json")
+	for _, f := range judged {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var bundle struct {
+			Judgements map[string]json.RawMessage `json:"judgements"`
+		}
+		if err := json.Unmarshal(b, &bundle); err != nil {
+			t.Fatal(err)
+		}
+		for id := range bundle.Judgements {
+			ids[id] = true
+		}
+	}
 	if !ids["smart-specific"] || !ids["closes-gap"] || !ids["gap-states"] {
 		t.Fatalf("the engine's check ids were not found: %d", len(ids))
 	}

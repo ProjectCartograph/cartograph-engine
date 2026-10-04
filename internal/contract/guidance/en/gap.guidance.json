@@ -186,6 +186,22 @@
     "gap-measured": "Choose the KPI that tracks this shortfall, or leave the gap as an observation until one exists.",
     "gap-source": "Name the document and section the finding was written down in.",
     "gap-segments": "Name the segments the evidence covers, as values rather than only their dimension.",
-    "gap-covered": "Have the work that addresses this gap cite it and name the segments it reaches, so no segment is left with nobody and no citation hides one by claiming the whole."
+    "gap-covered": "Have the work that addresses this gap cite it and name the segments it reaches, so no segment is left with nobody and no citation hides one by claiming the whole.",
+    "gap-results": "Say which result falls short, not which resource or method is missing."
+  },
+  "judgements": {
+    "gap-results": {
+      "path": "/spec/statement",
+      "good": {
+        "key": "result",
+        "label": "a result that falls short of where it should be"
+      },
+      "poor": {
+        "key": "resource",
+        "label": "a missing resource, tool, budget or method"
+      },
+      "pass": "Describes a shortfall in results.",
+      "fail": "Reads as a missing resource or method: say which result falls short, and by how much."
+    }
   }
 }

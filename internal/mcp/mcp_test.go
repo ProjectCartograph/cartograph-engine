@@ -270,12 +270,17 @@ func TestADraftHearsWhatTheWorkAroundItLacks(t *testing.T) {
 		"spec": map[string]any{"current": "One crate in five arrives bruised", "desired": "Fewer than one in fifty", "outcomes": []any{"o-sound"}}}
 	outcome := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "o-sound", "name": "Fruit arrives sound"},
 		"spec": map[string]any{"level": "outcome", "objective": "Fruit arrives sound at every depot"}}
+	// In order (TAXONOMY.md D31): the outcome first, then the gap that
+	// names it.
+	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "o-sound", "manifest": outcome}); res.IsError {
+		t.Fatalf("save_draft outcome: %s", text)
+	}
 	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Gap", "id": "gap-bruising", "manifest": gap}); res.IsError {
 		t.Fatalf("save_draft gap: %s", text)
 	}
-	res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "o-sound", "manifest": outcome, "work": []string{"Gap/gap-bruising"}})
+	res, text := callTool(t, cs, "edit_draft", map[string]any{"kind": "Goal", "id": "o-sound", "set": map[string]any{"/spec/objective": "Fruit arrives sound at every depot"}, "work": []string{"Gap/gap-bruising"}})
 	if res.IsError {
-		t.Fatalf("save_draft outcome: %s", text)
+		t.Fatalf("edit_draft outcome: %s", text)
 	}
 	for _, want := range []string{`"around"`, "gap-bruising", "gap-measured", "gap-segments", "aroundNext"} {
 		if !strings.Contains(text, want) {
@@ -329,5 +334,28 @@ func TestTheTaxonomyMapsADocumentsWords(t *testing.T) {
 	res, text := callTool(t, cs, "taxonomy", map[string]any{})
 	if res.IsError || !strings.Contains(text, `"Gap"`) || !strings.Contains(text, "problem statement") || !strings.Contains(text, "never by the word") {
 		t.Fatalf("taxonomy: %.600s", text)
+	}
+}
+
+// An agent works in the order of work and is held to it (TAXONOMY.md D31):
+// a draft that names what is neither in the record nor in its change set
+// is refused, saying what to define first, and a placeholder is never an
+// agent's to leave.
+func TestAnAgentIsHeldToTheOrderOfWork(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	gap := map[string]any{"apiVersion": "cartograph/v1", "kind": "Gap", "metadata": map[string]any{"id": "gap-early", "name": "Bruised on arrival"},
+		"spec": map[string]any{"outcomes": []any{"o-missing"}}}
+	res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Gap", "id": "gap-early", "manifest": gap})
+	if !res.IsError || !strings.Contains(text, "define it first") || !strings.Contains(text, "o-missing") {
+		t.Fatalf("a gap naming an outcome nobody has defined: %s", text)
+	}
+	pending := map[string]any{"apiVersion": "cartograph/v1", "kind": "Gap", "metadata": map[string]any{"id": "gap-later", "name": "Bruised on arrival",
+		"pending": []any{map[string]any{"path": "/spec/outcomes/0", "kind": "Goal", "name": "Fruit arrives sound"}}}, "spec": map[string]any{}}
+	res, text = callTool(t, cs, "save_draft", map[string]any{"kind": "Gap", "id": "gap-later", "manifest": pending})
+	if !res.IsError || !strings.Contains(text, "never leaves a placeholder") {
+		t.Fatalf("an agent's placeholder: %s", text)
+	}
+	if res, text := callTool(t, cs, "edit_draft", map[string]any{"kind": "Gap", "id": "gap-x", "set": map[string]any{"/spec/outcomes": []any{"o-missing"}}}); !res.IsError {
+		t.Fatalf("edit_draft named what does not exist: %s", text)
 	}
 }

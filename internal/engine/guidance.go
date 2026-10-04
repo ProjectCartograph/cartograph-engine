@@ -32,7 +32,9 @@ type GuideBundle struct {
 	// kind.
 	LevelExamples map[string]string `json:"levelExamples,omitempty"`
 	// Terms are other words the kind holds, each defined as the kind is.
-	Terms      map[string]GuideTerm       `json:"terms,omitempty"`
+	Terms map[string]GuideTerm `json:"terms,omitempty"`
+	// Judgements are checks a decision model answers, by check id.
+	Judgements map[string]GuideJudgement  `json:"judgements,omitempty"`
 	Steps      map[string]GuideStepWords  `json:"steps,omitempty"`
 	Fields     map[string]GuideFieldWords `json:"fields"`
 	Links      map[string]GuideLinkWords  `json:"links,omitempty"`

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/access"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide/laya"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout/force"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout/layered"
@@ -87,6 +88,11 @@ type storeOptions struct {
 	// GraphLayout places the workspace graph: "layered" (the default) or
 	// "force".
 	GraphLayout string
+	// Decide is the decision model: "off" (none) or "laya", at DecideURL,
+	// each call given at most DecideTimeout (docs/adr/0023).
+	Decide        string
+	DecideURL     string
+	DecideTimeout time.Duration
 	// Access, when set, is access by role and team (docs/adr/0011): the
 	// store's access list, this mapping, and the access policy.
 	Access *engine.Directory
@@ -149,7 +155,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		counted := &countedBus{Bus: bus}
 		accessOpts, authz, bind := accessControl(o, postgres.NewAccessStore(pool))
 		e, err := engine.New(postgres.NewManifestStore(pool), postgres.NewOperationalStore(pool),
-			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), engine.WithBundles(postgres.NewBundleStore(pool)))...)
+			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), decider(o), engine.WithBundles(postgres.NewBundleStore(pool)))...)
 		if err != nil {
 			bus.Close()
 			pool.Close()
@@ -188,7 +194,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		bus := fanoutmemory.New()
 		counted := &countedBus{Bus: bus}
 		accessOpts, authz, bind := accessControl(o, v.Index().Access())
-		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)))...)
+		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), decider(o))...)
 		if err != nil {
 			bus.Close()
 			v.Close()
@@ -220,7 +226,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 	docs := sqlite.NewDocStore(db)
 	counted := &countedBus{Bus: bus}
 	accessOpts, authz, bind := accessControl(o, sqlite.NewAccessStore(db))
-	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)))...)
+	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), decider(o))...)
 	if err != nil {
 		bus.Close()
 		db.Close()
@@ -396,4 +402,13 @@ func graphLayout(name string) layout.Layout {
 		return force.New()
 	}
 	return layered.New()
+}
+
+// decider is the decision model the configuration names: a Laya sidecar,
+// or none, which leaves the engine answering as it always has.
+func decider(o storeOptions) engine.Option {
+	if o.Decide != "laya" {
+		return engine.WithDecider(nil)
+	}
+	return engine.WithDecider(laya.New(o.DecideURL, o.DecideTimeout))
 }

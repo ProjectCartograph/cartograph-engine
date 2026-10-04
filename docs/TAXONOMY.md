@@ -864,19 +864,24 @@ is a programme (MSP).
   will own and run it), then the project that sets it up names it as
   where it lands. The service's `service-status` check asks for that
   project while there is none, and once it has handed over, asks for the
-  service to be marked running. A running service is recorded as it
+  service to be marked running. The interface keeps the walk in order: the
+  service is defined in full and saved first, and only then does the end
+  of its walk ask whether to start the project that sets it up now or
+  later. A running service is recorded as it
   stands, and a change to it later is a project that names it.
 - A service waits on no stage of the strategy, so a workspace can
   start by recording the services it runs today.
 - `Project.spec.operation: new` is deprecated. It is still read, and its
   `landing-operation` check now advises naming a planned service; it
   blocks nothing it did not block before.
-- New asks about work in the standards' terms. Does it keep running?
-  Then, does the service run today (running) or is it new (planned,
-  then its project)? Does it finish? Then, is it one piece of work, a
-  part of an existing project under the same accountable person and
-  budget (a component), or several pieces each with their own (separate
-  projects in a programme)?
+- New asks about work one yes or no at a time, in plain words. Does it
+  keep running? Then, does the service run today (running) or is it new
+  (planned, then its project)? Does it finish? Then, is one person in
+  charge of all of it, with one budget? No: several projects each with
+  their own make a programme. Yes: is it part of a bigger project? A
+  part is a component; otherwise it is a project of its own. The
+  standards' terms (sponsor, results framework, theory of change) stay
+  in the glossary, behind the word they explain.
 - The glossary defines Component beside Project, and the Project and
   Programme entries say who answers for each, so the two read apart.
   A kind's guidance may define words it holds besides its own name
@@ -897,3 +902,43 @@ the check booklets, under the same accountable person and budget, is a
 component of that project. The coaching project has its own sponsor and
 budget, so it is a project in the Early Reading Programme, beside the
 check project, and not a part of it.
+
+### D31. A placeholder for people, and strict order for agents. *(resolved)*
+
+**The problem.** The record is written in order (D28): what a record
+names exists before it. A person defining a project can reach its
+landing step and find the service it hands over to is not defined yet.
+Defining it there and then, in a small dialog, writes a half-defined
+service out of order; refusing to go on stops the person cold. Neither
+is the walk Cartograph means to be.
+
+**What Cartograph does.**
+- **A new service starts from New**, and is defined in its own walk:
+  planned, then the project that sets it up (D30). No step of another
+  record's walk creates one.
+- **People may leave a placeholder** where a reference cannot be made
+  yet: `metadata.pending`, on any kind, each entry naming the field (a
+  JSON pointer), the kind and the name of the record still to be
+  defined, and a note. The field stays empty. A version refuses a
+  placeholder that stands for no reference of that kind, names the
+  wrong kind, or stands for a field already filled. The record's
+  `pending` check lists every placeholder, on the step that holds the
+  field, until the reference is made, and anything that needs the field
+  (a handoff needs the service a project lands in) still waits for it.
+  So the person carries on, knowing exactly what to come back to; the
+  out-of-flow step is accepted and designed around.
+- **Agents never leave one and never write out of order.** A draft in an
+  agent's change set that names anything neither in the record nor in
+  that change set is refused, saying what to define first; so is a
+  placeholder, and so is a reference that points later in the order.
+  The guide's plan marks each before item with no record yet as
+  `missing`, and the instructions say the order is enforced. An agent
+  defines what a record names first, in the same change set, and the
+  graph of the order is the context it works against.
+
+In the running example, a ministry officer defining the grade 2 reading
+check reaches its landing step before anyone has written the assessment
+service it will join. They record the placeholder "national assessment
+service", finish the project's other steps, define the service from New,
+and come back to name it. An agent asked to do the same defines the
+service first.

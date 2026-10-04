@@ -1,7 +1,7 @@
 {
   "locale": "en",
   "kind": "Project",
-  "summary": "Work with a start and an end that changes something, then hands the result over. One person is accountable for it, and it has one budget.",
+  "summary": "Work with a start and an end that changes something, then hands the result over. One person is in charge of all of it, with one budget.",
   "example": "Quality Check Rollout, which gets every depot checking deliveries against one standard, then hands the checks to the Quality Check Service.",
   "terms": {
     "results framework": {
@@ -9,8 +9,8 @@
       "example": "Quality Check Rollout: a training pack and a results view, so every depot checks deliveries against one standard, measured by the quality pass rate."
     },
     "component": {
-      "summary": "A part of a bigger project, under its accountable person and budget, counted in its results framework. A part needing its own is a separate project.",
-      "example": "Depot staff training, run as a part of the Quality Check Rollout, with the same accountable person and budget."
+      "summary": "One part of a bigger project, with the same person in charge and the same budget. A part that needs its own is a project of its own.",
+      "example": "Depot staff training, run as one part of the Quality Check Rollout, with the same person in charge and budget."
     }
   },
   "knownAs": [

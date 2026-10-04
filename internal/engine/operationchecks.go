@@ -75,6 +75,9 @@ func (e *Engine) operationChecksOf(ctx context.Context, id string, doc map[strin
 	} else {
 		add("measures-kpis", "measures", programmeCheckWarn, "No indicator yet.")
 	}
+	if pc, ok := pendingCheck(doc); ok {
+		out = append(out, pc)
+	}
 	return out, nil
 }
 

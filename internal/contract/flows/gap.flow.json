@@ -101,7 +101,10 @@
           {
             "path": "/spec/statement",
             "control": "sentence",
-            "hint": "The finding in the source's own words."
+            "hint": "The finding in the source's own words.",
+            "checks": [
+              "gap-results"
+            ]
           },
           {
             "path": "/spec/dataSources",

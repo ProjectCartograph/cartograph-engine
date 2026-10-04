@@ -49,7 +49,7 @@ var outer = []string{"internal/api", "internal/spa", "internal/render", "interna
 // outward.
 var adapters = []string{
 	"internal/store/", "internal/codec/", "internal/printer/", "internal/auth/",
-	"internal/crdt/", "internal/fanout/", "internal/reporting/", "internal/layout/",
+	"internal/crdt/", "internal/fanout/", "internal/reporting/", "internal/layout/", "internal/decide/",
 	"internal/yamlfmt", "pkg/client/",
 }
 
@@ -71,6 +71,7 @@ func adapter(own string) []string {
 		"internal/crdt/automerge", "internal/crdt/conformance",
 		"internal/reporting/postgres", "internal/reporting/conformance",
 		"internal/layout/force", "internal/layout/layered", "internal/layout/conformance",
+		"internal/decide/laya", "internal/decide/conformance",
 	}
 	var forbid []string
 	for _, s := range siblings {
@@ -113,6 +114,7 @@ var rules = map[string][]string{
 	"internal/codec":   join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/printer": join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/layout":  join([]string{"internal", "pkg", "cmd"}, drivers),
+	"internal/decide":  join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/crdt":    join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/fanout":  join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/auth": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/codec", "internal/printer",
@@ -147,8 +149,12 @@ var rules = map[string][]string{
 	"internal/printer/chromium":   join([]string{"internal/store", "internal/codec"}, adapter("internal/printer/chromium")),
 	// A layout places points; it knows its port and nothing else, and its
 	// suite holds any layout to the same promises.
-	"internal/layout/force":       join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/force")),
-	"internal/layout/layered":     join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/layered")),
+	"internal/layout/force":   join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/force")),
+	"internal/layout/layered": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/layered")),
+	// A decider asks a model; it knows its port and the network, nothing
+	// of the record (docs/adr/0023).
+	"internal/decide/laya":        join([]string{"internal/store", "internal/codec"}, without(drivers, "net/http"), adapter("internal/decide/laya")),
+	"internal/decide/conformance": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/decide/conformance")),
 	"internal/layout/conformance": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/conformance")),
 	"internal/auth/access":        join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/access")),
 	"internal/auth/proxy":         join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/proxy")),

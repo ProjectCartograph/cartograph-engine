@@ -112,6 +112,83 @@
         "type": "string"
       }
     },
+    "judgements": {
+      "type": "object",
+      "description": "Checks a decision model answers, where one is configured (docs/adr/0023), keyed by check id. Each is a contrast read off the field's good and poor examples: the text is placed between a good option and a poor one, asked good first, and the check is met when the good option is more likely. A contrast is kept only once it has been measured against examples whose answer is known (the ADR records how); without a model none is asked, and nothing else changes.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "good",
+          "poor",
+          "pass",
+          "fail"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The field, by JSON pointer; - for every item of a list."
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "For a kind with levels, the levels it is asked at; all when left out."
+          },
+          "good": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "label"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z]+$",
+                "description": "A plain word naming the option; the model reads it."
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 120,
+                "description": "What the option is, in a few words."
+              }
+            }
+          },
+          "poor": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "label"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z]+$",
+                "description": "A plain word naming the option; the model reads it."
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 120,
+                "description": "What the option is, in a few words."
+              }
+            }
+          },
+          "pass": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "fail": {
+            "type": "string",
+            "maxLength": 160,
+            "description": "What to say when the poor option is more likely; {n} is the item's number in a list."
+          }
+        }
+      }
+    },
     "vocabulary": {
       "type": "object",
       "description": "Words an interface offers to help write a field in this language, such as the verbs an aim opens with or the word that introduces an objective's means. Offered, never used to judge: no check or mark depends on them, and a language without them gets plain fields.",

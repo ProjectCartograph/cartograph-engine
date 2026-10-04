@@ -74,7 +74,7 @@ func runServe(args []string) error {
 	if cfg.Store != "" {
 		target = cfg.Store
 	}
-	opts := storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout, FanoutURL: cfg.FanoutURL, DocCache: cfg.DocCache, CompactAfter: cfg.CompactAfter, Reports: cfg.Reports, GraphLayout: cfg.GraphLayout}
+	opts := storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout, FanoutURL: cfg.FanoutURL, DocCache: cfg.DocCache, CompactAfter: cfg.CompactAfter, Reports: cfg.Reports, GraphLayout: cfg.GraphLayout, Decide: cfg.Decide, DecideURL: cfg.DecideURL, DecideTimeout: cfg.DecideTimeout}
 	if cfg.Authz == "access" {
 		d, err := loadDirectory(cfg.AccessFile)
 		if err != nil {
@@ -207,6 +207,9 @@ func runServe(args []string) error {
 			attrs = append(attrs, "vault", cfg.Vault)
 		}
 		attrs = append(attrs, "fanout", comp.FanoutAdapter, "codec", cfg.Codec, "auth", cfg.Auth, "authz", cfg.Authz)
+		if cfg.Decide == "laya" {
+			attrs = append(attrs, "decide", cfg.Decide, "decide_url", cfg.DecideURL)
+		}
 		logger.Info("cartograph listening", attrs...)
 		ready.Store(true)
 		errc <- srv.Serve(ln)

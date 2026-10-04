@@ -88,3 +88,25 @@ func TestTheWorkAroundAnOutcome(t *testing.T) {
 		t.Fatalf("the gap's open checks %q do not say it is unmeasured and unscoped (around: %+v)", got, around)
 	}
 }
+
+// What a new thing names comes first, and the plan says which of those do
+// not exist yet, so they are defined before it (TAXONOMY.md D31).
+func TestThePlanSaysWhatIsMissing(t *testing.T) {
+	plan, err := newTestEngine(t).Plan(context.Background(), "KPI", "", "en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := 0
+	for _, p := range plan {
+		if p.When != "before" {
+			continue
+		}
+		before++
+		if !p.Missing {
+			t.Errorf("%s is not missing in an empty workspace: %+v", p.Kind, p)
+		}
+	}
+	if before == 0 {
+		t.Fatalf("a KPI names nothing before it: %+v", plan)
+	}
+}

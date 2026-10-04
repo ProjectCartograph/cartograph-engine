@@ -91,6 +91,9 @@ type PlanItem struct {
 	// When is "before" for what the new thing names, which must exist
 	// first, and "after" for what will name it, written once it exists.
 	When string `json:"when"`
+	// Missing is true for a before item no record of which exists yet: it
+	// is defined first, or the new thing cannot name it (TAXONOMY.md D31).
+	Missing bool `json:"missing,omitempty"`
 }
 
 type planNode struct{ kind, level string }
@@ -173,6 +176,7 @@ func (e *Engine) Plan(ctx context.Context, kind, level, locale string) ([]PlanIt
 	e.holderNeeds(rels, planNode{kind, level}, &out, seen, bundle, existing)
 	for i := n; i < len(out); i++ {
 		out[i].When = "before"
+		out[i].Missing = len(out[i].Existing) == 0
 	}
 	sortPlan(out)
 	return out, nil

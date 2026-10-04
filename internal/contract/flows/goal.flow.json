@@ -29,7 +29,8 @@
             "path": "/spec/objective",
             "control": "sentence",
             "checks": [
-              "smart-specific"
+              "smart-specific",
+              "statement-state"
             ]
           },
           {

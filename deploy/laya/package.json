@@ -1,0 +1,9 @@
+{
+  "name": "cartograph-laya",
+  "private": true,
+  "description": "The Laya sidecar Cartograph asks typed questions about what people write (docs/adr/0023).",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": { "start": "node server.mjs" },
+  "dependencies": { "@receptron/laya": "0.1.2" }
+}

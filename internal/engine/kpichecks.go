@@ -47,5 +47,8 @@ func (e *Engine) kpiChecksOf(_ context.Context, _ string, doc map[string]any) ([
 	add("kpi-cycle", "verification", text(spec, "cycle"), "Read on a reporting cycle.", "No reporting cycle yet: how often it is read.")
 	goals, _ := spec["goals"].([]any)
 	add("kpi-aligned", "result", len(goals) > 0, "Measures at least one aim.", "Measures no aim yet: name the goal, objective or outcome it tells you about.")
+	if pc, ok := pendingCheck(doc); ok {
+		out = append(out, pc)
+	}
 	return out, nil
 }

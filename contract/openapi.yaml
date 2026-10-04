@@ -541,6 +541,81 @@ paths:
               schema:
                 $ref: "#/components/schemas/Order"
 
+  /understand:
+    post:
+      operationId: understand
+      summary: Which existing records say what a text a person typed says
+      description: >-
+        Across every stage a person writes. Where a decision model is
+        configured (docs/adr/0023), it is asked of each candidate whether
+        the text says the same; without one, available is false and
+        matches come from the words the text shares with existing records.
+        It does not say what kind of thing the text is: measured, the
+        model was not reliable at that, and New's questions are. Nothing is
+        stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 2000
+                locale:
+                  type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Understanding"
+
+  /match:
+    post:
+      operationId: matchExisting
+      summary: The existing records of a kind that say what a text says
+      description: >-
+        Most likely first: judged by the decision model where one is
+        configured, else by the words they share. For a Goal, level
+        narrows it to one level. Asked before something new is defined, so
+        a record that already says it is offered first.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, text]
+              properties:
+                kind:
+                  type: string
+                level:
+                  type: string
+                text:
+                  type: string
+                  maxLength: 2000
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Match"
+
   /glossary:
     get:
       operationId: getGlossary
@@ -2157,6 +2232,41 @@ components:
           items:
             type: string
 
+    Understanding:
+      type: object
+      required: [available, matches]
+      properties:
+        available:
+          type: boolean
+          description: False when no decision model answered; matches are then by the words they share.
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/Match"
+    Match:
+      type: object
+      required: [kind, id, name, likelihood, by]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        level:
+          type: string
+        detail:
+          type: string
+          description: What the record says, beside its name.
+        likelihood:
+          type: number
+          format: double
+          description: How likely it is to say the same thing, from 0 to 1.
+        by:
+          type: string
+          enum: [model, words]
+          description: Whether the decision model judged it, or the words the two share.
+
     GlossaryEntry:
       type: object
       required: [key, kind, summary]
@@ -3043,6 +3153,9 @@ components:
           type: string
           enum: [before, after]
           description: before for what the new thing names, which must exist first; after for what will name it, written once it exists.
+        missing:
+          type: boolean
+          description: True for a before item no record of which exists yet, which is defined first; an agent's draft naming what does not exist is refused.
         kind:
           type: string
         level:

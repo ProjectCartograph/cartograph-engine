@@ -35,6 +35,25 @@ services:
       retries: 3
       start_period: 5s
 
+  # The decision model, off unless asked for: `docker compose --profile
+  # decide up -d`, and set CARTOGRAPH_DECIDE=laya on cartograph with
+  # CARTOGRAPH_DECIDE_URL=http://laya:8411 (deploy/laya, docs/adr/0023).
+  # The first start downloads the model, about 1.7 GB, into its volume.
+  laya:
+    profiles: ["decide"]
+    image: node:22-slim
+    working_dir: /laya
+    command: ["sh", "-c", "npm install --omit=dev --no-audit --no-fund && node server.mjs"]
+    environment:
+      LAYA_HOST: 0.0.0.0
+      LAYA_CACHE: /cache
+    volumes:
+      - ./deploy/laya/package.json:/laya/package.json:ro
+      - ./deploy/laya/server.mjs:/laya/server.mjs:ro
+      - laya-cache:/cache
+
 volumes:
   cartograph-vault:
     name: cartograph-vault
+  laya-cache:
+    name: cartograph-laya-cache

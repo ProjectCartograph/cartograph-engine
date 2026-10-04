@@ -20,9 +20,10 @@ early-grade learners, learners in rural schools and early-grade teachers.
 
 ## The rules
 
-1. **Strict shadcn/ui.** Neutral theme, default radius, default type stack,
-   stock components and variants. No custom tokens. Destructive is the only
-   non-neutral colour.
+1. **Strict shadcn/ui.** Default radius, default type stack, stock components
+   and variants. The theme is neutral except where "Where the eye lands" says
+   otherwise: `primary` kept scarce for focus, and three status tones
+   (`destructive`, `warning`, `success`), each with one meaning.
 2. **No login, no persistent actor.** Attribution is asked in the dialog
    that needs it, as a dropdown of declared people.
 3. **Three phases, three questions.** Initiation (how does this project
@@ -294,7 +295,7 @@ The three goal levels no longer carry a tint of their own, on the tag or as a
 wash behind the card. Strict shadcn neutral is the rule everywhere else in the
 app, and the level's own mark distinguishes the tiers by shape, which is what a
 person scanning a column uses. Supersedes the per-level colour in "A goal keeps
-its level". Kinds and levels stay neutral; one accent colour marks focus only
+its level". Kinds and levels stay neutral; primary, kept scarce, marks focus only
 (see "Where the eye lands").
 
 ## A key result is a unit and an outcome, and one sentence
@@ -444,19 +445,23 @@ was read.
    stage on New, "+ Project" on the projects list. Everything else is
    `outline`, `ghost` or `link`; Back beside it is `ghost`. Never a
    filled button inside a list row.
-2. **One accent colour, for three things only:** the primary action, the
-   selected item, and where the person is (the current step, the next
-   stage). Kinds and goal levels stay neutral and are told apart by their
-   marks, as before; the accent never says what kind a thing is, only
-   that it is the one to act on. Selected and pressed states use the
-   accent's tint, not solid black.
+2. **Primary, for three things only:** the primary action, the selected
+   item, and where the person is (the current step, the next stage). It
+   is shadcn's own near-black, not a brand hue: what makes it a signal
+   is that nothing else uses it. The action is a fill; the selected item
+   and the current place are a tint of it, a leading bar and a heavier
+   weight. Kinds and goal levels stay neutral and are told apart by
+   their marks; primary never says what kind a thing is, only that it
+   is the one to act on.
 3. **Status is a tone, an icon and a word, each tone with one meaning:**
    destructive blocks, warning advises, success is met. The checks panel
    leads with what blocks. Colour is never the only carrier.
 4. **One focal surface per screen.** The page sits on a quiet tinted
-   ground. The region where work happens (the editor's form, the
-   explorer's preview, the strategy tree) is the raised card; rails,
-   lists and side panels sit flat on the ground.
+   ground, and every container keeps its card background, so grouping
+   stays visible. The region where work happens (the editor's form, the
+   explorer's preview, the strategy's preview) is the one raised card,
+   with a shadow; rails, lists, check panels and the rest are cards
+   without one. A card with no background reads as a hole in the page.
 5. **One page title, clearly larger than anything else, with one line
    saying what the page is for.** Section titles are small; group labels
    are small, uppercase and muted. Weights 400, 500 and 600 only.
@@ -469,9 +474,12 @@ was read.
 8. **Every empty state is one sentence and the one action that fills
    it.** No dead ends.
 9. **Density is constant within a page:** lists compact, editors roomy.
+10. **A choice reads in full.** Answers to a question are stacked one
+   per line, never squeezed into narrow columns, and a decision with
+   several outcomes is asked as a run of yes-or-no questions.
 
 These are rules about the interface, held in the interface: the theme's
-tokens carry the accent and the status tones, and shared components (the
+tokens carry primary and the status tones, and shared components (the
 page header, the focal surface) carry the layout, so a screen follows them
 by using them.
 
@@ -552,6 +560,123 @@ Base); Cartograph keeps the editor's save at the top of the form, where it
 is, and dialogs' actions bottom right. Material's Expressive work argues
 for more colour and shape and Carbon and Apple for restraint; they meet on
 the rule that emphasis works only while it is scarce.
+
+## The interface answers
+
+A screen that changes only after a wait, or changes without a sign that
+it did, feels like talking to a wall. People click again, lose their
+place, and trust it less. The sources below agree on what fixes that:
+every action is answered at once, where it happened, and motion is used
+to answer, never to decorate. Decorative motion was tried here and taken
+out: every icon moving on hover was more than wanted (2026-10-02), and
+motion stays on the sidebar's icons alone.
+
+1. **Every action is answered on the next frame.** Hover, press, focus,
+   pick and check change within 100 ms, in CSS on the element's own
+   state, never after a request returns. Under 0.1 s a change feels like
+   direct manipulation; under 1 s thought is kept; at 10 s attention is
+   lost.
+2. **Everything clickable has a pressed state:** buttons, rows, choices,
+   steps and stages. A slight press (a pixel down, or 1 to 2 percent
+   smaller) over 70 to 100 ms. Focus rings appear at once.
+3. **Duration follows size.** Small feedback 100 to 150 ms; popovers and
+   toasts 150 to 250 ms; a step, a pane or a dialog 250 ms, never past
+   400 ms. Leaving is quicker than arriving. The more often a motion
+   happens, the shorter and quieter it is.
+4. **One set of easings and durations, in the theme:** standard
+   `cubic-bezier(0.2, 0, 0, 1)`, entering `cubic-bezier(0.05, 0.7, 0.1,
+   1)`, leaving `cubic-bezier(0.3, 0, 0.8, 0.15)` (Material 3's tokens),
+   and four durations. Components use the tokens, never their own values.
+5. **A save is acknowledged where it happened,** quietly: the status
+   beside the save changes and a check fades in, without moving anything
+   and without a dialog.
+6. **Moving through a walk shows the direction.** The next step's
+   content arrives from the side the person is heading, with a fade, in
+   250 ms. A preview that changes fades in, so the change is seen.
+7. **A question answered reveals the next one,** sliding in below it, so
+   the walk is felt to move.
+8. **Waiting says it is waiting, at the right size.** Nothing under a
+   second, so nothing flashes; a skeleton in the real layout for a page
+   or a pane; a count ("3 of 15") and a way out for anything long.
+9. **Celebrate only a finished piece of work**, briefly and without
+   blocking what comes next: accepting a change set, not each save.
+10. **Less motion means no movement, not no answer.** With reduced motion
+   asked for, every slide and scale becomes a short fade or an instant
+   change of colour, and the answers in rules 1, 2 and 5 stay.
+11. **Never animate** idle decoration, icons on hover outside the
+   sidebar, anything looping for attention, layout properties (width,
+   height, top), large sweeps, or anything that flashes. No sound, and no
+   reliance on vibration, which Safari does not have.
+
+### Sources
+
+Read on 2026-10-04, as "Where the eye lands" was. Pages that need
+JavaScript to render were read through search extracts or, for Material
+3, through the token file in Google's own repository; these are marked.
+
+- **Nielsen Norman Group**: the three response-time limits, 0.1 s, 1 s
+  and 10 s
+  (https://www.nngroup.com/articles/response-times-3-important-limits/);
+  feedback to an action as the most basic guideline, and status that
+  stops people repeating themselves
+  (https://www.nngroup.com/articles/visibility-system-status/);
+  acknowledge every action at once, a spinner only between 2 and 10 s,
+  a count beyond
+  (https://www.nngroup.com/articles/progress-indicators/); nothing under
+  1 s, a skeleton in the real layout from 1 to 10 s
+  (https://www.nngroup.com/articles/skeleton-screens/); motion for
+  feedback, state change, spatial navigation and signifiers, and not for
+  decoration (https://www.nngroup.com/articles/animation-purpose-ux/);
+  about 100 ms for small feedback, 200 to 300 ms for large changes,
+  exits shorter than entrances, 500 ms already a drag
+  (https://www.nngroup.com/articles/animation-duration/).
+- **Doherty threshold**: work speeds up when the system answers within
+  400 ms (Doherty and Thadani, IBM Systems Journal, 1982; summarised at
+  https://lawsofux.com/doherty-threshold/).
+- **web.dev, Interaction to Next Paint**: 200 ms or less is good; paint
+  some answer in the next frame (https://web.dev/articles/inp).
+- **Material 3 motion**: easing and duration tokens, read from the token
+  file in github.com/material-components/material-web
+  (`tokens/versions/v0_192/_md-sys-motion.scss`): standard (0.2, 0, 0,
+  1), emphasized decelerate (0.05, 0.7, 0.1, 1), emphasized accelerate
+  (0.3, 0, 0.8, 0.15); durations in 50 ms steps from 50 to 1000 ms. The
+  transition patterns (container transform, shared axis, fade through)
+  are from https://m3.material.io/styles/motion, extract.
+- **IBM Carbon motion**: productive motion for task work, expressive for
+  significant moments; productive entrance (0, 0, 0.38, 0.9); durations
+  from 70 ms for a button to 400 ms for a large expansion
+  (https://carbondesignsystem.com/elements/motion/overview/).
+- **Atlassian motion**: a clarifying layer, not decoration; 50 to 150 ms
+  for interactions, 150 to 400 ms for transitions; reduced motion turns
+  animation off and the interface works without it
+  (https://atlassian.design/foundations/motion).
+- **Apple Human Interface Guidelines**, motion and feedback, extract:
+  motion conveys status and feedback, is avoided in frequent
+  interactions, and is optional where it could cause discomfort
+  (https://developer.apple.com/design/human-interface-guidelines/motion,
+  https://developer.apple.com/design/human-interface-guidelines/feedback).
+- **Uber Base**, timing, extract: crossfades of 100 ms, and under reduced
+  motion large movements become a 100 ms crossfade
+  (https://base.uber.com/6d2425e9f/p/77fcaf-timing).
+- **Shopify Polaris**, motion tokens, extract: durations in 50 ms steps
+  used as tokens for consistency
+  (https://polaris-react.shopify.com/tokens/motion).
+- **WCAG 2.2, 2.3.3 Animation from Interactions**: motion an interaction
+  sets off can be turned off unless essential; colour and opacity
+  changes are not motion
+  (https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html).
+- **Dan Saffer, Microinteractions** (O'Reilly, 2013), secondary
+  summaries: trigger, rules, feedback, loops and modes; people learn the
+  rules through the feedback.
+- **Celebration**: no design system publishes guidance. Asana's
+  occasional creatures, which people asked to switch off, are the usual
+  example (secondary sources only).
+
+Where they differ: Atlassian turns motion off under reduced motion while
+Uber and WCAG allow a short crossfade instead; Cartograph keeps the
+crossfade, so the answer stays. Material and Carbon go past 500 ms for
+large surfaces, which Nielsen Norman Group calls a drag; Cartograph stays
+at 400 ms or under.
 
 ## Autosave stages; saving is a decision
 

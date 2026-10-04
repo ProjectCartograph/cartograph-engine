@@ -140,6 +140,41 @@
         },
         "labels": {
           "$ref": "#/$defs/Labels"
+        },
+        "pending": {
+          "type": "array",
+          "description": "References a person has not been able to make yet, because what they should name is not defined yet (TAXONOMY.md D31). Each holds the place of one reference field, by its JSON pointer, with the kind and the name of the record still to be defined, so the person can carry on and knows exactly what to come back to. The field itself stays empty; the record's checks list every placeholder until the reference is made, and a handoff that needs the field is still refused. Never written by an agent: an agent defines what a record names before the record.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "kind",
+              "name"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^/spec(/[^/]+)+$",
+                "description": "The reference field it stands in for, as a JSON pointer, such as /spec/operation or /spec/alignment/programmes/0."
+              },
+              "kind": {
+                "type": "string",
+                "description": "The kind of the record still to be defined."
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160,
+                "description": "What the record will be called, so it can be recognised when it is defined."
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 300,
+                "description": "Anything worth remembering about it until then."
+              }
+            }
+          }
         }
       }
     },

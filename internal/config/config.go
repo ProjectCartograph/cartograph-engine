@@ -89,6 +89,14 @@ type Config struct {
 	// a force-directed layout. CARTOGRAPH_GRAPH_LAYOUT.
 	GraphLayout string
 
+	// Decide is the decision model the engine asks about what people
+	// write (docs/adr/0023): "off" (the default) or "laya", a Laya
+	// sidecar at DecideURL, each call given at most DecideTimeout.
+	// CARTOGRAPH_DECIDE, CARTOGRAPH_DECIDE_URL, CARTOGRAPH_DECIDE_TIMEOUT.
+	Decide        string
+	DecideURL     string
+	DecideTimeout time.Duration
+
 	// MCP serves agents at /api/v1/mcp (docs/adr/0016): "off" (the
 	// default) or "on". With an access list, only the roles its
 	// mapping's agents key names may use one. CARTOGRAPH_MCP.
@@ -192,6 +200,9 @@ func Defaults() Config {
 		CompactAfter:    24 * time.Hour,
 		Reports:         "computed",
 		GraphLayout:     "layered",
+		Decide:          "off",
+		DecideURL:       "http://127.0.0.1:8411",
+		DecideTimeout:   5 * time.Second,
 		MCP:             "off",
 		MCPAuth:         "proxy",
 		Auth:            "none",
@@ -226,7 +237,7 @@ func FromEnv(getenv Getenv) (Config, error) {
 	for _, d := range []struct {
 		key string
 		to  *time.Duration
-	}{{"CARTOGRAPH_SYNC_PING", &c.SyncPing}, {"CARTOGRAPH_SYNC_IDLE", &c.SyncIdle}, {"CARTOGRAPH_DRAIN_DELAY", &c.DrainDelay}} {
+	}{{"CARTOGRAPH_SYNC_PING", &c.SyncPing}, {"CARTOGRAPH_SYNC_IDLE", &c.SyncIdle}, {"CARTOGRAPH_DRAIN_DELAY", &c.DrainDelay}, {"CARTOGRAPH_DECIDE_TIMEOUT", &c.DecideTimeout}} {
 		if v := getenv(d.key); v != "" {
 			p, err := time.ParseDuration(v)
 			if err != nil {
@@ -288,6 +299,13 @@ func FromEnv(getenv Getenv) (Config, error) {
 	if v := getenv("CARTOGRAPH_GRAPH_LAYOUT"); v != "" {
 		c.GraphLayout = v
 	}
+	if v := getenv("CARTOGRAPH_DECIDE"); v != "" {
+		c.Decide = v
+	}
+	if v := getenv("CARTOGRAPH_DECIDE_URL"); v != "" {
+		c.DecideURL = v
+	}
+
 	if v := getenv("CARTOGRAPH_AUTH"); v != "" {
 		c.Auth = v
 	}
@@ -338,6 +356,9 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.MCPIssuer, "mcp-issuer", c.MCPIssuer, "the authorization server MCP clients sign in with (CARTOGRAPH_MCP_ISSUER)")
 	fs.StringVar(&c.Reports, "reports", c.Reports, "reporting: computed, postgres (views, with a Postgres store) or off (CARTOGRAPH_REPORTS)")
 	fs.StringVar(&c.GraphLayout, "graph-layout", c.GraphLayout, "how the workspace graph is placed: layered or force (CARTOGRAPH_GRAPH_LAYOUT)")
+	fs.StringVar(&c.Decide, "decide", c.Decide, "the decision model asked about what people write: off or laya (CARTOGRAPH_DECIDE)")
+	fs.StringVar(&c.DecideURL, "decide-url", c.DecideURL, "the Laya sidecar's address (CARTOGRAPH_DECIDE_URL)")
+	fs.DurationVar(&c.DecideTimeout, "decide-timeout", c.DecideTimeout, "the longest one decision may take (CARTOGRAPH_DECIDE_TIMEOUT)")
 	fs.DurationVar(&c.CompactAfter, "compact-after", c.CompactAfter, "age at which a Postgres store keeps an old version as a patch; 0 is off (CARTOGRAPH_COMPACT_AFTER)")
 	fs.DurationVar(&c.ShutdownTimeout, "shutdown-timeout", c.ShutdownTimeout, "grace period for in-flight requests on shutdown (CARTOGRAPH_SHUTDOWN_TIMEOUT)")
 	fs.StringVar(&c.Auth, "auth", c.Auth, "none or proxy (CARTOGRAPH_AUTH)")
@@ -414,6 +435,17 @@ func (c Config) Validate() error {
 	}
 	if c.SyncPing < 0 || (c.SyncPing > 0 && c.SyncPing < time.Second) {
 		return fmt.Errorf("sync ping %s: want 0 (off) or at least 1s", c.SyncPing)
+	}
+	if c.Decide != "off" && c.Decide != "laya" {
+		return fmt.Errorf("decide %q: want off or laya", c.Decide)
+	}
+	if c.Decide == "laya" {
+		if u, err := url.Parse(c.DecideURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return fmt.Errorf("decide url %q: want the Laya sidecar's http address, such as http://127.0.0.1:8411", c.DecideURL)
+		}
+		if c.DecideTimeout <= 0 {
+			return fmt.Errorf("decide timeout %s: want more than 0", c.DecideTimeout)
+		}
 	}
 	if c.GraphLayout != "layered" && c.GraphLayout != "force" {
 		return fmt.Errorf("graph layout %q: want layered or force", c.GraphLayout)

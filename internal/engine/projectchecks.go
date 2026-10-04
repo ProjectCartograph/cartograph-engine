@@ -467,6 +467,33 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 		c.addFix("landing-owner", "landing", phaseLanding, checkWarn, "No service owner named to accept the handover.", phaseInitiation, "resources")
 	}
 
+	// What a decision model makes of what the project says, where there is
+	// one (docs/adr/0023).
+	for _, j := range e.judgedChecks(ctx, "Project", doc) {
+		state := checkOK
+		if j.State != programmeCheckOK {
+			state = checkWarn
+		}
+		section := j.Section
+		if section == "" {
+			section = "aim"
+		}
+		c.add(j.ID, section, phaseInitiation, state, j.Message)
+	}
+	// Every placeholder, on the step that holds its field (TAXONOMY.md D31).
+	if p, ok := pendingCheck(doc); ok {
+		section := "landing"
+		if ps := pendingOf(doc); len(ps) > 0 {
+			if st := e.stepOfField("Project", ps[0].Path); st != "" {
+				section = st
+			}
+		}
+		phase := phaseInitiation
+		if section == phaseClosing || section == phaseLanding {
+			phase = section
+		}
+		c.add(p.ID, section, phase, checkWarn, p.Message)
+	}
 	return pc, nil
 }
 

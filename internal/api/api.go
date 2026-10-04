@@ -1518,3 +1518,46 @@ func (s *Server) GetGraph(ctx context.Context, req apigen.GetGraphRequestObject)
 	}
 	return apigen.GetGraph200JSONResponse(out), nil
 }
+
+// Understand is what a typed text reads as, and what already says it.
+func (s *Server) Understand(ctx context.Context, req apigen.UnderstandRequestObject) (apigen.UnderstandResponseObject, error) {
+	locale := ""
+	if req.Body.Locale != nil {
+		locale = *req.Body.Locale
+	}
+	u, err := s.Engine.Understand(ctx, req.Body.Text, locale)
+	if err != nil {
+		return nil, err
+	}
+	var out apigen.Understanding
+	if err := convertJSON(u, &out); err != nil {
+		return nil, err
+	}
+	return apigen.Understand200JSONResponse(out), nil
+}
+
+// MatchExisting is the records of a kind that say what a text says.
+func (s *Server) MatchExisting(ctx context.Context, req apigen.MatchExistingRequestObject) (apigen.MatchExistingResponseObject, error) {
+	level := ""
+	if req.Body.Level != nil {
+		level = *req.Body.Level
+	}
+	var out []apigen.Match
+	if err := convertJSON(s.Engine.MatchExisting(ctx, req.Body.Kind, level, req.Body.Text), &out); err != nil {
+		return nil, err
+	}
+	if out == nil {
+		out = []apigen.Match{}
+	}
+	return apigen.MatchExisting200JSONResponse(out), nil
+}
+
+// convertJSON copies an engine value into its generated wire type, field
+// for field, by their shared JSON names.
+func convertJSON(from, to any) error {
+	b, err := json.Marshal(from)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, to)
+}

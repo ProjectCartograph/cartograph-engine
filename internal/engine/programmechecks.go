@@ -215,6 +215,9 @@ func (e *Engine) programmeChecksOf(ctx context.Context, id string, doc map[strin
 		out = append(out, *loop)
 	}
 
+	if pc, ok := pendingCheck(doc); ok {
+		out = append(out, pc)
+	}
 	return out, nil
 }
 

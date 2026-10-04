@@ -279,6 +279,10 @@ func (e *Engine) gapChecksOf(ctx context.Context, id string, doc map[string]any)
 				"Every one of %d segments is addressed by somebody.", len(coverage.Segments)))
 		}
 	}
+	out = append(out, e.judgedChecks(ctx, "Gap", doc)...)
+	if pc, ok := pendingCheck(doc); ok {
+		out = append(out, pc)
+	}
 	return out, nil
 }
 

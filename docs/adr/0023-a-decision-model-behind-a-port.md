@@ -1,0 +1,109 @@
+# 0023. A decision model behind a port
+
+**Status:** Accepted
+
+## Context
+
+Cartograph checks what people write with code: a statement's words, its
+numbers, its dates, its links. Code is right for numbers and links and
+wrong for meaning. Whether an outcome is written as a state or an action,
+whether an aim says one thing or two, whether a gap is a shortfall in
+results or a missing resource: the guidance teaches each with good and
+poor examples, and the only way code could check them was a list of
+words (`aimVerbs`), which a plan's own words defeat. And a person who
+types what they are working on has no way to be told what it is in
+Cartograph's terms, or that a record already says it.
+
+Decision models answer typed questions about a text, with calibrated
+probabilities, without writing anything: which of these options it is,
+whether a statement holds of it. Laya is one, open under Apache 2.0,
+with an English and a multilingual checkpoint. It answers in tens of
+milliseconds on a server CPU and needs about 2 GB of memory, but it runs
+on the ONNX runtime, through Python or Node.
+
+## Decision
+
+**A port, `internal/decide`, with two answers:** a `Decider` answers
+named questions about one text in one call, each a `Choice` among
+described options or a `YesNo`, each answer a probability. It reads; it
+never writes text.
+
+**The engine asks it, and works without it.** `engine.WithDecider` sets
+it; none is the default (`CARTOGRAPH_DECIDE=off`). The engine asks it two
+things, in the shapes measured to work (below):
+
+- *Judgements*, from the contract's guidance: a contrast read off one
+  field's good and poor examples, asked as a two-way choice with the good
+  option first (`judgements` in each kind's guidance). The engine reports
+  each as an advisory check, on the step that holds the field. Without a
+  model, they are not asked. Only contrasts measured against examples
+  whose answer is known are kept.
+- *Matching* (`POST /match`, MCP `match`, and `POST /understand` across
+  every stage, for the home page): of each existing record on its own,
+  whether a text says the same, by its name. The answer is the one
+  record the model is sure of (at least 0.85) and clear of the next by
+  0.05, or none: a lower bar named a wrong record for one sentence in
+  four. Without a model, both fall
+  back to the words the texts share, and say so (`by: words`).
+
+**Laya runs as a sidecar** (`deploy/laya`), reached over HTTP by the
+`decide/laya` adapter, because its runtime needs cgo and a static binary
+built without cgo cannot carry it. The protocol is Laya's own call as
+JSON. A sidecar that is down or slow (`CARTOGRAPH_DECIDE_TIMEOUT`, 5 s)
+is unavailable, not an error: the engine answers as it would without
+one. Answers are cached in the process by text and question, a cache
+that costs only time to lose.
+
+**Agents and people are held to the same judgements**, because the
+checks are the engine's, read through every interface and MCP alike.
+
+## Measured
+
+Laya's English checkpoint, run through the sidecar, on examples from the
+guidance and the example workspace whose answers are known
+(2026-10-04):
+
+| Question | Shape | Right |
+|---|---|---|
+| Is an outcome a state, not an action | yes or no, "rather than" | 2 of 10 |
+| Is an outcome a state, not an action | two-way choice, good first | 9 of 10 |
+| Is a gap a result, not a resource | two-way choice, good first | 6 of 6 |
+| Does an aim say one result, not two | two-way choice | 2 of 6 |
+| Is a problem what people cannot do | two-way choice | 3 or 4 of 8 |
+| What kind of thing a sentence is | one choice among the stages | 3 or 4 of 10 |
+| What kind of thing a sentence is | a tree of two-way choices | 3 of 12 |
+| Which record says the same | one choice among the records | 4 of 8 |
+| Which record says the same | each record on its own, "same" first | 7 of 8 |
+| Which record says the same, if any, among all 35 | as above, by name, sure (0.85) and clear of the next (0.05) | 10 of 12, no wrong record named |
+
+So: the two contrasts that measured well are the judgements; reading
+what kind of thing a sentence is was dropped, and New's questions,
+answered by the person, do it; matching asks of each record on its own.
+The model reads the options' order and keys (the same contrast, good
+option second, fell from 9 to 7 of 10), so the adapter sends them in the
+order given. A new judgement is added only with its own measurement.
+
+## Consequences
+
+- A deployment that wants the checks runs a second process with about
+  2 GB of memory and a 1.7 GB model download. One that does not changes
+  nothing.
+- A judgement is advice, never a refusal: a model can be wrong, and a
+  check never blocks a save.
+- The questions are the contract's words, versioned with it; changing
+  one changes the check, as editing an example does.
+- Laya reads at most 512 tokens; Cartograph asks it about one statement
+  at a time, well inside that.
+
+## Rejected
+
+- *In-process inference.* The ONNX runtime's Go bindings need cgo, and
+  no cgo-free runtime for this model could be confirmed. Giving up the
+  static binary for one optional feature is the wrong trade.
+- *A hosted API.* Sending what organisations write to a third party by
+  default is not Cartograph's to decide; a deployment may point the
+  sidecar's URL anywhere it chooses.
+- *A generating model for the home page.* Cartograph understands and
+  routes; conversation is what agents over MCP are for.
+- *Reading what kind of thing a sentence is.* Measured above, it was
+  right too rarely to lead anyone.

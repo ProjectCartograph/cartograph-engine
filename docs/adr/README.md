@@ -32,6 +32,7 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0020](0020-the-purpose-is-the-top-of-the-strategy.md) | The purpose is the top of the strategy | Accepted |
 | [0021](0021-evidence-from-several-sources.md) | Evidence from several sources | Accepted |
 | [0022](0022-change-sets.md) | Change sets | Accepted |
+| [0023](0023-a-decision-model-behind-a-port.md) | A decision model behind a port, run as a sidecar | Accepted |
 
 ## Writing one
 
