@@ -294,7 +294,8 @@ The three goal levels no longer carry a tint of their own, on the tag or as a
 wash behind the card. Strict shadcn neutral is the rule everywhere else in the
 app, and the level's own mark distinguishes the tiers by shape, which is what a
 person scanning a column uses. Supersedes the per-level colour in "A goal keeps
-its level".
+its level". Kinds and levels stay neutral; one accent colour marks focus only
+(see "Where the eye lands").
 
 ## A key result is a unit and an outcome, and one sentence
 
@@ -419,6 +420,138 @@ It exists because a blocking rule shipped that refused a project joining a progr
 it shared no goal with, and shared goals turns out to be the test for whether a
 grouping should be a programme *rather than a portfolio*, not the definition of
 membership in one.
+
+## Where the eye lands (supersedes "strict shadcn neutral" in "Goals cards are neutral")
+
+A screen built only from shadcn's neutral theme gave the eye nowhere to
+land. Every surface was the same white card on the same white page, the
+only strong colour was near-black, and near-black was used for the
+primary button, the selected chip, the active toggle, the chosen row, a
+six-step outline and three navigation systems at once. On the project
+editor the one action that keeps work, Save as version, was an outline
+button among a dozen black marks. People reported looking at a screen and
+not knowing where to start.
+
+The published design systems agree on why, in nearly the same words: a
+signal works only while it is scarce. The rules below follow them; the
+sources are at the end of this section, with what each says and how it
+was read.
+
+1. **One filled button per view, or per panel of a split view.** It is
+   the action the screen exists for, chosen from what people do there:
+   Next in an editor's walk (the step they take on every screen; Save as
+   version is a decision taken once, and stays outline), the current
+   stage on New, "+ Project" on the projects list. Everything else is
+   `outline`, `ghost` or `link`; Back beside it is `ghost`. Never a
+   filled button inside a list row.
+2. **One accent colour, for three things only:** the primary action, the
+   selected item, and where the person is (the current step, the next
+   stage). Kinds and goal levels stay neutral and are told apart by their
+   marks, as before; the accent never says what kind a thing is, only
+   that it is the one to act on. Selected and pressed states use the
+   accent's tint, not solid black.
+3. **Status is a tone, an icon and a word, each tone with one meaning:**
+   destructive blocks, warning advises, success is met. The checks panel
+   leads with what blocks. Colour is never the only carrier.
+4. **One focal surface per screen.** The page sits on a quiet tinted
+   ground. The region where work happens (the editor's form, the
+   explorer's preview, the strategy tree) is the raised card; rails,
+   lists and side panels sit flat on the ground.
+5. **One page title, clearly larger than anything else, with one line
+   saying what the page is for.** Section titles are small; group labels
+   are small, uppercase and muted. Weights 400, 500 and 600 only.
+6. **One primary navigation per screen.** Where an editor has phases,
+   steps and an outline, the step rail leads; the phases read as quiet
+   tabs and the outline as a summary, not as more buttons.
+7. **Size and shape mark the current thing, not colour alone:** New's
+   next stage is a larger card with its number; done and waiting stages
+   are compact rows.
+8. **Every empty state is one sentence and the one action that fills
+   it.** No dead ends.
+9. **Density is constant within a page:** lists compact, editors roomy.
+
+These are rules about the interface, held in the interface: the theme's
+tokens carry the accent and the status tones, and shared components (the
+page header, the focal surface) carry the layout, so a screen follows them
+by using them.
+
+### Sources
+
+Read on 2026-10-04. Where a page could not be fetched directly, the
+wording came from a search engine's extract of the official page, and is
+marked so. Spotify and Netflix publish little; their evidence is thin and
+is marked so.
+
+- **Uber Base**, button usage
+  (https://base.uber.com/6d2425e9f/v/0/p/756216-button, extract): one
+  primary button per context; in web tools with several panels, one per
+  panel; no primary mid-page; three levels, tertiary for dismiss and
+  cancel. Button groups:
+  https://base.uber.com/6d2425e9f/p/83b31b-button-group.
+- **Spotify Encore**: buttons unified into primary, secondary and tertiary
+  (https://www.designsystems.com/how-spotifys-design-system-goes-beyond-platforms/).
+  ScienceBox: the focal action was first chosen by assumption and later
+  corrected from observed use
+  (https://medium.com/spotify-design/designing-data-science-tools-at-spotify-part-2-b793d9e17f4b,
+  extract). The brand green kept for play, active state and calls to action
+  is reported only by a secondary source
+  (https://blakecrosley.com/guides/design/spotify).
+- **Shopify Polaris** (https://shopify.dev/docs/apps/design/layout): at most
+  one primary action per card; containers make the hierarchy; density
+  suits the task and does not change within a page; a page is scanned top
+  to bottom towards one obvious task. Badges carry system status in fixed
+  tones, not user tags
+  (https://shopify.dev/docs/api/app-home/polaris-web-components/feedback-and-status-indicators/badge).
+- **Google Material 3**: the filled button is for important, final or
+  unblocking actions (https://m3.material.io/components/buttons/guidelines,
+  extract); the primary colour role is for the most prominent components
+  and active states, and surface-container tones build nesting
+  (https://m3.material.io/styles/color/roles, extract). Google's
+  eye-tracking research for M3 Expressive (46 studies, over 18,000
+  participants) found key elements up to four times faster when colour,
+  size, shape and containment were used deliberately
+  (https://design.google/library/expressive-material-design-google-research).
+- **Netflix Hawkins**: argues for one consistent system across its 80-plus
+  studio tools so no tool is a new thing to learn
+  (https://netflixtechblog.com/hawkins-diving-into-the-reasoning-behind-our-design-system-964a7357547,
+  extract). No published guidance on emphasis was found.
+- **Atlassian**: one primary button per page or area
+  (https://atlassian.design/components/button/usage); raised elevation for
+  one section or focal point only, more makes a busy screen
+  (https://atlassian.design/foundations/elevation); colour emphasis from
+  subtlest to boldest, bolder drawing more attention
+  (https://atlassian.design/foundations/color).
+- **GitHub Primer**: rarely more than one primary button per page
+  (https://primer.style/product/components/button/); one page title with a
+  description (https://primer.style/product/components/page-header/);
+  progressive disclosure must not move the first point of focus
+  (https://primer.style/product/ui-patterns/progressive-disclosure/);
+  empty states lead to the action that starts creation
+  (https://primer.style/product/ui-patterns/empty-states/).
+- **IBM Carbon**: one primary button per page, paired with ghost rather
+  than secondary (https://carbondesignsystem.com/components/button/usage/);
+  three weights and size before weight
+  (https://carbondesignsystem.com/elements/typography/overview/); empty
+  states never a dead end
+  (https://carbondesignsystem.com/patterns/empty-states-pattern/); status in
+  high, medium and low attention tiers, never colour alone
+  (https://carbondesignsystem.com/patterns/status-indicator-pattern/).
+- **Apple Human Interface Guidelines**: the most important items top and
+  leading, indentation for what is subordinate
+  (https://developer.apple.com/design/human-interface-guidelines/layout);
+  colour only where it truly helps, one colour one meaning
+  (https://developer.apple.com/design/human-interface-guidelines/color);
+  weight, size and colour for hierarchy, few typefaces, no light weights
+  (https://developer.apple.com/design/human-interface-guidelines/typography).
+
+Where they differ: the scope of "one primary" runs from per page (Carbon)
+to per panel (Base, Atlassian) to per card (Polaris); Cartograph takes per
+view, or per panel of a split view. Placement differs too (left for long
+forms and right for dialogs in Carbon and Atlassian, pinned bottom in
+Base); Cartograph keeps the editor's save at the top of the form, where it
+is, and dialogs' actions bottom right. Material's Expressive work argues
+for more colour and shape and Carbon and Apple for restraint; they meet on
+the rule that emphasis works only while it is scarce.
 
 ## Autosave stages; saving is a decision
 
