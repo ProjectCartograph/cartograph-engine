@@ -1104,8 +1104,12 @@ sources and a service. The walk asked for every link eagerly.
   needs. For a project: team, roles, the outcome it serves (its
   objective and goal come with it), segments, units, reporting cycles,
   data sources, groups, indicators, gaps, assumptions, budgets,
-  portfolios, programmes, and the service it lands in.
-- Before a project's walk, a person starts from their idea in their own
+  portfolios, programmes, and the service it lands in. For a programme:
+  teams, roles, the outcomes it is judged on, segments, groups,
+  indicators, gaps, assumptions and portfolios. For a portfolio: teams,
+  the goals and objectives it serves, budgets and reporting cycles.
+- Before a project's, a programme's or a portfolio's walk, a person
+  starts from their idea in their own
   words, then sees each of those in order: what already exists, the
   most relevant first (docs/adr/0023), and a way to add one with only
   the fields the record requires. Anything can be skipped, and the walk

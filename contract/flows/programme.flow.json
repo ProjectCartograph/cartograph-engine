@@ -321,6 +321,54 @@
         ]
       }
     ],
+    "prepare": [
+      {
+        "kind": "Team",
+        "needed": true,
+        "guide": "The team that leads the programme, and those that support it."
+      },
+      {
+        "kind": "Resource",
+        "needed": true,
+        "guide": "The roles accountable for it: its sponsor, its manager and who leads the change."
+      },
+      {
+        "kind": "Goal",
+        "level": "outcome",
+        "needed": true,
+        "guide": "The outcomes it is judged on, and the steps of its theory of change."
+      },
+      {
+        "kind": "Segment",
+        "needed": false,
+        "guide": "The slices its problems are seen in, when a gap names them."
+      },
+      {
+        "kind": "BeneficiaryGroup",
+        "needed": false,
+        "guide": "Who its problems land on."
+      },
+      {
+        "kind": "KPI",
+        "needed": false,
+        "guide": "The indicators it is judged by."
+      },
+      {
+        "kind": "Gap",
+        "needed": false,
+        "guide": "The shortfalls its problems answer."
+      },
+      {
+        "kind": "Assumption",
+        "needed": false,
+        "guide": "What its theory of change rests on but is not proved."
+      },
+      {
+        "kind": "Portfolio",
+        "needed": false,
+        "guide": "The portfolios that fund it, if any."
+      }
+    ],
     "review": true
   }
 }

@@ -87,6 +87,28 @@
         ]
       }
     ],
+    "prepare": [
+      {
+        "kind": "Team",
+        "needed": true,
+        "guide": "The team that governs the portfolio."
+      },
+      {
+        "kind": "Goal",
+        "needed": true,
+        "guide": "The goals and objectives it is prioritised against."
+      },
+      {
+        "kind": "FundingSource",
+        "needed": false,
+        "guide": "The budgets it allocates."
+      },
+      {
+        "kind": "ReportingCycle",
+        "needed": false,
+        "guide": "How often its decisions are reviewed."
+      }
+    ],
     "review": true
   }
 }

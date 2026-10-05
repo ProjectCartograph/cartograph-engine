@@ -284,53 +284,65 @@ func TestStagesWalkEveryStepOnce(t *testing.T) {
 // reference (but its own), each after every kind it needs itself, so the
 // preparation can be done top to bottom (TAXONOMY.md D34).
 func TestPrepareListsWhatTheWalkPicksFrom(t *testing.T) {
-	raw, _ := readJSON(t, contract.Flows, "flows/project.flow.json")
-	b, _ := json.Marshal(raw)
-	var flow struct {
-		Spec struct {
-			For   string `json:"for"`
-			Steps []struct {
-				Fields []struct {
-					Path string `json:"path"`
-				} `json:"fields"`
-			} `json:"steps"`
-			Prepare []struct {
-				Kind string `json:"kind"`
-			} `json:"prepare"`
-		} `json:"spec"`
-	}
-	if err := json.Unmarshal(b, &flow); err != nil {
-		t.Fatal(err)
-	}
-	at := map[string]int{}
-	for i, p := range flow.Spec.Prepare {
-		at[p.Kind] = i
-	}
-	schema := readSchema(t, "schemas/project.schema.json")
-	for _, s := range flow.Spec.Steps {
-		for _, f := range s.Fields {
-			for _, kind := range refsUnder(schema, pointer(f.Path)) {
-				if _, ok := at[kind]; !ok && kind != "*" && kind != flow.Spec.For {
-					t.Errorf("the walk picks a %s at %s, which prepare does not list", kind, f.Path)
+	files := kindSchemas(t)
+	prepared := 0
+	for kind, file := range files {
+		raw, _ := readJSON(t, contract.Flows, "flows/"+strings.ToLower(kind)+".flow.json")
+		if raw == nil {
+			continue
+		}
+		b, _ := json.Marshal(raw)
+		var flow struct {
+			Spec struct {
+				Steps []struct {
+					Fields []struct {
+						Path string `json:"path"`
+					} `json:"fields"`
+				} `json:"steps"`
+				Prepare []struct {
+					Kind string `json:"kind"`
+				} `json:"prepare"`
+			} `json:"spec"`
+		}
+		if err := json.Unmarshal(b, &flow); err != nil {
+			t.Fatal(err)
+		}
+		if len(flow.Spec.Prepare) == 0 {
+			continue
+		}
+		prepared++
+		at := map[string]int{}
+		for i, p := range flow.Spec.Prepare {
+			at[p.Kind] = i
+		}
+		schema := readSchema(t, "schemas/"+file)
+		for _, s := range flow.Spec.Steps {
+			for _, f := range s.Fields {
+				for _, named := range refsUnder(file, schema, pointer(f.Path)) {
+					if _, ok := at[named]; !ok && named != "*" && named != kind {
+						t.Errorf("%s: the walk picks a %s at %s, which prepare does not list", kind, named, f.Path)
+					}
+				}
+			}
+		}
+		// Whatever a prepared kind may name, among the prepared, comes
+		// before it, read from its own schema.
+		for _, p := range flow.Spec.Prepare {
+			for _, named := range refsUnder(files[p.Kind], readSchema(t, "schemas/"+files[p.Kind]), []string{"spec"}) {
+				if i, ok := at[named]; ok && named != p.Kind && i > at[p.Kind] {
+					t.Errorf("%s: %s is prepared before %s, which it may name", kind, p.Kind, named)
 				}
 			}
 		}
 	}
-	// Whatever a prepared kind may name, among the prepared, comes before
-	// it, read from its own schema.
-	files := kindSchemas(t)
-	for _, p := range flow.Spec.Prepare {
-		for _, named := range refsUnder(readSchema(t, "schemas/"+files[p.Kind]), []string{"spec"}) {
-			if i, ok := at[named]; ok && named != p.Kind && i > at[p.Kind] {
-				t.Errorf("%s is prepared before %s, which it may name", p.Kind, named)
-			}
-		}
+	if prepared < 3 {
+		t.Fatalf("only %d flows say what to prepare", prepared)
 	}
 }
 
 // refsUnder is every kind the schema references at or below path:
 // x-cartograph-ref, followed through $ref and combinators.
-func refsUnder(schema map[string]any, tokens []string) []string {
+func refsUnder(file string, schema map[string]any, tokens []string) []string {
 	var out []string
 	seen := map[string]bool{}
 	var collect func(file string, node any, depth int)
@@ -373,7 +385,6 @@ func refsUnder(schema map[string]any, tokens []string) []string {
 		}
 	}
 	var at any = schema
-	file := "project.schema.json"
 	for _, tok := range tokens {
 		m, _ := at.(map[string]any)
 		if tok == "-" {
