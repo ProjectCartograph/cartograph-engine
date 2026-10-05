@@ -265,8 +265,13 @@ func (e *Engine) matchCandidates(ctx context.Context, kind, level, text string, 
 			continue
 		}
 		name, detail := docName(doc, id), statementOf(doc)
-		out = append(out, Match{Kind: kind, ID: id, Name: name, Level: lv, Detail: detail,
-			Likelihood: overlap(want, wordsOf(name+" "+detail)), By: "words"})
+		likely := overlap(want, wordsOf(name+" "+detail))
+		// The same name spelt otherwise, or one name the other's initials,
+		// is the same record for certain: first, whatever else matches.
+		if sameName(text, name) {
+			likely = 1
+		}
+		out = append(out, Match{Kind: kind, ID: id, Name: name, Level: lv, Detail: detail, Likelihood: likely, By: "words"})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Likelihood != out[j].Likelihood {
@@ -349,6 +354,10 @@ func (e *Engine) MatchExisting(ctx context.Context, kind, level, text string) []
 	pool := e.matchCandidates(ctx, kind, level, text, matchPool)
 	if len(pool) == 0 || strings.TrimSpace(text) == "" {
 		return []Match{}
+	}
+	// Certain without a model: the name spelt otherwise, or by initials.
+	if pool[0].Likelihood == 1 && sameName(text, pool[0].Name) {
+		return []Match{pool[0]}
 	}
 	if out, ok := e.sameAs(ctx, text, pool); ok {
 		return out
@@ -680,4 +689,45 @@ func (e *Engine) FromIdea(ctx context.Context, kind, idea string) ([]IdeaAnswer,
 		out = append(out, IdeaAnswer{Key: k, Question: q.Question, Field: q.Field, Sentence: sentences[best], Likelihood: first})
 	}
 	return out, true
+}
+
+// minorWords are left out of a name's initials, as people leave them out
+// ("Department of Health" is DoH or DH).
+var minorWords = map[string]bool{"a": true, "an": true, "and": true, "for": true, "in": true, "of": true, "on": true, "the": true, "to": true}
+
+// sameName reports whether two names are one: the same once case, spacing
+// and punctuation are set aside ("Depot customers", "Depot Customers"),
+// or one the initials of the other ("SMS", "Student Management System"),
+// with or without its minor words.
+func sameName(a, b string) bool {
+	na, nb := plainName(a), plainName(b)
+	if len(na) == 0 || len(nb) == 0 {
+		return false
+	}
+	if strings.Join(na, " ") == strings.Join(nb, " ") {
+		return true
+	}
+	return initialsOf(na, nb) || initialsOf(nb, na)
+}
+
+// plainName is a name's words, lower-case, without punctuation.
+func plainName(s string) []string {
+	return strings.FieldsFunc(strings.ToLower(s), func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
+}
+
+// initialsOf reports whether short is one word of two or more letters that
+// spells long's initials, every word's or its major words'.
+func initialsOf(short, long []string) bool {
+	if len(short) != 1 || len(long) < 2 || len([]rune(short[0])) < 2 {
+		return false
+	}
+	var all, major strings.Builder
+	for _, w := range long {
+		first := string([]rune(w)[0])
+		all.WriteString(first)
+		if !minorWords[w] {
+			major.WriteString(first)
+		}
+	}
+	return short[0] == all.String() || short[0] == major.String()
 }

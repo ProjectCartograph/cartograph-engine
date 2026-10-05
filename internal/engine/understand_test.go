@@ -231,3 +231,31 @@ func TestAnIdeaAnswersTheQuestionsItCan(t *testing.T) {
 		t.Fatalf("without a model: %+v", got)
 	}
 }
+
+// A name typed otherwise (another case, spacing or punctuation) or by its
+// initials is the record for certain, with a model or without one, and
+// the model is not asked: it is unsure of both.
+func TestANameSpeltOtherwiseOrByInitialsIsTheRecord(t *testing.T) {
+	ctx := context.Background()
+	unsure := &model{answer: func(string, decide.Question) decide.Answer {
+		return decide.Answer{Probabilities: map[string]float64{"same": 0.3, "other": 0.7}}
+	}}
+	for _, d := range []decide.Decider{unsure, nil} {
+		e := engineWith(t, d)
+		for _, c := range []struct{ kind, text, want string }{
+			{"BeneficiaryGroup", "depot STAFF", "depot-staff"},
+			{"BeneficiaryGroup", "Depot-staff.", "depot-staff"},
+			{"DataSource", "QCT", "quality-check-tool"},
+			{"DataSource", "qct", "quality-check-tool"},
+		} {
+			got := e.MatchExisting(ctx, c.kind, "", c.text)
+			if len(got) != 1 || got[0].ID != c.want || got[0].Likelihood != 1 {
+				t.Errorf("%q (model %v): %+v", c.text, d != nil, got)
+			}
+		}
+		// Not a name's initials: no certain match.
+		if got := e.MatchExisting(ctx, "DataSource", "", "QX"); len(got) == 1 && got[0].Likelihood == 1 {
+			t.Errorf("QX matched: %+v", got)
+		}
+	}
+}
