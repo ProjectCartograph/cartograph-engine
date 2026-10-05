@@ -1134,3 +1134,21 @@ unplaced, since it defines what a record names before the record. The
 graph stays a DAG: an unplaced goal has one edge fewer until it is
 placed.
 
+
+### D36. A statement is written whole, in the reader's language. *(resolved)*
+
+**The problem.** A goal's statement and a project's objective were typed
+in parts: an opening verb picked from a list of 49 or 31, the rest, and
+for an objective a means after "by". The lists were too long to read,
+and the parts were English grammar: verb first, then "by". A language
+that puts the verb last, or says "by" another way or not at all, could
+not be written in them, and every list would have had to be kept in
+every language.
+
+**What Cartograph does.** A statement is one sentence, written whole in
+whatever language the person writes. The guidance says what it must say,
+with right and wrong examples, beside it; the judged checks read it
+whole (docs/adr/0023). The guidance carries no verb lists. Stored
+statements were already whole sentences, so nothing is migrated. A long
+list a person picks from (currencies, months) is named by the reader's
+own locale, not by a list kept in English.

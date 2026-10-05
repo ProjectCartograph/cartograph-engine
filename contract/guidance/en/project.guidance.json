@@ -628,44 +628,6 @@
     "risks-placed": "Give every risk an impact and a likelihood, so it can be weighed against the others.",
     "compliance-as-criteria": "Record each compliance line as a success criterion with metric compliance, naming the role that confirms it; then remove the line."
   },
-  "vocabulary": {
-    "objectiveVerbs": [
-      "improve",
-      "increase",
-      "raise",
-      "grow",
-      "strengthen",
-      "reduce",
-      "cut",
-      "shorten",
-      "remove",
-      "eliminate",
-      "simplify",
-      "make",
-      "give",
-      "enable",
-      "establish",
-      "restore",
-      "protect",
-      "open",
-      "shift",
-      "move",
-      "bring",
-      "turn",
-      "close",
-      "end",
-      "speed",
-      "lower",
-      "widen",
-      "deepen",
-      "secure",
-      "standardise",
-      "standardize"
-    ],
-    "meansWord": [
-      "by"
-    ]
-  },
   "fromIdea": {
     "for": {
       "question": "Who is it for?",
