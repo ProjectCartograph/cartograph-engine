@@ -1239,9 +1239,18 @@ type manifestDoc struct {
 }
 
 type manifestMeta struct {
-	ID     string            `yaml:"id"`
-	Name   string            `yaml:"name"`
-	Labels map[string]string `yaml:"labels"`
+	ID      string            `yaml:"id"`
+	Name    string            `yaml:"name"`
+	Alias   string            `yaml:"alias"`
+	Labels  map[string]string `yaml:"labels"`
+	Pending []manifestPending `yaml:"pending"`
+}
+
+type manifestPending struct {
+	Path string `yaml:"path"`
+	Kind string `yaml:"kind"`
+	Name string `yaml:"name"`
+	Note string `yaml:"note"`
 }
 
 func (s *Server) buildManifestView(v engine.Version) (apigen.ManifestView, error) {
@@ -1255,9 +1264,26 @@ func (s *Server) buildManifestView(v engine.Version) (apigen.ManifestView, error
 	}
 	m.Metadata.Id = doc.Metadata.ID
 	m.Metadata.Name = doc.Metadata.Name
+	if doc.Metadata.Alias != "" {
+		alias := doc.Metadata.Alias
+		m.Metadata.Alias = &alias
+	}
 	if len(doc.Metadata.Labels) > 0 {
 		labels := doc.Metadata.Labels
 		m.Metadata.Labels = &labels
+	}
+	// The placeholders are kept so an edit made from this copy keeps them
+	// (TAXONOMY.md D31).
+	if len(doc.Metadata.Pending) > 0 {
+		pending := make([]apigen.Pending, len(doc.Metadata.Pending))
+		for i, p := range doc.Metadata.Pending {
+			pending[i] = apigen.Pending{Path: p.Path, Kind: p.Kind, Name: p.Name}
+			if p.Note != "" {
+				note := p.Note
+				pending[i].Note = &note
+			}
+		}
+		m.Metadata.Pending = &pending
 	}
 	return apigen.ManifestView{Version: toVersion(v), Manifest: m, Yaml: string(v.YAML)}, nil
 }

@@ -963,9 +963,13 @@ type Manifest struct {
 	ApiVersion string `json:"apiVersion"`
 	Kind       string `json:"kind"`
 	Metadata   struct {
+		Alias  *string            `json:"alias,omitempty"`
 		Id     string             `json:"id"`
 		Labels *map[string]string `json:"labels,omitempty"`
 		Name   string             `json:"name"`
+
+		// Pending References not made yet (TAXONOMY.md D31), as stored. An edit made from this copy keeps them.
+		Pending *[]Pending `json:"pending,omitempty"`
 	} `json:"metadata"`
 	Spec map[string]interface{} `json:"spec"`
 }
@@ -1070,6 +1074,14 @@ type OrderStage struct {
 
 // OrderStageState done when it has a record; next for the stage to write now; ready when what it names is there; waiting while a stage before it has no record.
 type OrderStageState string
+
+// Pending One placeholder, mirroring common.schema.json Metadata.pending.
+type Pending struct {
+	Kind string  `json:"kind"`
+	Name string  `json:"name"`
+	Note *string `json:"note,omitempty"`
+	Path string  `json:"path"`
+}
 
 // Person One entry on the access list: someone who may sign in, never a manifest (TAXONOMY.md D27).
 type Person struct {

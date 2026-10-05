@@ -915,3 +915,30 @@ func TestGoalTreeListsUnplacedAPI(t *testing.T) {
 		}
 	}
 }
+
+// A manifest's JSON keeps its alias and its placeholders: an edit made
+// from that copy and saved back must not drop them (TAXONOMY.md D31).
+func TestManifestJSONKeepsAliasAndPlaceholders(t *testing.T) {
+	_, base := newTestServer(t)
+	cool := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: kept-cool\n  name: Produce is kept cool\n  alias: cool-chain\n  pending:\n    - {path: /spec/parent, kind: Goal, name: Cut loss after picking, note: ask the depots}\nspec:\n  level: outcome\n"
+	resp := doJSON(t, http.MethodPut, base+"/manifests/Goal/kept-cool", apigen.WriteRequest{Yaml: &cool, Reason: "seed"}, map[string]string{"X-Cartograph-Actor": "local"})
+	if resp.StatusCode >= 300 {
+		t.Fatalf("saving: %d", resp.StatusCode)
+	}
+	resp, err := http.Get(base + "/manifests/Goal/kept-cool")
+	if err != nil {
+		t.Fatal(err)
+	}
+	view := decode[apigen.ManifestView](t, resp)
+	md := view.Manifest.Metadata
+	if md.Alias == nil || *md.Alias != "cool-chain" {
+		t.Fatalf("alias: %v; yaml: %s", md.Alias, view.Yaml)
+	}
+	if md.Pending == nil || len(*md.Pending) != 1 {
+		t.Fatalf("pending: %v", md.Pending)
+	}
+	p := (*md.Pending)[0]
+	if p.Path != "/spec/parent" || p.Kind != "Goal" || p.Name != "Cut loss after picking" || p.Note == nil || *p.Note != "ask the depots" {
+		t.Fatalf("pending: %+v", p)
+	}
+}
