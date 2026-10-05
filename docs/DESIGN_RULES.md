@@ -602,14 +602,22 @@ motion stays on the sidebar's icons alone.
    second, so nothing flashes; a skeleton in the real layout for a page
    or a pane; a count ("3 of 15") and a way out for anything long.
 9. **Celebrate only a finished piece of work**, briefly and without
-   blocking what comes next: accepting a change set, not each save.
+   blocking what comes next: a definition completed, from the button
+   that saves its version, and never a draft or each save. Something
+   only named in passing (a gap added while starting a project) is new,
+   not finished: it sparkles once as it appears, and gets no confetti
+   (decided 2026-10-05).
 10. **Less motion means no movement, not no answer.** With reduced motion
    asked for, every slide and scale becomes a short fade or an instant
    change of colour, and the answers in rules 1, 2 and 5 stay.
 11. **Never animate** idle decoration, icons on hover outside the
    sidebar, anything looping for attention, layout properties (width,
    height, top), large sweeps, or anything that flashes. No sound, and no
-   reliance on vibration, which Safari does not have.
+   reliance on vibration, which Safari does not have. One exception,
+   decided 2026-10-05: what a person named in passing during a guided
+   flow keeps a slow, low-contrast ring for as long as that flow lasts,
+   so what they added reads apart from what was there; with reduced
+   motion it is a still ring.
 
 ### Sources
 
