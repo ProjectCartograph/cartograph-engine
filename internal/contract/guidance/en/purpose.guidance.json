@@ -15,6 +15,18 @@
     "purpose": "a vision or mission: the reason an organisation exists"
   },
   "fields": {
+    "/spec/organisation": {
+      "guide": "The name your organisation goes by, as its own people say it: the short name, not the registered one, unless that is what they use.",
+      "good": [
+        "Riverside Growers Cooperative"
+      ],
+      "poor": [
+        {
+          "text": "Our organisation",
+          "why": "Not a name: a reader elsewhere could not tell which organisation it is."
+        }
+      ]
+    },
     "/spec/vision": {
       "guide": "The future the organisation is working towards, in one or two sentences: the state of the world it wants, not what it does. No figures: those belong to the goals' measures.",
       "good": [

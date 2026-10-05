@@ -1393,11 +1393,12 @@ type Settings struct {
 	Operator         string `json:"operator"`
 	ProjectLevelName string `json:"projectLevelName"`
 
-	// Purpose The vault's vision and mission, stated once above every goal (TAXONOMY.md D24).
+	// Purpose The vault's vision and mission, stated once above every goal (TAXONOMY.md D24), and the organisation's name (D37).
 	Purpose *struct {
-		Mission *string `json:"mission,omitempty"`
-		Source  *string `json:"source,omitempty"`
-		Vision  *string `json:"vision,omitempty"`
+		Mission      *string `json:"mission,omitempty"`
+		Organisation *string `json:"organisation,omitempty"`
+		Source       *string `json:"source,omitempty"`
+		Vision       *string `json:"vision,omitempty"`
 	} `json:"purpose,omitempty"`
 }
 

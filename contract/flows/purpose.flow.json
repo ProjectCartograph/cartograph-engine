@@ -18,6 +18,12 @@
             "control": "text"
           },
           {
+            "path": "/spec/organisation",
+            "control": "text",
+            "title": "Organisation",
+            "hint": "The name your organisation goes by."
+          },
+          {
             "path": "/spec/vision",
             "control": "sentence",
             "title": "Vision",

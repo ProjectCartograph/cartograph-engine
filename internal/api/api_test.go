@@ -942,3 +942,22 @@ func TestManifestJSONKeepsAliasAndPlaceholders(t *testing.T) {
 		t.Fatalf("pending: %+v", p)
 	}
 }
+
+// The organisation's name is kept on its purpose and read with the
+// settings, beside the vision and mission (TAXONOMY.md D24, D37).
+func TestSettingsReadTheOrganisationsName(t *testing.T) {
+	_, base := newTestServer(t)
+	purpose := "apiVersion: cartograph/v1\nkind: Purpose\nmetadata:\n  id: default\n  name: Purpose\nspec:\n  organisation: Riverside Growers\n  vision: Every member family earns a fair living.\n"
+	resp := doJSON(t, http.MethodPut, base+"/manifests/Purpose/default", apigen.WriteRequest{Yaml: &purpose, Reason: "seed"}, map[string]string{"X-Cartograph-Actor": "local"})
+	if resp.StatusCode >= 300 {
+		t.Fatalf("saving the purpose: %d", resp.StatusCode)
+	}
+	resp, err := http.Get(base + "/settings")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := decode[apigen.Settings](t, resp)
+	if s.Purpose == nil || s.Purpose.Organisation == nil || *s.Purpose.Organisation != "Riverside Growers" {
+		t.Fatalf("purpose: %+v", s.Purpose)
+	}
+}

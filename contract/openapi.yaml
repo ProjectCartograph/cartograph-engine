@@ -3572,8 +3572,10 @@ components:
           description: Author name recorded in versions (default local)
         purpose:
           type: object
-          description: The vault's vision and mission, stated once above every goal (TAXONOMY.md D24).
+          description: The vault's vision and mission, stated once above every goal (TAXONOMY.md D24), and the organisation's name (D37).
           properties:
+            organisation:
+              type: string
             vision:
               type: string
             mission:

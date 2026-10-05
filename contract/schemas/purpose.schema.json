@@ -5,18 +5,47 @@
   "description": "Why everything below exists, stated once at the top of the strategy: the vision and mission every goal serves (Kaufman's ideal vision; the Balanced Scorecard's mission and vision). One per workspace, metadata.id always \"default\". Not an aim: a goal says what the organisation sets out to do, the purpose says what for. See TAXONOMY.md D24.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
   "properties": {
-    "apiVersion": { "const": "cartograph/v1" },
-    "kind": { "const": "Purpose" },
-    "metadata": { "$ref": "common.schema.json#/$defs/Metadata" },
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Purpose"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
     "spec": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "vision": { "type": "string", "maxLength": 600, "description": "The future the organisation is working towards, as a state of the world it serves, not of itself." },
-        "mission": { "type": "string", "maxLength": 600, "description": "What the organisation does, and for whom, to get there." },
-        "source": { "type": "string", "maxLength": 160, "description": "Where the vision and mission are published, so a reader can check them: a plan and its section." }
+        "organisation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "description": "The organisation this is the purpose of, by the name its people use for it. Shown wherever the strategy speaks of the organisation (\"the vision of ...\"). See TAXONOMY.md D37."
+        },
+        "vision": {
+          "type": "string",
+          "maxLength": 600,
+          "description": "The future the organisation is working towards, as a state of the world it serves, not of itself."
+        },
+        "mission": {
+          "type": "string",
+          "maxLength": 600,
+          "description": "What the organisation does, and for whom, to get there."
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Where the vision and mission are published, so a reader can check them: a plan and its section."
+        }
       }
     }
   }

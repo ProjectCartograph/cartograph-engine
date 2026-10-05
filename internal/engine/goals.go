@@ -24,9 +24,11 @@ type Settings struct {
 
 // Purpose is the vault's vision and mission, stated once above every goal.
 type Purpose struct {
-	Vision  string `json:"vision,omitempty" yaml:"vision"`
-	Mission string `json:"mission,omitempty" yaml:"mission"`
-	Source  string `json:"source,omitempty" yaml:"source"`
+	// The organisation it is the purpose of, by name (D37).
+	Organisation string `json:"organisation,omitempty" yaml:"organisation"`
+	Vision       string `json:"vision,omitempty" yaml:"vision"`
+	Mission      string `json:"mission,omitempty" yaml:"mission"`
+	Source       string `json:"source,omitempty" yaml:"source"`
 }
 
 // defaultSettings is what applies when no Settings manifest exists.

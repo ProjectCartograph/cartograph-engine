@@ -1152,3 +1152,16 @@ whole (docs/adr/0023). The guidance carries no verb lists. Stored
 statements were already whole sentences, so nothing is migrated. A long
 list a person picks from (currencies, months) is named by the reader's
 own locale, not by a list kept in English.
+
+### D37. The organisation is named on its purpose. *(resolved)*
+
+**The problem.** A workspace is about one organisation, but nothing said
+which. The strategy could not say "the vision of" anyone, and a person
+opening a new workspace had nowhere to start but a blank tree.
+
+**What Cartograph does.** The Purpose carries the organisation's name
+(`spec.organisation`) beside the vision and mission, and the settings
+return it with them. It is the name the organisation's own people use,
+not an identifier: nothing references it. A new workspace asks for it
+first, then the vision and the mission, then the goals: the strategy
+top-down, in the order of work (D28).
