@@ -1085,3 +1085,29 @@ two terms of piloting and roll-out, the results data, the risk that
 schools lack time (plan); the check runs in the national assessment
 service (success and handover).
 
+
+### D34. What a walk picks from is prepared before it. *(resolved)*
+
+**The problem.** Defining a project, a person met a picker with nothing
+in it at almost every step: no groups, no data sources, no indicators,
+no service. Each sent them into a register's full form (an id, a
+category, provenance, access, refresh, a reason) in the middle of the
+walk, and they lost the thread before finishing its first screen. Few of
+these are dependencies of the project at all: a saved version needs only
+its team and summary, and a hand-over needs an outcome, roles, data
+sources and a service. The walk asked for every link eagerly.
+
+**What Cartograph does.**
+- A flow lists, as `prepare`, what its fields pick from, in an order in
+  which each kind comes after every prepared kind it may name, read from
+  the schemas (a contract test holds both), and marks which a hand-over
+  needs. For a project: team, roles, the outcome it serves (its
+  objective and goal come with it), segments, units, reporting cycles,
+  data sources, groups, indicators, gaps, assumptions, budgets,
+  portfolios, programmes, and the service it lands in.
+- Before a project's walk, a person starts from their idea in their own
+  words, then sees each of those in order: what already exists, the
+  most relevant first (docs/adr/0023), and a way to add one with only
+  the fields the record requires. Anything can be skipped, and the walk
+  can begin at any point: preparing is to make the walk a matter of
+  picking, not a gate.

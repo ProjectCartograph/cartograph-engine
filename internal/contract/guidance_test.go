@@ -279,3 +279,110 @@ func TestStagesWalkEveryStepOnce(t *testing.T) {
 		t.Fatal("no flow has stages")
 	}
 }
+
+// What a walk prepares is what it picks from: every kind its fields
+// reference (but its own), each after every kind it needs itself, so the
+// preparation can be done top to bottom (TAXONOMY.md D34).
+func TestPrepareListsWhatTheWalkPicksFrom(t *testing.T) {
+	raw, _ := readJSON(t, contract.Flows, "flows/project.flow.json")
+	b, _ := json.Marshal(raw)
+	var flow struct {
+		Spec struct {
+			For   string `json:"for"`
+			Steps []struct {
+				Fields []struct {
+					Path string `json:"path"`
+				} `json:"fields"`
+			} `json:"steps"`
+			Prepare []struct {
+				Kind string `json:"kind"`
+			} `json:"prepare"`
+		} `json:"spec"`
+	}
+	if err := json.Unmarshal(b, &flow); err != nil {
+		t.Fatal(err)
+	}
+	at := map[string]int{}
+	for i, p := range flow.Spec.Prepare {
+		at[p.Kind] = i
+	}
+	schema := readSchema(t, "schemas/project.schema.json")
+	for _, s := range flow.Spec.Steps {
+		for _, f := range s.Fields {
+			for _, kind := range refsUnder(schema, pointer(f.Path)) {
+				if _, ok := at[kind]; !ok && kind != "*" && kind != flow.Spec.For {
+					t.Errorf("the walk picks a %s at %s, which prepare does not list", kind, f.Path)
+				}
+			}
+		}
+	}
+	// Whatever a prepared kind may name, among the prepared, comes before
+	// it, read from its own schema.
+	files := kindSchemas(t)
+	for _, p := range flow.Spec.Prepare {
+		for _, named := range refsUnder(readSchema(t, "schemas/"+files[p.Kind]), []string{"spec"}) {
+			if i, ok := at[named]; ok && named != p.Kind && i > at[p.Kind] {
+				t.Errorf("%s is prepared before %s, which it may name", p.Kind, named)
+			}
+		}
+	}
+}
+
+// refsUnder is every kind the schema references at or below path:
+// x-cartograph-ref, followed through $ref and combinators.
+func refsUnder(schema map[string]any, tokens []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	var collect func(file string, node any, depth int)
+	collect = func(file string, node any, depth int) {
+		m, ok := node.(map[string]any)
+		if !ok || depth > 12 {
+			return
+		}
+		if r, ok := m["x-cartograph-ref"].(string); ok && !seen[r] {
+			seen[r] = true
+			out = append(out, r)
+		}
+		if ref, ok := m["$ref"].(string); ok {
+			target, frag, _ := strings.Cut(ref, "#")
+			if target == "" {
+				target = file
+			}
+			b, err := fs.ReadFile(contract.Schemas, "schemas/"+target)
+			if err == nil {
+				var doc any
+				_ = json.Unmarshal(b, &doc)
+				for _, p := range strings.Split(strings.TrimPrefix(frag, "/"), "/") {
+					if p != "" {
+						dm, _ := doc.(map[string]any)
+						doc = dm[p]
+					}
+				}
+				collect(target, doc, depth+1)
+			}
+		}
+		for _, v := range m {
+			switch x := v.(type) {
+			case map[string]any:
+				collect(file, x, depth+1)
+			case []any:
+				for _, y := range x {
+					collect(file, y, depth+1)
+				}
+			}
+		}
+	}
+	var at any = schema
+	file := "project.schema.json"
+	for _, tok := range tokens {
+		m, _ := at.(map[string]any)
+		if tok == "-" {
+			at = m["items"]
+			continue
+		}
+		props, _ := m["properties"].(map[string]any)
+		at = props[tok]
+	}
+	collect(file, at, 0)
+	return out
+}

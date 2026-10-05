@@ -844,6 +844,84 @@
         ]
       }
     ],
+    "prepare": [
+      {
+        "kind": "Team",
+        "needed": true,
+        "guide": "The team that owns the project, and that every data source belongs to."
+      },
+      {
+        "kind": "Resource",
+        "needed": true,
+        "guide": "The roles it needs: at least a sponsor and a lead, and who verifies its outputs."
+      },
+      {
+        "kind": "Goal",
+        "level": "outcome",
+        "needed": true,
+        "guide": "The outcome it serves: the change in the strategy it moves. Its objective and goal come with it."
+      },
+      {
+        "kind": "Segment",
+        "needed": false,
+        "guide": "The slices its problems are seen in, such as a region, when a gap names them."
+      },
+      {
+        "kind": "Unit",
+        "needed": false,
+        "guide": "The units its indicators are counted in."
+      },
+      {
+        "kind": "ReportingCycle",
+        "needed": false,
+        "guide": "How often its success criteria are read."
+      },
+      {
+        "kind": "DataSource",
+        "needed": true,
+        "guide": "Where its measures are read from, and where the data it makes lands."
+      },
+      {
+        "kind": "BeneficiaryGroup",
+        "needed": false,
+        "guide": "Who it is for: the groups that gain from it."
+      },
+      {
+        "kind": "KPI",
+        "needed": false,
+        "guide": "The indicators that show the change happened."
+      },
+      {
+        "kind": "Gap",
+        "needed": false,
+        "guide": "The shortfalls its problems answer."
+      },
+      {
+        "kind": "Assumption",
+        "needed": false,
+        "guide": "What its success rests on but is not proved."
+      },
+      {
+        "kind": "FundingSource",
+        "needed": false,
+        "guide": "The budgets it draws on."
+      },
+      {
+        "kind": "Portfolio",
+        "needed": false,
+        "guide": "The portfolios that fund it, if any."
+      },
+      {
+        "kind": "Programme",
+        "needed": false,
+        "guide": "The programme it is part of, if any."
+      },
+      {
+        "kind": "Operation",
+        "needed": true,
+        "guide": "The service the result is handed over to: running, or planned for this project to set up."
+      }
+    ],
     "review": true
   }
 }

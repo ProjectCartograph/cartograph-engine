@@ -88,6 +88,37 @@
             }
           }
         },
+        "prepare": {
+          "type": "array",
+          "description": "What the walk picks from, to prepare before it starts, in the order of work (TAXONOMY.md D34): each kind its fields reference, after every kind it needs itself. A person adds what is missing here, one short step at a time, so the walk only picks. needed marks what a hand-over will want; the rest enriches. Nothing here is required to begin.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "needed",
+              "guide"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "level": {
+                "type": "string",
+                "description": "For Goal, the level the walk picks."
+              },
+              "needed": {
+                "type": "boolean",
+                "description": "Whether a hand-over of the work will need one."
+              },
+              "guide": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "Why the walk wants it, in a sentence."
+              }
+            }
+          }
+        },
         "review": {
           "type": "boolean",
           "default": true,
