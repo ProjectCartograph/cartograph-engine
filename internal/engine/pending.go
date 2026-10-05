@@ -118,6 +118,31 @@ func pendingCheck(doc map[string]any) (ProgrammeCheck, bool) {
 			englishList(parts), plural3(len(ps), "it", "them"), plural3(len(ps), "it", "them"))}, true
 }
 
+// withoutPending is doc with the placeholder for path left out, for a
+// check that says the same thing in its own words.
+func withoutPending(doc map[string]any, path string) map[string]any {
+	meta, _ := doc["metadata"].(map[string]any)
+	list, _ := meta["pending"].([]any)
+	var kept []any
+	for _, raw := range list {
+		if m, _ := raw.(map[string]any); m != nil && m["path"] == path {
+			continue
+		}
+		kept = append(kept, raw)
+	}
+	out := make(map[string]any, len(doc))
+	for k, v := range doc {
+		out[k] = v
+	}
+	m := make(map[string]any, len(meta))
+	for k, v := range meta {
+		m[k] = v
+	}
+	m["pending"] = kept
+	out["metadata"] = m
+	return out
+}
+
 func plural3(n int, one, many string) string {
 	if n == 1 {
 		return one

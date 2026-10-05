@@ -770,6 +770,9 @@ type GoalNode struct {
 type GoalTree struct {
 	Levels []string   `json:"levels"`
 	Nodes  []GoalNode `json:"nodes"`
+
+	// Unplaced Objectives and outcomes with no parent yet, held by a placeholder (TAXONOMY.md D35), each with what sits under it.
+	Unplaced *[]GoalNode `json:"unplaced,omitempty"`
 }
 
 // Graph defines model for Graph.

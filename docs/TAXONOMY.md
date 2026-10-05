@@ -1115,3 +1115,22 @@ sources and a service. The walk asked for every link eagerly.
   the fields the record requires. Anything can be skipped, and the walk
   can begin at any point: preparing is to make the walk a matter of
   picking, not a gate.
+
+### D35. A goal may stand unplaced until what it sits under is defined. *(resolved)*
+
+**The problem.** An outcome could only be saved under an objective, and
+an objective under a goal. A person who knew the change they wanted but
+not yet the objective it served had to stop and define the objective,
+and its goal, before writing down the one thing they were sure of.
+
+**What Cartograph does.** An objective or an outcome may be saved with
+no parent while a placeholder holds the parent's place (D31): defined
+now, placed later, a lazy evaluation of where it belongs. It is listed
+as unplaced in the goal tree, its `placed` check says where it should
+go, and placing it under its parent ends the placeholder. Nothing else
+changes: a goal never has a parent, an objective is still placed under
+a goal and an outcome under an objective, and an agent never leaves one
+unplaced, since it defines what a record names before the record. The
+graph stays a DAG: an unplaced goal has one edge fewer until it is
+placed.
+

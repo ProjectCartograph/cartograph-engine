@@ -191,7 +191,8 @@
     "has-objectives": "Define the objectives under this goal, or place existing ones under it.",
     "has-outcomes": "Define the outcomes under this objective, each a state that closes a gap, or place existing ones under it.",
     "outcomes-close-gaps": "For each outcome under it, name on the gap the outcome closes, or define that gap: its current and desired state, its KPI, and the segments it was observed in.",
-    "statement-state": "Write it as a state: what a person would observe once it is met."
+    "statement-state": "Write it as a state: what a person would observe once it is met.",
+    "placed": "Place it under the aim it serves: an objective under a goal, an outcome under an objective. Define that first if it does not exist yet."
   },
   "judgements": {
     "statement-state": {

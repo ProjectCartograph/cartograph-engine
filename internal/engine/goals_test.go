@@ -448,3 +448,53 @@ func TestDeleteGoalReferencedRefused(t *testing.T) {
 		t.Fatalf("expected the goal to survive a refused delete, got %v", err)
 	}
 }
+
+// An outcome may be defined before the objective it serves: left unplaced
+// with a placeholder holding its parent's place, listed apart in the tree,
+// told where it should go, and placed later (TAXONOMY.md D35).
+func TestAGoalStandsUnplacedUntilPlaced(t *testing.T) {
+	e := seededEngine(t)
+	ctx := context.Background()
+	bare := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: kept-cool\n  name: Produce is kept cool\nspec:\n  level: outcome\n"
+	if _, err := e.Commit(ctx, "Goal", "kept-cool", []byte(bare), "local", "test"); err == nil || !strings.Contains(err.Error(), "requires an objective") {
+		t.Fatalf("an outcome with nothing holding its parent's place: %v", err)
+	}
+	held := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: kept-cool\n  name: Produce is kept cool\n  pending:\n    - {path: /spec/parent, kind: Goal, name: Not placed yet}\nspec:\n  level: outcome\n"
+	mustCommit(t, e, "Goal", "kept-cool", "local", held)
+
+	tree, err := e.GoalTree(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tree.Unplaced) != 1 || tree.Unplaced[0].ID != "kept-cool" {
+		t.Fatalf("unplaced: %+v", tree.Unplaced)
+	}
+	for _, n := range tree.Nodes {
+		if n.ID == "kept-cool" {
+			t.Fatal("an unplaced outcome was listed as a goal")
+		}
+	}
+	checks, err := e.GoalChecks(ctx, "kept-cool")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var placed *engine.GoalCheck
+	for i := range checks {
+		if checks[i].ID == "placed" {
+			placed = &checks[i]
+		}
+		if checks[i].ID == "pending" {
+			t.Fatalf("the parent's placeholder was listed twice: %+v", checks[i])
+		}
+	}
+	if placed == nil || placed.State != "warn" || !strings.Contains(placed.Message, "under an objective") {
+		t.Fatalf("placed: %+v", placed)
+	}
+
+	// Placed: under an objective, the placeholder gone.
+	mustCommit(t, e, "Goal", "kept-cool", "local", "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: kept-cool\n  name: Produce is kept cool\nspec:\n  level: outcome\n  parent: g1-s\n")
+	tree, _ = e.GoalTree(ctx)
+	if len(tree.Unplaced) != 0 {
+		t.Fatalf("still unplaced: %+v", tree.Unplaced)
+	}
+}

@@ -39,7 +39,7 @@
         "parent": {
           "$ref": "common.schema.json#/$defs/Slug",
           "x-cartograph-ref": "Goal",
-          "description": "Required for objectives and outcomes; forbidden for a goal."
+          "description": "Required for objectives and outcomes; forbidden for a goal. An objective or outcome may be left unplaced while what it sits under is not defined yet, with a placeholder holding this field's place (metadata.pending, TAXONOMY.md D35); it is listed as unplaced until placed."
         },
         "objective": {
           "type": "string",

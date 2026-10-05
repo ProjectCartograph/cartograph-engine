@@ -891,3 +891,27 @@ func TestTheGlossary(t *testing.T) {
 		t.Fatalf("glossary: %+v", g[:3])
 	}
 }
+
+// An outcome left unplaced reaches the interface in the tree's unplaced
+// list, never as a goal (TAXONOMY.md D35).
+func TestGoalTreeListsUnplacedAPI(t *testing.T) {
+	_, base := newTestServer(t)
+	cool := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: kept-cool\n  name: Produce is kept cool\n  pending:\n    - {path: /spec/parent, kind: Goal, name: Not placed yet}\nspec:\n  level: outcome\n"
+	resp := doJSON(t, http.MethodPut, base+"/manifests/Goal/kept-cool", apigen.WriteRequest{Yaml: &cool, Reason: "seed"}, map[string]string{"X-Cartograph-Actor": "local"})
+	if resp.StatusCode >= 300 {
+		t.Fatalf("saving an unplaced outcome: %d", resp.StatusCode)
+	}
+	resp, err := http.Get(base + "/goals/tree")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree := decode[apigen.GoalTree](t, resp)
+	if tree.Unplaced == nil || len(*tree.Unplaced) != 1 || (*tree.Unplaced)[0].Id != "kept-cool" {
+		t.Fatalf("unplaced: %+v", tree.Unplaced)
+	}
+	for _, n := range tree.Nodes {
+		if n.Id == "kept-cool" {
+			t.Fatal("an unplaced outcome was listed as a goal")
+		}
+	}
+}

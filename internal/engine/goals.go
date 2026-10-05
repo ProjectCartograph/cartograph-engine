@@ -217,6 +217,9 @@ type GoalGap struct {
 type GoalTree struct {
 	Levels []string    `json:"levels"`
 	Nodes  []*GoalNode `json:"nodes"`
+	// Unplaced are objectives and outcomes with no parent yet (TAXONOMY.md
+	// D35), each with what sits under it.
+	Unplaced []*GoalNode `json:"unplaced"`
 }
 
 type goalDoc struct {
@@ -348,7 +351,7 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 		}
 	}
 
-	var roots []*GoalNode
+	var roots, unplaced []*GoalNode
 	for _, id := range ids {
 		n, ok := nodesByID[id]
 		if !ok {
@@ -360,6 +363,12 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 				continue
 			}
 		}
+		// Only a goal is a root: an objective or outcome without a parent
+		// is unplaced, not a goal (TAXONOMY.md D35).
+		if n.Level != "goal" && n.Parent == "" {
+			unplaced = append(unplaced, n)
+			continue
+		}
 		roots = append(roots, n)
 	}
 
@@ -370,6 +379,7 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 	for _, n := range roots {
 		sortByName(n.Children)
 	}
+	sortByName(unplaced)
 
 	settings, err := e.GetSettings(ctx)
 	if err != nil {
@@ -379,7 +389,10 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 	if roots == nil {
 		roots = []*GoalNode{}
 	}
-	return GoalTree{Levels: settings.GoalLevels, Nodes: roots}, nil
+	if unplaced == nil {
+		unplaced = []*GoalNode{}
+	}
+	return GoalTree{Levels: settings.GoalLevels, Nodes: roots, Unplaced: unplaced}, nil
 }
 
 // GoalCheckFix names which section of the goal editor addresses a check.
@@ -572,7 +585,13 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 		}
 		checks = append(checks, GoalCheck{ID: j.ID, State: state, Message: j.Message})
 	}
-	if pc, ok := pendingCheck(doc); ok {
+	// An objective or outcome left unplaced (TAXONOMY.md D35) says so
+	// plainly; any other placeholder is listed as everywhere else.
+	if parent, _ := spec["parent"].(string); level != "goal" && parent == "" {
+		above := map[string]string{"objective": "a goal", "outcome": "an objective"}[level]
+		checks = append(checks, GoalCheck{ID: "placed", State: goalCheckWarn, Message: fmt.Sprintf("Not placed yet: place it under %s.", above), Fix: &GoalCheckFix{Section: "aim"}})
+	}
+	if pc, ok := pendingCheck(withoutPending(doc, "/spec/parent")); ok {
 		checks = append(checks, GoalCheck{ID: pc.ID, State: goalCheckWarn, Message: pc.Message})
 	}
 	return checks, nil

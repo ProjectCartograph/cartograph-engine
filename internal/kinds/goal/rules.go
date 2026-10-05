@@ -29,6 +29,12 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 
 	level, _ := spec["level"].(string)
 	_, hasParent := spec["parent"]
+	// A person may leave an objective or an outcome unplaced while what it
+	// sits under is not defined yet: a placeholder holds the parent's
+	// place (TAXONOMY.md D31, D35). Only then may it go without one.
+	if !hasParent && level != "goal" && parentHeld(doc) {
+		hasParent = true // the level check has no parent to read, and passes
+	}
 	switch level {
 	case "goal":
 		if hasParent {
@@ -170,4 +176,16 @@ func checkLevelImmutable(ctx kit.RuleContext, newLevel string) *kit.Problem {
 		}
 	}
 	return nil
+}
+
+// parentHeld reports whether a placeholder holds spec.parent's place.
+func parentHeld(doc map[string]any) bool {
+	meta, _ := doc["metadata"].(map[string]any)
+	list, _ := meta["pending"].([]any)
+	for _, raw := range list {
+		if m, _ := raw.(map[string]any); m != nil && m["path"] == "/spec/parent" {
+			return true
+		}
+	}
+	return false
 }

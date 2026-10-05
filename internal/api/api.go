@@ -285,7 +285,11 @@ func toGoalTree(t engine.GoalTree) apigen.GoalTree {
 	for i, n := range t.Nodes {
 		nodes[i] = toGoalNode(n)
 	}
-	return apigen.GoalTree{Levels: t.Levels, Nodes: nodes}
+	unplaced := make([]apigen.GoalNode, len(t.Unplaced))
+	for i, n := range t.Unplaced {
+		unplaced[i] = toGoalNode(n)
+	}
+	return apigen.GoalTree{Levels: t.Levels, Nodes: nodes, Unplaced: &unplaced}
 }
 
 func toGoalCheck(c engine.GoalCheck) apigen.GoalCheck {
