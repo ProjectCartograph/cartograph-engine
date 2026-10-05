@@ -204,3 +204,30 @@ func TestRelevantRanksTheWorkspace(t *testing.T) {
 		t.Fatalf("status without a model: %+v", s)
 	}
 }
+
+// A rough idea is read sentence by sentence for the questions a walk asks,
+// and a sentence is offered only when the model is sure of it and it is
+// clear of the next (docs/adr/0023); without a model, none is.
+func TestAnIdeaAnswersTheQuestionsItCan(t *testing.T) {
+	ctx := context.Background()
+	m := &model{answer: func(state string, q decide.Question) decide.Answer {
+		p := 0.2
+		switch {
+		case q.Options[0].Description == "says who the work is for or who benefits" && strings.HasPrefix(state, "It is for"):
+			p = 0.9
+		case q.Options[0].Description == "says what is wrong today" && strings.HasPrefix(state, "Today"):
+			p = 0.65 // sure, but not clear of the next
+		case q.Options[0].Description == "says what is wrong today" && strings.HasPrefix(state, "It is for"):
+			p = 0.6
+		}
+		return decide.Answer{Probabilities: map[string]float64{"yes": p, "other": 1 - p}}
+	}}
+	idea := "It is for the members who deliver to the northern depots. Today half the produce waits a day in the field!\nOk."
+	got, ok := engineWith(t, m).FromIdea(ctx, "Project", idea)
+	if !ok || len(got) != 1 || got[0].Key != "for" || got[0].Sentence != "It is for the members who deliver to the northern depots" || got[0].Field != "/spec/summary/beneficiaries" {
+		t.Fatalf("with a model: %+v", got)
+	}
+	if got, ok := engineWith(t, nil).FromIdea(ctx, "Project", idea); ok || len(got) != 0 {
+		t.Fatalf("without a model: %+v", got)
+	}
+}

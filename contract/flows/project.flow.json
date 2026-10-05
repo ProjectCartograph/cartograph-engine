@@ -22,6 +22,10 @@
             "control": "sentence"
           },
           {
+            "path": "/spec/summary/idea",
+            "control": "sentence"
+          },
+          {
             "path": "/spec/alignment/programmes",
             "control": "references",
             "hint": "The programmes this project belongs to. It can belong to more than one.",

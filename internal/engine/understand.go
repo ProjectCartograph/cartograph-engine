@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -588,4 +589,95 @@ func (e *Engine) Relevant(ctx context.Context, text string, kinds []string, leve
 		out.Matches = append(out.Matches, list...)
 	}
 	return out, nil
+}
+
+// IdeaAnswer is the sentence of a rough idea that answers one question a
+// walk asks.
+type IdeaAnswer struct {
+	Key        string  `json:"key"`
+	Question   string  `json:"question"`
+	Field      string  `json:"field"`
+	Sentence   string  `json:"sentence"`
+	Likelihood float64 `json:"likelihood"`
+}
+
+// A sentence is offered for a question only when the model is sure of it
+// and it is clear of the idea's next sentence: measured (docs/adr/0023),
+// shown that way it was right 15 times in 18, where the likeliest alone
+// was right 19 times in 28.
+const (
+	ideaSure  = 0.6
+	ideaClear = 0.1
+	ideaMax   = 12
+)
+
+var sentenceEnd = regexp.MustCompile(`[.!?]+\s+|\n+`)
+
+// sentencesOf splits an idea into its sentences of three words or more,
+// at most ideaMax.
+func sentencesOf(idea string) []string {
+	var out []string
+	for _, s := range sentenceEnd.Split(strings.TrimSpace(idea), -1) {
+		s = strings.TrimRight(strings.TrimSpace(s), ".!?")
+		if len(strings.Fields(s)) >= 3 {
+			out = append(out, s)
+		}
+		if len(out) == ideaMax {
+			break
+		}
+	}
+	return out
+}
+
+// FromIdea reads a rough idea for the questions kind's walk asks (its
+// guidance's fromIdea), and returns, for each it can answer with
+// confidence, the sentence that does. Without a decision model, or for a
+// kind with no questions, it returns none: a guess would be worse than
+// nothing, since the person can read their own idea.
+func (e *Engine) FromIdea(ctx context.Context, kind, idea string) ([]IdeaAnswer, bool) {
+	out := []IdeaAnswer{}
+	words, ok, _ := GuideBundleFor(kind, DefaultLocale)
+	sentences := sentencesOf(idea)
+	if !ok || len(words.FromIdea) == 0 || len(sentences) == 0 || e.decider == nil {
+		return out, false
+	}
+	keys := make([]string, 0, len(words.FromIdea))
+	for k := range words.FromIdea {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	// Each sentence is its own state, so this is one call per sentence.
+	scores := make([][]float64, len(sentences))
+	for i, s := range sentences {
+		qs := make(map[string]decide.Question, len(keys))
+		for _, k := range keys {
+			qs[k] = decide.Question{Type: decide.Choice, Instructions: "Which describes this sentence?",
+				Options: []decide.Option{{Key: "yes", Description: words.FromIdea[k].Cue}, {Key: "other", Description: "says something else"}}}
+		}
+		answers, ok := e.ask(ctx, s, qs)
+		if !ok {
+			return []IdeaAnswer{}, false
+		}
+		scores[i] = make([]float64, len(keys))
+		for j, k := range keys {
+			scores[i][j] = answers[k].Probabilities["yes"]
+		}
+	}
+	for j, k := range keys {
+		best, first, second := -1, 0.0, 0.0
+		for i := range sentences {
+			switch p := scores[i][j]; {
+			case p > first:
+				best, first, second = i, p, first
+			case p > second:
+				second = p
+			}
+		}
+		if best < 0 || first < ideaSure || first-second < ideaClear {
+			continue
+		}
+		q := words.FromIdea[k]
+		out = append(out, IdeaAnswer{Key: k, Question: q.Question, Field: q.Field, Sentence: sentences[best], Likelihood: first})
+	}
+	return out, true
 }

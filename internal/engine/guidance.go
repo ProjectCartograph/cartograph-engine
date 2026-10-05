@@ -37,12 +37,23 @@ type GuideBundle struct {
 	Judgements map[string]GuideJudgement `json:"judgements,omitempty"`
 	// Cues are how a decision model recognises a typed text as this kind,
 	// by stage key.
-	Cues       map[string]string          `json:"cues,omitempty"`
-	Steps      map[string]GuideStepWords  `json:"steps,omitempty"`
-	Fields     map[string]GuideFieldWords `json:"fields"`
-	Links      map[string]GuideLinkWords  `json:"links,omitempty"`
-	Checks     map[string]string          `json:"checks,omitempty"`
-	Vocabulary map[string][]string        `json:"vocabulary,omitempty"`
+	Cues map[string]string `json:"cues,omitempty"`
+	// FromIdea are the questions a rough idea is read for, by name.
+	FromIdea   map[string]GuideIdeaQuestion `json:"fromIdea,omitempty"`
+	Steps      map[string]GuideStepWords    `json:"steps,omitempty"`
+	Fields     map[string]GuideFieldWords   `json:"fields"`
+	Links      map[string]GuideLinkWords    `json:"links,omitempty"`
+	Checks     map[string]string            `json:"checks,omitempty"`
+	Vocabulary map[string][]string          `json:"vocabulary,omitempty"`
+}
+
+// GuideIdeaQuestion is one question a rough idea is read for: the
+// question a step asks, the field it fills, and the cue a sentence is
+// matched against.
+type GuideIdeaQuestion struct {
+	Question string `json:"question"`
+	Field    string `json:"field"`
+	Cue      string `json:"cue"`
 }
 
 // GuideTerm is one word a kind holds besides its own name: a project's

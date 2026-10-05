@@ -933,6 +933,19 @@ type Health struct {
 	Status string `json:"status"`
 }
 
+// IdeaReading defines model for IdeaReading.
+type IdeaReading struct {
+	Answers []struct {
+		// Field The field the question fills, by JSON pointer.
+		Field      string  `json:"field"`
+		Key        string  `json:"key"`
+		Likelihood float32 `json:"likelihood"`
+		Question   string  `json:"question"`
+		Sentence   string  `json:"sentence"`
+	} `json:"answers"`
+	Available bool `json:"available"`
+}
+
 // KindCount defines model for KindCount.
 type KindCount struct {
 	Count int    `json:"count"`
@@ -1552,6 +1565,12 @@ type ListChangeSetsParams struct {
 // ListChangeSetsParamsStatus defines parameters for ListChangeSets.
 type ListChangeSetsParamsStatus string
 
+// FromIdeaJSONBody defines parameters for FromIdea.
+type FromIdeaJSONBody struct {
+	Idea string `json:"idea"`
+	Kind string `json:"kind"`
+}
+
 // GetGlossaryParams defines parameters for GetGlossary.
 type GetGlossaryParams struct {
 	// Locale A language the guidance is written in; English when left out or unknown.
@@ -1721,6 +1740,9 @@ type ProposeChangeSetJSONRequestBody = ChangeSetProposal
 
 // ReopenChangeSetJSONRequestBody defines body for ReopenChangeSet for application/json ContentType.
 type ReopenChangeSetJSONRequestBody = ProposalDecision
+
+// FromIdeaJSONRequestBody defines body for FromIdea for application/json ContentType.
+type FromIdeaJSONRequestBody FromIdeaJSONBody
 
 // DeleteGoalJSONRequestBody defines body for DeleteGoal for application/json ContentType.
 type DeleteGoalJSONRequestBody = DeleteGoalRequest
@@ -1897,6 +1919,9 @@ type ServerInterface interface {
 	// GetFlow The flow document for a kind, as written in the contract
 	// (GET /flows/{kind})
 	GetFlow(w http.ResponseWriter, r *http.Request, kind KindParam)
+	// FromIdea The sentence of a rough idea that answers each question a walk asks
+	// (POST /from-idea)
+	FromIdea(w http.ResponseWriter, r *http.Request)
 	// GetGlossary Every word of the taxonomy, defined as a dictionary defines it, in the order of work
 	// (GET /glossary)
 	GetGlossary(w http.ResponseWriter, r *http.Request, params GetGlossaryParams)
@@ -2682,6 +2707,20 @@ func (siw *ServerInterfaceWrapper) GetFlow(w http.ResponseWriter, r *http.Reques
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetFlow(w, r, kind)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// FromIdea operation middleware
+func (siw *ServerInterfaceWrapper) FromIdea(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.FromIdea(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4458,6 +4497,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/order", wrapper.GetOrder)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/understand", wrapper.Understand)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/relevant", wrapper.Relevant)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/from-idea", wrapper.FromIdea)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/decision-model", wrapper.GetDecisionModel)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/match", wrapper.MatchExisting)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/glossary", wrapper.GetGlossary)
@@ -6048,6 +6088,56 @@ func (response GetFlow404JSONResponse) VisitGetFlowResponse(w http.ResponseWrite
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type FromIdeaRequestObject struct {
+	Body *FromIdeaJSONRequestBody
+}
+
+type FromIdeaResponseObject interface {
+	VisitFromIdeaResponse(w http.ResponseWriter) error
+}
+
+type FromIdea200JSONResponse IdeaReading
+
+func (response FromIdea200JSONResponse) VisitFromIdeaResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type FromIdea401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response FromIdea401JSONResponse) VisitFromIdeaResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type FromIdea403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response FromIdea403JSONResponse) VisitFromIdeaResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9725,6 +9815,9 @@ type StrictServerInterface interface {
 	// GetFlow The flow document for a kind, as written in the contract
 	// (GET /flows/{kind})
 	GetFlow(ctx context.Context, request GetFlowRequestObject) (GetFlowResponseObject, error)
+	// FromIdea The sentence of a rough idea that answers each question a walk asks
+	// (POST /from-idea)
+	FromIdea(ctx context.Context, request FromIdeaRequestObject) (FromIdeaResponseObject, error)
 	// GetGlossary Every word of the taxonomy, defined as a dictionary defines it, in the order of work
 	// (GET /glossary)
 	GetGlossary(ctx context.Context, request GetGlossaryRequestObject) (GetGlossaryResponseObject, error)
@@ -10576,6 +10669,37 @@ func (sh *strictHandler) GetFlow(w http.ResponseWriter, r *http.Request, kind Ki
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetFlowResponseObject); ok {
 		if err := validResponse.VisitGetFlowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// FromIdea operation middleware
+func (sh *strictHandler) FromIdea(w http.ResponseWriter, r *http.Request) {
+	var request FromIdeaRequestObject
+
+	var body FromIdeaJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.FromIdea(ctx, request.(FromIdeaRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "FromIdea")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(FromIdeaResponseObject); ok {
+		if err := validResponse.VisitFromIdeaResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

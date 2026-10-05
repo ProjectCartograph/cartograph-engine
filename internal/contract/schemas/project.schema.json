@@ -40,6 +40,11 @@
               "maxLength": 300,
               "description": "What the project is about, in one sentence a newcomer would follow: the first thing asked, and what Cartograph reads to suggest the outcomes, programmes, indicators and registers relevant to it (docs/adr/0023). Not the problem, which says what is wrong and for whom; not the objective, which says what will change."
             },
+            "idea": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "The idea as the person first wrote it, in their own words, kept as it was (TAXONOMY.md D34). Each step of the walk is offered the sentence of it that answers its question, to use or ignore (docs/adr/0023). Not read as a definition of anything."
+            },
             "problems": {
               "type": "array",
               "minItems": 1,

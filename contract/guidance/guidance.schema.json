@@ -200,6 +200,33 @@
         }
       }
     },
+    "fromIdea": {
+      "type": "object",
+      "description": "The questions a rough idea is read for (docs/adr/0023), keyed by a short name: each the question a step asks, the field it fills, and the cue a decision model is asked whether a sentence matches. Asked of each sentence on its own; a sentence is offered only when the model is sure of it and it is clear of the next. Changed only with a new measurement.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "question",
+          "field",
+          "cue"
+        ],
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "field": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "cue": {
+            "type": "string",
+            "maxLength": 160
+          }
+        }
+      }
+    },
     "vocabulary": {
       "type": "object",
       "description": "Words an interface offers to help write a field in this language, such as the verbs an aim opens with or the word that introduces an objective's means. Offered, never used to judge: no check or mark depends on them, and a language without them gets plain fields.",

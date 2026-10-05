@@ -569,6 +569,9 @@
           "why": "Too short to tell what it touches: say what the work does, and where."
         }
       ]
+    },
+    "/spec/summary/idea": {
+      "guide": "Your idea as you first wrote it, kept as it was. Each step offers the sentence of it that answers its question."
     }
   },
   "links": {
@@ -662,5 +665,42 @@
     "meansWord": [
       "by"
     ]
+  },
+  "fromIdea": {
+    "for": {
+      "question": "Who is it for?",
+      "field": "/spec/summary/beneficiaries",
+      "cue": "says who the work is for or who benefits"
+    },
+    "problem": {
+      "question": "What is wrong today?",
+      "field": "/spec/summary/problems/-/problem/situation",
+      "cue": "says what is wrong today"
+    },
+    "change": {
+      "question": "What will be different afterwards?",
+      "field": "/spec/summary/problems/-/change/what",
+      "cue": "says what will be different afterwards"
+    },
+    "deliver": {
+      "question": "What will it build or produce?",
+      "field": "/spec/deliverables",
+      "cue": "says what the work will build or produce"
+    },
+    "when": {
+      "question": "When does it happen?",
+      "field": "/spec/timeline",
+      "cue": "says when the work happens or how long it takes"
+    },
+    "success": {
+      "question": "How will you know it worked?",
+      "field": "/spec/successCriteria",
+      "cue": "says how success will be measured or judged"
+    },
+    "handover": {
+      "question": "Who will run the result?",
+      "field": "/spec/operation",
+      "cue": "says who will run or keep the result going afterwards"
+    }
   }
 }

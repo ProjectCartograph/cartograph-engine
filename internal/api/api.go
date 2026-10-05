@@ -1580,6 +1580,17 @@ func (s *Server) Relevant(ctx context.Context, req apigen.RelevantRequestObject)
 	return apigen.Relevant200JSONResponse(out), nil
 }
 
+// FromIdea is the sentence of an idea that answers each question a walk
+// asks.
+func (s *Server) FromIdea(ctx context.Context, req apigen.FromIdeaRequestObject) (apigen.FromIdeaResponseObject, error) {
+	answers, ok := s.Engine.FromIdea(ctx, req.Body.Kind, req.Body.Idea)
+	var out apigen.IdeaReading
+	if err := convertJSON(map[string]any{"available": ok, "answers": answers}, &out); err != nil {
+		return nil, err
+	}
+	return apigen.FromIdea200JSONResponse(out), nil
+}
+
 // GetDecisionModel is whether a decision model is configured and ready.
 func (s *Server) GetDecisionModel(ctx context.Context, _ apigen.GetDecisionModelRequestObject) (apigen.GetDecisionModelResponseObject, error) {
 	m := s.Engine.DecisionModel(ctx)

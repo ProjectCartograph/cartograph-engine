@@ -654,6 +654,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/Relevance"
 
+  /from-idea:
+    post:
+      operationId: fromIdea
+      summary: The sentence of a rough idea that answers each question a walk asks
+      description: >-
+        Reads an idea, sentence by sentence, for the questions a kind's walk
+        asks (its guidance's fromIdea), and returns, for each question it
+        can answer with confidence, the sentence that does: only when a
+        decision model is sure of it and it is clear of the next
+        (docs/adr/0023). A hint to use or ignore; nothing is placed or
+        stored. Without a model, available is false and there are none.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, idea]
+              properties:
+                kind:
+                  type: string
+                idea:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdeaReading"
+
   /decision-model:
     get:
       operationId: getDecisionModel
@@ -2358,6 +2394,29 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Match"
+    IdeaReading:
+      type: object
+      required: [available, answers]
+      properties:
+        available:
+          type: boolean
+        answers:
+          type: array
+          items:
+            type: object
+            required: [key, question, field, sentence, likelihood]
+            properties:
+              key:
+                type: string
+              question:
+                type: string
+              field:
+                type: string
+                description: The field the question fills, by JSON pointer.
+              sentence:
+                type: string
+              likelihood:
+                type: number
     DecisionModel:
       type: object
       required: [configured, ready]

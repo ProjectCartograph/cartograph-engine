@@ -504,6 +504,10 @@ type (
 		Level string `json:"level,omitempty" jsonschema:"for a Goal, the level: goal, objective or outcome"`
 		Text  string `json:"text" jsonschema:"what the new thing would say: its name and statement, in the document's words"`
 	}
+	fromIdeaIn struct {
+		Kind string `json:"kind" jsonschema:"the kind being defined, such as Project"`
+		Idea string `json:"idea" jsonschema:"the work as your person described it, in their words"`
+	}
 	relevantIn struct {
 		Text  string   `json:"text" jsonschema:"what the work is about, and what has been written of it so far"`
 		Kinds []string `json:"kinds,omitempty" jsonschema:"the kinds to rank, such as Goal, KPI, Programme, BeneficiaryGroup, DataSource; every kind a piece of work names when left out"`
@@ -730,6 +734,14 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 		"and offer its shortlist first. It ranks; it never decides: your person still chooses, and anything else in the register remains a choice.", Annotations: readOnly},
 		func(c call, in relevantIn) (any, error) {
 			return e.Relevant(c.ctx, in.Text, in.Kinds, in.Level, 0)
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "from_idea", Description: "When your person describes their work roughly, the sentence of it that answers each question the walk for kind asks " +
+		"(who it is for, what is wrong today, what will be different, what it delivers, when, how success is known, who runs the result), only where the decision model is sure. " +
+		"Start each answer from their own sentence, and ask about the questions it leaves out.", Annotations: readOnly},
+		func(c call, in fromIdeaIn) (any, error) {
+			answers, ok := e.FromIdea(c.ctx, in.Kind, in.Idea)
+			return map[string]any{"available": ok, "answers": answers}, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "history", Description: "Every saved version of a manifest: who saved it, when and why.", Annotations: readOnly},

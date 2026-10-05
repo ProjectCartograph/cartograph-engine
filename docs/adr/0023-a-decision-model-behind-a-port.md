@@ -38,6 +38,9 @@ things, in the shapes measured to work (below):
   each as an advisory check, on the step that holds the field. Without a
   model, they are not asked. Only contrasts measured against examples
   whose answer is known are kept.
+- *Reading an idea* (`POST /from-idea`, MCP `from_idea`): the sentence
+  of a rough idea that answers each question a walk asks, only when sure
+  and clear.
 - *Relevance* (`POST /relevant`, MCP `relevant`): the likeliest few
   records of each kind for a piece of work, asked of each record on its
   own whether the work is about the same thing, for a shortlist put first
@@ -160,6 +163,23 @@ Agents are told to ask `decision_model` first (MCP), whatever is behind
 the port, and when it is ready to call `relevant` with what the work is
 about before choosing what a draft names; the port gained `Ready` for
 it.
+
+A rough idea read for the questions a project's walk asks (who it is
+for, what is wrong today, what will be different, what it builds, when,
+how success is known, who runs the result) was measured on 25 labelled
+sentences in two domains, and on four ideas of seven sentences each:
+
+| Asked | Right |
+|---|---|
+| Each sentence: which of the seven questions it answers, one choice | 16 of 25 |
+| Each sentence: each question on its own, "yes" against "says something else" | 13 of 25 |
+| Each question: the idea's sentence likeliest to answer it | 19 of 28 |
+| The same, offered only when sure (0.6) and clear of the next (0.1) (kept) | 15 of 18 offered |
+
+So a sentence is never placed in a field: `POST /from-idea` (MCP
+`from_idea`) offers, for each question it can answer with confidence,
+the sentence of the person's own idea that does, for them to use or
+ignore, and says nothing of the rest.
 
 No confidence picked out a first flow that could be trusted (the surest
 were still wrong a third of the time on the 30), so three are offered
