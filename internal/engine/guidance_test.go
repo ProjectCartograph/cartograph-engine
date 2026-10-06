@@ -176,6 +176,8 @@ func TestTheGuideMarksRequiredFields(t *testing.T) {
 		"/spec/deliverables/-/name":        true,  // every deliverable has a name
 		"/spec/deliverables/-/tasks":       false, // tasks are optional
 		"/spec/deliverables/-/description": false,
+		"/spec/alignment/partOf":           false, // only a component names a parent
+		"/spec/alignment/goals":            false, // and a component names no goal
 	} {
 		if !seen[path] {
 			t.Errorf("the guide has no %s", path)

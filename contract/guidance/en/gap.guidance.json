@@ -175,11 +175,11 @@
   },
   "links": {
     "Project:/spec/summary/problems/-/gaps/-/gap": {
-      "ask": "Which project addresses this gap, and which of its segments does that work reach? The project's problem cites the gap and names the segments; it names none only when it reaches the whole gap.",
+      "ask": "Which project addresses this gap, and which of its segments does that work reach? The project's problem cites the gap and names each segment it reaches, all of them when it reaches every one; it names none only when the gap names none.",
       "ifNone": "Nothing has to be defined first: a gap nobody addresses is the finding a register exists to show. When a project takes it on, its problem cites this gap and names the segments it reaches."
     },
     "Programme:/spec/problems/-/gaps/-/gap": {
-      "ask": "Which programme answers this gap, and which of its segments does it reach? The programme's problem cites the gap and names the segments; it names none only when it answers the whole gap.",
+      "ask": "Which programme answers this gap, and which of its segments does it reach? The programme's problem cites the gap and names each segment it reaches, all of them when it reaches every one; it names none only when the gap names none.",
       "ifNone": "Nothing has to be defined first: leave the gap unaddressed and the check says so. When a programme takes it on, its problem cites this gap and names the segments it reaches."
     }
   },
@@ -194,7 +194,7 @@
   },
   "judgements": {
     "gap-results": {
-      "path": "/spec/statement",
+      "path": "/metadata/name",
       "good": {
         "key": "result",
         "label": "a result that falls short of where it should be"

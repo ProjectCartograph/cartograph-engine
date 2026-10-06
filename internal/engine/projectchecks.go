@@ -1334,9 +1334,22 @@ var blockingChecks = map[string]bool{
 	"goals-objective": true, "landing-operation": true, "resources-sponsor-lead": true, "timeline-start-phases": true,
 }
 
+// someBlocking are blocking checks that ask only some definitions:
+// components-parent of a component, goals-aligned and the functional
+// level of a project that is not one, success-measured of a criterion
+// read from a source, and the data checks of a project that handles
+// personal data or hands data on. A field they read is not marked
+// required, since most definitions leave it empty and are complete.
+var someBlocking = map[string]bool{
+	"components-parent": true, "goals-aligned": true, "goals-functional-level": true,
+	"success-measured": true, "data-personal-data": true, "data-sink": true,
+}
+
+// anyBlocking reports whether a check every definition answers stops a
+// handoff while it is unmet.
 func anyBlocking(checks []string) bool {
 	for _, c := range checks {
-		if blockingChecks[c] {
+		if blockingChecks[c] && !someBlocking[c] {
 			return true
 		}
 	}

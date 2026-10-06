@@ -138,7 +138,7 @@
       ]
     },
     "/spec/summary/problems/-/gaps": {
-      "guide": "The gaps in the register this problem answers, and which of each gap's segments the work reaches. A citation, not a restatement. Leave the segments empty only when the work reaches the whole gap (D9). When the gap is not in the register, record it there first."
+      "guide": "The gaps in the register this problem answers, and which of each gap's segments the work reaches. A citation, not a restatement. When the gap names segments, name each one the work reaches, all of them when it reaches every one; leave them empty only for a gap that names none (D9). When the gap is not in the register, record it there first."
     },
     "/spec/summary/problems/-/gaps/-/gap": {
       "guide": "One gap from the register, as written there.",
@@ -147,7 +147,7 @@
       ]
     },
     "/spec/summary/problems/-/gaps/-/segments": {
-      "guide": "Which of the gap's own segments this work reaches. A project that starts at two depots reaches those depots, not the whole gap. Only segments the gap names can be picked."
+      "guide": "Which of the gap's own segments this work reaches. A project that starts at two depots reaches those depots, not the whole gap. Only segments the gap names can be picked. When segments are added to a gap later, every citation of it names its segments again."
     },
     "/spec/mandate": {
       "guide": "What authorises the work: a decision, a policy, a law or regulation, a contract, a business case or a request, each with its reference and date so it can be found again. A component works under its parent's mandate."

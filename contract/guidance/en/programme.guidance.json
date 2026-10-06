@@ -167,7 +167,7 @@
       ]
     },
     "/spec/problems/-/gaps/-/segments": {
-      "guide": "Which of the gap's own segments this programme reaches. Leave it empty when it reaches all of them. Only segments the gap names are accepted: a gap never observed somewhere cannot be answered there on its authority.",
+      "guide": "Which of the gap's own segments this programme reaches: each one, all of them when it reaches every one. Leave it empty only for a gap that names none. Only segments the gap names are accepted: a gap never observed somewhere cannot be answered there on its authority.",
       "poor": [
         {
           "text": "A segment the gap does not name, such as a product line when the gap was observed by depot",

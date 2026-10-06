@@ -14,7 +14,7 @@
     "intended outcome",
     "impact"
   ],
-  "definition": "An aim in the organisation's strategy, at one of three levels. A goal is a broad direction, never finished: raise produce quality. An objective is one concrete change made for a goal, done once it is made: hold every depot to one standard. An outcome is not something to do but what is then true of people or things: depot staff apply the standard alike. The strategy reads top-down from the purpose (the vision and mission in Settings): goals under the purpose, objectives under goals, outcomes under objectives. A gap is measured against the purpose and closes into an outcome. Numbers belong to the measures (key results and aligned KPIs), never to the statement. A goal is not a project (work that ends), not an operation (work that continues), and not a KPI (a measure).",
+  "definition": "An aim in the organisation's strategy, at one of three levels. A goal is a broad direction, never finished: raise produce quality. An objective is one concrete change made for a goal, done once it is made: hold every depot to one standard. An outcome is not something to do but what is then true of people or things: depot staff apply the standard alike. The strategy reads top-down from the purpose (the vision and mission, kept as the Purpose with id default): goals under the purpose, objectives under goals, outcomes under objectives. A gap is measured against the purpose and closes into an outcome. Numbers belong to the measures (key results and aligned KPIs), never to the statement. A goal is not a project (work that ends), not an operation (work that continues), and not a KPI (a measure).",
   "levels": {
     "goal": "A broad direction your organisation keeps working towards.",
     "objective": "One concrete change your organisation sets out to make.",
@@ -128,6 +128,12 @@
           "why": "Not countable as written: speed of what, from when to when?"
         }
       ]
+    },
+    "/spec/keyResults/-/kind": {
+      "guide": "What sort of number this is: percent, count, money, ratio or duration. A count, money or duration needs a unit; a percent or ratio takes none."
+    },
+    "/spec/keyResults/-/unit": {
+      "guide": "The unit a count, money or duration is in, such as lots or days; left out for a percent or a ratio."
     },
     "/spec/keyResults/-/baseline": {
       "guide": "Today's figure and when it was taken, from a source the person can name. If it is not known yet, say why; never invent one."

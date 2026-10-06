@@ -319,6 +319,16 @@ func (e *Engine) Guide(ctx context.Context, kind, level, locale string) (Guide, 
 					}
 					gf.Guide, gf.Good, gf.Poor = w.Guide, w.Good, w.Poor
 				}
+				switch {
+				case gf.Control == "choice" && len(gf.Values) == 0:
+					// The editor offers the person's own sentences to pick
+					// from; to anyone writing the value it is text.
+					gf.Control = "text"
+				case gf.Control == "readonly" && gf.Required:
+					// The editor makes the id; anyone writing the manifest
+					// writes it.
+					gf.Guide = strings.TrimSpace(gf.Guide + " Give it a short id of your own, lowercase words joined by hyphens, unique in its list.")
+				}
 				if ref := e.refKindAt(kind, path); ref != "" && ref != "*" {
 					gf.References = ref
 					gf.Candidates = e.candidates(l, ref, kind, path, level)
@@ -594,6 +604,11 @@ func (e *Engine) fieldFacts(kind, path string) (maxLength int, values []any, for
 	}
 	if n, ok := node["maxLength"].(float64); ok {
 		maxLength = int(n)
+	} else if items, _ := node["items"].(map[string]any); items != nil {
+		// A list of text: the limit is each line's.
+		if n, ok := items["maxLength"].(float64); ok {
+			maxLength = int(n)
+		}
 	}
 	if v, ok := node["enum"].([]any); ok {
 		values = v
@@ -604,8 +619,17 @@ func (e *Engine) fieldFacts(kind, path string) (maxLength int, values []any, for
 	if def == "Ref" || isStructured(node) {
 		w := shapeWalker{all: e.schemas.raw, keys: map[string]string{}, seen: map[string]bool{}}
 		shape = shapeText(w, node, file, def, 0)
+		if list, ok := localList[strings.TrimSuffix(path, "/-")]; ok {
+			shape = strings.Replace(shape, `{"local":"resources","id":"<role id>"}`, list, 1)
+		}
 	}
 	return maxLength, values, format, shape
+}
+
+// localList is the list inside the manifest a reference's local form
+// points into, where it is not the roles in resources.
+var localList = map[string]string{
+	"/spec/successCriteria/-/from": `{"local":"deliverables","id":"<deliverable id>"}`,
 }
 
 func isStructured(n map[string]any) bool {
@@ -640,7 +664,10 @@ func shapeText(w shapeWalker, n map[string]any, file, def string, depth int) str
 	if def == "Ref" {
 		return `{"kind":"<Kind>","id":"<id>"} | {"local":"resources","id":"<role id>"} | {"external":"<name, outside the workspace>"}`
 	}
-	if depth > 2 {
+	// The depth bounds a recursive schema, so a $def met twice (a
+	// baseline and a target both dated values) is written out each time.
+	w.seen = map[string]bool{}
+	if depth > 4 && isStructured(n) {
 		return "…"
 	}
 	for _, k := range []string{"oneOf", "anyOf"} {
@@ -654,6 +681,15 @@ func shapeText(w shapeWalker, n map[string]any, file, def string, depth int) str
 			}
 			return strings.Join(parts, " | ")
 		}
+	}
+	// A map keyed by name: the notes, one per step of the walk.
+	if extra, ok := n["additionalProperties"].(map[string]any); ok && n["properties"] == nil {
+		key := "<key>"
+		if strings.Contains(fmt.Sprint(n["description"]), "keyed by the step") {
+			key = "<step key>"
+		}
+		sub, subFile := w.resolve(extra, file, "")
+		return fmt.Sprintf("{%q:%s}", key, shapeText(w, sub, subFile, refName(extra), depth+1))
 	}
 	if items, ok := n["items"].(map[string]any); ok {
 		if ref, _ := items["x-cartograph-ref"].(string); ref != "" && ref != "*" {
