@@ -194,7 +194,7 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	// goals and measures: the objective and its key results sit with the
 	// goals they serve, so the alignment and the evidence are checked in
 	// the same place.
-	addMeasureChecks(c, spec)
+	addMeasureChecks(c, spec, isComponent)
 
 	// aim: the problems and what will be different about each (the first
 	// step of the journey), plus the mandate that authorises the project.
@@ -586,7 +586,7 @@ func (e *Engine) alignedToOutcome(ctx context.Context, goals []any) (hasFunction
 // of a key result is checked and named on its own: a check that lumps the
 // baseline, the target and the source together reports a missing baseline
 // at a key result that has one, which is worse than no check at all.
-func addMeasureChecks(c checkAdder, spec map[string]any) {
+func addMeasureChecks(c checkAdder, spec map[string]any, isComponent bool) {
 	// The measures step is its own step now (Align picks the goals, Refine
 	// writes the objective and its key results), so its checks carry its own
 	// section and a fix link lands on the screen that owns the problem.
@@ -636,11 +636,16 @@ func addMeasureChecks(c checkAdder, spec map[string]any) {
 	if len(objectives) == 0 {
 		return
 	}
-	if badCount == 0 {
+	switch {
+	case isComponent && totalKR == 0:
+		// A component moves its parent's indicators (TAXONOMY.md D15):
+		// asked for measures of its own, an agent could only restate them.
+		c.add("goals-key-results-count", section, phaseInitiation, checkOK, "Measured by the project it is part of.")
+	case badCount == 0:
 		c.add("goals-key-results-count", section, phaseInitiation, checkOK, "Every objective has one to three key results.")
-	} else {
+	default:
 		c.add("goals-key-results-count", section, phaseInitiation, checkBlock,
-			fmt.Sprintf("%d objective%s does not have one to three key results.", badCount, plural(badCount)))
+			fmt.Sprintf("%d objective%s %s not have one to three key results.", badCount, plural(badCount), map[bool]string{true: "does", false: "do"}[badCount == 1]))
 	}
 	if totalKR == 0 {
 		return
@@ -650,19 +655,19 @@ func addMeasureChecks(c checkAdder, spec map[string]any) {
 			"Every key result has a baseline, or says why it is not known yet.")
 	} else {
 		c.add("goals-key-results-baseline", section, phaseInitiation, checkBlock,
-			fmt.Sprintf("%d of %d key results has no baseline and no reason it is not known yet.", noBaseline, totalKR))
+			fmt.Sprintf("%d of %d key results %s no baseline and no reason it is not known yet.", noBaseline, totalKR, hasHave(noBaseline)))
 	}
 	if noTarget == 0 {
 		c.add("goals-key-results-target", section, phaseInitiation, checkOK, "Every key result has a target.")
 	} else {
 		c.add("goals-key-results-target", section, phaseInitiation, checkBlock,
-			fmt.Sprintf("%d of %d key results has no target.", noTarget, totalKR))
+			fmt.Sprintf("%d of %d key results %s no target.", noTarget, totalKR, hasHave(noTarget)))
 	}
 	if noSource == 0 {
 		c.add("goals-key-results-source", section, phaseInitiation, checkOK, "Every key result names what measures it.")
 	} else {
 		c.add("goals-key-results-source", section, phaseInitiation, checkBlock,
-			fmt.Sprintf("%d of %d key results does not name a data source.", noSource, totalKR))
+			fmt.Sprintf("%d of %d key results %s not name a data source.", noSource, totalKR, map[bool]string{true: "does", false: "do"}[noSource == 1]))
 	}
 }
 
@@ -1365,4 +1370,11 @@ func mitigable(risks []any) int {
 		}
 	}
 	return n
+}
+
+func hasHave(n int) string {
+	if n == 1 {
+		return "has"
+	}
+	return "have"
 }

@@ -221,7 +221,7 @@
       "guide": "The change this project makes, and how, as one or more objectives, each with one to three key results. A project objective is an outcome with the means named in the same breath. Its key results measure the outcome, not the effort. The numbers go in the key results."
     },
     "/spec/objectives/-/objective": {
-      "guide": "One sentence: a verb, the change it makes, then \"by\" and how. No numbers: they go in the key results, and a digit here is refused.",
+      "guide": "One sentence: a verb, the change it makes, then \"by\" and how. No targets: a number to reach goes in a key result, and is refused here. A number that is part of a name (Grade 1) stays.",
       "good": [
         "Catch faults at intake by checking every delivery against one standard",
         "Standardise depot checks by training every checker against one published standard"
@@ -682,7 +682,7 @@
     "data-personal-data": "Say whether every output holds personal data.",
     "data-sink": "Name the data source every output lands in.",
     "data-handoff": "Replace manual re-entry with a feed, a file transfer or a shared database where you can, or note why not.",
-    "data-capture-decided": "Decide how records get into each data source a target is read from, on the data source.",
+    "data-capture-decided": "A data source a target is read from and marked not decided needs its capture decided, on the data source. One that does not say is not asked.",
     "data-capture-turnaround": "Read a turnaround target from a source whose records get in fast enough, or have this project change how they get in.",
     "risks-mitigation": "Give every risk a mitigation.",
     "risks-owned": "Name the role that owns every high-impact risk.",

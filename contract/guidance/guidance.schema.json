@@ -185,6 +185,14 @@
             "type": "string",
             "maxLength": 160,
             "description": "What to say when the poor option is more likely; {n} is the item's number in a list."
+          },
+          "opens": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "The words a poor text starts with, lowercase: a text that opens with none of them is good without asking the model, which reads a passive or modal state as an action."
           }
         }
       }

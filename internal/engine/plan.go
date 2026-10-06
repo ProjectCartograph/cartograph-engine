@@ -383,7 +383,8 @@ func (e *Engine) WorkAround(ctx context.Context, kind, id string, also []Ref) ([
 			a.Name, _ = meta["name"].(string)
 		}
 		for _, c := range checks {
-			if c.Open() {
+			// A check left for the person is not the work's to do.
+			if c.Open() && leftFor(ctx, f.ref.Kind, f.ref.ID, c.ID) == "" {
 				a.Open = append(a.Open, c)
 			}
 		}

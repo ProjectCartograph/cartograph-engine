@@ -93,7 +93,10 @@ Work this way, every time:
    When your client has a tool for asking a multiple-choice question
    (Claude Code's AskUserQuestion, for one), ask with it, so your person
    picks rather than types; otherwise number the options. Always leave
-   room for their own answer, and never pick for them.
+   room for their own answer, and never pick for them. When your person
+   is not there to ask (you were given documents to port on your own),
+   skip this step: work from the documents, and leave_open what only
+   they can answer.
 1. Cartograph's record is a directed acyclic graph, written from the top
    down in one order: purpose, goals, objectives, outcomes, the KPIs
    that measure them, the gaps they close, then portfolios, programmes,
@@ -130,7 +133,8 @@ Work this way, every time:
    taxonomy's porting map says, part by part, where each part of a
    charter or plan goes and what stays out; follow it rather than
    judging. Keep the
-   document's own wording in the statement and cite it as the source;
+   document's own wording where the porting map says (an aim's
+   statedAs, a gap's statement) and cite it as the source;
    never add a kind, level or field Cartograph does not have, and when a
    thing fits no kind, say so to your person rather than forcing it.
 2. Call guide for that kind and level before drafting anything. It gives
@@ -577,6 +581,14 @@ type (
 		Manifest  map[string]any `json:"manifest" jsonschema:"the whole manifest: apiVersion, kind, metadata and spec"`
 		Work      []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
 	}
+	saveIn struct {
+		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
+		Kind      string         `json:"kind"`
+		ID        string         `json:"id"`
+		Manifest  map[string]any `json:"manifest" jsonschema:"the whole manifest: apiVersion, kind, metadata and spec"`
+		Replace   bool           `json:"replace,omitempty" jsonschema:"true to replace a draft this change set already holds, every field of it; leave out to create, and change an existing draft with edit_draft"`
+		Work      []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
+	}
 	proposeSaveIn struct {
 		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
 		Kind      string         `json:"kind"`
@@ -881,7 +893,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 
 	tool(s, o, person, &sdk.Tool{Name: "save_draft", Description: "Create a manifest in your change set: your own draft of it, apart from the record and from every other agent's work, " +
 		"which your person reviews with the rest of the change set before anything is saved. Use it to create; change fields with edit_draft.", Annotations: drafting},
-		func(c call, in manifestIn) (any, error) {
+		func(c call, in saveIn) (any, error) {
 			text, err := e.Codec().Encode(in.Manifest)
 			if err != nil {
 				return nil, err
@@ -890,7 +902,12 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
-			before, _, _ := e.ChangeSetText(c.ctx, cs.ID, in.Kind, in.ID)
+			before, drafted, _ := e.ChangeSetText(c.ctx, cs.ID, in.Kind, in.ID)
+			if drafted && !in.Replace {
+				// A whole manifest put back over a draft undoes every field
+				// changed since, the person's edits among them.
+				return nil, fmt.Errorf("%s/%s is already drafted in this change set: change its fields with edit_draft, or pass replace true to put this whole manifest in its place", in.Kind, in.ID)
+			}
 			if err := e.SaveInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, text); err != nil {
 				return nil, err
 			}
@@ -1049,7 +1066,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return map[string]any{"discarded": in.Kind + "/" + in.ID, "changeSet": cs.ID}, nil
 		})
 
-	tool(s, o, person, &sdk.Tool{Name: "start_work", Description: "Open a new change set for a new piece of work, with a title and what it is for, as you would open a branch for a task. " +
+	tool(s, o, person, &sdk.Tool{Name: "start_work", Description: "Open a new change set for a new piece of work, with a title and a description of what it is for, as you would open a branch for a task. " +
 		"Everything you draft afterwards goes into it, apart from your other work and every other agent's, and your person reviews and accepts it whole.", Annotations: drafting},
 		func(c call, in startWorkIn) (any, error) {
 			cs, err := e.StartChangeSet(c.ctx, in.Title, in.Description)
@@ -1219,8 +1236,13 @@ func withSet(c call, out map[string]any, set, kind, id string) (map[string]any, 
 		elsewhere = append(elsewhere, map[string]any{"kind": oc.Kind, "id": oc.ManifestID, "check": oc.ID, "state": oc.State, "message": oc.Message, "section": oc.Section})
 	}
 	out["openInChangeSet"] = elsewhere
-	if len(left) > 0 {
+	switch {
+	case len(left) > 0 && kind == "":
 		out["leftForYourPerson"] = left
+	case len(left) > 0:
+		// Checking one manifest: its own left checks are in left; the
+		// set's are counted, and listed by checks without kind and id.
+		out["leftForYourPersonInChangeSet"] = len(left)
 	}
 	if unnamed, err := c.o.Engine.UnnamedInChangeSet(c.ctx, set); err == nil && len(unnamed) > 0 {
 		names := make([]string, len(unnamed))
@@ -1342,20 +1364,47 @@ func workspaceNext(ctx context.Context, e *engine.Engine) (any, error) {
 			what += " at level " + st.Level
 		}
 		out["next"] = fmt.Sprintf("Next: the %s stage. Nothing after it can be written well until it has a record, because what comes later names it. "+
-			"Call guide for %s, start_work, and define one with your person.", st.Key, what)
+			"Call guide for %s and define one with your person, in the change set you are working in (start_work only when you have none open).", st.Key, what)
 	}
 	return out, nil
 }
 
-// allMet is what to do when nothing drafted has an open check: the
-// workspace's next stage while one is still unwritten, else propose.
+// allMet is what to do when nothing in the work named has an open check:
+// the workspace's next stage while one is still unwritten; else the
+// checks still open on the change set's other drafts; else the optional
+// stages with no record yet; else propose.
 func allMet(ctx context.Context, e *engine.Engine) string {
-	if o, err := e.WorkspaceOrder(ctx); err == nil && o.Next != "" {
+	o, err := e.WorkspaceOrder(ctx)
+	if err == nil && o.Next != "" {
 		stage, _ := workspaceNext(ctx, e)
 		if m, ok := stage.(map[string]any); ok {
 			return "Nothing is open in what you have drafted. " + fmt.Sprint(m["next"]) +
 				" Propose the change set with propose once the work your person asked for is drafted."
 		}
+	}
+	if sets, err := e.ChangeSets(ctx, "open", false); err == nil && len(sets) > 0 {
+		if open, err := e.OpenInChangeSet(ctx, sets[0].ID); err == nil {
+			n := 0
+			for _, oc := range open {
+				if oc.Left == "" {
+					n++
+				}
+			}
+			if n > 0 {
+				return fmt.Sprintf("Nothing is open in this work, but %d check%s still open on other drafts in this change set: "+
+					"call checks without kind and id to list them, and settle each before you propose.", n, map[bool]string{true: " is", false: "s are"}[n == 1])
+			}
+		}
+	}
+	var optional []string
+	for _, st := range o.Stages {
+		if st.Optional && st.Count == 0 && st.State == "ready" {
+			optional = append(optional, st.Key+" ("+st.Kind+")")
+		}
+	}
+	if len(optional) > 0 {
+		return "Every check across this work is met. Stages a plan may have and this workspace does not yet: " + strings.Join(optional, ", ") +
+			"; and a KPI's past readings as KPIReadings. Port each the document gives, then propose the change set with propose."
 	}
 	return "Every check across this work is met. Propose the change set with propose."
 }

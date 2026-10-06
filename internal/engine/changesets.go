@@ -385,13 +385,22 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason str
 		return err
 	}
 	on := kind + "/" + id
+	reason = strings.TrimSpace(reason)
 	kept := cs.Waivers[:0:0]
 	for _, w := range cs.Waivers {
 		if w.On != on || w.Check != check {
 			kept = append(kept, w)
+			continue
+		}
+		// A check two missing facts leave open keeps both reasons: the
+		// person reads every one. No reason takes the check back.
+		if reason != "" && !strings.Contains(w.Reason, reason) {
+			reason = w.Reason + " Also: " + reason
+		} else if reason != "" {
+			reason = w.Reason
 		}
 	}
-	if reason = strings.TrimSpace(reason); reason != "" {
+	if reason != "" {
 		kept = append(kept, store.Waiver{On: on, Check: check, Reason: reason})
 	}
 	cs.Waivers, cs.Updated = kept, timeNow().UTC()

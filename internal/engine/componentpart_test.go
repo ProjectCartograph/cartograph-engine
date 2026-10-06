@@ -30,3 +30,22 @@ func TestAComponentIsAskedOnlyForItsOwnPart(t *testing.T) {
 		t.Error("a component is asked who pays to run its parent's service")
 	}
 }
+
+// A component's objective is measured by its parent's indicators, so it
+// is not asked for key results of its own; one it gives is still checked.
+func TestAComponentObjectiveNeedsNoKeyResults(t *testing.T) {
+	e := seededEngine(t)
+	ctx := context.Background()
+	mustCommit(t, e, "Project", "parent", "p1", projectYAML("parent", ""))
+	part := "  alignment:\n    partOf: parent\n  objectives:\n    - {id: o1, objective: Grade every lot at intake by one standard}\n"
+	if err := e.PutWorking(ctx, "Project", "part", []byte(projectYAML("part", part))); err != nil {
+		t.Fatal(err)
+	}
+	checks, err := e.ProjectChecks(ctx, "part", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := checksByID(checks.Items)["goals-key-results-count"]; c.State != "ok" {
+		t.Errorf("a component's objective asked for key results: %+v", c)
+	}
+}

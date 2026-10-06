@@ -259,3 +259,25 @@ func TestANameSpeltOtherwiseOrByInitialsIsTheRecord(t *testing.T) {
 		}
 	}
 }
+
+// A state written in the passive or with a modal is not an action,
+// whatever a model reads into it: only a text that opens as an
+// instruction is asked.
+func TestAPassiveStateIsNotTakenForAnAction(t *testing.T) {
+	ctx := context.Background()
+	m := &model{answer: func(string, decide.Question) decide.Answer {
+		return decide.Answer{Probabilities: map[string]float64{"state": 0.1, "action": 0.9}}
+	}}
+	e := engineWith(t, m)
+	outcome := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: o-gone\n  name: Bruised fruit gone\nspec:\n  level: outcome\n  parent: depots-stay-open-through-the-season\n  objective: Bruised fruit is no longer sold to buyers\n"
+	mustCommit(t, e, "Goal", "o-gone", "local", outcome)
+	checks, err := e.GoalChecks(ctx, "o-gone")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range checks {
+		if c.ID == "statement-state" && c.State != "ok" {
+			t.Fatalf("a passive state read as an action: %+v", c)
+		}
+	}
+}

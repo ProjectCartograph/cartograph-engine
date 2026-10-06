@@ -514,7 +514,12 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 			t.Fatalf("leave_open: %s", text)
 		}
 	}
+	// A second missing fact behind the same check adds its reason.
+	callTool(t, cs, "leave_open", map[string]any{"kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "A second fact is missing"})
 	_, after := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-sound"})
+	if !strings.Contains(after, "Only the person knows "+report.Open[0].ID+" Also: A second fact is missing") {
+		t.Fatalf("the first reason was lost: %s", after)
+	}
 	if !strings.Contains(after, `"left":[`) || !strings.Contains(after, `"open":[]`) {
 		t.Fatalf("the left checks are still open: %s", after)
 	}
@@ -569,5 +574,23 @@ func TestNextMovesOnFromADraftedStage(t *testing.T) {
 	res, text = callTool(t, cs, "checks", map[string]any{})
 	if res.IsError || strings.Contains(text, "Every check is met") && strings.Contains(text, "still open") {
 		t.Fatalf("checks on the set contradicts itself: %s", text)
+	}
+}
+
+// A second save of a whole manifest would undo every edit made to the
+// draft since; it is refused unless the agent means to replace it.
+func TestASaveDoesNotClobberADraft(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-once", "name": "Sound fruit"},
+		"spec": map[string]any{"level": "goal", "objective": "Sound fruit"}}
+	callTool(t, cs, "start_work", map[string]any{"title": "A goal"})
+	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-once", "manifest": goal}); res.IsError {
+		t.Fatalf("first save: %s", text)
+	}
+	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-once", "manifest": goal}); !res.IsError || !strings.Contains(text, "edit_draft") {
+		t.Fatalf("a second save was taken: %s", text)
+	}
+	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-once", "manifest": goal, "replace": true}); res.IsError {
+		t.Fatalf("a replace was refused: %s", text)
 	}
 }
