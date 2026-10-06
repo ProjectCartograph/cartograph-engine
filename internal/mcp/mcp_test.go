@@ -629,7 +629,7 @@ func TestAnAimWaitsOnItsKPIsLeftFigure(t *testing.T) {
 			t.Fatalf("an aim still asks for the figure its KPI waits on: %s", text)
 		}
 	}
-	if !strings.Contains(text, "whose figure is left for you: The board sets the target") {
+	if !strings.Contains(text, "The board sets the target after the baseline") {
 		t.Fatalf("the aim does not say what it waits on: %s", text)
 	}
 }
@@ -648,7 +648,7 @@ func TestAGoalWaitsOnAVisionLeftOpen(t *testing.T) {
 		"also": []any{map[string]any{"kind": "Purpose", "id": "default", "check": "purpose-mission"}}})
 	callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-quality", "manifest": goal})
 	_, text := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-quality"})
-	if !strings.Contains(text, "Judged against the vision and mission, left for you: Only the board") {
+	if !strings.Contains(text, "Only the board can state the vision") {
 		t.Fatalf("the goal's relevance does not wait on the vision: %s", text)
 	}
 }

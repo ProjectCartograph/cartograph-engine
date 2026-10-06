@@ -432,7 +432,7 @@ func leftFor(ctx context.Context, kind, id, check string) string {
 		if why, _ := spec["whyItMatters"].(string); spec["level"] == "goal" && strings.TrimSpace(why) != "" {
 			for _, c := range []string{"purpose-vision", "purpose-mission"} {
 				if why := left["Purpose/default#"+c]; why != "" {
-					return "Judged against the vision and mission, left for you: " + why
+					return why
 				}
 			}
 		}
@@ -443,10 +443,11 @@ func leftFor(ctx context.Context, kind, id, check string) string {
 	}
 	// An aim's measures fail while a KPI aligned to it waits on a figure
 	// left for the person: the same missing fact, so the same reason,
-	// without the agent having to foresee every aim it reaches.
+	// word for word, so the person reads it once with every check it
+	// holds open, without the agent having to foresee every aim it
+	// reaches.
 	for key, doc := range proposedDocs(ctx) {
-		kpi, ok := strings.CutPrefix(key, "KPI/")
-		if !ok {
+		if !strings.HasPrefix(key, "KPI/") {
 			continue
 		}
 		spec, _ := doc["spec"].(map[string]any)
@@ -460,7 +461,7 @@ func leftFor(ctx context.Context, kind, id, check string) string {
 		}
 		for _, c := range []string{"kpi-target", "kpi-baseline"} {
 			if why := left[key+"#"+c]; why != "" {
-				return "Measured by KPI " + kpi + ", whose figure is left for you: " + why
+				return why
 			}
 		}
 	}
