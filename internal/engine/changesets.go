@@ -402,29 +402,18 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 	if err != nil {
 		return store.ChangeSet{}, err
 	}
-	_, ordered, docs, err := e.included(ctx, s, cs.ID)
+	open, err := e.openIn(ctx, s, cs.ID)
 	if err != nil {
 		return store.ChangeSet{}, err
 	}
-	checkCtx := withProposed(ctx, docs)
 	var unmet []OpenCheck
 	var waivers []store.Waiver
-	for _, m := range ordered {
-		key := m.Kind + "/" + m.ID
-		checks, err := e.ChecksOf(checkCtx, m.Kind, m.ID, m.Text)
-		if err != nil {
-			return store.ChangeSet{}, err
+	for _, c := range open {
+		if why := strings.TrimSpace(waive[c.Kind+"/"+c.ManifestID][c.ID]); why != "" {
+			waivers = append(waivers, store.Waiver{On: c.Kind + "/" + c.ManifestID, Check: c.ID, Message: c.Message, Reason: why})
+			continue
 		}
-		for _, c := range checks {
-			if !c.Open() {
-				continue
-			}
-			if why := strings.TrimSpace(waive[key][c.ID]); why != "" {
-				waivers = append(waivers, store.Waiver{On: key, Check: c.ID, Message: c.Message, Reason: why})
-				continue
-			}
-			unmet = append(unmet, OpenCheck{Kind: m.Kind, ManifestID: m.ID, Check: c})
-		}
+		unmet = append(unmet, c)
 	}
 	if len(unmet) > 0 {
 		return store.ChangeSet{}, &OpenChecksError{Open: unmet}
@@ -434,6 +423,39 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 		return store.ChangeSet{}, err
 	}
 	return s.MoveChangeSet(ctx, cs.ID, store.ChangeSetOpen, store.ChangeSetProposed, "", "", cs.Updated)
+}
+
+// OpenInChangeSet is every check still open across the drafts a change
+// set would propose, each checked with the others: exactly what
+// ProposeChangeSet refuses on, so an agent asking before it proposes
+// hears the same answer it will get when it does.
+func (e *Engine) OpenInChangeSet(ctx context.Context, id string) ([]OpenCheck, error) {
+	s, err := e.changeSetStore()
+	if err != nil {
+		return nil, err
+	}
+	return e.openIn(ctx, s, id)
+}
+
+func (e *Engine) openIn(ctx context.Context, s store.ChangeSetStore, id string) ([]OpenCheck, error) {
+	_, ordered, docs, err := e.included(ctx, s, id)
+	if err != nil {
+		return nil, err
+	}
+	checkCtx := withProposed(ctx, docs)
+	var open []OpenCheck
+	for _, m := range ordered {
+		checks, err := e.ChecksOf(checkCtx, m.Kind, m.ID, m.Text)
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range checks {
+			if c.Open() {
+				open = append(open, OpenCheck{Kind: m.Kind, ManifestID: m.ID, Check: c})
+			}
+		}
+	}
+	return open, nil
 }
 
 // AcceptChangeSet saves every included item of a proposed change set as

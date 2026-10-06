@@ -2,6 +2,8 @@ package mcp_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -377,5 +379,38 @@ func TestADraftsSchemaProblemsAreOpenChecks(t *testing.T) {
 	}
 	if res, text := callTool(t, cs, "edit_draft", map[string]any{"kind": "Team", "id": "t2", "set": map[string]any{"/metadata/name": "Team Two"}}); res.IsError || strings.Contains(text, `"id":"schema"`) {
 		t.Fatalf("edit_draft that fixes the name: %s", text)
+	}
+}
+
+// checks and propose agree: checking one draft also lists what is open on
+// the change set's other drafts, and propose refuses on exactly those.
+func TestChecksAndProposeAgree(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	// A goal saved valid but unfinished (no horizon, not yet SMART), and a
+	// team drafted beside it whose own checks are all met.
+	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-sound", "name": "Sound fruit"},
+		"spec": map[string]any{"level": "goal", "objective": "Sound fruit"}}
+	team := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t1", "name": "Team One"},
+		"spec": map[string]any{"description": "Drafted by an agent"}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-sound", "manifest": goal})
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t1", "manifest": team})
+
+	res, text := callTool(t, cs, "checks", map[string]any{"kind": "Team", "id": "t1"})
+	if res.IsError || !strings.Contains(text, `"openInChangeSet":[{`) || !strings.Contains(text, `"id":"g-sound"`) {
+		t.Fatalf("checks on the team does not list what is open on the goal: %s", text)
+	}
+	res, set := callTool(t, cs, "checks", map[string]any{})
+	if res.IsError {
+		t.Fatalf("checks on the whole set: %s", set)
+	}
+	var whole struct {
+		Open []map[string]any `json:"openInChangeSet"`
+	}
+	if err := json.Unmarshal([]byte(set), &whole); err != nil {
+		t.Fatal(err)
+	}
+	res, refused := callTool(t, cs, "propose", map[string]any{"reason": "r"})
+	if !res.IsError || !strings.Contains(refused, fmt.Sprintf("%d check", len(whole.Open))) {
+		t.Fatalf("checks found %d open; propose said: %s", len(whole.Open), refused)
 	}
 }

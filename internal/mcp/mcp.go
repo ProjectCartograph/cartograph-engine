@@ -585,8 +585,8 @@ type (
 	}
 	checksIn struct {
 		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
-		Kind      string         `json:"kind"`
-		ID        string         `json:"id"`
+		Kind      string         `json:"kind,omitempty" jsonschema:"the manifest's kind; leave kind and id out to check the whole change set, as propose will"`
+		ID        string         `json:"id,omitempty"`
 		Manifest  map[string]any `json:"manifest,omitempty" jsonschema:"a manifest to check without saving it; its draft or latest version when left out"`
 		Work      []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
 	}
@@ -702,11 +702,18 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 
 	tool(s, o, person, &sdk.Tool{Name: "checks", Description: "Every quality check a person sees in the editor, on the manifest as it stands (its draft, where there is one): " +
 		"what is met (ok), what is still open (warn, or block for what stops a project's handoff), and the section where each is fixed. " +
-		"Run it after every save_draft; propose only when nothing is open.", Annotations: readOnly},
+		"In a change set it also lists what is still open on the set's other drafts (openInChangeSet), exactly as propose will find it; " +
+		"leave kind and id out to check the whole set. Run it after every save_draft; propose only when nothing is open.", Annotations: readOnly},
 		func(c call, in checksIn) (any, error) {
-			cs, c, _, err := c.inChangeSet(in.ChangeSet, false)
+			cs, c, found, err := c.inChangeSet(in.ChangeSet, false)
 			if err != nil {
 				return nil, err
+			}
+			if in.Kind == "" && in.ID == "" {
+				if !found {
+					return nil, fmt.Errorf("no change set open: name the manifest to check, or start_work")
+				}
+				return withSet(c, checkReport(nil), cs.ID, "", "")
 			}
 			if in.Manifest != nil {
 				text, err := e.Codec().Encode(in.Manifest)
@@ -735,7 +742,11 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, err
 			}
 			c.announce(step{Step: "checks", Kind: in.Kind, ID: in.ID, Checks: checks, ChangeSet: cs.ID})
-			return withAround(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID, in.Work), nil
+			out := withAround(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID, in.Work)
+			if !found {
+				return out, nil
+			}
+			return withSet(c, out, cs.ID, in.Kind, in.ID)
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "goal_tree", Description: "Every goal, objective and outcome as a tree, with what is aligned to each.", Annotations: readOnly},
@@ -1082,6 +1093,43 @@ func withProblems(checks []engine.Check, problems []engine.Problem) []engine.Che
 		out = append(out, engine.Check{ID: "schema", State: "block", Message: msg})
 	}
 	return append(out, checks...)
+}
+
+// withSet adds the checks still open on the change set's other drafts,
+// as propose will find them, so checks and propose never disagree: a
+// draft's own checks can all be met while an outcome drafted beside it
+// is not SMART yet, and propose refuses the set for that.
+func withSet(c call, out map[string]any, set, kind, id string) (map[string]any, error) {
+	open, err := c.o.Engine.OpenInChangeSet(c.ctx, set)
+	var invalid *engine.ValidationError
+	if errors.As(err, &invalid) {
+		// propose would refuse the set before checking it: say why.
+		var refused []map[string]any
+		for _, p := range invalid.Problems {
+			refused = append(refused, map[string]any{"check": "schema", "state": "block", "message": strings.TrimPrefix(p.Path+": "+p.Message, ": ")})
+		}
+		out["openInChangeSet"] = refused
+		out["setNext"] = "propose refuses this change set as it stands: fix what is not valid (openInChangeSet) first."
+		return out, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var elsewhere []map[string]any
+	for _, oc := range open {
+		if oc.Kind == kind && oc.ManifestID == id {
+			continue
+		}
+		elsewhere = append(elsewhere, map[string]any{"kind": oc.Kind, "id": oc.ManifestID, "check": oc.ID, "state": oc.State, "message": oc.Message, "section": oc.Section})
+	}
+	out["openInChangeSet"] = elsewhere
+	if len(elsewhere) > 0 {
+		out["setNext"] = fmt.Sprintf("%d check%s still open on other drafts in this change set (openInChangeSet). "+
+			"propose refuses until each is met, or waived with a reason your person can read.", len(elsewhere), map[bool]string{true: " is", false: "s are"}[len(elsewhere) == 1])
+	} else if len(open) == 0 {
+		out["setNext"] = "Nothing is open across the change set: propose will accept it."
+	}
+	return out, nil
 }
 
 func checkReport(checks []engine.Check) map[string]any {
