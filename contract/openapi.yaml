@@ -2844,6 +2844,33 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Summary"
+        uses:
+          type: array
+          description: >-
+            Every incoming reference with where it sits in the manifest
+            that makes it, and what that place means for this one: a
+            governance body or a role confirms a success criterion,
+            receives an escalation or decided a mandate (TAXONOMY.md D43).
+          items:
+            $ref: "#/components/schemas/Use"
+
+    Use:
+      type: object
+      required: [kind, id, name, path]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+          description: Where the reference sits in the manifest that makes it.
+        as:
+          type: string
+          enum: [confirms, receives, decided]
+          description: What the place means for the target; absent for any other place.
 
     SharedDocument:
       type: object

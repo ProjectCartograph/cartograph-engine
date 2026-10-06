@@ -77,7 +77,7 @@ func OperationCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 		d.table([]string{"Project", "Objective", "Team"}, landing)
 	}
 
-	d.mandate(list(spec["mandate"]))
+	d.mandate(n, spec, list(spec["mandate"]))
 	d.stakeholders(stakeholders(ctx, e, n, "Operation", id))
 
 	owner := "Service owner"

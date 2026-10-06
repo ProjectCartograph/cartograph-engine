@@ -137,7 +137,11 @@ Work this way, every time:
    never a person. A stakeholder plan ports each party's stake and the
    role that owns the relationship to the stakeholder map, naming the
    work's own beneficiary groups as groups rather than again as
-   resources; its channels and timing are planning. Keep the
+   resources; its channels and timing are planning. A committee or
+   board that decides is a governance body: a Resource named once and
+   referenced as a mandate's issuer, as who confirms success and as
+   whom a risk escalates to, never typed as text; only a body outside
+   the workspace, such as a government, stays as text. Keep the
    document's own wording in the statement and cite it as the source;
    never add a kind, level or field Cartograph does not have, and when a
    thing fits no kind, say so to your person rather than forcing it.

@@ -472,12 +472,18 @@ func (d *doc) risks(n names, spec map[string]any, items []map[string]any) {
 	d.table([]string{"Type", "Description", "Impact", "Likelihood", "Owner", "Response", "Decision needed from"}, rows)
 }
 
-func (d *doc) mandate(items []map[string]any) {
+// mandate prints the authorisations. An issuer the workspace holds is
+// named by reference (TAXONOMY.md D43); one outside it, as written.
+func (d *doc) mandate(n names, spec map[string]any, items []map[string]any) {
 	rows := make([][]string, 0, len(items))
 	for _, m := range items {
+		issuer := n.ref(m["issuer"], "Resource", spec)
+		if issuer == "" {
+			issuer = str(m["issuedBy"])
+		}
 		rows = append(rows, []string{
 			label("mandate", str(m["kind"])), str(m["title"]), str(m["reference"]),
-			str(m["date"]), str(m["issuedBy"]),
+			str(m["date"]), issuer,
 		})
 	}
 	if len(rows) > 0 {

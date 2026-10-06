@@ -42,11 +42,11 @@
       "guide": "A beneficiary group of the work, when the stakeholder is the people it is for. Pick one of the groups the work already names; there is no need to record them again as a Resource. An entry names a group or a resource, not both.",
       "good": [
         "depot-staff",
-        "member-growers"
+        "delivering-members"
       ],
       "poor": [
         {
-          "text": "member-growers, also added as a Resource",
+          "text": "delivering-members, also added as a Resource",
           "why": "The same people recorded twice. Name the group here."
         }
       ]

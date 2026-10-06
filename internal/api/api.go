@@ -1263,7 +1263,19 @@ func toReferences(r engine.Refs) apigen.References {
 	if incoming == nil {
 		incoming = []apigen.Summary{}
 	}
-	return apigen.References{Outgoing: outgoing, Incoming: incoming}
+	out := apigen.References{Outgoing: outgoing, Incoming: incoming}
+	if len(r.Uses) > 0 {
+		uses := make([]apigen.Use, len(r.Uses))
+		for i, u := range r.Uses {
+			uses[i] = apigen.Use{Kind: u.Kind, Id: u.ID, Name: u.Name, Path: u.Path}
+			if u.As != "" {
+				as := apigen.UseAs(u.As)
+				uses[i].As = &as
+			}
+		}
+		out.Uses = &uses
+	}
+	return out
 }
 
 // manifestDoc is enough of a manifest's shape to build the generic

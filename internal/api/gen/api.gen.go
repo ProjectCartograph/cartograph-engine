@@ -358,6 +358,27 @@ func (e SessionAccessScopes) Valid() bool {
 	}
 }
 
+// Defines values for UseAs.
+const (
+	Confirms UseAs = "confirms"
+	Decided  UseAs = "decided"
+	Receives UseAs = "receives"
+)
+
+// Valid indicates whether the value is a known member of the UseAs enum.
+func (e UseAs) Valid() bool {
+	switch e {
+	case Confirms:
+		return true
+	case Decided:
+		return true
+	case Receives:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListChangeSetsParamsStatus.
 const (
 	ListChangeSetsParamsStatusClosed   ListChangeSetsParamsStatus = "closed"
@@ -1320,6 +1341,9 @@ type Ref struct {
 type References struct {
 	Incoming []Summary `json:"incoming"`
 	Outgoing []Ref     `json:"outgoing"`
+
+	// Uses Every incoming reference with where it sits in the manifest that makes it, and what that place means for this one: a governance body or a role confirms a success criterion, receives an escalation or decided a mandate (TAXONOMY.md D43).
+	Uses *[]Use `json:"uses,omitempty"`
 }
 
 // Relevance defines model for Relevance.
@@ -1493,6 +1517,21 @@ type Understanding struct {
 	// Routes The flows likeliest to define the text, likeliest first, one per kind: offered to the person, who chooses. Measured, the first was right half the time and the right one was among the three nine times in ten (docs/adr/0023).
 	Routes []Route `json:"routes"`
 }
+
+// Use defines model for Use.
+type Use struct {
+	// As What the place means for the target; absent for any other place.
+	As   *UseAs `json:"as,omitempty"`
+	Id   string `json:"id"`
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+
+	// Path Where the reference sits in the manifest that makes it.
+	Path string `json:"path"`
+}
+
+// UseAs What the place means for the target; absent for any other place.
+type UseAs string
 
 // ValidateRequest Exactly one of yaml or manifest must be supplied.
 type ValidateRequest struct {

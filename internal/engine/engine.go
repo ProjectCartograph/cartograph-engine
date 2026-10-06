@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
+	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -428,7 +429,33 @@ func (e *Engine) References(ctx context.Context, kind, id string) (Refs, error) 
 	for i, r := range out {
 		outgoing[i] = Ref{Kind: r.ToKind, ID: r.ToID, Path: r.Path}
 	}
-	return Refs{Outgoing: outgoing, Incoming: in}, nil
+	var uses []Use
+	for _, from := range in {
+		refs, err := e.manifests.ListReferencedBy(ctx, from.Kind, from.ID)
+		if err != nil {
+			return Refs{}, err
+		}
+		for _, r := range refs {
+			if r.ToKind == kind && r.ToID == id {
+				uses = append(uses, Use{Kind: from.Kind, ID: from.ID, Name: from.Name, Path: r.Path, As: useOf(r.Path)})
+			}
+		}
+	}
+	return Refs{Outgoing: outgoing, Incoming: in, Uses: uses}, nil
+}
+
+// useOf names what a reference's place means for its target, for the
+// three places a governance body is named (TAXONOMY.md D43).
+func useOf(path string) string {
+	switch {
+	case strings.Contains(path, "/confirmedBy"):
+		return "confirms"
+	case strings.Contains(path, "/escalate/to"):
+		return "receives"
+	case strings.Contains(path, "/mandate/") && strings.Contains(path, "/issuer"):
+		return "decided"
+	}
+	return ""
 }
 
 // Versions returns every version of a manifest, oldest first.

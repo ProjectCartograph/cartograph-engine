@@ -124,6 +124,7 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 
 	problems = append(problems, fundingCurrencyProblems(spec)...)
 	problems = append(problems, referenceProblems(spec)...)
+	problems = append(problems, kit.MandateProblems(spec)...)
 	// A project schedules, so a dependency may land by one of its phases.
 	problems = append(problems, kit.RiskProblems(spec, true)...)
 

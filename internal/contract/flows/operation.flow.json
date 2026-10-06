@@ -216,8 +216,16 @@
                 "control": "date"
               },
               {
+                "path": "/issuer",
+                "control": "reference",
+                "title": "Issued by",
+                "hint": "A governance body or a role in the catalogue."
+              },
+              {
                 "path": "/issuedBy",
-                "control": "text"
+                "control": "text",
+                "title": "Or, outside the workspace",
+                "hint": "A body Cartograph does not hold, such as a regulator."
               }
             ]
           },

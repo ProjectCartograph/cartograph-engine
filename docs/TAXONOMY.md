@@ -1277,3 +1277,28 @@ BeneficiaryGroup), exactly one, each scored once. The approach stays
 derived from the grid (Mendelow), and the channels and timing of
 engagement stay the communications plan's: planning, not definition.
 `stakeholders-placed` counts groups as it counts resources.
+
+### D43. A governance body is a Resource, named once and referenced. *(resolved)*
+
+**The problem.** A governance body took the external form: free text
+wherever it was referenced (who confirms success, whom a risk escalates
+to, who issued a mandate). A charter with a steering committee that
+confirms the annual review, receives escalations and issued a decision,
+on an escalation route of four bodies, retyped each body in every place:
+the duplication D10 argues against, two spellings and nothing to check,
+and nothing could list what a body confirms, receives or decided.
+
+**What Cartograph does.** `governanceBody` is a Resource category. A
+body inside the workspace is declared once in the catalogue and
+referenced like a role: as `confirmedBy`, as `escalate.to`, and as a
+mandate's `issuer`, a reference beside the `issuedBy` text, which stays
+for an issuer outside the workspace (a government, a regulator); a
+mandate names one or the other, not both. A body's references say what
+each place means (`uses`: confirms, receives, decided), so its page
+lists what it confirms, receives and has decided. A body is a Resource,
+not a Team: a team is the organisation's structure, owns work and
+scopes who may edit it, and a committee that decides should not gain
+edit scope by deciding. Its membership, meeting rhythm and registers of
+decisions and actions stay outside Cartograph: they run governance
+rather than define it. This supersedes the external form for bodies
+inside the workspace.

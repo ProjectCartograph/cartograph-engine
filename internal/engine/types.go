@@ -67,6 +67,22 @@ type Filter struct {
 type Refs struct {
 	Outgoing []Ref     `json:"outgoing"`
 	Incoming []Summary `json:"incoming"`
+	// Uses is every incoming reference with where it sits in the manifest
+	// that makes it, and what that place means for the target: a
+	// governance body or a role confirms a success criterion, receives an
+	// escalation or decided a mandate (TAXONOMY.md D43).
+	Uses []Use `json:"uses,omitempty"`
+}
+
+// Use is one place another manifest references this one.
+type Use struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Path string `json:"path"`
+	// As is what the place means: confirms, receives or decided; empty
+	// for any other.
+	As string `json:"as,omitempty"`
 }
 
 // Report is the result of ImportDir. When any file has problems, nothing in

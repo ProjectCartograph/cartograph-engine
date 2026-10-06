@@ -1,5 +1,6 @@
 // Package operation implements the Operation kind's rules beyond its JSON
-// Schema: a service's recurring funding lines (TAXONOMY.md D39).
+// Schema: a service's recurring funding lines (TAXONOMY.md D39) and its
+// mandate's issuer (D43).
 package operation
 
 import (
@@ -37,5 +38,5 @@ func Rules(doc map[string]any, _ kit.RuleContext) []kit.Problem {
 			seen[key] = i
 		}
 	}
-	return problems
+	return append(problems, kit.MandateProblems(spec)...)
 }

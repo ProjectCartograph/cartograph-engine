@@ -636,7 +636,7 @@
               },
               "confirmedBy": {
                 "$ref": "common.schema.json#/$defs/Ref",
-                "description": "The role or governance body that confirms success, as a reference. Not a copy of a role title; a governance body Cartograph does not hold takes the external form."
+                "description": "The role or governance body that confirms success, as a reference. Not a copy of a role title. A governance body in the workspace is a Resource of category governanceBody (TAXONOMY.md D43); one outside it takes the external form."
               },
               "when": {
                 "type": "string",

@@ -209,7 +209,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 		field{"Goals", strings.Join(n.all("Goal", strs(alignment["goals"])), "; ")},
 		field{"Programme", strings.Join(programmes, "; ")},
 	)
-	d.mandate(list(spec["mandate"]))
+	d.mandate(n, spec, list(spec["mandate"]))
 
 	// 4. Who is involved, who it is for, and who runs it afterwards.
 	d.h2("Governance and roles")

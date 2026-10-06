@@ -25,6 +25,7 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 		problems = append(problems, kit.GapCitationProblems(list, "/spec/problems", ctx.Lookup)...)
 	}
 	problems = append(problems, pathwayProblems(spec)...)
+	problems = append(problems, kit.MandateProblems(spec)...)
 	// A sub-programme names the programmes it is part of (TAXONOMY.md D32).
 	problems = append(problems, kit.ParentsCycleProblems(doc, ctx, "Programme", "programmes", "programme")...)
 	return problems

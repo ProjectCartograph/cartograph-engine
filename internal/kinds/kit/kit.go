@@ -410,3 +410,27 @@ func stringList(v any) []string {
 	}
 	return out
 }
+
+// MandateProblems checks a mandate's issuer: named by reference (a
+// governance body or a role the workspace holds, TAXONOMY.md D43) or as
+// text for one outside it, not both, and a local reference resolves.
+func MandateProblems(spec map[string]any) []Problem {
+	mandates, _ := spec["mandate"].([]any)
+	var problems []Problem
+	for i, m := range mandates {
+		mm, ok := m.(map[string]any)
+		if !ok {
+			continue
+		}
+		path := fmt.Sprintf("/spec/mandate/%d", i)
+		issuedBy, _ := mm["issuedBy"].(string)
+		if _, has := mm["issuer"]; has && issuedBy != "" {
+			problems = append(problems, Problem{Path: path + "/issuer",
+				Message: "name the issuer by reference or as text, not both; text is for an issuer outside the workspace"})
+		}
+		if p := LocalRefProblem(spec, mm["issuer"], path+"/issuer"); p != nil {
+			problems = append(problems, *p)
+		}
+	}
+	return problems
+}

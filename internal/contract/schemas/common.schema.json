@@ -276,7 +276,12 @@
         },
         "issuedBy": {
           "type": "string",
-          "maxLength": 80
+          "maxLength": 80,
+          "description": "Who issued it, as written, for an issuer outside the workspace (a government, a regulator). An issuer the workspace holds is named by issuer instead."
+        },
+        "issuer": {
+          "$ref": "#/$defs/Ref",
+          "description": "Who issued it, as a reference to a governance body or a role the workspace holds (TAXONOMY.md D43), so the body's page can list what it decided. Use issuedBy, as text, only for an issuer outside the workspace; not both (a kind rule)."
         }
       }
     },

@@ -232,8 +232,21 @@
         }
       ]
     },
+    "/spec/mandate/-/issuer": {
+      "guide": "The governance body or role that issued it, picked from the Resource catalogue, so the body's page lists what it decided. When the body is not there yet, add it as a governance body first.",
+      "good": [
+        "steering-committee",
+        "sponsor"
+      ],
+      "poor": [
+        {
+          "text": "Steering Committee, typed as text",
+          "why": "A body the workspace holds is named once and referenced. Typed text gives it a second spelling no check can read."
+        }
+      ]
+    },
     "/spec/mandate/-/issuedBy": {
-      "guide": "The body that issued it, never a person.",
+      "guide": "The body that issued it, as written, only when it is outside the workspace: a government, a regulator, a funder. A body the workspace holds goes in the issuer instead.",
       "good": [
         "Cooperative Board"
       ]
