@@ -161,6 +161,10 @@ func (s *Server) GetGoalTree(ctx context.Context, req apigen.GetGoalTreeRequestO
 }
 
 func (s *Server) GetGoalChecks(ctx context.Context, req apigen.GetGoalChecksRequestObject) (apigen.GetGoalChecksResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	checks, err := s.Engine.GoalChecks(ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
@@ -321,6 +325,10 @@ func toGoalCheck(c engine.GoalCheck) apigen.GoalCheck {
 // a flat list, no blocking count, because none of a programme's checks
 // blocks anything.
 func (s *Server) GetGapChecks(ctx context.Context, req apigen.GetGapChecksRequestObject) (apigen.GetGapChecksResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	checks, err := s.Engine.GapChecks(ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
@@ -401,6 +409,10 @@ func (s *Server) GetCyclePeriods(ctx context.Context, req apigen.GetCyclePeriods
 
 // GetOperationChecks: the same flat, advisory shape as a programme's.
 func (s *Server) GetOperationChecks(ctx context.Context, req apigen.GetOperationChecksRequestObject) (apigen.GetOperationChecksResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	checks, err := s.Engine.OperationChecks(ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
@@ -419,6 +431,10 @@ func (s *Server) GetOperationChecks(ctx context.Context, req apigen.GetOperation
 }
 
 func (s *Server) GetProgrammeChecks(ctx context.Context, req apigen.GetProgrammeChecksRequestObject) (apigen.GetProgrammeChecksResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	checks, err := s.Engine.ProgrammeChecks(ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
@@ -439,6 +455,10 @@ func (s *Server) GetProgrammeChecks(ctx context.Context, req apigen.GetProgramme
 // GetPortfolioChecks answers in the programme's shape: every check is
 // advice read from other manifests (TAXONOMY.md D32).
 func (s *Server) GetPortfolioChecks(ctx context.Context, req apigen.GetPortfolioChecksRequestObject) (apigen.GetPortfolioChecksResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	checks, err := s.Engine.PortfolioChecks(ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
@@ -457,6 +477,10 @@ func (s *Server) GetPortfolioChecks(ctx context.Context, req apigen.GetPortfolio
 }
 
 func (s *Server) GetProjectChecks(ctx context.Context, req apigen.GetProjectChecksRequestObject) (apigen.GetProjectChecksResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	checks, err := s.Engine.ProjectChecks(ctx, req.Id, false)
 	if err != nil {
 		if errors.Is(err, engine.ErrNotFound) {

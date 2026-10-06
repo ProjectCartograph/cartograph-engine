@@ -59,6 +59,12 @@ func TestTheWorkspaceReadsAsIfAChangeSetWereAccepted(t *testing.T) {
 	if !strings.Contains(string(b), `"id":"g-sound"`) || !strings.Contains(string(b), `"proposed":"new"`) {
 		t.Fatalf("the strategy as proposed: %s", b)
 	}
+	if resp := doJSON(t, http.MethodGet, base+"/manifests/Goal/g-sound/checks?changeSet="+set, nil, nil); resp.StatusCode != http.StatusOK {
+		t.Fatalf("a proposed goal's checks: %d", resp.StatusCode)
+	}
+	if resp := doJSON(t, http.MethodGet, base+"/manifests/Goal/g-sound/checks", nil, nil); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("a proposed goal's checks read without the change set: %d", resp.StatusCode)
+	}
 	resp = doJSON(t, http.MethodGet, base+"/goals/tree", nil, nil)
 	b, _ = io.ReadAll(resp.Body)
 	resp.Body.Close()

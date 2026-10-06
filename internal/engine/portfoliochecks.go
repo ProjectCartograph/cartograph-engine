@@ -10,7 +10,7 @@ import (
 // (TAXONOMY.md D32). Every check advises: each answer is read from other
 // manifests, so, as for a programme (D6), none can stop a save.
 func (e *Engine) PortfolioChecks(ctx context.Context, id string) ([]ProgrammeCheck, error) {
-	v, found, err := e.manifests.GetCurrent(ctx, "Portfolio", id)
+	v, found, err := e.currentInPlay(ctx, "Portfolio", id)
 	if err != nil {
 		return nil, err
 	}

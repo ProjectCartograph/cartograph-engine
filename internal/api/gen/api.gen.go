@@ -1786,10 +1786,46 @@ type GetGuideParams struct {
 	Locale *string `form:"locale,omitempty" json:"locale,omitempty"`
 }
 
+// GetGapChecksParams defines parameters for GetGapChecks.
+type GetGapChecksParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
+// GetGoalChecksParams defines parameters for GetGoalChecks.
+type GetGoalChecksParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
+// GetOperationChecksParams defines parameters for GetOperationChecks.
+type GetOperationChecksParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
+// GetPortfolioChecksParams defines parameters for GetPortfolioChecks.
+type GetPortfolioChecksParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
+// GetProgrammeChecksParams defines parameters for GetProgrammeChecks.
+type GetProgrammeChecksParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetProjectCharterHtmlParams defines parameters for GetProjectCharterHtml.
 type GetProjectCharterHtmlParams struct {
 	// Working Use working copy instead of latest snapshot
 	Working *bool `form:"working,omitempty" json:"working,omitempty"`
+}
+
+// GetProjectChecksParams defines parameters for GetProjectChecks.
+type GetProjectChecksParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
 // GetCyclePeriodsParams defines parameters for GetCyclePeriods.
@@ -2172,7 +2208,7 @@ type ServerInterface interface {
 	ListKinds(w http.ResponseWriter, r *http.Request)
 	// GetGapChecks Whether a gap can be used for what a gap register is for. Advisory only, like a programme's: every one of these reads a manifest other than the gap.
 	// (GET /manifests/Gap/{id}/checks)
-	GetGapChecks(w http.ResponseWriter, r *http.Request, id IdParam)
+	GetGapChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetGapChecksParams)
 	// GetGapCoverage Which part of a gap each piece of work addresses, and which parts nobody does. Derived from the citations, never stored: work declares what it reaches and this reads it back, the same way a programme's members are derived. Addressed, not closed: whether the shortfall narrowed is what the gap's measure reads.
 	// (GET /manifests/Gap/{id}/coverage)
 	GetGapCoverage(w http.ResponseWriter, r *http.Request, id IdParam)
@@ -2181,28 +2217,28 @@ type ServerInterface interface {
 	DeleteGoal(w http.ResponseWriter, r *http.Request, id IdParam)
 	// GetGoalChecks Whether a goal can be assessed. Checks never block a save.
 	// (GET /manifests/Goal/{id}/checks)
-	GetGoalChecks(w http.ResponseWriter, r *http.Request, id IdParam)
+	GetGoalChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetGoalChecksParams)
 	// GetOperationCharterHtml Operation charter rendered as HTML from the working copy: what the service does and when, who runs it, what it is part of, how it is measured, what it uses and produces, and which projects will hand over to it. Derived, like every other view.
 	// (GET /manifests/Operation/{id}/charter.html)
 	GetOperationCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam)
 	// GetOperationChecks Whether an operation is described well enough to be run and measured, step by step. Advisory only.
 	// (GET /manifests/Operation/{id}/checks)
-	GetOperationChecks(w http.ResponseWriter, r *http.Request, id IdParam)
+	GetOperationChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetOperationChecksParams)
 	// GetPortfolioChecks Whether a portfolio can make the decisions a portfolio exists for: what it is prioritised against, what it holds, and whether each of those has a decision (TAXONOMY.md D32). Advisory only, in the programme's shape, because each is read from other manifests.
 	// (GET /manifests/Portfolio/{id}/checks)
-	GetPortfolioChecks(w http.ResponseWriter, r *http.Request, id IdParam)
+	GetPortfolioChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetPortfolioChecksParams)
 	// GetProgrammeCharterHtml Programme charter rendered as HTML from the working copy: what it is for, what is wrong, what it serves, how it believes the change happens, what is inside it and who runs it. Derived, like every other view, so there is nothing to keep in step.
 	// (GET /manifests/Programme/{id}/charter.html)
 	GetProgrammeCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam)
 	// GetProgrammeChecks Whether a programme can be judged on what a programme is judged on. Advisory only: none of these has a state that stops anything, because most of them can change when somebody edits a different manifest.
 	// (GET /manifests/Programme/{id}/checks)
-	GetProgrammeChecks(w http.ResponseWriter, r *http.Request, id IdParam)
+	GetProgrammeChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProgrammeChecksParams)
 	// GetProjectCharterHtml Project charter rendered as HTML from the latest snapshot (or working copy with ?working=true).
 	// (GET /manifests/Project/{id}/charter.html)
 	GetProjectCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectCharterHtmlParams)
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
-	GetProjectChecks(w http.ResponseWriter, r *http.Request, id IdParam)
+	GetProjectChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectChecksParams)
 	// GetProjectState A project's current state and its full transition history
 	// (GET /manifests/Project/{id}/state)
 	GetProjectState(w http.ResponseWriter, r *http.Request, id IdParam)
@@ -3296,8 +3332,24 @@ func (siw *ServerInterfaceWrapper) GetGapChecks(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetGapChecksParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetGapChecks(w, r, id)
+		siw.Handler.GetGapChecks(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3374,8 +3426,24 @@ func (siw *ServerInterfaceWrapper) GetGoalChecks(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetGoalChecksParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetGoalChecks(w, r, id)
+		siw.Handler.GetGoalChecks(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3426,8 +3494,24 @@ func (siw *ServerInterfaceWrapper) GetOperationChecks(w http.ResponseWriter, r *
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetOperationChecksParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetOperationChecks(w, r, id)
+		siw.Handler.GetOperationChecks(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3452,8 +3536,24 @@ func (siw *ServerInterfaceWrapper) GetPortfolioChecks(w http.ResponseWriter, r *
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPortfolioChecksParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetPortfolioChecks(w, r, id)
+		siw.Handler.GetPortfolioChecks(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3504,8 +3604,24 @@ func (siw *ServerInterfaceWrapper) GetProgrammeChecks(w http.ResponseWriter, r *
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProgrammeChecksParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetProgrammeChecks(w, r, id)
+		siw.Handler.GetProgrammeChecks(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3572,8 +3688,24 @@ func (siw *ServerInterfaceWrapper) GetProjectChecks(w http.ResponseWriter, r *ht
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectChecksParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetProjectChecks(w, r, id)
+		siw.Handler.GetProjectChecks(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7139,7 +7271,8 @@ func (response ListKinds403JSONResponse) VisitListKindsResponse(w http.ResponseW
 }
 
 type GetGapChecksRequestObject struct {
-	Id IdParam `json:"id"`
+	Id     IdParam `json:"id"`
+	Params GetGapChecksParams
 }
 
 type GetGapChecksResponseObject interface {
@@ -7354,7 +7487,8 @@ func (response DeleteGoal422JSONResponse) VisitDeleteGoalResponse(w http.Respons
 }
 
 type GetGoalChecksRequestObject struct {
-	Id IdParam `json:"id"`
+	Id     IdParam `json:"id"`
+	Params GetGoalChecksParams
 }
 
 type GetGoalChecksResponseObject interface {
@@ -7488,7 +7622,8 @@ func (response GetOperationCharterHtml404JSONResponse) VisitGetOperationCharterH
 }
 
 type GetOperationChecksRequestObject struct {
-	Id IdParam `json:"id"`
+	Id     IdParam `json:"id"`
+	Params GetOperationChecksParams
 }
 
 type GetOperationChecksResponseObject interface {
@@ -7552,7 +7687,8 @@ func (response GetOperationChecks404JSONResponse) VisitGetOperationChecksRespons
 }
 
 type GetPortfolioChecksRequestObject struct {
-	Id IdParam `json:"id"`
+	Id     IdParam `json:"id"`
+	Params GetPortfolioChecksParams
 }
 
 type GetPortfolioChecksResponseObject interface {
@@ -7686,7 +7822,8 @@ func (response GetProgrammeCharterHtml404JSONResponse) VisitGetProgrammeCharterH
 }
 
 type GetProgrammeChecksRequestObject struct {
-	Id IdParam `json:"id"`
+	Id     IdParam `json:"id"`
+	Params GetProgrammeChecksParams
 }
 
 type GetProgrammeChecksResponseObject interface {
@@ -7821,7 +7958,8 @@ func (response GetProjectCharterHtml404JSONResponse) VisitGetProjectCharterHtmlR
 }
 
 type GetProjectChecksRequestObject struct {
-	Id IdParam `json:"id"`
+	Id     IdParam `json:"id"`
+	Params GetProjectChecksParams
 }
 
 type GetProjectChecksResponseObject interface {
@@ -11784,10 +11922,11 @@ func (sh *strictHandler) ListKinds(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetGapChecks operation middleware
-func (sh *strictHandler) GetGapChecks(w http.ResponseWriter, r *http.Request, id IdParam) {
+func (sh *strictHandler) GetGapChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetGapChecksParams) {
 	var request GetGapChecksRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetGapChecks(ctx, request.(GetGapChecksRequestObject))
@@ -11869,10 +12008,11 @@ func (sh *strictHandler) DeleteGoal(w http.ResponseWriter, r *http.Request, id I
 }
 
 // GetGoalChecks operation middleware
-func (sh *strictHandler) GetGoalChecks(w http.ResponseWriter, r *http.Request, id IdParam) {
+func (sh *strictHandler) GetGoalChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetGoalChecksParams) {
 	var request GetGoalChecksRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetGoalChecks(ctx, request.(GetGoalChecksRequestObject))
@@ -11921,10 +12061,11 @@ func (sh *strictHandler) GetOperationCharterHtml(w http.ResponseWriter, r *http.
 }
 
 // GetOperationChecks operation middleware
-func (sh *strictHandler) GetOperationChecks(w http.ResponseWriter, r *http.Request, id IdParam) {
+func (sh *strictHandler) GetOperationChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetOperationChecksParams) {
 	var request GetOperationChecksRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetOperationChecks(ctx, request.(GetOperationChecksRequestObject))
@@ -11947,10 +12088,11 @@ func (sh *strictHandler) GetOperationChecks(w http.ResponseWriter, r *http.Reque
 }
 
 // GetPortfolioChecks operation middleware
-func (sh *strictHandler) GetPortfolioChecks(w http.ResponseWriter, r *http.Request, id IdParam) {
+func (sh *strictHandler) GetPortfolioChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetPortfolioChecksParams) {
 	var request GetPortfolioChecksRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetPortfolioChecks(ctx, request.(GetPortfolioChecksRequestObject))
@@ -11999,10 +12141,11 @@ func (sh *strictHandler) GetProgrammeCharterHtml(w http.ResponseWriter, r *http.
 }
 
 // GetProgrammeChecks operation middleware
-func (sh *strictHandler) GetProgrammeChecks(w http.ResponseWriter, r *http.Request, id IdParam) {
+func (sh *strictHandler) GetProgrammeChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProgrammeChecksParams) {
 	var request GetProgrammeChecksRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetProgrammeChecks(ctx, request.(GetProgrammeChecksRequestObject))
@@ -12052,10 +12195,11 @@ func (sh *strictHandler) GetProjectCharterHtml(w http.ResponseWriter, r *http.Re
 }
 
 // GetProjectChecks operation middleware
-func (sh *strictHandler) GetProjectChecks(w http.ResponseWriter, r *http.Request, id IdParam) {
+func (sh *strictHandler) GetProjectChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectChecksParams) {
 	var request GetProjectChecksRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetProjectChecks(ctx, request.(GetProjectChecksRequestObject))

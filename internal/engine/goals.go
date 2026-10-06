@@ -472,7 +472,7 @@ const (
 // component, so nothing here reads spec.team or spec.reviewCycle, both
 // removed from the schema.
 func (e *Engine) GoalChecks(ctx context.Context, id string) ([]GoalCheck, error) {
-	v, found, err := e.manifests.GetCurrent(ctx, "Goal", id)
+	v, found, err := e.currentInPlay(ctx, "Goal", id)
 	if err != nil {
 		return nil, err
 	}

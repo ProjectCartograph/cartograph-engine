@@ -188,7 +188,7 @@ func citedSegments(problems []any, gapID string) (named []string, whole bool) {
 // than this gap, so a gap that saved yesterday must not be refused today
 // because somebody edited a project.
 func (e *Engine) GapChecks(ctx context.Context, id string) ([]ProgrammeCheck, error) {
-	v, found, err := e.manifests.GetCurrent(ctx, "Gap", id)
+	v, found, err := e.currentInPlay(ctx, "Gap", id)
 	if err != nil {
 		return nil, err
 	}

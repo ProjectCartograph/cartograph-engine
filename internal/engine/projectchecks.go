@@ -1091,7 +1091,7 @@ func criterionExists(criteria []any, when string) bool {
 // loadProjectDoc returns the parsed manifest document for the current
 // committed version.
 func (e *Engine) loadProjectDoc(ctx context.Context, id string) (map[string]any, error) {
-	v, found, err := e.manifests.GetCurrent(ctx, "Project", id)
+	v, found, err := e.currentInPlay(ctx, "Project", id)
 	if err != nil {
 		return nil, err
 	}

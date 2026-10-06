@@ -132,3 +132,13 @@ func (e *Engine) putItemText(ctx context.Context, set, kind, id string, text []b
 	it.Text, it.By, it.At = text, identity.PrincipalFrom(ctx).Actor(e.operator(ctx)), timeNow().UTC()
 	return s.PutChangeItem(ctx, it)
 }
+
+// currentInPlay is a manifest as a read on ctx sees it: the draft of the
+// change set read on ctx, where it has one (docs/adr/0024), else the
+// current version.
+func (e *Engine) currentInPlay(ctx context.Context, kind, id string) (Version, bool, error) {
+	if text, ok := inPlay(ctx, kind, id); ok {
+		return Version{Kind: kind, ID: id, YAML: text}, true, nil
+	}
+	return e.manifests.GetCurrent(ctx, kind, id)
+}

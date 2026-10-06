@@ -42,7 +42,7 @@ type ProgrammeCheck struct {
 
 // ProgrammeChecks reads one programme and everything that points at it.
 func (e *Engine) ProgrammeChecks(ctx context.Context, id string) ([]ProgrammeCheck, error) {
-	v, found, err := e.manifests.GetCurrent(ctx, "Programme", id)
+	v, found, err := e.currentInPlay(ctx, "Programme", id)
 	if err != nil {
 		return nil, err
 	}

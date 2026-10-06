@@ -87,6 +87,7 @@ paths:
       operationId: getGoalChecks
       summary: Whether a goal can be assessed. Checks never block a save.
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/IdParam"
       responses:
         "401":
@@ -112,6 +113,7 @@ paths:
         only, like a programme's: every one of these reads a manifest other
         than the gap.
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/IdParam"
       responses:
         "401":
@@ -206,6 +208,7 @@ paths:
         Whether an operation is described well enough to be run and
         measured, step by step. Advisory only.
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/IdParam"
       responses:
         "401":
@@ -231,6 +234,7 @@ paths:
         Advisory only: none of these has a state that stops anything, because
         most of them can change when somebody edits a different manifest.
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/IdParam"
       responses:
         "401":
@@ -257,6 +261,7 @@ paths:
         those has a decision (TAXONOMY.md D32). Advisory only, in the
         programme's shape, because each is read from other manifests.
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/IdParam"
       responses:
         "401":
@@ -318,6 +323,7 @@ paths:
         deliverables, beneficiaries, timeline, data, risks, closing,
         landing). Checks never block a save; state block stops submission.
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/IdParam"
       responses:
         "401":

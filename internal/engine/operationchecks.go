@@ -10,7 +10,7 @@ import (
 // nothing about how a service is written down should stop anything. A
 // service may be planned, running or retired (TAXONOMY.md D30).
 func (e *Engine) OperationChecks(ctx context.Context, id string) ([]ProgrammeCheck, error) {
-	v, found, err := e.manifests.GetCurrent(ctx, "Operation", id)
+	v, found, err := e.currentInPlay(ctx, "Operation", id)
 	if err != nil {
 		return nil, err
 	}
