@@ -9,6 +9,7 @@ import (
 // project aligned to an outcome serves a programme judged on the objective
 // above it (TAXONOMY.md D24, D25).
 func TestAGoalServesTheAimsAboveIt(t *testing.T) {
+	t.Parallel()
 	e := &Engine{}
 	r := e.loadedGoals(context.Background(), map[string]map[string]any{
 		"g":  {"spec": map[string]any{"level": "goal"}},

@@ -11,6 +11,7 @@ import (
 // next version after the highest saved one. The working copy has no number
 // of its own, so it must not decide the next one.
 func TestReimportAfterAWorkingCopy(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -40,6 +41,7 @@ func TestReimportAfterAWorkingCopy(t *testing.T) {
 // hidden, timestamped directory and links to it beside it. The import
 // reads each manifest once, through the link, and nothing hidden.
 func TestImportSkipsHiddenEntries(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	dir := t.TempDir()
 	team := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: quality\n  name: Quality\nspec:\n  name: Quality\n"

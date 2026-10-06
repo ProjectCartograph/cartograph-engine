@@ -11,6 +11,7 @@ import (
 // noted is answered. A purpose says what it lacks itself. A gap with no
 // segments is covered once anything works on it.
 func TestChecksTakeWhatTheGuidanceCallsComplete(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	extra := "  risks:\n    - {id: r1, description: Budget is fixed, type: constraint}\n    - {id: r2, description: Late forms, type: risk, mitigation: Train early}\n" +
@@ -65,6 +66,7 @@ func TestChecksTakeWhatTheGuidanceCallsComplete(t *testing.T) {
 // form it was nearest, in words: not every form's failures, and not the
 // pattern it missed.
 func TestASchemaProblemNamesTheNearestFormInWords(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	y := "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k1\n  name: K\nspec:\n  definition: Share of depots\n  unit: percent\n  direction: increase\n  sources: [d1]\n  baseline: {value: 74.6, date: \"2017\"}\n"
 	problems, err := e.Validate(context.Background(), "KPI", []byte(y))
@@ -79,6 +81,7 @@ func TestASchemaProblemNamesTheNearestFormInWords(t *testing.T) {
 // A gap stated in words from a named source is an observation the
 // guidance accepts; without a source it still asks for an indicator.
 func TestAGapStatedFromItsSourceNeedsNoIndicator(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	measured := func(spec string) string {
 		cs, err := e.ChecksOf(context.Background(), "Gap", "seen", []byte("apiVersion: cartograph/v1\nkind: Gap\nmetadata:\n  id: seen\n  name: Seen\nspec:\n  statement: Something falls short\n  current: Half the lots are graded\n  desired: Every lot is graded\n"+spec))

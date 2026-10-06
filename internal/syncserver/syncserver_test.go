@@ -636,7 +636,7 @@ func TestAnUnattendedPeerIsClosedAsIdle(t *testing.T) {
 // once they stop.
 func TestAPeerThatEditsStays(t *testing.T) {
 	replicaEngines = nil
-	srvs := replicas(t, 1, nil, inMemory(t), syncserver.WithIdle(400*time.Millisecond))
+	srvs := replicas(t, 1, nil, inMemory(t), syncserver.WithIdle(200*time.Millisecond))
 	ctx := context.Background()
 	docID, err := replicaEngines[0].Shared().DocumentFor(ctx, "Team", "field-team")
 	if err != nil {
@@ -644,17 +644,17 @@ func TestAPeerThatEditsStays(t *testing.T) {
 	}
 	p := connect(t, srvs[0], "peer-a", docID)
 	p.until(func() bool { return p.field("spec", "purpose") == "Collect what the depots report" })
-	// An edit every 100 ms for 1.2 s, three idle times; a close meanwhile
+	// An edit every 50 ms for 0.6 s, three idle times; a close meanwhile
 	// fails the read in step.
 	start := time.Now()
-	for i := 0; time.Since(start) < 1200*time.Millisecond; i++ {
+	for i := 0; time.Since(start) < 600*time.Millisecond; i++ {
 		j, _ := p.doc.JSON()
 		j["spec"].(map[string]any)["purpose"] = fmt.Sprintf("Collect what the depots report, draft %d", i)
 		if _, err := p.doc.Reconcile(j, replicaEngines[0].Shape("Team"), crdt.Change{Message: "edit"}); err != nil {
 			t.Fatal(err)
 		}
-		for next := time.Now().Add(100 * time.Millisecond); time.Now().Before(next); {
-			p.step(20 * time.Millisecond)
+		for next := time.Now().Add(50 * time.Millisecond); time.Now().Before(next); {
+			p.step(10 * time.Millisecond)
 		}
 	}
 	// Stopped: closed as idle within a few idle times.

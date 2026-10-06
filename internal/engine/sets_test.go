@@ -81,6 +81,7 @@ func seedGoals(t *testing.T, e *engine.Engine, n int) {
 // The goal tree reads the store a fixed number of times, however many
 // goals there are (docs/adr/0012): no read per goal.
 func TestGoalTreeReadsAreFixed(t *testing.T) {
+	t.Parallel()
 	calls := func(n int) int {
 		s := &countingStore{ManifestStore: memory.NewManifestStore()}
 		e, err := engine.New(s, memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
@@ -102,6 +103,7 @@ func TestGoalTreeReadsAreFixed(t *testing.T) {
 
 // Read in sets or one at a time, the tree is the same.
 func TestGoalTreeSameEitherWay(t *testing.T) {
+	t.Parallel()
 	tree := func(s store.ManifestStore) string {
 		e, err := engine.New(s, memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
 		if err != nil {
@@ -137,6 +139,7 @@ func contains(s, sub string) bool {
 // Saving a project that has a working copy numbers the version after the
 // highest saved one; the working copy has no number of its own.
 func TestCommitProjectOverAWorkingCopy(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	text := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p9\n  name: Project Nine\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n"

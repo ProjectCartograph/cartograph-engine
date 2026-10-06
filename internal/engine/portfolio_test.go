@@ -40,6 +40,7 @@ func portfolioChecksByID(t *testing.T, e *engine.Engine, id string) map[string]e
 // the objectives it is prioritised against, what it holds, and a decision
 // for each of those and nothing else (TAXONOMY.md D32).
 func TestAPortfolioDecidesOnWhatItHolds(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	mustCommit(t, e, "Portfolio", "invest", "local", portfolioYAML("invest", ""))
 	c := portfolioChecksByID(t, e, "invest")
@@ -85,6 +86,7 @@ func TestAPortfolioDecidesOnWhatItHolds(t *testing.T) {
 // portfolio prioritised against an outcome, a loop in either nesting, and
 // two decisions about one thing.
 func TestPortfolioAndProgrammeShapes(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	refused := func(kind, id, y, want string) {
@@ -113,6 +115,7 @@ func TestPortfolioAndProgrammeShapes(t *testing.T) {
 
 // A programme without a theory of change is told it may be a portfolio.
 func TestAProgrammeWithoutATheoryOfChangeMayBeAPortfolio(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	mustCommit(t, e, "Programme", "pg", "local", programmeYAML("pg", ""))
 	if got := programmeChecksByID(t, e, "pg")["pathway-steps"]; got.State != "warn" || !strings.Contains(got.Message, "may be a portfolio") {
@@ -123,6 +126,7 @@ func TestAProgrammeWithoutATheoryOfChangeMayBeAPortfolio(t *testing.T) {
 // A portfolio's decisions belong to the team that governs the portfolio:
 // a write to them is asked with that team's chain.
 func TestPortfolioDecisionsBelongToItsLeadTeam(t *testing.T) {
+	t.Parallel()
 	r := &recorder{}
 	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()), engine.WithAuthorizer(r))
 	if err != nil {

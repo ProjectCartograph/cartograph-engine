@@ -11,6 +11,7 @@ import (
 // is, so the fields Guide marks required are exactly those a handoff
 // waits on.
 func TestBlockingChecksAreTheChecksThatBlock(t *testing.T) {
+	t.Parallel()
 	files, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatal(err)

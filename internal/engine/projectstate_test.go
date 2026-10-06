@@ -12,6 +12,7 @@ import (
 // defined is set automatically at the first snapshot (not tested here).
 
 func TestProjectStateDefaultsToDraft(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "proj-state", "p1", projectYAML("proj-state", ""))
@@ -26,6 +27,7 @@ func TestProjectStateDefaultsToDraft(t *testing.T) {
 }
 
 func TestProjectStateNotFound(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	if _, err := e.GetProjectState(context.Background(), "does-not-exist"); !errors.Is(err, engine.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
@@ -36,6 +38,7 @@ func TestProjectStateNotFound(t *testing.T) {
 }
 
 func TestProjectStateDraftToHandedOffBlockedByChecks(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	// Minimal project (blocked checks)
@@ -65,6 +68,7 @@ func greenProject(t *testing.T, e *engine.Engine, id string) {
 }
 
 func TestProjectStateDraftToHandedOff(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	// Complete project (no blocking checks)
@@ -80,6 +84,7 @@ func TestProjectStateDraftToHandedOff(t *testing.T) {
 }
 
 func TestProjectStateDraftToCancelled(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "proj-cancel", "p1", projectYAML("proj-cancel", ""))
@@ -102,6 +107,7 @@ func TestProjectStateDraftToCancelled(t *testing.T) {
 }
 
 func TestProjectStateHandedOffIsFinal(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	// Complete project (no blocking checks)
@@ -125,6 +131,7 @@ func TestProjectStateHandedOffIsFinal(t *testing.T) {
 }
 
 func TestProjectStateInvalidTransition(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "proj-invalid", "p1", projectYAML("proj-invalid", ""))

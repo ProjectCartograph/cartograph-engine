@@ -9,6 +9,7 @@ import (
 // The thing the design exists for: a gap observed in four slices, answered
 // by work that reaches one of them, is recorded as one quarter of a claim.
 func TestGapCoverage(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -98,6 +99,7 @@ func TestGapCoverage(t *testing.T) {
 // A citation that names no segments claims the whole gap, which is what
 // every citation written before 2026-09-29 means.
 func TestGapCitedWhole(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -138,6 +140,7 @@ func TestGapCitedWhole(t *testing.T) {
 // Claiming a gap somewhere it was never observed is a different claim, not
 // a narrower one, so it is refused.
 func TestGapCitationMustBeWithinScope(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -177,6 +180,7 @@ func TestGapCitationMustBeWithinScope(t *testing.T) {
 // A segment tree that closes on itself has no top, and everything that
 // walks it would walk it forever.
 func TestSegmentTreeRefusesACycle(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 

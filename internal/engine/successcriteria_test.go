@@ -18,6 +18,7 @@ import (
 // `cycle` are references into the DataSource and ReportingCycle
 // registers, so the method and the frequency are named once and reused.
 func TestProjectSuccessCriteriaRules(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj2\n  name: Project Two\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"
 
@@ -74,6 +75,7 @@ func TestProjectSuccessCriteriaRules(t *testing.T) {
 }
 
 func TestProjectDeliverables(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj5\n  name: Project Five\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"
 
@@ -95,6 +97,7 @@ func TestProjectDeliverables(t *testing.T) {
 }
 
 func TestObjectiveMustBeQualitative(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{
@@ -116,6 +119,7 @@ func TestObjectiveMustBeQualitative(t *testing.T) {
 // source but no cycle; one judged after closing is read repeatedly and
 // needs a cycle too. The check names what is missing.
 func TestOnlyACriterionReadAfterClosingNeedsACycle(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	criterion := func(when, extra string) string {

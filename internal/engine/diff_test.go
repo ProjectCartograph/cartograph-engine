@@ -17,6 +17,7 @@ func changeAt(cs []engine.Change, path string) (engine.Change, bool) {
 }
 
 func TestDiff(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -49,6 +50,7 @@ func TestDiff(t *testing.T) {
 }
 
 func TestDiffArraysByID(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -78,6 +80,7 @@ func TestDiffArraysByID(t *testing.T) {
 }
 
 func TestDiffArraysByIndex(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 

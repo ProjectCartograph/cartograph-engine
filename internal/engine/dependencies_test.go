@@ -50,6 +50,7 @@ func writeBehind(t *testing.T, ms store.ManifestStore, kind, id, y string) {
 // A loop in the record is refused where it would close (TAXONOMY.md D28):
 // the save that closes it names the loop, and the record stays acyclic.
 func TestADependencyLoopIsRefused(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	for _, id := range []string{"alpha", "beta"} {
@@ -75,6 +76,7 @@ func TestADependencyLoopIsRefused(t *testing.T) {
 // its own, and only the graph says they are waiting on each other. A store
 // written before loops were refused may hold one, and the check finds it.
 func TestDependencyGraphAndCycles(t *testing.T) {
+	t.Parallel()
 	ms := memory.NewManifestStore()
 	e := seededEngineOver(t, ms)
 	ctx := context.Background()
@@ -122,6 +124,7 @@ func TestDependencyGraphAndCycles(t *testing.T) {
 // An edge declared from the other end is the same edge. Nothing should see
 // two, and a needed-by pair should not read as a cycle.
 func TestDependencyNeededByIsOneEdge(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -155,6 +158,7 @@ func TestDependencyNeededByIsOneEdge(t *testing.T) {
 // delivers anything. It needs both ends to schedule, so it is a project
 // answer — a programme schedules nothing.
 func TestDependencyScheduleConflicts(t *testing.T) {
+	t.Parallel()
 	timeline := func(phases string) string {
 		return "  timeline:\n    start: \"2026-01\"\n    phases:\n" + phases
 	}
@@ -215,6 +219,7 @@ func TestDependencyScheduleConflicts(t *testing.T) {
 // on the message as well as the state: the whole point of both checks is
 // the sentence, and a state alone tells nobody which project is late.
 func TestDependencyChecksOnTheProject(t *testing.T) {
+	t.Parallel()
 	ms := memory.NewManifestStore()
 	e := seededEngineOver(t, ms)
 	ctx := context.Background()

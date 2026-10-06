@@ -44,6 +44,7 @@ func team(id, parent string) []byte {
 // the spec fields it changes. Its own work, with nobody on the context,
 // is not asked about.
 func TestEveryWriteIsAskedWithItsTeams(t *testing.T) {
+	t.Parallel()
 	r := &recorder{}
 	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()), engine.WithAuthorizer(r))
 	if err != nil {
@@ -92,6 +93,7 @@ func TestEveryWriteIsAskedWithItsTeams(t *testing.T) {
 }
 
 func TestTeamsBeneath(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	for _, tm := range [][2]string{{"curriculum", ""}, {"early-grades", "curriculum"}, {"reading", "early-grades"}, {"assessment", ""}} {

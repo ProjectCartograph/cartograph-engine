@@ -14,6 +14,7 @@ import (
 // written after what it names, so nothing is opened again to be linked;
 // the links come from the flows.
 func TestThePlanForAnObjective(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
@@ -58,6 +59,7 @@ func TestThePlanForAnObjective(t *testing.T) {
 // Whoever works on an outcome is told what the gap closing it still lacks,
 // though both are drafts nobody has saved.
 func TestTheWorkAroundAnOutcome(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
@@ -92,6 +94,7 @@ func TestTheWorkAroundAnOutcome(t *testing.T) {
 // What a new thing names comes first, and the plan says which of those do
 // not exist yet, so they are defined before it (TAXONOMY.md D31).
 func TestThePlanSaysWhatIsMissing(t *testing.T) {
+	t.Parallel()
 	plan, err := newTestEngine(t).Plan(context.Background(), "KPI", "", "en")
 	if err != nil {
 		t.Fatal(err)

@@ -28,6 +28,7 @@ func programmeChecksByID(t *testing.T, e *engine.Engine, id string) map[string]e
 // on: a programme coordinating nothing is a heading. It is derived, so the
 // programme is never edited to gain a member.
 func TestProgrammeChecksMembership(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 
 	mustCommit(t, e, "Programme", "p1", "local", programmeYAML("p1", ""))
@@ -62,6 +63,7 @@ func TestProgrammeChecksMembership(t *testing.T) {
 // A programme is judged on beneficial change, so the checks ask whether
 // there is a change to judge and a way to judge it.
 func TestProgrammeChecksJudgeable(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	mustCommit(t, e, "Programme", "bare", "local", programmeYAML("bare", ""))
 	bare := programmeChecksByID(t, e, "bare")
@@ -115,6 +117,7 @@ func TestProgrammeChecksJudgeable(t *testing.T) {
 // A loop between programmes is the fact a programme's own definition
 // cannot show, and no check on a programme may ever refuse a save.
 func TestProgrammeChecksCycle(t *testing.T) {
+	t.Parallel()
 	ms := memory.NewManifestStore()
 	e := seededEngineOver(t, ms)
 	named := func(id, name, extra string) string {
@@ -158,6 +161,7 @@ func TestProgrammeChecksCycle(t *testing.T) {
 // A note is free text Cartograph does not read, but the shape still has to hold:
 // keyed by the step it belongs to, and nothing else.
 func TestNotesShape(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -190,6 +194,7 @@ func TestNotesShape(t *testing.T) {
 // PutVersion is not the path the app takes. A unit test on the store passed
 // while every real save left its draft behind.
 func TestCommitPromotesOnlyItsOwnDraft(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	e, cleanup := seededEngineWithVault(t, dir)
 	defer cleanup()

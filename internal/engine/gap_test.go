@@ -9,6 +9,7 @@ import (
 // named group, on this piece of work. They are different things, so the
 // problem cites the gap rather than restating it.
 func TestGapAndTheProblemsThatCiteIt(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	if _, err := e.Commit(ctx, "Gap", "gaps-emerge-early", []byte(

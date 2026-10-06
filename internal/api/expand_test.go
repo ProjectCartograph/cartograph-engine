@@ -11,6 +11,7 @@ import (
 // can summarise every row from one request; without it the summary stays
 // as it was.
 func TestListManifestsExpandSpec(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	commitTeam(t, base, "t1", "anyone")
 

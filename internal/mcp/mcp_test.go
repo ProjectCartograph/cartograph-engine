@@ -103,6 +103,7 @@ func callTool(t *testing.T, cs *sdk.ClientSession, name string, args map[string]
 // An agent reads, drafts in a change set of its own, and proposes it;
 // nothing it does makes the record or touches the shared drafts.
 func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
+	t.Parallel()
 	e, pr, cs := setup(t, nil)
 	ctx := context.Background()
 
@@ -188,6 +189,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 
 // An agent its person may not use is refused before it reads anything.
 func TestAnAgentNotAllowedIsRefused(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, refuseAgents{})
 	if res, text := callTool(t, cs, "get", map[string]any{"kind": "Team", "id": "t1"}); !res.IsError || !strings.Contains(text, "forbidden") {
 		t.Fatalf("an agent not allowed read: %v %s", res.IsError, text)
@@ -196,6 +198,7 @@ func TestAnAgentNotAllowedIsRefused(t *testing.T) {
 
 // Every kind with a flow has a prompt to guide a person through it.
 func TestGuidePrompts(t *testing.T) {
+	t.Parallel()
 	e, _, cs := setup(t, nil)
 	prompts, err := cs.ListPrompts(context.Background(), nil)
 	if err != nil {
@@ -207,6 +210,7 @@ func TestGuidePrompts(t *testing.T) {
 }
 
 func TestAClientIsNamedByItsUserAgent(t *testing.T) {
+	t.Parallel()
 	for ua, want := range map[string]string{
 		"claude-code/2.1.283 (external, cli)": "Claude Code",
 		"Cursor/1.4":                          "Cursor",
@@ -222,6 +226,7 @@ func TestAClientIsNamedByItsUserAgent(t *testing.T) {
 
 // A sub-agent names itself in _meta and is recorded beside its parent.
 func TestASubagentIsNamedBesideItsParent(t *testing.T) {
+	t.Parallel()
 	_, pr, cs := setup(t, nil)
 	res, err := cs.CallTool(context.Background(), &sdk.CallToolParams{Name: "get", Arguments: map[string]any{"kind": "Team", "id": "t1"},
 		Meta: sdk.Meta{mcp.SubagentMeta: "researcher"}})
@@ -238,6 +243,7 @@ func TestASubagentIsNamedBesideItsParent(t *testing.T) {
 // An agent edits the fields it names and no others, so what its person
 // changed in the meantime stays, and comes back to the agent to build on.
 func TestAnAgentsEditKeepsWhatItsPersonChanged(t *testing.T) {
+	t.Parallel()
 	e, _, cs := setup(t, nil)
 	ctx := context.Background()
 	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g9", "name": "Cut loss after picking"},
@@ -267,6 +273,7 @@ func TestAnAgentsEditKeepsWhatItsPersonChanged(t *testing.T) {
 // Saving one draft tells the agent what the work around it still lacks:
 // the gap its outcome closes has no indicator and no segments yet.
 func TestADraftHearsWhatTheWorkAroundItLacks(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	gap := map[string]any{"apiVersion": "cartograph/v1", "kind": "Gap", "metadata": map[string]any{"id": "gap-bruising", "name": "Bruised on arrival"},
 		"spec": map[string]any{"current": "One crate in five arrives bruised", "desired": "Fewer than one in fifty", "outcomes": []any{"o-sound"}}}
@@ -299,6 +306,7 @@ func TestADraftHearsWhatTheWorkAroundItLacks(t *testing.T) {
 // (TAXONOMY.md D28), so the outcome is finished before the gap that
 // names it.
 func TestTheAgentIsToldWhatComesNext(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	gap := map[string]any{"apiVersion": "cartograph/v1", "kind": "Gap", "metadata": map[string]any{"id": "gap-bruising", "name": "Bruised on arrival"},
 		"spec": map[string]any{"outcomes": []any{"o-sound"}}}
@@ -318,6 +326,7 @@ func TestTheAgentIsToldWhatComesNext(t *testing.T) {
 // With no work named, next says where the workspace stands in the order
 // of work: one that has only a team starts at its purpose.
 func TestANewWorkspaceStartsAtItsPurpose(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	res, text := callTool(t, cs, "next", map[string]any{})
 	if res.IsError || !strings.Contains(text, "Next: the purpose stage") || !strings.Contains(text, `"stages"`) || !strings.Contains(text, `"waiting"`) {
@@ -332,6 +341,7 @@ func TestANewWorkspaceStartsAtItsPurpose(t *testing.T) {
 // An agent reading a document maps it by definition: the taxonomy names
 // every kind with what plans call it instead.
 func TestTheTaxonomyMapsADocumentsWords(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	res, text := callTool(t, cs, "taxonomy", map[string]any{})
 	if res.IsError || !strings.Contains(text, `"Gap"`) || !strings.Contains(text, "problem statement") || !strings.Contains(text, "never by the word") {
@@ -344,6 +354,7 @@ func TestTheTaxonomyMapsADocumentsWords(t *testing.T) {
 // is refused, saying what to define first, and a placeholder is never an
 // agent's to leave.
 func TestAnAgentIsHeldToTheOrderOfWork(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	gap := map[string]any{"apiVersion": "cartograph/v1", "kind": "Gap", "metadata": map[string]any{"id": "gap-early", "name": "Bruised on arrival"},
 		"spec": map[string]any{"outcomes": []any{"o-missing"}}}
@@ -367,6 +378,7 @@ func TestAnAgentIsHeldToTheOrderOfWork(t *testing.T) {
 // what a save would refuse as an open check, so the agent hears it now
 // rather than at propose.
 func TestADraftsSchemaProblemsAreOpenChecks(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	draft := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t2"},
 		"spec": map[string]any{"description": "Drafted by an agent"}}
@@ -385,6 +397,7 @@ func TestADraftsSchemaProblemsAreOpenChecks(t *testing.T) {
 // checks and propose agree: checking one draft also lists what is open on
 // the change set's other drafts, and propose refuses on exactly those.
 func TestChecksAndProposeAgree(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	// A goal saved valid but unfinished (no horizon, not yet SMART), and a
 	// team drafted beside it whose own checks are all met.
@@ -419,6 +432,7 @@ func TestChecksAndProposeAgree(t *testing.T) {
 // with its items, and checks still reads the set's drafts until the
 // person accepts it.
 func TestAnAgentFollowsTheChangeSetItProposed(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	team := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t1", "name": "Team One"},
 		"spec": map[string]any{"description": "Drafted by an agent"}}
@@ -440,6 +454,7 @@ func TestAnAgentFollowsTheChangeSetItProposed(t *testing.T) {
 // A draft saved under the wrong id is discarded, not left to block the
 // change set; one another draft names is kept until that one changes.
 func TestAnAgentDiscardsADraft(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	bad := map[string]any{"apiVersion": "cartograph/v1", "kind": "Purpose", "metadata": map[string]any{"id": "purpose", "name": "Purpose"}, "spec": map[string]any{"organisation": "Example"}}
 	callTool(t, cs, "save_draft", map[string]any{"kind": "Purpose", "id": "purpose", "manifest": bad})
@@ -461,6 +476,7 @@ func TestAnAgentDiscardsADraft(t *testing.T) {
 // manifest naming a drafted team validates, and a guide's plan does not
 // call a drafted cycle missing.
 func TestReadingToolsSeeTheChangeSetsDrafts(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	team := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t-new", "name": "New team"}, "spec": map[string]any{"description": "Drafted"}}
 	cycle := map[string]any{"apiVersion": "cartograph/v1", "kind": "ReportingCycle", "metadata": map[string]any{"id": "quarterly", "name": "Quarterly"}, "spec": map[string]any{"periodMonths": 3, "startMonth": 1}}
@@ -495,6 +511,7 @@ func TestReadingToolsSeeTheChangeSetsDrafts(t *testing.T) {
 // as it goes: next passes it by, checks lists it apart, and propose
 // waives it with that reason.
 func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
+	t.Parallel()
 	e, _, cs := setup(t, nil)
 	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-sound", "name": "Sound fruit"},
 		"spec": map[string]any{"level": "goal", "objective": "Sound fruit"}}
@@ -547,6 +564,7 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 // so an agent porting a charter has nothing to judge that the discipline
 // has settled.
 func TestTheTaxonomySaysWhereEachPartOfADocumentGoes(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	res, text := callTool(t, cs, "taxonomy", map[string]any{})
 	if res.IsError {
@@ -561,6 +579,7 @@ func TestTheTaxonomySaysWhereEachPartOfADocumentGoes(t *testing.T) {
 
 // A register draft nothing names is pointed out before propose.
 func TestChecksListDraftsNothingNames(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	team := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t-lonely", "name": "Lonely team"}, "spec": map[string]any{"description": "Named by nothing"}}
 	callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t-lonely", "manifest": team})
@@ -573,6 +592,7 @@ func TestChecksListDraftsNothingNames(t *testing.T) {
 // it rather than telling the agent to propose; checks on the whole set
 // says one thing.
 func TestNextMovesOnFromADraftedStage(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	purpose := map[string]any{"apiVersion": "cartograph/v1", "kind": "Purpose", "metadata": map[string]any{"id": "default", "name": "Purpose"},
 		"spec": map[string]any{"organisation": "Example Cooperative", "vision": "Every member's produce reaches a buyer sound.", "mission": "We check, store and move produce for our members."}}
@@ -591,6 +611,7 @@ func TestNextMovesOnFromADraftedStage(t *testing.T) {
 // A second save of a whole manifest would undo every edit made to the
 // draft since; it is refused unless the agent means to replace it.
 func TestASaveDoesNotClobberADraft(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-once", "name": "Sound fruit"},
 		"spec": map[string]any{"level": "goal", "objective": "Sound fruit"}}
@@ -609,6 +630,7 @@ func TestASaveDoesNotClobberADraft(t *testing.T) {
 // A KPI's target left for the person leaves the aims it measures waiting
 // on the same fact: they are left with its reason, and propose takes it.
 func TestAnAimWaitsOnItsKPIsLeftFigure(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	callTool(t, cs, "start_work", map[string]any{"title": "A measured goal"})
 	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-graded", "name": "Graded fruit"},
@@ -642,6 +664,7 @@ func TestAnAimWaitsOnItsKPIsLeftFigure(t *testing.T) {
 // A vision and mission left for the person leave a goal's relevance
 // waiting on them, with their reason, once the goal says why it matters.
 func TestAGoalWaitsOnAVisionLeftOpen(t *testing.T) {
+	t.Parallel()
 	_, _, cs := setup(t, nil)
 	callTool(t, cs, "start_work", map[string]any{"title": "A goal without a vision"})
 	purpose := map[string]any{"apiVersion": "cartograph/v1", "kind": "Purpose", "metadata": map[string]any{"id": "default", "name": "Purpose"},

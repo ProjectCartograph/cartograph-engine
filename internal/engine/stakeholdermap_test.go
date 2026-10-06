@@ -12,6 +12,7 @@ import (
 // is declared once and used across many projects, while the power is
 // particular to each, so it is stored on the link. The map is that link.
 func TestStakeholderMapRules(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	// A map is about a piece of work, so there has to be some.
@@ -95,6 +96,7 @@ func TestStakeholderMapRules(t *testing.T) {
 // first document, so a file written the way every Kubernetes example is
 // written lost all but one of its manifests and said nothing.
 func TestImportReadsEveryDocumentInAFile(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -142,6 +144,7 @@ func TestImportReadsEveryDocumentInAFile(t *testing.T) {
 // A file holding exactly one manifest keeps the bytes it was written with,
 // so committing it does not reformat somebody's hand-written YAML.
 func TestSingleDocumentFileKeepsItsBytes(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -168,6 +171,7 @@ func TestSingleDocumentFileKeepsItsBytes(t *testing.T) {
 // project's risks have, minus the phase: a programme schedules nothing, so
 // a dependency on one lands by no phase of its own.
 func TestProgrammeRisks(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: prog-risk\n  name: Prog\nspec:\n" +
 		"  name: Prog\n  aim: {change: Make something better}\n  leadTeam: t1\n"

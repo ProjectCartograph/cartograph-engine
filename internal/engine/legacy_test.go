@@ -18,6 +18,7 @@ import (
 // and "functional" with a strategic parent is treated as I3.4a format and
 // left unchanged.
 func TestImportRewritesLegacyGoalLevel(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -63,6 +64,7 @@ func TestImportRewritesLegacyGoalLevel(t *testing.T) {
 // compatibility for KeyResult.baseline.asOf/target.by (on both a Goal's own
 // key results and a KPI) rewritten to baseline.date/target.date.
 func TestImportRewritesLegacyKeyResultAndKPIDates(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -113,6 +115,7 @@ func TestImportRewritesLegacyKeyResultAndKPIDates(t *testing.T) {
 // byte-identical in substance (re-marshaled only when a rewrite actually
 // happens).
 func TestImportDoesNotRewriteCurrentFieldNames(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -146,6 +149,7 @@ func mustWriteFile(t *testing.T, path, content string) {
 // a file still written that way keeps the sentence, as one criterion with
 // no verifier named yet.
 func TestImportRewritesLegacyDeliverableAcceptance(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -194,6 +198,7 @@ func TestImportRewritesLegacyDeliverableAcceptance(t *testing.T) {
 // appear without ever going through an import. Reading one gives the
 // current shape anyway; the file itself is left alone until the next save.
 func TestReadingAVaultFileInTheOldShapeGivesTheCurrentOne(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	dir := t.TempDir()
 
@@ -241,6 +246,7 @@ func TestReadingAVaultFileInTheOldShapeGivesTheCurrentOne(t *testing.T) {
 // not about the paragraphs of a document. A file still carrying the list
 // reads without it rather than failing validation.
 func TestReadingAFileWithPerSectionAccountabilityDropsIt(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	dir := t.TempDir()
 
@@ -287,6 +293,7 @@ func TestReadingAFileWithPerSectionAccountabilityDropsIt(t *testing.T) {
 // matches no role is kept as an external reference rather than dropped: a
 // confirmer is often a governance body the vault has no manifest for.
 func TestImportRewritesRoleTitlesToReferences(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -335,6 +342,7 @@ func TestImportRewritesRoleTitlesToReferences(t *testing.T) {
 // Ids that already exist are never reassigned: something may already point
 // at one, and a reference that moves is worse than no reference at all.
 func TestImportKeepsExistingLocalIDs(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -369,6 +377,7 @@ func TestImportKeepsExistingLocalIDs(t *testing.T) {
 // into metadata.name on read, the metadata's winning where both are set,
 // and the name is said once from then on.
 func TestSpecNameIsFoldedIntoMetadata(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Team", "t9", "local", "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t9\n  name: Quality team\nspec:\n  name: Old quality team\n")
@@ -384,6 +393,7 @@ func TestSpecNameIsFoldedIntoMetadata(t *testing.T) {
 // A KPI and a gap saved with one data source read as lists of them, and a
 // KPI saved the old way still saves (2.7.0, ADR 0021).
 func TestSingleSourcesReadAsLists(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	if _, err := e.ImportDir(ctx, exampleDir(t), "seed", "seed"); err != nil {

@@ -12,6 +12,7 @@ import (
 // enough to read at a glance, naming no standard, field or identifier,
 // and an example. The glossary lists them in the order of work.
 func TestTheGlossaryDefinesEveryWordPlainly(t *testing.T) {
+	t.Parallel()
 	g, err := newTestEngine(t).Glossary("en")
 	if err != nil {
 		t.Fatal(err)

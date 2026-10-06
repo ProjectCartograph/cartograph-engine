@@ -10,6 +10,7 @@ import (
 // A budget is declared once and referenced, so two projects drawing on the
 // same budget are visibly drawing on the same budget.
 func TestFundingDrawsOnADeclaredBudget(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -44,6 +45,7 @@ func TestFundingDrawsOnADeclaredBudget(t *testing.T) {
 // Prose cannot become a reference without inventing a manifest, so it is
 // reported rather than guessed at, and the amount survives.
 func TestLegacyFundingReportsTheProseItCannotResolve(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, "Team", "t1.yaml"),
 		"apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n")

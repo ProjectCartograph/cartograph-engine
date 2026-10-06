@@ -8,6 +8,7 @@ import (
 // Attainable catches a target that cannot be reached as written: one that
 // moves against the measure's direction, or is dated before today's figure.
 func TestAttainableCatchesTargetsThatCannotBeReached(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	commit := func(id, krs string) {
@@ -32,6 +33,7 @@ func TestAttainableCatchesTargetsThatCannotBeReached(t *testing.T) {
 // A horizon is inherited from the aim above; a child's own horizon must sit
 // inside it, and Time-bound reads targets against it.
 func TestHorizonInheritedAndChecked(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	commit := func(id, y string) {

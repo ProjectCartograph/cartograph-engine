@@ -9,6 +9,7 @@ import (
 // agree on it. These pin the rules on real kinds: identified lists are
 // keyed, prose is text, and ids, references and choices are scalars.
 func TestShapeFollowsTheSchema(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 
 	goal := e.Shape("Goal")

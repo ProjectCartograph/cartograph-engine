@@ -13,6 +13,7 @@ import (
 // success criterion's owner and confirmer — became references on
 // 2026-09-28, so renaming a role can no longer leave stale copies behind.
 func TestProjectReferenceForms(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	// A project with two named roles to point at.
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-ref\n  name: Ref\nspec:\n  team: t1\n" +
@@ -65,6 +66,7 @@ func TestProjectReferenceForms(t *testing.T) {
 // exists: before it, a row typed dependency was usually a risk sentence
 // filed under the wrong word.
 func TestProjectDependencyEdge(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-dep\n  name: Dep\nspec:\n  team: t1\n" +
 		"  timeline:\n    start: \"2026-01\"\n    phases:\n      - {id: design, name: Design, months: 3}\n" +
@@ -101,6 +103,7 @@ func TestProjectDependencyEdge(t *testing.T) {
 // The check half: a dependency with no edge is reported, and edges that
 // leave Cartograph are counted rather than faulted.
 func TestProjectDependencyChecks(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-depchk\n  name: DepChk\nspec:\n  team: t1\n" +
 		"  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n" +

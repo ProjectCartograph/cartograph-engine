@@ -14,6 +14,7 @@ import (
 // change, the records it creates are there too, and each is marked
 // (docs/adr/0024). Without it, the record reads as it is.
 func TestTheWorkspaceReadsAsIfAChangeSetWereAccepted(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	commitTeam(t, base, "t1", "anyone")
 	resp := doJSON(t, http.MethodPost, base+"/changesets", map[string]string{"title": "Two teams"}, nil)

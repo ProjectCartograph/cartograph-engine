@@ -8,6 +8,7 @@ import (
 // TAXONOMY.md D18: the check that would have caught the TTNLA answer
 // sheets before they were printed.
 func TestTurnaroundReadFromHandCapturedSourceIsAdvised(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	source := func(capture string) string {
@@ -46,6 +47,7 @@ func TestTurnaroundReadFromHandCapturedSourceIsAdvised(t *testing.T) {
 // The same target, once a component is the work that changes how records
 // get in, is no longer advised: the component carries it.
 func TestComponentThatChangesCaptureClearsTheTurnaroundAdvice(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "DataSource", "scripts", "p1", "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: scripts\n  name: Answer scripts\nspec:\n  name: Answer scripts\n  category: paperRecord\n  team: t1\n  capture: byHand\n")

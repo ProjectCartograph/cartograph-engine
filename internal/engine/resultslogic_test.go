@@ -12,6 +12,7 @@ import (
 // A pathway is the programme's theory of how the change happens, and the
 // one thing it cannot be is a loop.
 func TestProgrammePathway(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -68,6 +69,7 @@ func TestProgrammePathway(t *testing.T) {
 
 // A success criterion may name the outputs behind it, and needs none.
 func TestSuccessCriterionLinksAreOptional(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -109,6 +111,7 @@ func TestSuccessCriterionLinksAreOptional(t *testing.T) {
 
 // An assumption is not a risk, and the value that said otherwise is gone.
 func TestAssumptionIsNotARiskType(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	_, err := e.Commit(ctx, "Project", "old-risk", []byte(projectYAML("old-risk",
@@ -125,6 +128,7 @@ func TestAssumptionIsNotARiskType(t *testing.T) {
 // has to survive the list: reading it off the manifest behind every row
 // is what the summary exists to avoid.
 func TestLabelsReachTheList(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -155,6 +159,7 @@ func TestLabelsReachTheList(t *testing.T) {
 // a file still holding the composed sentence is read into those parts
 // rather than refused: a vault is a directory people also edit by hand.
 func TestStoredSentencesBecomeParts(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -190,6 +195,7 @@ func TestStoredSentencesBecomeParts(t *testing.T) {
 // opened without its generated index lists nothing, and the units on disk
 // are still the vault's own.
 func TestSeedingNeverOverwritesAUnitThatExists(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -213,6 +219,7 @@ func TestSeedingNeverOverwritesAUnitThatExists(t *testing.T) {
 // The charter is the document a definition adds up to, and a programme's
 // is the same document a project's is with its own sections in it.
 func TestProgrammeCharterReadsTheDefinition(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 

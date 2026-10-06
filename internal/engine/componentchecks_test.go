@@ -11,6 +11,7 @@ import (
 // sponsor and budget.
 
 func TestComponentTakesItsParentsGoalsSponsorAndBudget(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "parent", "p1", projectYAML("parent",
@@ -33,6 +34,7 @@ func TestComponentTakesItsParentsGoalsSponsorAndBudget(t *testing.T) {
 }
 
 func TestComponentWithItsOwnSponsorIsAProgrammeInTheMaking(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Resource", "r2", "local", "apiVersion: cartograph/v1\nkind: Resource\nmetadata:\n  id: r2\n  name: Resource Two\nspec:\n  name: Resource Two\n  category: personRole\n")
@@ -56,6 +58,7 @@ func TestComponentWithItsOwnSponsorIsAProgrammeInTheMaking(t *testing.T) {
 }
 
 func TestComponentNamesNoProgrammesAndGoesOneLevelDeep(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Programme", "prog", "p1", "apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: prog\n  name: Prog\nspec:\n  name: Prog\n  leadTeam: t1\n  aim: {change: Things change}\n  goals: [g1-f]\n")
@@ -78,6 +81,7 @@ func TestComponentNamesNoProgrammesAndGoesOneLevelDeep(t *testing.T) {
 }
 
 func TestParentWithComponentsNeedsSomethingToAddUpTo(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "parent", "p1", projectYAML("parent", ""))
@@ -104,6 +108,7 @@ func TestParentWithComponentsNeedsSomethingToAddUpTo(t *testing.T) {
 // parent's mandate, moving the parent's KPIs: none of the three is asked
 // of it again.
 func TestComponentLandsWithItsParent(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "parent", "p1", projectYAML("parent", ""))

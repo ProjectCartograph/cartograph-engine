@@ -9,6 +9,7 @@ import (
 )
 
 func TestOperationChecksAdviseStepByStep(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Operation", "svc", "p1", "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: svc\n  name: Service\nspec:\n  name: Service\n  purpose: Keeps things running\n  team: t1\n")
@@ -39,6 +40,7 @@ func TestOperationChecksAdviseStepByStep(t *testing.T) {
 }
 
 func TestAnOperationsServiceOwnerIsARole(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Resource", "svc-lead", "p1", "apiVersion: cartograph/v1\nkind: Resource\nmetadata:\n  id: svc-lead\n  name: Service lead\nspec:\n  name: Service lead\n  category: personRole\n")
@@ -58,6 +60,7 @@ func TestAnOperationsServiceOwnerIsARole(t *testing.T) {
 // running once in use (TAXONOMY.md D30): a planned one asks for that
 // project; one without a status is running, as every older one is.
 func TestAServiceIsPlannedUntilItRuns(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	svc := func(id, status string) string {
@@ -103,6 +106,7 @@ func TestAServiceIsPlannedUntilItRuns(t *testing.T) {
 // the project closes, until the service names its funding (TAXONOMY.md
 // D39). A running service is not asked.
 func TestAPlannedServiceNamesWhatPaysToRunIt(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	svc := "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: svc\n  name: svc\nspec:\n  purpose: Check deliveries\n  team: t1\n  status: planned\n"

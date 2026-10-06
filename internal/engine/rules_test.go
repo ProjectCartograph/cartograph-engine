@@ -5,6 +5,7 @@ import (
 )
 
 func TestGoalParentPresenceByLevel(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{

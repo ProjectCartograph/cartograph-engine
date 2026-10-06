@@ -81,6 +81,7 @@ func doJSON(t *testing.T, method, url string, body any, headers map[string]strin
 }
 
 func TestHealth(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	resp, err := http.Get(base + "/health")
 	if err != nil {
@@ -96,6 +97,7 @@ func TestHealth(t *testing.T) {
 }
 
 func TestKindsAndSchema(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 
 	resp, err := http.Get(base + "/kinds")
@@ -143,6 +145,7 @@ func commitTeam(t *testing.T, base, id, actor string) apigen.Version {
 }
 
 func TestPutManifestAndGet(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	v := commitTeam(t, base, "t1", "anyone")
 	if v.Number != 1 {
@@ -166,6 +169,7 @@ func TestPutManifestAndGet(t *testing.T) {
 }
 
 func TestGetManifest404(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	resp, err := http.Get(base + "/manifests/Team/does-not-exist")
 	if err != nil {
@@ -181,6 +185,7 @@ func TestGetManifest404(t *testing.T) {
 }
 
 func TestPutManifest422Shape(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	commitTeam(t, base, "t1", "p1") // first commit bootstraps
 
@@ -207,6 +212,7 @@ func TestPutManifest422Shape(t *testing.T) {
 }
 
 func TestPutManifestCreateThenUpdateSameCall(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	v1 := commitTeam(t, base, "t1", "anyone") // no current version yet: this is a create
 	if v1.Number != 1 {
@@ -227,6 +233,7 @@ func TestPutManifestCreateThenUpdateSameCall(t *testing.T) {
 }
 
 func TestPutManifestIDMismatch409(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	resp := doJSON(t, http.MethodPut, base+"/manifests/Team/some-other-id",
 		apigen.WriteRequest{Yaml: strPtr(teamYAML), Reason: "test"},
@@ -237,6 +244,7 @@ func TestPutManifestIDMismatch409(t *testing.T) {
 }
 
 func TestPutManifestNeitherYAMLNorManifest400(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	resp := doJSON(t, http.MethodPut, base+"/manifests/Team/t1",
 		apigen.WriteRequest{Reason: "test"},
@@ -247,6 +255,7 @@ func TestPutManifestNeitherYAMLNorManifest400(t *testing.T) {
 }
 
 func TestPutManifestUnknownKind404(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	resp := doJSON(t, http.MethodPut, base+"/manifests/NotAKind/x",
 		apigen.WriteRequest{Yaml: strPtr(teamYAML), Reason: "test"},
@@ -260,6 +269,7 @@ func TestPutManifestUnknownKind404(t *testing.T) {
 // entirely (checkActor's own doc comment explains why), so a write carrying any
 // actor is accepted unconditionally.
 func TestActorAccepted(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	commitTeam(t, base, "t1", "p1")
 
@@ -274,6 +284,7 @@ func TestActorAccepted(t *testing.T) {
 }
 
 func TestListManifestsNeverNull(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	resp, err := http.Get(base + "/manifests/Team")
 	if err != nil {
@@ -296,6 +307,7 @@ func TestListManifestsNeverNull(t *testing.T) {
 }
 
 func TestListManifestsQueryAndRefFilter(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	commitTeam(t, base, "curriculum-team", "anyone")
 
@@ -334,6 +346,7 @@ func TestListManifestsQueryAndRefFilter(t *testing.T) {
 }
 
 func TestListManifestsPaginationEnvelope(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	ids := []string{"team-a", "team-b", "team-c", "team-d", "team-e"}
 	for _, id := range ids {
@@ -399,6 +412,7 @@ func TestListManifestsPaginationEnvelope(t *testing.T) {
 }
 
 func TestValidateEndpoint(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	resp := doJSON(t, http.MethodPost, base+"/validate/Team",
 		apigen.ValidateRequest{Yaml: strPtr(teamYAML)}, nil)
@@ -422,6 +436,7 @@ func TestValidateEndpoint(t *testing.T) {
 }
 
 func TestVersionsDiffAndReferences(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	commitTeam(t, base, "t1", "anyone")
 	yaml2 := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One Renamed\nspec: {}\n"
@@ -471,6 +486,7 @@ func TestVersionsDiffAndReferences(t *testing.T) {
 // from the tree); referenced is refused (422, naming what references it,
 // goal survives); a missing goal is 404.
 func TestDeleteGoalAPI(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 
 	pillar := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g-pillar\n  name: A Pillar\nspec:\n  level: goal\n"
@@ -579,6 +595,7 @@ func TestGetVault(t *testing.T) {
 
 // TestPutWorkingOnExcludedProject tests that PutWorking on an excluded manifest returns 409.
 func TestPutWorkingOnExcludedProject(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	ctx := testContext()
 	v, err := openVault(ctx, tmpDir)
@@ -714,6 +731,7 @@ spec:
 // map and re-encoding sorted it alphabetically, which put a Gap's "what is
 // wrong" last instead of first.
 func TestSchemaKeepsItsPropertyOrder(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	resp, err := http.Get(base + "/schemas/Gap")
 	if err != nil {
@@ -751,6 +769,7 @@ func TestSchemaKeepsItsPropertyOrder(t *testing.T) {
 // refs: one write for the batch, which keeps the work O(N + M) rather than
 // O(N * M).
 func TestApplyManyRefsWritesTheVaultOnce(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "Team"), 0o755); err != nil {
 		t.Fatal(err)
@@ -836,6 +855,7 @@ func TestApplyManyRefsWritesTheVaultOnce(t *testing.T) {
 // The guide people and agents both read: an outcome's words, its gap
 // link, and a 404 for a kind with no guide.
 func TestGuides(t *testing.T) {
+	t.Parallel()
 	srv, _ := newTestServer(t)
 	resp := doJSON(t, "GET", srv.URL+"/guides/Goal?level=outcome", nil, nil)
 	if resp.StatusCode != http.StatusOK {
@@ -854,6 +874,7 @@ func TestGuides(t *testing.T) {
 // An empty workspace starts at its purpose, and nothing after it is ready
 // before what it names has a record (TAXONOMY.md D28).
 func TestTheOrderOfAnEmptyWorkspace(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	resp := doJSON(t, http.MethodGet, base+"/order", nil, nil)
 	if resp.StatusCode != http.StatusOK {
@@ -881,6 +902,7 @@ func TestTheOrderOfAnEmptyWorkspace(t *testing.T) {
 // The glossary defines every word, in the order of work, with an example
 // (TAXONOMY.md D29).
 func TestTheGlossary(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	resp := doJSON(t, http.MethodGet, base+"/glossary", nil, nil)
 	if resp.StatusCode != http.StatusOK {
@@ -895,6 +917,7 @@ func TestTheGlossary(t *testing.T) {
 // An outcome left unplaced reaches the interface in the tree's unplaced
 // list, never as a goal (TAXONOMY.md D35).
 func TestGoalTreeListsUnplacedAPI(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	cool := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: kept-cool\n  name: Produce is kept cool\n  pending:\n    - {path: /spec/parent, kind: Goal, name: Not placed yet}\nspec:\n  level: outcome\n"
 	resp := doJSON(t, http.MethodPut, base+"/manifests/Goal/kept-cool", apigen.WriteRequest{Yaml: &cool, Reason: "seed"}, map[string]string{"X-Cartograph-Actor": "local"})
@@ -919,6 +942,7 @@ func TestGoalTreeListsUnplacedAPI(t *testing.T) {
 // A manifest's JSON keeps its alias and its placeholders: an edit made
 // from that copy and saved back must not drop them (TAXONOMY.md D31).
 func TestManifestJSONKeepsAliasAndPlaceholders(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	cool := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: kept-cool\n  name: Produce is kept cool\n  alias: cool-chain\n  pending:\n    - {path: /spec/parent, kind: Goal, name: Cut loss after picking, note: ask the depots}\nspec:\n  level: outcome\n"
 	resp := doJSON(t, http.MethodPut, base+"/manifests/Goal/kept-cool", apigen.WriteRequest{Yaml: &cool, Reason: "seed"}, map[string]string{"X-Cartograph-Actor": "local"})
@@ -946,6 +970,7 @@ func TestManifestJSONKeepsAliasAndPlaceholders(t *testing.T) {
 // The organisation's name is kept on its purpose and read with the
 // settings, beside the vision and mission (TAXONOMY.md D24, D37).
 func TestSettingsReadTheOrganisationsName(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	purpose := "apiVersion: cartograph/v1\nkind: Purpose\nmetadata:\n  id: default\n  name: Purpose\nspec:\n  organisation: Riverside Growers\n  vision: Every member family earns a fair living.\n"
 	resp := doJSON(t, http.MethodPut, base+"/manifests/Purpose/default", apigen.WriteRequest{Yaml: &purpose, Reason: "seed"}, map[string]string{"X-Cartograph-Actor": "local"})

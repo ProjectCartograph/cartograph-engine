@@ -10,6 +10,7 @@ import (
 // A cycle of named periods is laid out by the engine, labelled with each
 // term's year and the day its reading is due (TAXONOMY.md D40).
 func TestCyclePeriodsAreDerivedByTheEngine(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	y := "apiVersion: cartograph/v1\nkind: ReportingCycle\nmetadata:\n  id: termly\n  name: Termly\nspec:\n  dueOffsetDays: 14\n  periods:\n    - {name: Term I, endMonth: 12}\n    - {name: Term II, endMonth: 4}\n    - {name: Term III, endMonth: 7}\n"
 	resp := doJSON(t, http.MethodPut, base+"/manifests/ReportingCycle/termly", apigen.WriteRequest{Yaml: &y, Reason: "seed"}, nil)

@@ -12,6 +12,7 @@ import (
 // Setting a field to null removes it, the next index of a list adds an
 // item, and an index further out is refused with the way to add one.
 func TestAnEditReadsNullAndTheNextIndexAsMeant(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
 	edit := func(set map[string]any) (string, error) {
@@ -38,6 +39,7 @@ func TestAnEditReadsNullAndTheNextIndexAsMeant(t *testing.T) {
 // A gap's measuredBy, read from older manifests and never written, is
 // refused in a draft with the fields to use instead.
 func TestADraftRefusesAGapsMeasuredBy(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
 	_, err := e.EditInChangeSet(agent, "", "Gap", "gap-x", map[string]any{"/metadata/name": "Gap X", "/spec/measuredBy": "kpi-x"}, nil)
@@ -50,6 +52,7 @@ func TestADraftRefusesAGapsMeasuredBy(t *testing.T) {
 // An agent names a role where one is asked for, never a team, and is told
 // what to write instead.
 func TestAnAgentNamesARoleWhereOneIsAsked(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
 	_, err := e.EditInChangeSet(agent, "", "Project", "pr", map[string]any{

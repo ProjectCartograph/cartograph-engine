@@ -14,6 +14,7 @@ import (
 // writing the later thing first and coming back to finish the earlier
 // one, which is the loop the order exists to remove.
 func TestEveryReferenceInTheContractPointsUpstream(t *testing.T) {
+	t.Parallel()
 	ss, err := loadSchemas()
 	if err != nil {
 		t.Fatal(err)
@@ -48,6 +49,7 @@ func TestEveryReferenceInTheContractPointsUpstream(t *testing.T) {
 // Each stage waits only on stages before it, so the order can be walked
 // once from the top.
 func TestEveryStageWaitsOnlyOnStagesBeforeIt(t *testing.T) {
+	t.Parallel()
 	at := map[string]int{}
 	for i, s := range stages {
 		for _, a := range s.After {

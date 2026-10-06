@@ -13,6 +13,7 @@ import (
 // The rule had no test at all while it was the one thing that could stop a
 // definition being handed off.
 func TestProjectProgrammeMembership(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 

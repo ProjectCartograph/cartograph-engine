@@ -35,6 +35,7 @@ func readingValues(t *testing.T, e *engine.Engine, at time.Time) string {
 // Recording a reading sends one item, commits a version, and keeps the
 // series in key order; recording a period again restates it.
 func TestAppendSeriesItem(t *testing.T) {
+	t.Parallel()
 	e := seedReadings(t)
 	ctx := context.Background()
 	v, err := e.AppendSeriesItem(ctx, "KPIReadings", "k1-readings", "readings", map[string]any{"period": "2026-09", "value": 66}, "ada@example.org", "Q3 reading")
@@ -102,6 +103,7 @@ func TestAppendSeriesItem(t *testing.T) {
 
 // A save records only the items it changes.
 func TestSaveRecordsOnlyChangedItems(t *testing.T) {
+	t.Parallel()
 	e := seedReadings(t)
 	ctx := context.Background()
 	before, _ := e.Events(ctx, 0, 1000)

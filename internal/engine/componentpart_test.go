@@ -9,6 +9,7 @@ import (
 // success criteria, service and service owner are its parent's, so none
 // of them is asked of it.
 func TestAComponentIsAskedOnlyForItsOwnPart(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "parent", "p1", projectYAML("parent", ""))
@@ -34,6 +35,7 @@ func TestAComponentIsAskedOnlyForItsOwnPart(t *testing.T) {
 // A component's objective is measured by its parent's indicators, so it
 // is not asked for key results of its own; one it gives is still checked.
 func TestAComponentObjectiveNeedsNoKeyResults(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "parent", "p1", projectYAML("parent", ""))

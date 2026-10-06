@@ -16,6 +16,7 @@ import (
 // by naming an earlier one waits for that later one. Nobody has to tell an
 // agent this; the work says it.
 func TestTheOrderOfWork(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {

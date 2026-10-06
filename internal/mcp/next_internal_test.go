@@ -14,6 +14,7 @@ import (
 // earlier stage has no record yet (no KPI to measure the gap): next names
 // that stage first, and the task after it.
 func TestATaskWaitsForTheStageThatSettlesIt(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	ms := memory.NewManifestStore()
 	e, err := engine.New(ms, memory.NewOperationalStore().LogTo(ms), engine.WithCodec(codecyaml.New()))

@@ -9,6 +9,7 @@ import (
 )
 
 func TestBootstrapActorAccepted(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	y := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  name: Team One\n"
@@ -25,6 +26,7 @@ func TestBootstrapActorAccepted(t *testing.T) {
 // single-person application, so the interface always sends the literal actor
 // "local"; checkActor accepts any actor unconditionally.
 func TestActorAccepted(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t) // commits a Team
 	ctx := context.Background()
 	y := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t9\n  name: Team Nine\nspec:\n  name: Team Nine\n"
@@ -34,6 +36,7 @@ func TestActorAccepted(t *testing.T) {
 }
 
 func TestCommitRejectsIDMismatch(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	y := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t9\n  name: Team Nine\nspec:\n  name: Team Nine\n"
@@ -47,6 +50,7 @@ func TestCommitRejectsIDMismatch(t *testing.T) {
 }
 
 func TestCommitIncrementsVersion(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	y1 := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t9\n  name: Team Nine\nspec:\n  name: Team Nine\n"
@@ -84,6 +88,7 @@ func TestCommitIncrementsVersion(t *testing.T) {
 }
 
 func TestGetUnknownKindAndNotFound(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	if _, err := e.Get(ctx, "Widget", "x"); !errors.Is(err, engine.ErrUnknownKind) {
@@ -95,6 +100,7 @@ func TestGetUnknownKindAndNotFound(t *testing.T) {
 }
 
 func TestKindsListsCountsAfterCommit(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	infos := e.Kinds()
 	found := map[string]int{}
@@ -113,6 +119,7 @@ func TestKindsListsCountsAfterCommit(t *testing.T) {
 }
 
 func TestListFilterByQueryAndReference(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -149,6 +156,7 @@ func TestListFilterByQueryAndReference(t *testing.T) {
 // I3a.1 (2026-09-18): List(includeDrafts=true) surfaces a Project that has
 // only ever been saved as a draft, never committed.
 func TestReferences(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 

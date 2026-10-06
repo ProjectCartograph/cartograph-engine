@@ -12,6 +12,7 @@ import (
 // A KPI's readings are their own file, and the one thing the schema cannot
 // say about them is that a period may be read once.
 func TestKPIReadings(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -66,6 +67,7 @@ func TestKPIReadings(t *testing.T) {
 // have to be the same set, or a first run picks a unit the example vault
 // cannot resolve.
 func TestExampleShipsTheStandardUnits(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join(exampleDir(t), "Unit")
 	entries, err := os.ReadDir(dir)
 	if err != nil {

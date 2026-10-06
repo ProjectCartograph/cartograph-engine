@@ -14,6 +14,7 @@ import (
 // Goal and Project free text.
 
 func TestProjectMandate(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-mandate\n  name: Project Mandate\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"
 
@@ -47,6 +48,7 @@ func TestProjectMandate(t *testing.T) {
 }
 
 func TestProgrammeAndOperationMandate(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{
@@ -69,6 +71,7 @@ func TestProgrammeAndOperationMandate(t *testing.T) {
 }
 
 func TestProjectFunding(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-funding\n  name: Project Funding\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"
 
@@ -105,6 +108,7 @@ func TestProjectFunding(t *testing.T) {
 }
 
 func TestProjectRiskTypeAndEscalate(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-risk\n  name: Project Risk\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"
 
@@ -137,6 +141,7 @@ func TestProjectRiskTypeAndEscalate(t *testing.T) {
 }
 
 func TestDataUsePersonalData(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-data\n  name: Project Data\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"
 
@@ -161,6 +166,7 @@ func TestDataUsePersonalData(t *testing.T) {
 }
 
 func TestOperationDataUsePersonalData(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{
@@ -178,6 +184,7 @@ func TestOperationDataUsePersonalData(t *testing.T) {
 // qualitative (DESIGN_RULES.md), so the count fields the first
 // draft of the kind carried are refused outright rather than ignored.
 func TestProjectBeneficiaries(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-beneficiaries\n  name: Project Beneficiaries\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"
 
@@ -210,6 +217,7 @@ func TestProjectBeneficiaries(t *testing.T) {
 }
 
 func TestI01MaxLengths(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	projectBase := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-caps\n  name: Project Caps\nspec:\n  team: t1\n"
 	minimalSummary := "  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"

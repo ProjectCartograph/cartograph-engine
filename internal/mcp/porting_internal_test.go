@@ -12,6 +12,7 @@ import (
 // schema holds: an agent told to write a field that does not exist
 // has to stop and read the schema.
 func TestThePortingMapNamesOnlyRealFields(t *testing.T) {
+	t.Parallel()
 	named := regexp.MustCompile(`\b([A-Z][A-Za-z]+)\.([a-z][A-Za-z]+)`)
 	n := 0
 	for _, r := range porting {

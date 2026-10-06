@@ -26,6 +26,7 @@ func exampleDir(t *testing.T) string {
 }
 
 func TestImportExampleInstance(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 
@@ -85,6 +86,7 @@ func TestImportExampleInstance(t *testing.T) {
 }
 
 func TestExportRoundTripIsReproducible(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 	src := exampleDir(t)
@@ -151,6 +153,7 @@ func compareDirs(t *testing.T, a, b string) {
 }
 
 func TestImportRejectsWholeBatchOnOneBadFile(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	ctx := context.Background()
 

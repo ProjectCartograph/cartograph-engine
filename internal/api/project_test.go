@@ -90,6 +90,7 @@ func getChecks(t *testing.T, base, id string) apigen.ProjectChecks {
 }
 
 func TestProjectStateEndpoints(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	seedProjectFixtures(t, base)
 
@@ -131,6 +132,7 @@ func TestProjectStateEndpoints(t *testing.T) {
 }
 
 func TestProjectChecksEndpoint(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	seedProjectFixtures(t, base)
 
@@ -158,6 +160,7 @@ func TestProjectChecksEndpoint(t *testing.T) {
 // project's other sections, so the endpoint that used to offer proposed
 // lines is gone and asking for it is a plain 404.
 func TestProposedCriteriaEndpointIsGone(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	seedProjectFixtures(t, base)
 
@@ -199,6 +202,7 @@ func newVaultTestServer(t *testing.T) (*httptest.Server, string) {
 
 // I3.3c.3: Handoff API tests
 func TestProjectHandoffEndpoint(t *testing.T) {
+	t.Parallel()
 	_, base := newVaultTestServer(t)
 	seedProjectFixtures(t, base)
 

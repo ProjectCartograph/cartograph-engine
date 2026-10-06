@@ -14,6 +14,7 @@ import (
 // outcome is aligned, a drafted programme has the drafted project as a
 // component, and a drafted planned service is set up by it.
 func TestChecksReadTheDraftsInTheirChangeSet(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
 	save := func(kind, id, text string) {
@@ -70,6 +71,7 @@ func TestChecksReadTheDraftsInTheirChangeSet(t *testing.T) {
 // A goal drafted beside the purpose is judged relevant against it, not
 // told there is no vision or mission to judge it by.
 func TestAGoalIsJudgedAgainstADraftedPurpose(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
 	for _, d := range []struct{ kind, id, text string }{

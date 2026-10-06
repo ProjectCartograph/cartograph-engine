@@ -33,6 +33,7 @@ func grantsEngine(t *testing.T) *engine.Engine {
 // agent beside them, until it is revoked, and reusing one of its codes
 // revokes it.
 func TestAgentGrants(t *testing.T) {
+	t.Parallel()
 	e := grantsEngine(t)
 	lee, ada, noor := as("lee@example.org", "g-early"), as("ada@example.org", "g-admins"), as("noor@example.org")
 	if _, err := e.GrantAgent(noor, "Claude", 0); !errors.Is(err, auth.ErrForbidden) {

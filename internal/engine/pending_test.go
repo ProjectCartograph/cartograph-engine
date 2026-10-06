@@ -12,6 +12,7 @@ import (
 // say what it waits on, on the step that holds the field, and a handoff
 // still waits for the field itself.
 func TestAPlaceholderHoldsTheReferenceUntilItIsMade(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	project := func(id, meta, spec string) []byte {

@@ -16,6 +16,7 @@ import (
 
 // TestHandoffRefusedWhileCheckBlocks: handoff rejected when blocking checks exist.
 func TestHandoffRefusedWhileCheckBlocks(t *testing.T) {
+	t.Parallel()
 	tmpDir, cleanup := tempVault(t)
 	defer cleanup()
 	e, closeE := seededEngineWithVault(t, tmpDir)
@@ -45,6 +46,7 @@ func TestHandoffRefusedWhileCheckBlocks(t *testing.T) {
 
 // TestHandoffRefusedWithNoSnapshot: handoff rejected when no versioned snapshot exists.
 func TestHandoffRefusedWithNoSnapshot(t *testing.T) {
+	t.Parallel()
 	tmpDir, cleanup := tempVault(t)
 	defer cleanup()
 	e, closeE := seededEngineWithVault(t, tmpDir)
@@ -91,6 +93,7 @@ spec:
 
 // TestHandoffSuccessWritesFiles: handoff succeeds and writes files to vault.
 func TestHandoffSuccessWritesFiles(t *testing.T) {
+	t.Parallel()
 	tmpDir, cleanup := tempVault(t)
 	defer cleanup()
 	e, closeE := seededEngineWithVault(t, tmpDir)
@@ -150,6 +153,7 @@ func TestHandoffSuccessWritesFiles(t *testing.T) {
 
 // TestHandoffSecondAtSameSnapshotRefused: second handoff at same snapshot is refused.
 func TestHandoffSecondAtSameSnapshotRefused(t *testing.T) {
+	t.Parallel()
 	tmpDir, cleanup := tempVault(t)
 	defer cleanup()
 	e, closeE := seededEngineWithVault(t, tmpDir)
@@ -199,6 +203,7 @@ func TestHandoffSecondAtSameSnapshotRefused(t *testing.T) {
 
 // TestHandoffAfterNewSnapshotSucceeds: handoff succeeds after creating a new snapshot.
 func TestHandoffAfterNewSnapshotSucceeds(t *testing.T) {
+	t.Parallel()
 	tmpDir, cleanup := tempVault(t)
 	defer cleanup()
 	e, closeE := seededEngineWithVault(t, tmpDir)
@@ -247,6 +252,7 @@ func TestHandoffAfterNewSnapshotSucceeds(t *testing.T) {
 
 // TestHandoffDeterminism: output differs only in snapshot number/date when content unchanged.
 func TestHandoffDeterminism(t *testing.T) {
+	t.Parallel()
 	tmpDir, cleanup := tempVault(t)
 	defer cleanup()
 	e, closeE := seededEngineWithVault(t, tmpDir)

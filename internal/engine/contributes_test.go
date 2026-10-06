@@ -8,6 +8,7 @@ import (
 // TAXONOMY.md D24: an outcome says what else it leads to, and why; a gap
 // names the outcome that would close it.
 func TestOutcomeContributesToAnotherObjectiveWithAReason(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Goal", "g2-s", "local", "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g2-s\n  name: Second objective\nspec:\n  level: objective\n  parent: g1\n  objective: Improve something else\n")
@@ -41,6 +42,7 @@ func TestOutcomeContributesToAnotherObjectiveWithAReason(t *testing.T) {
 }
 
 func TestGapNamesTheOutcomeThatWouldCloseIt(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	for _, tc := range []struct{ spec, want string }{

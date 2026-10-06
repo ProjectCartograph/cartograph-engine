@@ -114,6 +114,7 @@ func runSchemaCases(t *testing.T, e *engine.Engine, cases []schemaCase) {
 }
 
 func TestTeamSchema(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "Team", yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\n  name: Team Two\nspec:\n  name: Team Two\n  parent: t1\n"},
@@ -125,6 +126,7 @@ func TestTeamSchema(t *testing.T) {
 }
 
 func TestBeneficiaryGroupSchema(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid, with source", kind: "BeneficiaryGroup", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: Group Two\n  description: A second beneficiary group\n  source: d1\n"},
@@ -141,6 +143,7 @@ func TestBeneficiaryGroupSchema(t *testing.T) {
 }
 
 func TestReportingCycleSchema(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "ReportingCycle", yaml: "apiVersion: cartograph/v1\nkind: ReportingCycle\nmetadata:\n  id: c2\n  name: Cycle Two\nspec:\n  name: Cycle Two\n  periodMonths: 12\n  startMonth: 1\n"},
@@ -151,6 +154,7 @@ func TestReportingCycleSchema(t *testing.T) {
 }
 
 func TestDataSourceSchema(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "DataSource", yaml: "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d2\n  name: Data Source Two\nspec:\n  name: Data Source Two\n  category: spreadsheet\n  team: t1\n"},
@@ -161,6 +165,7 @@ func TestDataSourceSchema(t *testing.T) {
 }
 
 func TestGoalSchema(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid strategic goal", kind: "Goal", yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g2\n  name: Goal Two\nspec:\n  level: objective\n  parent: g1\n  objective: Raise attainment\n"},
@@ -175,6 +180,7 @@ func TestGoalSchema(t *testing.T) {
 }
 
 func TestKPISchema(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "KPI", yaml: "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k2\n  name: KPI Two\nspec:\n  name: KPI Two\n  definition: Another measure\n  unit: count\n  direction: decrease\n  source: d1\n  goals: [g1-f]\n"},
@@ -186,6 +192,7 @@ func TestKPISchema(t *testing.T) {
 }
 
 func TestProgrammeSchema(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "Programme", yaml: "apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: prog1\n  name: Programme One\nspec:\n  name: Programme One\n  aim: {change: Raise attainment across teams}\n  leadTeam: t1\n  goals: [g1-f]\n  kpis: [k1]\n"},
@@ -195,6 +202,7 @@ func TestProgrammeSchema(t *testing.T) {
 }
 
 func TestOperationSchema(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "Operation", yaml: "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: op1\n  name: Operation One\nspec:\n  name: Operation One\n  purpose: Keep the lights on\n  team: t1\n  kpis: [k1]\n"},
@@ -205,6 +213,7 @@ func TestOperationSchema(t *testing.T) {
 }
 
 func TestProjectSchema(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "Project", yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n  alignment:\n    goals: [g1-f]\n  operation: new\n  objectives:\n    - objective: Deliver every order\n      keyResults:\n        - id: kr-1\n          metric: Orders delivered\n          direction: increase\n          kind: count\n          unit: deliveries\n"},
@@ -221,6 +230,7 @@ func TestProjectSchema(t *testing.T) {
 // A team cannot sit beneath itself: a contributor's reach walks the teams
 // beneath theirs, and a loop has no bottom (TAXONOMY.md D27).
 func TestATeamCannotBeItsOwnAncestor(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	mustCommit(t, e, "Team", "t2", "local", "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\n  name: Team Two\nspec:\n  parent: t1\n")
 	runSchemaCases(t, e, []schemaCase{

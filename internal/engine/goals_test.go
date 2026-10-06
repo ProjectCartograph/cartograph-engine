@@ -14,6 +14,7 @@ import (
 )
 
 func TestGetSettingsDefault(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	s, err := e.GetSettings(context.Background())
 	if err != nil {
@@ -28,6 +29,7 @@ func TestGetSettingsDefault(t *testing.T) {
 }
 
 func TestGetSettingsOverride(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	y := "apiVersion: cartograph/v1\nkind: Settings\nmetadata:\n  id: default\n  name: Settings\nspec:\n  goalLevels: [Focus, Strategic]\n  projectLevelName: Initiative\n"
@@ -47,6 +49,7 @@ func TestGetSettingsOverride(t *testing.T) {
 }
 
 func TestSettingsSingletonID(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	y := "apiVersion: cartograph/v1\nkind: Settings\nmetadata:\n  id: not-default\n  name: Settings\nspec:\n  goalLevels: [Focus, Strategic]\n"
@@ -80,6 +83,7 @@ func seedGoalTreeFixture(t *testing.T, e *engine.Engine) {
 }
 
 func TestGoalTreeShape(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	seedGoalTreeFixture(t, e)
 
@@ -156,6 +160,7 @@ func TestGoalTreeShape(t *testing.T) {
 }
 
 func TestGoalTreeEmpty(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	tree, err := e.GoalTree(context.Background())
 	if err != nil {
@@ -191,6 +196,7 @@ func wantCheck(t *testing.T, checks []engine.GoalCheck, id, state string) engine
 // objective, measured by an indicator with no target yet (seededEngine's
 // g1-f and KPI k1). Specific holds; the rest ask for what is missing.
 func TestGoalChecksSmartMinimal(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	checks, err := e.GoalChecks(context.Background(), "g1-f")
 	if err != nil {
@@ -210,6 +216,7 @@ func TestGoalChecksSmartMinimal(t *testing.T) {
 // statement on commit, so this writes to the store directly, the way a
 // file written before the rule would look.
 func TestGoalChecksSpecificWithDigit(t *testing.T) {
+	t.Parallel()
 	manifests := memory.NewManifestStore()
 	e, err := engine.New(manifests, memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
 	if err != nil {
@@ -233,6 +240,7 @@ func TestGoalChecksSpecificWithDigit(t *testing.T) {
 }
 
 func TestGoalChecksSmartFullyMet(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	y := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g6\n  name: Goal Six\nspec:\n  level: objective\n  parent: g1\n  objective: Raise our own outcome\n  whyItMatters: Customers leave after a second failure.\n  keyResults:\n    - id: kr-1\n      metric: Quality rate\n      direction: increase\n      kind: percent\n      baseline: {value: 62, date: \"2025-09\"}\n      target: {value: 75, date: \"2026-06\"}\n"
@@ -268,6 +276,7 @@ func TestGoalChecksSmartFullyMet(t *testing.T) {
 
 // An admitted unknown baseline still counts: the gap is named, not hidden.
 func TestGoalChecksAttainableWithUnknownBaseline(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	y := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g7\n  name: Goal Seven\nspec:\n  level: objective\n  parent: g1\n  objective: Raise our own outcome\n  keyResults:\n    - id: kr-1\n      metric: Quality rate\n      direction: increase\n      kind: percent\n      baseline: {unknownReason: not measured yet, expectedBy: \"2026-01\"}\n      target: {value: 75, date: \"2026-06\"}\n"
@@ -282,6 +291,7 @@ func TestGoalChecksAttainableWithUnknownBaseline(t *testing.T) {
 }
 
 func TestGoalChecksObjectiveMustSitUnderAGoal(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	commit := func(kind, id, y string) {
@@ -315,6 +325,7 @@ func TestGoalChecksObjectiveMustSitUnderAGoal(t *testing.T) {
 }
 
 func TestGoalChecksKeyResultsCountTooMany(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	y := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g10\n  name: Goal Ten\nspec:\n  level: objective\n  parent: g1\n  objective: Too many measures\n  keyResults:\n" +
@@ -335,6 +346,7 @@ func TestGoalChecksKeyResultsCountTooMany(t *testing.T) {
 // One measure with a baseline and a dated target, one with neither: not
 // attainable and not time-bound until both are.
 func TestGoalChecksPartlyMeasured(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	y := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g11\n  name: Goal Eleven\nspec:\n  level: objective\n  parent: g1\n  objective: Partly specified\n  keyResults:\n" +
@@ -353,6 +365,7 @@ func TestGoalChecksPartlyMeasured(t *testing.T) {
 }
 
 func TestGoalChecksNotFound(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	_, err := e.GoalChecks(context.Background(), "does-not-exist")
 	if err == nil {
@@ -361,6 +374,7 @@ func TestGoalChecksNotFound(t *testing.T) {
 }
 
 func TestDeleteGoalNotFound(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	err := e.DeleteGoal(context.Background(), "does-not-exist", "p1", "edited on the tree")
 	if !errors.Is(err, engine.ErrNotFound) {
@@ -372,6 +386,7 @@ func TestDeleteGoalNotFound(t *testing.T) {
 // references can be excluded (validated via DeleteGoal, which checks the leaf rule).
 // The file stays; exclusion from vault.yaml is handled separately by the vault layer.
 func TestDeleteGoalUnreferencedSucceeds(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Goal", "g-lonely", "p1", "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g-lonely\n  name: Lonely Goal\nspec:\n  level: objective\n  parent: g1\n  objective: Nothing points at this yet\n")
@@ -420,6 +435,7 @@ func TestDeleteGoalUnreferencedSucceeds(t *testing.T) {
 // referenced (here, by a child goal's own parent) is refused with a
 // ValidationError naming what references it, and the goal survives.
 func TestDeleteGoalReferencedRefused(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Goal", "g-parent-of", "p1", "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g-parent-of\n  name: Parent Goal\nspec:\n  level: objective\n  parent: g1\n  objective: A strategic goal with a child\n")
@@ -453,6 +469,7 @@ func TestDeleteGoalReferencedRefused(t *testing.T) {
 // with a placeholder holding its parent's place, listed apart in the tree,
 // told where it should go, and placed later (TAXONOMY.md D35).
 func TestAGoalStandsUnplacedUntilPlaced(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	bare := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: kept-cool\n  name: Produce is kept cool\nspec:\n  level: outcome\n"

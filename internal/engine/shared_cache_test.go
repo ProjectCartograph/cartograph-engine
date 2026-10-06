@@ -20,6 +20,7 @@ var amOnce = sync.OnceValues(func() (*automerge.Engine, error) { return automerg
 // from the store whole the next time it is needed: memory is a cache,
 // never the record.
 func TestSharedDocumentCacheIsBounded(t *testing.T) {
+	t.Parallel()
 	am, err := amOnce()
 	if err != nil {
 		t.Fatal(err)

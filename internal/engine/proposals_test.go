@@ -24,6 +24,7 @@ func actingAs(p identity.Principal) context.Context {
 
 // An agent may edit a draft, and nothing that makes the record.
 func TestAnAgentDoesNotMakeTheRecord(t *testing.T) {
+	t.Parallel()
 	e := seedReadings(t)
 	ctx := actingAs(adasBot)
 	if err := e.PutWorking(ctx, "Team", "t1", []byte(strings.Replace(teamText, "%s", "a draft", 1))); err != nil {
@@ -44,6 +45,7 @@ func TestAnAgentDoesNotMakeTheRecord(t *testing.T) {
 }
 
 func TestProposalsAreDecidedByTheirPerson(t *testing.T) {
+	t.Parallel()
 	e := seedReadings(t)
 	saved := func() int {
 		vs, _ := e.Versions(context.Background(), "Team", "t1")
@@ -95,6 +97,7 @@ func TestProposalsAreDecidedByTheirPerson(t *testing.T) {
 // A proposal against a version that is no longer the latest is not
 // accepted over what changed.
 func TestAStaleProposalIsRefused(t *testing.T) {
+	t.Parallel()
 	e := seedReadings(t)
 	p, err := e.ProposeSave(actingAs(adasBot), "Team", "t1", []byte(strings.Replace(teamText, "%s", "proposed", 1)), "r", nil)
 	if err != nil {
@@ -113,6 +116,7 @@ func TestAStaleProposalIsRefused(t *testing.T) {
 
 // A reading and a state change are proposed and accepted the same way.
 func TestReadingsAndStatesAreProposed(t *testing.T) {
+	t.Parallel()
 	e := seedReadings(t)
 	seedGoalTreeFixture(t, e)
 	r, err := e.ProposeAppend(actingAs(adasBot), "KPIReadings", "k1-readings", "readings", map[string]any{"period": "2026-09", "value": 66}, "Q3")
@@ -152,6 +156,7 @@ func TestReadingsAndStatesAreProposed(t *testing.T) {
 // editor, or names each it leaves open and why; the proposal becomes the
 // draft, so its person opens it in the editor.
 func TestProposalsMeetTheChecksOrSayWhy(t *testing.T) {
+	t.Parallel()
 	e := seedReadings(t)
 	bare := []byte("apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g-new\n  name: Members trust the grading\nspec:\n  level: goal\n  objective: Members accept the grade their produce is given.\n")
 	_, err := e.ProposeSave(actingAs(adasBot), "Goal", "g-new", bare, "a new goal", nil)
@@ -187,6 +192,7 @@ func TestProposalsMeetTheChecksOrSayWhy(t *testing.T) {
 // one set, validated against each other, accepted in one transaction in
 // the order the references need, or declined together.
 func TestASetStandsOrFallsTogether(t *testing.T) {
+	t.Parallel()
 	e := seedReadings(t)
 	kpi := []byte("apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k-disputes\n  name: Grading disputes\nspec:\n  name: Grading disputes\n  definition: Share of graded deliveries a member disputes.\n  unit: percent\n  direction: decrease\n  source: d1\n  goals: [g1-f]\n")
 	gap := []byte("apiVersion: cartograph/v1\nkind: Gap\nmetadata:\n  id: gap-disputes\n  name: Members dispute grades\nspec:\n  statement: One delivery in eight is disputed.\n  current: One delivery in eight is disputed.\n  desired: Disputes are rare.\n  measure: k-disputes\n  outcomes: [g1-f]\n")

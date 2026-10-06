@@ -59,6 +59,7 @@ func person(email string, groups string) map[string]string {
 }
 
 func TestTheSessionSaysWhatTheAccessListGives(t *testing.T) {
+	t.Parallel()
 	base := accessServer(t)
 	s := decode[apigen.Session](t, doJSON(t, "GET", base+"/session", nil, person("lee@example.org", "g-curriculum")))
 	if s.Access == nil || !s.Access.Listed || s.Email == nil || *s.Email != "lee@example.org" {
@@ -82,6 +83,7 @@ func TestTheSessionSaysWhatTheAccessListGives(t *testing.T) {
 }
 
 func TestAContributorIsRefusedAnotherTeamsWork(t *testing.T) {
+	t.Parallel()
 	base := accessServer(t)
 	lee := person("lee@example.org", "g-curriculum")
 	if resp := doJSON(t, "PUT", base+"/manifests/Project/coach-teachers/working", map[string]string{"yaml": string(projectYAML("coach-teachers", "early-grades"))}, lee); resp.StatusCode/100 != 2 {
@@ -100,6 +102,7 @@ func TestAContributorIsRefusedAnotherTeamsWork(t *testing.T) {
 }
 
 func TestAnAdministratorManagesTheList(t *testing.T) {
+	t.Parallel()
 	base := accessServer(t)
 	admin := person("admin@example.org", "g-admins")
 	resp := doJSON(t, "PUT", base+"/access/people/Sam@Example.org", map[string]any{"roles": []string{"reader", "contributor"}, "teams": []string{"assessment"}}, admin)

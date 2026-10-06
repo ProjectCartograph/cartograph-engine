@@ -15,6 +15,7 @@ import (
 // The guide for an outcome: the outcome's own words and examples, a
 // parent chosen among objectives only, and the gap it closes asked for.
 func TestTheGuideForAnOutcome(t *testing.T) {
+	t.Parallel()
 	e := seedReadings(t)
 	g, err := e.Guide(context.Background(), "Goal", "outcome", "fr")
 	if err != nil {
@@ -84,6 +85,7 @@ func TestTheGuideForAnOutcome(t *testing.T) {
 // reports: read from the engine's own source, where each check is added
 // by id.
 func TestGuidanceNamesOnlyRealChecks(t *testing.T) {
+	t.Parallel()
 	ids := map[string]bool{}
 	src, _ := filepath.Glob("*.go")
 	re := regexp.MustCompile(`(?:\badd(?:Fix)?\(|ID:\s*)"([a-z0-9-]+)"`)
@@ -157,6 +159,7 @@ func TestGuidanceNamesOnlyRealChecks(t *testing.T) {
 // The guide marks what a definition cannot leave out: what the schema
 // requires where it sits, and what a handoff waits on, and nothing else.
 func TestTheGuideMarksRequiredFields(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	g, err := e.Guide(context.Background(), "Project", "", "en")
 	if err != nil {
@@ -190,6 +193,7 @@ func TestTheGuideMarksRequiredFields(t *testing.T) {
 // A guide's field says what the schema holds it to, so an agent writes a
 // value the save will take without reading the schema.
 func TestTheGuideGivesEachFieldItsLimitsChoicesAndShape(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	g, err := e.Guide(context.Background(), "Project", "", "en")
 	if err != nil {
@@ -221,6 +225,7 @@ func TestTheGuideGivesEachFieldItsLimitsChoicesAndShape(t *testing.T) {
 // A kind's schema comes with the shared definitions it points to, so
 // metadata.alias and a reference's forms are readable without resolving.
 func TestASchemaComesWithItsSharedDefinitions(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	defs, err := e.SchemaDefs("Project")
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 // A high-impact risk names the role that owns it, on a project and on a
 // programme; a lower one may go unowned (TAXONOMY.md D41).
 func TestAHighImpactRiskNamesItsOwner(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	risks := func(owner string) string {

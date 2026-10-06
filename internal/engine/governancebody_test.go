@@ -10,6 +10,7 @@ import (
 // it escalates to, and the body's references say which is which
 // (TAXONOMY.md D43).
 func TestAGovernanceBodyIsNamedOnceAndReferenced(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Resource", "steering", "p1", "apiVersion: cartograph/v1\nkind: Resource\nmetadata:\n  id: steering\n  name: Steering Committee\nspec:\n  category: governanceBody\n")
@@ -43,6 +44,7 @@ func TestAGovernanceBodyIsNamedOnceAndReferenced(t *testing.T) {
 // an indicator and a source name their owner and outside keeper
 // (TAXONOMY.md D44).
 func TestAnEscalationRouteAndOwnersAreNamed(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Resource", "steering", "p1", "apiVersion: cartograph/v1\nkind: Resource\nmetadata:\n  id: steering\n  name: Steering Committee\nspec:\n  category: governanceBody\n")

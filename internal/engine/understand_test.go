@@ -46,6 +46,7 @@ func engineWith(t *testing.T, d decide.Decider) *engine.Engine {
 // without one, the check is not asked and nothing else changes
 // (docs/adr/0023).
 func TestAStatementIsJudgedByWhatItSays(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	var order []string
 	m := &model{answer: func(state string, q decide.Question) decide.Answer {
@@ -103,6 +104,7 @@ func TestAStatementIsJudgedByWhatItSays(t *testing.T) {
 // flows likeliest to define it are offered, one per kind; without a model,
 // matches are by the words they share and no flow is offered.
 func TestUnderstandingWhatAPersonTyped(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	m := &model{answer: func(state string, q decide.Question) decide.Answer {
 		switch q.Options[0].Key {
@@ -163,6 +165,7 @@ func TestUnderstandingWhatAPersonTyped(t *testing.T) {
 // each kind at an even chance or more, and nothing below it; without a
 // model, by shared words alone.
 func TestRelevantRanksTheWorkspace(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	m := &model{answer: func(state string, q decide.Question) decide.Answer {
 		if q.Instructions != "Is the work about the same thing as the record?" || q.Options[0].Key != "relevant" {
@@ -210,6 +213,7 @@ func TestRelevantRanksTheWorkspace(t *testing.T) {
 // and a sentence is offered only when the model is sure of it and it is
 // clear of the next (docs/adr/0023); without a model, none is.
 func TestAnIdeaAnswersTheQuestionsItCan(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	m := &model{answer: func(state string, q decide.Question) decide.Answer {
 		p := 0.2
@@ -237,6 +241,7 @@ func TestAnIdeaAnswersTheQuestionsItCan(t *testing.T) {
 // initials is the record for certain, with a model or without one, and
 // the model is not asked: it is unsure of both.
 func TestANameSpeltOtherwiseOrByInitialsIsTheRecord(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	unsure := &model{answer: func(string, decide.Question) decide.Answer {
 		return decide.Answer{Probabilities: map[string]float64{"same": 0.3, "other": 0.7}}
@@ -265,6 +270,7 @@ func TestANameSpeltOtherwiseOrByInitialsIsTheRecord(t *testing.T) {
 // whatever a model reads into it: only a text that opens as an
 // instruction is asked.
 func TestAPassiveStateIsNotTakenForAnAction(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	m := &model{answer: func(string, decide.Question) decide.Answer {
 		return decide.Answer{Probabilities: map[string]float64{"state": 0.1, "action": 0.9}}

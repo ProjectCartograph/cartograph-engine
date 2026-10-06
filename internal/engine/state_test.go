@@ -14,6 +14,7 @@ import (
 // and the API turns that into an empty list or a refusal. The memory
 // store is such a store.
 func TestStateMethodsRefuseAStoreWithoutAnApplyGate(t *testing.T) {
+	t.Parallel()
 	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
 	if err != nil {
 		t.Fatal(err)
@@ -39,6 +40,7 @@ func TestStateMethodsRefuseAStoreWithoutAnApplyGate(t *testing.T) {
 // A handoff needs somewhere to keep the bundle; the memory bundle store
 // is enough, so a handoff can be tested without a directory.
 func TestHandoffUsesTheBundleStore(t *testing.T) {
+	t.Parallel()
 	bundles := memory.NewBundleStore()
 	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithBundles(bundles), engine.WithCodec(codecyaml.New()))
 	if err != nil {

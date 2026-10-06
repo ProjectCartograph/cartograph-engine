@@ -13,6 +13,7 @@ import (
 // write with 409, naming change sets as the way (docs/adr/0024); one
 // without the policy writes as before.
 func TestAWorkspaceCanRequireChangeSets(t *testing.T) {
+	t.Parallel()
 	_, base := newTestServer(t)
 	commitTeam(t, base, "t1", "anyone")
 	settings := "apiVersion: cartograph/v1\nkind: Settings\nmetadata:\n  id: default\n  name: Settings\nspec:\n  changeControl:\n    changeSetsRequired: true\n"

@@ -52,6 +52,7 @@ func as(email string, groups ...string) context.Context {
 }
 
 func TestApplyDirectoryCreatesTheTeamsOnce(t *testing.T) {
+	t.Parallel()
 	e := accessEngine(t)
 	ctx := context.Background()
 	for id, parent := range map[string]string{"curriculum": "", "early-grades": "curriculum", "assessment": "", "team": ""} {
@@ -74,6 +75,7 @@ func TestApplyDirectoryCreatesTheTeamsOnce(t *testing.T) {
 }
 
 func TestSignInEnrolsFromTheDirectory(t *testing.T) {
+	t.Parallel()
 	e := accessEngine(t)
 	g, err := e.Grants(as("lee@example.org", "g-curriculum", "all-staff"), auth.Principal{Subject: "s", Email: "lee@example.org", Name: "Lee", Roles: []string{"g-curriculum", "all-staff"}})
 	if err != nil {
@@ -95,6 +97,7 @@ func TestSignInEnrolsFromTheDirectory(t *testing.T) {
 }
 
 func TestAnAdministratorGrantsBesideTheDirectory(t *testing.T) {
+	t.Parallel()
 	e := accessEngine(t)
 	admin := as("admin@example.org", "g-admins")
 	if _, err := e.Grants(admin, auth.PrincipalFrom(admin)); err != nil {
@@ -126,6 +129,7 @@ func TestAnAdministratorGrantsBesideTheDirectory(t *testing.T) {
 }
 
 func TestAContributorChangesOnlyTheirTeamsWork(t *testing.T) {
+	t.Parallel()
 	e := accessEngine(t)
 	system := context.Background()
 	for id, team := range map[string]string{"coach-teachers": "early-grades", "grade-two-check": "assessment"} {
@@ -165,6 +169,7 @@ func TestAContributorChangesOnlyTheirTeamsWork(t *testing.T) {
 }
 
 func TestTheEnginesOwnWorkIsNotAsked(t *testing.T) {
+	t.Parallel()
 	e := accessEngine(t)
 	// No principal on the context: seeding, an import at start, a
 	// refresh another replica asked for.

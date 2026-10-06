@@ -20,6 +20,7 @@ var (
 // the person reviews one change set at a time, trims what is not ready,
 // and accepts the rest whole, as a pull request is merged.
 func TestChangeSetsKeepWorkApartAndMergeWhole(t *testing.T) {
+	t.Parallel()
 	e := newTestEngine(t)
 	seed := actingAs(ada)
 	if _, err := e.Commit(seed, "Team", "t1", []byte(fmt.Sprintf(teamText, "first")), "ada@example.org", "seed"); err != nil {

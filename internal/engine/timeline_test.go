@@ -7,6 +7,7 @@ import "testing"
 // months (required, integer 1..60)})}. The end month is derived, never
 // stored (see TestDerivedEnd in projectchecks_test.go). A beneficiary
 func TestProjectTimelineSchema(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-timeline\n  name: Project Timeline\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"
 

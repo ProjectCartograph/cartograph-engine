@@ -10,6 +10,7 @@ import "testing"
 // schema), and baseline is one of two typed shapes (known value, or an
 // admitted unknown).
 func TestKeyResultKindAndUnit(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	base := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g4\n  name: Goal Four\nspec:\n  level: goal\n  objective: Something measurable\n  keyResults:\n"
 

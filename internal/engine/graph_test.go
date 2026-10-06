@@ -17,6 +17,7 @@ import (
 // places it, the same way every time, and measures it from a focus, so
 // every interface draws and lights it alike.
 func TestTheWorkspaceGraph(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	if _, err := newTestEngine(t).Graph(ctx, nil); !errors.Is(err, engine.ErrNoLayout) {
 		t.Fatalf("a graph with no layout: %v", err)

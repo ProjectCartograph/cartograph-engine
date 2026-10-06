@@ -88,6 +88,7 @@ func checksByID(items []engine.ProjectCheckItem) map[string]engine.ProjectCheckI
 }
 
 func TestProjectChecksAllGreen(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "proj-green", "p1", fullProjectYAML("proj-green"))
@@ -139,6 +140,7 @@ func TestProjectChecksAllGreen(t *testing.T) {
 }
 
 func TestProjectChecksGoalsSection(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "proj-no-goal", "p1", "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-no-goal\n  name: P\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n")
@@ -170,6 +172,7 @@ func TestProjectChecksGoalsSection(t *testing.T) {
 // aligning only to a pillar warns; aligning to at least one strategic goal
 // (even alongside a pillar) is ok.
 func TestProjectChecksGoalsStrategicLevel(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	// g1-f (seededEngine) is already a functional goal. Create a non-functional goal too.
@@ -195,6 +198,7 @@ func TestProjectChecksGoalsStrategicLevel(t *testing.T) {
 }
 
 func TestProjectChecksAimSection(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -253,6 +257,7 @@ func TestProjectChecksAimSection(t *testing.T) {
 }
 
 func TestProjectChecksScopeSection(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -285,6 +290,7 @@ func TestProjectChecksScopeSection(t *testing.T) {
 }
 
 func TestProjectChecksDeliverablesSection(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -325,6 +331,7 @@ func TestProjectChecksDeliverablesSection(t *testing.T) {
 // Beneficiaries are qualitative: the one thing worth checking is whether
 // any group is named, and naming one settles the section.
 func TestProjectChecksBeneficiariesSection(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -358,6 +365,7 @@ func TestProjectChecksBeneficiariesSection(t *testing.T) {
 }
 
 func TestProjectChecksTimelineSection(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -390,6 +398,7 @@ func TestProjectChecksTimelineSection(t *testing.T) {
 // deliverables and decisions, and a deliverable's own acceptance criteria
 // already name the role that verifies each one.
 func TestProjectChecksResourcesSection(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	mustCommit(t, e, "Project", "proj-resources", "p1", "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-resources\n  name: P\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n")
@@ -462,6 +471,7 @@ func TestProjectChecksResourcesSection(t *testing.T) {
 }
 
 func TestProjectChecksRisksSection(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -492,6 +502,7 @@ func TestProjectChecksRisksSection(t *testing.T) {
 }
 
 func TestProjectChecksClosingAndLandingSection(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -560,6 +571,7 @@ func TestProjectChecksClosingAndLandingSection(t *testing.T) {
 }
 
 func TestProjectChecksNotFound(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	if _, err := e.ProjectChecks(context.Background(), "does-not-exist", false); err == nil {
 		t.Fatal("expected an error for a project that does not exist")
@@ -567,6 +579,7 @@ func TestProjectChecksNotFound(t *testing.T) {
 }
 
 func TestDerivedEndComputation(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 	cases := []struct {
@@ -606,6 +619,7 @@ func TestDerivedEndComputation(t *testing.T) {
 // baseline was right there, which is worse than saying nothing: the
 // message pointed at the one part that was already done.
 func TestProjectChecksNameTheMissingPartOfAKeyResult(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -657,6 +671,7 @@ func TestProjectChecksNameTheMissingPartOfAKeyResult(t *testing.T) {
 // is a test nobody applies: each acceptance criterion names the role that
 // verifies it, and the check says how many still do not.
 func TestProjectChecksDeliverableVerifiers(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -699,6 +714,7 @@ func TestProjectChecksDeliverableVerifiers(t *testing.T) {
 // the pairs that are whole, refuses a pair with only one half written,
 // and warns about a problem stated about nobody.
 func TestProjectChecksAimProblems(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 
@@ -745,6 +761,7 @@ func TestProjectChecksAimProblems(t *testing.T) {
 // Data that lands nowhere is data nobody can find again, so every output
 // names the register, system or store that holds it afterwards.
 func TestProjectChecksDataSink(t *testing.T) {
+	t.Parallel()
 	e := seededEngine(t)
 	ctx := context.Background()
 

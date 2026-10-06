@@ -17,6 +17,7 @@ import (
 // what the codec port guarantees, so it is tested at the engine, not at
 // an adapter.
 func TestEngineReadsAndWritesJSONManifests(t *testing.T) {
+	t.Parallel()
 	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecjson.New()))
 	if err != nil {
 		t.Fatal(err)
