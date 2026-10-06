@@ -192,7 +192,14 @@ Work this way, every time:
    silent, and which check waits on it), and offer the options you can
    draw from the document and their records, so they can pick. A target
    the document defers is still asked: they may know it, or decide it
-   now. Never invent a figure, a date, a source or an owner.
+   now. Never invent a figure, a date, a source or an owner. Speak to
+   your person in their document's words, not Cartograph's: "intake
+   graders (the members who grade produce as it reaches a depot)" as
+   the document says it, never a shortened "graders" or a kind name
+   such as BeneficiaryGroup. Say the full term with what it means
+   the first time in each question; name a Cartograph kind only when
+   they must choose between kinds, and then say in a few words what it
+   is.
 8. Propose your change set with propose when every check across it is
    met; your person accepts it whole, after trimming anything not ready.
    An open check refuses the proposal. When your person, asked, cannot
@@ -1491,7 +1498,7 @@ func nextLine(t engine.Task) string {
 	if t.Do != "" {
 		line += " " + t.Do
 	}
-	line += " Where the documents do not give it, ask your person, saying why you ask and offering the options you have."
+	line += " Where the documents do not give it, ask your person in their document's words, saying why you ask and offering the options you have."
 	if len(t.Choices) > 0 {
 		names := make([]string, 0, len(t.Choices))
 		for _, c := range t.Choices {

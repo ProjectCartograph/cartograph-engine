@@ -14,7 +14,7 @@ type portingRule struct {
 // fields the schemas hold.
 var porting = []portingRule{
 	// Asking the person.
-	{"A fact the document does not give, or defers (a target set later, a score nobody made)", "Ask your person, as soon as a check needs it", "Say why you ask (what the document says or leaves out, and which check waits on it) and offer the options you can draw from it; take their answer. Where this map says to leave a check open, that is for when they cannot answer yet: leave_open with their answer as asked."},
+	{"A fact the document does not give, or defers (a target set later, a score nobody made)", "Ask your person, as soon as a check needs it", "Ask in the document's own words, the full term with what it means the first time (\"intake graders, the members who grade produce as it reaches a depot\"), not Cartograph's kind names. Say why you ask (what the document says or leaves out, and which check waits on it) and offer the options you can draw from it; take their answer. Where this map says to leave a check open, that is for when they cannot answer yet: leave_open with their answer as asked."},
 
 	// Working without the person.
 	{"Your person is not there to ask", "Work from the documents alone, and skip asking how they want to work", "Port what they state; leave_open each check only your person can answer, with the reason. Never invent a fact to meet a check. Where this map gives a default, take it and do not leave the check open."},
