@@ -46,3 +46,18 @@ func TestADraftRefusesAGapsMeasuredBy(t *testing.T) {
 		t.Fatalf("measuredBy in a draft: %v", err)
 	}
 }
+
+// An agent names a role where one is asked for, never a team, and is told
+// what to write instead.
+func TestAnAgentNamesARoleWhereOneIsAsked(t *testing.T) {
+	e := seededEngine(t)
+	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
+	_, err := e.EditInChangeSet(agent, "", "Project", "pr", map[string]any{
+		"/metadata/name": "P", "/spec/team": "t1",
+		"/spec/risks": []any{map[string]any{"id": "r1", "description": "R", "type": "risk", "owner": map[string]any{"kind": "Team", "id": "t1"}}},
+	}, nil)
+	var ve *engine.ValidationError
+	if !errors.As(err, &ve) || ve.Problems[0].Path != "/spec/risks/0/owner/id" || !strings.Contains(ve.Problems[0].Message, "orgUnit") {
+		t.Fatalf("a team as a risk's owner: %v", err)
+	}
+}

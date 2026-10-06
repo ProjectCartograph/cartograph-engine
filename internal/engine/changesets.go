@@ -219,7 +219,9 @@ func (e *Engine) writeItem(ctx context.Context, set, kind, id string, change fun
 		for _, other := range items {
 			set[other.Kind+"/"+other.ID] = true
 		}
-		if problems := e.agentOrderProblems(ctx, set, kind, id, after); len(problems) > 0 {
+		problems := e.agentOrderProblems(ctx, set, kind, id, after)
+		problems = append(problems, roleRefProblems(after, e.refRules[kind])...)
+		if len(problems) > 0 {
 			return &ValidationError{Problems: problems}
 		}
 	}
@@ -815,3 +817,29 @@ func fieldChanges(path string, a, b map[string]any, put map[string]any, unset *[
 }
 
 func equalValues(a, b any) bool { return len(diffValues("", a, b)) == 0 }
+
+// roleFields are where a definition names who: who verifies, owns,
+// confirms, decides, does a task or issued a mandate.
+var roleFields = []string{"/by", "/owner", "/confirmedBy", "/escalate/to", "/issuer", "/role"}
+
+// roleRefProblems holds an agent's draft to naming a role where a role is
+// asked for: one of the work's roles, a Resource from the catalogue (a
+// governance body or a unit among them) or a party outside the workspace,
+// never a Team. A team carries work and scopes who may edit it; who owns
+// or decides is a role in it, or the unit as a Resource. People may have
+// saved a team there before; an agent is told what to write instead.
+func roleRefProblems(doc map[string]any, rules []refRule) []Problem {
+	var out []Problem
+	for _, r := range extractRefs(doc, rules) {
+		if r.kind != "Team" {
+			continue
+		}
+		for _, f := range roleFields {
+			if strings.HasSuffix(strings.TrimSuffix(r.path, "/id"), f) {
+				out = append(out, Problem{Path: r.path, Message: "names a team where a role is asked for: name the role that answers for it, as one of this work's roles ({\"local\":\"resources\",\"id\":...}) or a Resource from the catalogue ({\"kind\":\"Resource\",\"id\":...}, a unit of category orgUnit where the unit as a whole answers), or a party outside the workspace ({\"external\":...})"})
+				break
+			}
+		}
+	}
+	return out
+}
