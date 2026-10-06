@@ -371,7 +371,7 @@ func TestADraftsSchemaProblemsAreOpenChecks(t *testing.T) {
 	draft := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t2"},
 		"spec": map[string]any{"description": "Drafted by an agent"}}
 	res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t2", "manifest": draft})
-	if res.IsError || !strings.Contains(text, `"id":"schema"`) || !strings.Contains(text, "Fix what a save would refuse first") {
+	if res.IsError || !strings.Contains(text, `"id":"schema"`) || !strings.Contains(text, "Fix what is not valid first") || !strings.Contains(text, "not valid yet") {
 		t.Fatalf("save_draft with no name: %s", text)
 	}
 	if res, text := callTool(t, cs, "checks", map[string]any{"kind": "Team", "id": "t2"}); res.IsError || !strings.Contains(text, `"id":"schema"`) || !strings.Contains(text, "/metadata") {
@@ -631,5 +631,24 @@ func TestAnAimWaitsOnItsKPIsLeftFigure(t *testing.T) {
 	}
 	if !strings.Contains(text, "whose figure is left for you: The board sets the target") {
 		t.Fatalf("the aim does not say what it waits on: %s", text)
+	}
+}
+
+// A vision and mission left for the person leave a goal's relevance
+// waiting on them, with their reason, once the goal says why it matters.
+func TestAGoalWaitsOnAVisionLeftOpen(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "A goal without a vision"})
+	purpose := map[string]any{"apiVersion": "cartograph/v1", "kind": "Purpose", "metadata": map[string]any{"id": "default", "name": "Purpose"},
+		"spec": map[string]any{"organisation": "Example Cooperative"}}
+	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-quality", "name": "Quality"},
+		"spec": map[string]any{"level": "goal", "objective": "Raise produce quality", "whyItMatters": "Buyers reject bruised produce."}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Purpose", "id": "default", "manifest": purpose})
+	callTool(t, cs, "leave_open", map[string]any{"kind": "Purpose", "id": "default", "check": "purpose-vision", "reason": "Only the board can state the vision",
+		"also": []any{map[string]any{"kind": "Purpose", "id": "default", "check": "purpose-mission"}}})
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-quality", "manifest": goal})
+	_, text := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-quality"})
+	if !strings.Contains(text, "Judged against the vision and mission, left for you: Only the board") {
+		t.Fatalf("the goal's relevance does not wait on the vision: %s", text)
 	}
 }

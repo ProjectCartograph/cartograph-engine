@@ -258,6 +258,18 @@ type Order struct {
 	Registers []KindInfo `json:"registers"`
 }
 
+// HasAny reports whether the workspace holds a record of kind, saved or
+// drafted in the work on ctx.
+func (e *Engine) HasAny(ctx context.Context, kind string) bool {
+	for key := range proposedDocs(ctx) {
+		if strings.HasPrefix(key, kind+"/") {
+			return true
+		}
+	}
+	counts, err := e.manifests.Counts(ctx)
+	return err == nil && counts[kind] > 0
+}
+
 // WorkspaceOrder says, for the workspace as it stands, how far each stage
 // has got and which comes next: the first stage a plan needs that has no
 // record and is not waiting on one that has none. An empty workspace

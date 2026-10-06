@@ -756,6 +756,11 @@ func shapeText(w shapeWalker, n map[string]any, file, def string, depth int) str
 	if f := formatOf(n); f != "" {
 		return `"` + f + `"`
 	}
+	// The limit where it is, so a field inside a list item (a risk's
+	// description, a phase's name) shows it without its own guide entry.
+	if ml, ok := n["maxLength"].(float64); ok {
+		return fmt.Sprintf(`"text, up to %d characters"`, int(ml))
+	}
 	return `"text"`
 }
 

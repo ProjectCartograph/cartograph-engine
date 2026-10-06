@@ -120,9 +120,16 @@ func (e *Engine) checkPlaces() (map[string]map[string]checkPlace, error) {
 				}
 			}
 			for _, l := range st.Links {
-				if l.Check != "" {
-					m[l.Check] = checkPlace{or(l.Phase, "align"), st.Key, i, "link:" + l.Kind, l.Level}
+				if l.Check == "" {
+					continue
 				}
+				// A check several kinds can settle (a gap's coverage, by a
+				// project or a programme) is placed with the first the flow
+				// names.
+				if have, ok := m[l.Check]; ok && strings.HasPrefix(have.field, "link:") {
+					continue
+				}
+				m[l.Check] = checkPlace{or(l.Phase, "align"), st.Key, i, "link:" + l.Kind, l.Level}
 			}
 		}
 		out[kind] = m
@@ -218,9 +225,13 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 				// asked where the KPIs are, in the step that holds them.
 				pl = checkPlace{"measure", "measures", pl.order, "link:KPI", ""}
 			}
+			if r.Kind == "Goal" && c.ID == "outcomes-close-gaps" {
+				// Settled by the gaps its outcomes close, written later.
+				pl = checkPlace{"align", "measures", pl.order, "link:Gap", ""}
+			}
 			placed[len(out.Tasks)] = placeOf(r.Kind, rec.level, pl)
 			own[len(out.Tasks)] = rank(r.Kind, rec.level)
-			if pl.field == "link:KPI" && r.Kind == "Goal" && aimMeasureChecks[c.ID] {
+			if r.Kind == "Goal" && (pl.field == "link:KPI" && aimMeasureChecks[c.ID] || c.ID == "outcomes-close-gaps") {
 				// After the KPIs' own tasks, once one can be aligned.
 				own[len(out.Tasks)] = 1 << 20
 			}

@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 )
 
 // Components of a project (TAXONOMY.md D15).
@@ -101,8 +103,21 @@ func (e *Engine) componentsOf(ctx context.Context, id string) ([]string, error) 
 		return nil, err
 	}
 	var out []string
+	seen := map[string]bool{}
+	// Components drafted with it count as they stand, saved or not.
+	for key, doc := range proposedDocs(ctx) {
+		pid, ok := strings.CutPrefix(key, "Project/")
+		if !ok || pid == id {
+			continue
+		}
+		seen[pid] = true
+		spec, _ := doc["spec"].(map[string]any)
+		if componentParent(spec) == id {
+			out = append(out, pid)
+		}
+	}
 	for _, s := range summaries {
-		if s.ID == id {
+		if s.ID == id || seen[s.ID] {
 			continue
 		}
 		doc, err := e.loadProjectDoc(ctx, s.ID)
@@ -114,6 +129,7 @@ func (e *Engine) componentsOf(ctx context.Context, id string) ([]string, error) 
 			out = append(out, s.ID)
 		}
 	}
+	sort.Strings(out)
 	return out, nil
 }
 

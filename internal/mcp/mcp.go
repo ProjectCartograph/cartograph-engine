@@ -940,6 +940,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			c.announce(step{Step: "draft", Kind: in.Kind, ID: in.ID, Text: text, Fields: e.ChangedFields(before, text, 32), Checks: checks, ChangeSet: cs.ID})
 			out := withAround(c, leaving(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID), in.Kind, in.ID, in.Work)
 			out["saved"], out["problems"], out["changeSet"] = "draft", problems, cs.ID
+			if len(problems) > 0 {
+				out["saved"] = "draft, not valid yet: kept as you sent it, and propose refuses it until each problem is fixed with edit_draft"
+			}
 			return out, nil
 		})
 
@@ -1334,7 +1337,7 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 	// What a save would refuse comes first: the work's own order knows
 	// nothing of it.
 	if open, _ := out["open"].([]engine.Check); len(open) > 0 && open[0].ID == "schema" {
-		out["next"] = "Fix what a save would refuse first (the schema checks in open), then save the draft again."
+		out["next"] = "Fix what is not valid first (the schema checks in open), with edit_draft on the fields they name."
 	} else if w, err := c.o.Engine.Work(c.ctx, append([]engine.Ref{{Kind: kind, ID: id}}, also...), ""); err == nil {
 		if len(w.Tasks) > 0 {
 			out["next"] = firstNext(c.ctx, c.o.Engine, w.Tasks[0])
@@ -1421,9 +1424,12 @@ func allMet(ctx context.Context, e *engine.Engine) string {
 			optional = append(optional, st.Key+" ("+st.Kind+")")
 		}
 	}
+	if e.HasAny(ctx, "KPI") && !e.HasAny(ctx, "KPIReadings") {
+		optional = append(optional, "a KPI's past readings (KPIReadings)")
+	}
 	if len(optional) > 0 {
 		return "Every check across this work is met. Stages a plan may have and this workspace does not yet: " + strings.Join(optional, ", ") +
-			"; and a KPI's past readings as KPIReadings. Port each the document gives, then propose the change set with propose."
+			". Port each the document gives, then propose the change set with propose."
 	}
 	return "Every check across this work is met. Propose the change set with propose."
 }

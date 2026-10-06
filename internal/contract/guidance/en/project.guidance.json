@@ -540,7 +540,7 @@
       ]
     },
     "/spec/data/produces/-/personalData": {
-      "guide": "Whether the output holds personal data: none, personal or sensitive."
+      "guide": "Whether the output holds personal data, set from what it holds: none when nothing in it identifies a person; personal when it names or can identify people (names, contacts, records of named people); sensitive when that data is about health, children, beliefs or another special category."
     },
     "/spec/risks": {
       "guide": "The project's register: risks (might go wrong), issues (already have), dependencies (what the work waits on, or what waits on it) and constraints (fixed limits). Not assumptions: an assumption is tested, not mitigated, and is recorded on its own and named on the step it conditions."

@@ -420,8 +420,26 @@ func LeftFor(ctx context.Context, kind, id, check string) string {
 
 func leftFor(ctx context.Context, kind, id, check string) string {
 	left, _ := ctx.Value(leftKey{}).(map[string]string)
-	if why := left[kind+"/"+id+"#"+check]; why != "" || kind != "Goal" || !aimMeasureChecks[check] {
+	if why := left[kind+"/"+id+"#"+check]; why != "" || kind != "Goal" {
 		return why
+	}
+	if check == "smart-relevant" {
+		// A goal is judged relevant against the vision and mission: left
+		// for the person there, it waits on them here.
+		doc := proposedDocs(ctx)["Goal/"+id]
+		spec, _ := doc["spec"].(map[string]any)
+		// Only once it says why it matters: that is the agent's to write.
+		if why, _ := spec["whyItMatters"].(string); spec["level"] == "goal" && strings.TrimSpace(why) != "" {
+			for _, c := range []string{"purpose-vision", "purpose-mission"} {
+				if why := left["Purpose/default#"+c]; why != "" {
+					return "Judged against the vision and mission, left for you: " + why
+				}
+			}
+		}
+		return ""
+	}
+	if !aimMeasureChecks[check] {
+		return ""
 	}
 	// An aim's measures fail while a KPI aligned to it waits on a figure
 	// left for the person: the same missing fact, so the same reason,

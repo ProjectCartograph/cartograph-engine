@@ -543,6 +543,7 @@ const (
 	relevantFloor   = 0.5
 	relevantPerKind = 3
 	relevantPool    = 120
+	relevantBatch   = 30
 )
 
 // RelevantKinds are the kinds relevance is asked across when none are
@@ -589,12 +590,24 @@ func (e *Engine) Relevant(ctx context.Context, text string, kinds []string, leve
 		out.Available = e.DecisionModel(ctx).Ready
 		return out, nil
 	}
-	qs := make(map[string]decide.Question, len(pool))
-	for i, m := range pool {
-		qs[fmt.Sprintf("r%d", i)] = decide.Question{Type: decide.Choice, Instructions: "Is the work about the same thing as the record?",
-			Options: []decide.Option{{Key: "relevant", Description: "about the same thing as: " + m.Name}, {Key: "other", Description: "about something else"}}}
+	// Asked in batches: the model answers each question in about 40ms,
+	// so the whole pool in one call outruns the decide timeout and every
+	// match falls back to shared words.
+	answers := map[string]decide.Answer{}
+	ok := true
+	for start := 0; start < len(pool) && ok; start += relevantBatch {
+		qs := map[string]decide.Question{}
+		for i := start; i < len(pool) && i < start+relevantBatch; i++ {
+			qs[fmt.Sprintf("r%d", i)] = decide.Question{Type: decide.Choice, Instructions: "Is the work about the same thing as the record?",
+				Options: []decide.Option{{Key: "relevant", Description: "about the same thing as: " + pool[i].Name}, {Key: "other", Description: "about something else"}}}
+		}
+		var got map[string]decide.Answer
+		if got, ok = e.ask(ctx, text, qs); ok {
+			for k, v := range got {
+				answers[k] = v
+			}
+		}
 	}
-	answers, ok := e.ask(ctx, text, qs)
 	if ok {
 		out.Available = true
 		for i := range pool {

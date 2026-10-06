@@ -497,7 +497,9 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 			if err != nil {
 				return nil, err
 			}
-			if len(closing) == 0 {
+			// An outcome whose gap is left for the person to name is
+			// answered here by the same reason, not asked twice.
+			if len(closing) == 0 && leftFor(ctx, "Goal", child.id, "closes-gap") == "" {
 				unanswered = append(unanswered, child.name)
 			}
 		}
