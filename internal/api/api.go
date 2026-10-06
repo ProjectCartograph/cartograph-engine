@@ -148,7 +148,11 @@ func examplesOrNil(m map[string][]string) *map[string][]string {
 	return &m
 }
 
-func (s *Server) GetGoalTree(ctx context.Context, _ apigen.GetGoalTreeRequestObject) (apigen.GetGoalTreeResponseObject, error) {
+func (s *Server) GetGoalTree(ctx context.Context, req apigen.GetGoalTreeRequestObject) (apigen.GetGoalTreeResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	tree, err := s.Engine.GoalTree(ctx)
 	if err != nil {
 		return nil, err
@@ -228,6 +232,7 @@ func (s *Server) DeleteManifest(ctx context.Context, req apigen.DeleteManifestRe
 
 func toGoalNode(n *engine.GoalNode) apigen.GoalNode {
 	out := apigen.GoalNode{
+		Proposed:   proposedOf(n.Proposed),
 		Id:         n.ID,
 		Name:       n.Name,
 		Level:      n.Level,
@@ -901,6 +906,13 @@ func (s *Server) GetSchema(_ context.Context, req apigen.GetSchemaRequestObject)
 }
 
 func (s *Server) ListManifests(ctx context.Context, req apigen.ListManifestsRequestObject) (apigen.ListManifestsResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if errors.Is(err, engine.ErrNotFound) {
+		return apigen.ListManifests404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
 	f := engine.Filter{}
 	if req.Params.Q != nil {
 		f.Q = *req.Params.Q
@@ -1040,6 +1052,13 @@ func (s *Server) GetManifest(ctx context.Context, req apigen.GetManifestRequestO
 		}
 	}
 
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if errors.Is(err, engine.ErrNotFound) {
+		return apigen.GetManifest404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
 	v, err := s.Engine.Get(ctx, req.Kind, req.Id)
 	if err != nil {
 		if errors.Is(err, engine.ErrUnknownKind) || errors.Is(err, engine.ErrNotFound) {
@@ -1050,6 +1069,10 @@ func (s *Server) GetManifest(ctx context.Context, req apigen.GetManifestRequestO
 	view, err := s.buildManifestView(v)
 	if err != nil {
 		return nil, err
+	}
+	if p := engine.Proposed(ctx, req.Kind, req.Id); p != "" {
+		proposed := apigen.Proposed(p)
+		view.Proposed = &proposed
 	}
 	return apigen.GetManifest200JSONResponse(view), nil
 }
@@ -1239,8 +1262,21 @@ func toSummaries(ss []engine.Summary) []apigen.Summary {
 			draft := true
 			out[i].Draft = &draft
 		}
+		if s.Proposed != "" {
+			p := apigen.Proposed(s.Proposed)
+			out[i].Proposed = &p
+		}
 	}
 	return out
+}
+
+// previewing reads as if a change set were accepted, when a request names
+// one (docs/adr/0024).
+func (s *Server) previewing(ctx context.Context, set *string) (context.Context, error) {
+	if set == nil || *set == "" {
+		return ctx, nil
+	}
+	return s.Engine.Preview(ctx, *set)
 }
 
 func toVersion(v engine.Version) apigen.Version {
@@ -1575,7 +1611,11 @@ func (s *Server) GetGlossary(_ context.Context, req apigen.GetGlossaryRequestObj
 }
 
 // GetOrder is the order of work and how far the workspace has got.
-func (s *Server) GetOrder(ctx context.Context, _ apigen.GetOrderRequestObject) (apigen.GetOrderResponseObject, error) {
+func (s *Server) GetOrder(ctx context.Context, req apigen.GetOrderRequestObject) (apigen.GetOrderResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	o, err := s.Engine.WorkspaceOrder(ctx)
 	if err != nil {
 		return nil, err
@@ -1612,6 +1652,10 @@ func (s *Server) GetGraph(ctx context.Context, req apigen.GetGraphRequestObject)
 			focus = &engine.Ref{Kind: kind, ID: id}
 		}
 	}
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	g, err := s.Engine.Graph(ctx, focus)
 	if err != nil {
 		return nil, err
@@ -1629,6 +1673,10 @@ func (s *Server) GetGraph(ctx context.Context, req apigen.GetGraphRequestObject)
 			out.Nodes[i].Stage = &n.Stage
 		}
 		out.Nodes[i].Layer = &n.Layer
+		if n.Proposed != "" {
+			p := apigen.Proposed(n.Proposed)
+			out.Nodes[i].Proposed = &p
+		}
 	}
 	for i, e := range g.Edges {
 		out.Edges[i] = apigen.GraphEdge{From: apigen.Ref{Kind: e.From.Kind, Id: e.From.ID}, To: apigen.Ref{Kind: e.To.Kind, Id: e.To.ID}}
@@ -1718,4 +1766,12 @@ func convertJSON(from, to any) error {
 		return err
 	}
 	return json.Unmarshal(b, to)
+}
+
+func proposedOf(p string) *apigen.Proposed {
+	if p == "" {
+		return nil
+	}
+	out := apigen.Proposed(p)
+	return &out
 }

@@ -240,6 +240,9 @@ type GoalNode struct {
 	// its parent's), so every card carries its context (D26).
 	Owner   string   `json:"owner,omitempty"`
 	Horizon *Horizon `json:"horizon,omitempty"`
+	// Proposed is "new" or "changed" when the tree is read as if a change
+	// set were accepted and this goal is in it (docs/adr/0024).
+	Proposed string `json:"proposed,omitempty"`
 }
 
 // GoalLink is an outcome leading to a higher objective, and why.
@@ -287,7 +290,7 @@ type goalDoc struct {
 // gaps, indicators and references once each, however many goals there
 // are (docs/adr/0012).
 func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
-	goalVersions, err := currentOfKind(ctx, e.manifests, "Goal")
+	goalVersions, err := e.currentAsProposed(ctx, "Goal")
 	if err != nil {
 		return GoalTree{}, err
 	}
@@ -307,7 +310,7 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 	// Gaps name the outcomes that would close them; read back here so a
 	// goal never has to point below itself (D9, D24).
 	gapsByGoal := map[string][]GoalGap{}
-	if gapVersions, err := currentOfKind(ctx, e.manifests, "Gap"); err == nil {
+	if gapVersions, err := e.currentAsProposed(ctx, "Gap"); err == nil {
 		for _, gv := range gapVersions {
 			var gdoc struct {
 				Metadata struct {
@@ -329,12 +332,12 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 		}
 	}
 
-	referencing, err := referencingKind(ctx, e.manifests, "Goal", ids)
+	referencing, err := e.referencingAsProposed(ctx, "Goal", ids)
 	if err != nil {
 		return GoalTree{}, err
 	}
 	kpiSpecs := map[string]map[string]any{}
-	if kpiVersions, err := currentOfKind(ctx, e.manifests, "KPI"); err == nil {
+	if kpiVersions, err := e.currentAsProposed(ctx, "KPI"); err == nil {
 		for _, kv := range kpiVersions {
 			var kdoc map[string]any
 			if e.codec.DecodeInto(kv.YAML, &kdoc) != nil {
@@ -378,6 +381,7 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 		smart, _ := e.goalSmart(read, rawSpec, kpis, horizon)
 		owner, _ := rawSpec["owner"].(string)
 		nodesByID[id] = &GoalNode{
+			Proposed:   Proposed(ctx, "Goal", id),
 			Smart:      smart,
 			Owner:      owner,
 			Horizon:    horizon,

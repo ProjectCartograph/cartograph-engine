@@ -33,6 +33,8 @@ paths:
     get:
       operationId: getGoalTree
       summary: The goal tree, computed from every Goal manifest and the reference index
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
       responses:
         "401":
           $ref: "#/components/responses/Unauthenticated"
@@ -61,6 +63,7 @@ paths:
         graph alike; with focus, each node also says how many edges it is
         from that one.
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - name: focus
           in: query
           required: false
@@ -604,6 +607,8 @@ paths:
         next is the first stage a plan needs that has no record. An empty
         workspace starts at its purpose. The registers are the roots any
         stage may name, added when a field asks for one.
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
       responses:
         "401":
           $ref: "#/components/responses/Unauthenticated"
@@ -948,6 +953,7 @@ paths:
       operationId: listManifests
       summary: Summaries of every manifest of a kind
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/KindParam"
         - name: q
           in: query
@@ -1906,6 +1912,7 @@ paths:
       operationId: getManifest
       summary: The current version of one manifest
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/KindParam"
         - $ref: "#/components/parameters/IdParam"
       responses:
@@ -2302,6 +2309,17 @@ components:
       required: true
       schema:
         type: string
+    PreviewParam:
+      name: changeSet
+      in: query
+      required: false
+      schema:
+        type: string
+      description: >-
+        Read as if this change set were accepted (docs/adr/0024): its drafts
+        stand in for the records they change, and the records it creates
+        are there too, each marked proposed. For reviewing a change set in
+        the ordinary screens.
     ChangeSetParam:
       name: set
       in: path
@@ -2591,6 +2609,8 @@ components:
           description: >-
             The project's current state (see ProjectState). Present only
             when kind is Project.
+        proposed:
+          $ref: "#/components/schemas/Proposed"
         draft:
           type: boolean
           description: >-
@@ -2836,6 +2856,15 @@ components:
           $ref: "#/components/schemas/Manifest"
         yaml:
           type: string
+        proposed:
+          $ref: "#/components/schemas/Proposed"
+
+    Proposed:
+      type: string
+      enum: [new, changed]
+      description: >-
+        Present when read with changeSet and the change set creates this
+        record (new) or changes it (changed); absent otherwise.
 
     Ref:
       type: object
@@ -3748,6 +3777,8 @@ components:
       type: object
       required: [id, name, level, keyResults, aligned, children, smart]
       properties:
+        proposed:
+          $ref: "#/components/schemas/Proposed"
         smart:
           type: object
           description: Which SMART criteria it meets, read from what it holds (TAXONOMY.md D25).
@@ -3834,6 +3865,8 @@ components:
       type: object
       required: [kind, id, name, x, y]
       properties:
+        proposed:
+          $ref: "#/components/schemas/Proposed"
         x:
           type: number
           format: double

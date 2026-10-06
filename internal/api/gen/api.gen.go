@@ -313,6 +313,24 @@ func (e ProposalStatus) Valid() bool {
 	}
 }
 
+// Defines values for Proposed.
+const (
+	Changed Proposed = "changed"
+	New     Proposed = "new"
+)
+
+// Valid indicates whether the value is a known member of the Proposed enum.
+func (e Proposed) Valid() bool {
+	switch e {
+	case Changed:
+		return true
+	case New:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Role.
 const (
 	Administrator  Role = "administrator"
@@ -811,6 +829,9 @@ type GoalNode struct {
 	Owner  *string `json:"owner,omitempty"`
 	Parent *string `json:"parent,omitempty"`
 
+	// Proposed Present when read with changeSet and the change set creates this record (new) or changes it (changed); absent otherwise.
+	Proposed *Proposed `json:"proposed,omitempty"`
+
 	// Smart Which SMART criteria it meets, read from what it holds (TAXONOMY.md D25).
 	Smart struct {
 		Attainable bool `json:"attainable"`
@@ -860,6 +881,9 @@ type GraphNode struct {
 
 	// Name metadata.name
 	Name string `json:"name"`
+
+	// Proposed Present when read with changeSet and the change set creates this record (new) or changes it (changed); absent otherwise.
+	Proposed *Proposed `json:"proposed,omitempty"`
 
 	// Stage The key of the stage of the order of work it is written in; absent for a register.
 	Stage *string `json:"stage,omitempty"`
@@ -1091,8 +1115,11 @@ type ManifestRef struct {
 type ManifestView struct {
 	// Manifest The generic manifest envelope, mirroring contract/schemas/manifest.schema.json (kept in sync by hand: the authoritative shape and every kind-specific spec shape live under contract/schemas/, since the code generator cannot follow that file's further reference into common.schema.json without a hand-written import mapping). Runtime validation always uses the JSON Schema files directly, never this generated type.
 	Manifest Manifest `json:"manifest"`
-	Version  Version  `json:"version"`
-	Yaml     string   `json:"yaml"`
+
+	// Proposed Present when read with changeSet and the change set creates this record (new) or changes it (changed); absent otherwise.
+	Proposed *Proposed `json:"proposed,omitempty"`
+	Version  Version   `json:"version"`
+	Yaml     string    `json:"yaml"`
 }
 
 // Match defines model for Match.
@@ -1355,6 +1382,9 @@ type ProposalReview struct {
 	Proposal Proposal `json:"proposal"`
 }
 
+// Proposed Present when read with changeSet and the change set creates this record (new) or changes it (changed); absent otherwise.
+type Proposed string
+
 // RecoverRequest defines model for RecoverRequest.
 type RecoverRequest struct {
 	// Ref Reference to recover (Kind/id)
@@ -1535,6 +1565,9 @@ type Summary struct {
 	Labels *map[string]string `json:"labels,omitempty"`
 	Name   string             `json:"name"`
 
+	// Proposed Present when read with changeSet and the change set creates this record (new) or changes it (changed); absent otherwise.
+	Proposed *Proposed `json:"proposed,omitempty"`
+
 	// Spec The manifest's spec, present only when expand=spec was given.
 	Spec *map[string]interface{} `json:"spec,omitempty"`
 
@@ -1635,6 +1668,9 @@ type IdParam = string
 // KindParam defines model for KindParam.
 type KindParam = string
 
+// PreviewParam defines model for PreviewParam.
+type PreviewParam = string
+
 // ProposalParam defines model for ProposalParam.
 type ProposalParam = string
 
@@ -1690,8 +1726,17 @@ type GetGlossaryParams struct {
 	Locale *string `form:"locale,omitempty" json:"locale,omitempty"`
 }
 
+// GetGoalTreeParams defines parameters for GetGoalTree.
+type GetGoalTreeParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetGraphParams defines parameters for GetGraph.
 type GetGraphParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+
 	// Focus A manifest as Kind/id, to measure every node's distance from.
 	Focus *string `form:"focus,omitempty" json:"focus,omitempty"`
 }
@@ -1722,6 +1767,9 @@ type GetCyclePeriodsParams struct {
 
 // ListManifestsParams defines parameters for ListManifests.
 type ListManifestsParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+
 	// Q Case-insensitive substring filter over id and name.
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 
@@ -1747,6 +1795,12 @@ type ListManifests200JSONResponseBody0 = []Summary
 // ListManifests200JSONResponseBody defines parameters for ListManifests.
 type ListManifests200JSONResponseBody struct {
 	union json.RawMessage
+}
+
+// GetManifestParams defines parameters for GetManifest.
+type GetManifestParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
 // GetCharterPdfParams defines parameters for GetCharterPdf.
@@ -1778,6 +1832,12 @@ type MatchExistingJSONBody struct {
 	Kind  string  `json:"kind"`
 	Level *string `json:"level,omitempty"`
 	Text  string  `json:"text"`
+}
+
+// GetOrderParams defines parameters for GetOrder.
+type GetOrderParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
 // ListProposalsParams defines parameters for ListProposals.
@@ -2049,7 +2109,7 @@ type ServerInterface interface {
 	GetGlossary(w http.ResponseWriter, r *http.Request, params GetGlossaryParams)
 	// GetGoalTree The goal tree, computed from every Goal manifest and the reference index
 	// (GET /goals/tree)
-	GetGoalTree(w http.ResponseWriter, r *http.Request)
+	GetGoalTree(w http.ResponseWriter, r *http.Request, params GetGoalTreeParams)
 	// GetGraph Every manifest and every reference between them, for the workspace graph
 	// (GET /graph)
 	GetGraph(w http.ResponseWriter, r *http.Request, params GetGraphParams)
@@ -2112,7 +2172,7 @@ type ServerInterface interface {
 	DeleteManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
 	// GetManifest The current version of one manifest
 	// (GET /manifests/{kind}/{id})
-	GetManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
+	GetManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam, params GetManifestParams)
 	// PutManifest Validate and commit a new version of a manifest: the save that promotes a staged draft into the vault's own tree and its include list, in one atomic journalled write, then clears the draft. Only this ref's draft; other drafts are left alone, because there may be many and saving one is not a decision about the rest.
 	// (PUT /manifests/{kind}/{id})
 	PutManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
@@ -2154,7 +2214,7 @@ type ServerInterface interface {
 	MatchExisting(w http.ResponseWriter, r *http.Request)
 	// GetOrder The order of work, and how far the workspace has got along it
 	// (GET /order)
-	GetOrder(w http.ResponseWriter, r *http.Request)
+	GetOrder(w http.ResponseWriter, r *http.Request, params GetOrderParams)
 	// GetPresenceDocument The document that carries presence for screens not about one manifest
 	// (GET /presence)
 	GetPresenceDocument(w http.ResponseWriter, r *http.Request)
@@ -2891,8 +2951,27 @@ func (siw *ServerInterfaceWrapper) GetGlossary(w http.ResponseWriter, r *http.Re
 // GetGoalTree operation middleware
 func (siw *ServerInterfaceWrapper) GetGoalTree(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetGoalTreeParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetGoalTree(w, r)
+		siw.Handler.GetGoalTree(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2910,6 +2989,19 @@ func (siw *ServerInterfaceWrapper) GetGraph(w http.ResponseWriter, r *http.Reque
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetGraphParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
 
 	// ------------- Optional query parameter "focus" -------------
 
@@ -3445,6 +3537,19 @@ func (siw *ServerInterfaceWrapper) ListManifests(w http.ResponseWriter, r *http.
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListManifestsParams
 
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	// ------------- Optional query parameter "q" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
@@ -3580,8 +3685,24 @@ func (siw *ServerInterfaceWrapper) GetManifest(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetManifestParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetManifest(w, r, kind, id)
+		siw.Handler.GetManifest(w, r, kind, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4091,8 +4212,27 @@ func (siw *ServerInterfaceWrapper) MatchExisting(w http.ResponseWriter, r *http.
 // GetOrder operation middleware
 func (siw *ServerInterfaceWrapper) GetOrder(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetOrderParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetOrder(w, r)
+		siw.Handler.GetOrder(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6376,6 +6516,7 @@ func (response GetGlossary403JSONResponse) VisitGetGlossaryResponse(w http.Respo
 }
 
 type GetGoalTreeRequestObject struct {
+	Params GetGoalTreeParams
 }
 
 type GetGoalTreeResponseObject interface {
@@ -7773,8 +7914,9 @@ func (response DeleteManifest422JSONResponse) VisitDeleteManifestResponse(w http
 }
 
 type GetManifestRequestObject struct {
-	Kind KindParam `json:"kind"`
-	Id   IdParam   `json:"id"`
+	Kind   KindParam `json:"kind"`
+	Id     IdParam   `json:"id"`
+	Params GetManifestParams
 }
 
 type GetManifestResponseObject interface {
@@ -8838,6 +8980,7 @@ func (response MatchExisting403JSONResponse) VisitMatchExistingResponse(w http.R
 }
 
 type GetOrderRequestObject struct {
+	Params GetOrderParams
 }
 
 type GetOrderResponseObject interface {
@@ -11055,8 +11198,10 @@ func (sh *strictHandler) GetGlossary(w http.ResponseWriter, r *http.Request, par
 }
 
 // GetGoalTree operation middleware
-func (sh *strictHandler) GetGoalTree(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) GetGoalTree(w http.ResponseWriter, r *http.Request, params GetGoalTreeParams) {
 	var request GetGoalTreeRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetGoalTree(ctx, request.(GetGoalTreeRequestObject))
@@ -11621,11 +11766,12 @@ func (sh *strictHandler) DeleteManifest(w http.ResponseWriter, r *http.Request, 
 }
 
 // GetManifest operation middleware
-func (sh *strictHandler) GetManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam) {
+func (sh *strictHandler) GetManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam, params GetManifestParams) {
 	var request GetManifestRequestObject
 
 	request.Kind = kind
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetManifest(ctx, request.(GetManifestRequestObject))
@@ -12035,8 +12181,10 @@ func (sh *strictHandler) MatchExisting(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetOrder operation middleware
-func (sh *strictHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) GetOrder(w http.ResponseWriter, r *http.Request, params GetOrderParams) {
 	var request GetOrderRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetOrder(ctx, request.(GetOrderRequestObject))

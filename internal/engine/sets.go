@@ -285,3 +285,77 @@ func (e *Engine) ReferencingKind(ctx context.Context, kind string) (map[string][
 	}
 	return referencingKind(ctx, e.manifests, kind, ids)
 }
+
+// currentAsProposed is currentOfKind as a screen reviewing a change set
+// sees it (docs/adr/0024): the change set's drafts stand in for the
+// versions they change, and the manifests it creates are added.
+func (e *Engine) currentAsProposed(ctx context.Context, kind string) ([]Version, error) {
+	out, err := currentOfKind(ctx, e.manifests, kind)
+	if err != nil {
+		return nil, err
+	}
+	at := map[string]int{}
+	for i, v := range out {
+		at[v.ID] = i
+	}
+	for _, r := range inPlayRefs(ctx) {
+		if r.Kind != kind {
+			continue
+		}
+		text, _ := inPlay(ctx, r.Kind, r.ID)
+		if i, ok := at[r.ID]; ok {
+			out[i].YAML = text
+			continue
+		}
+		out = append(out, Version{Kind: kind, ID: r.ID, YAML: text})
+	}
+	return out, nil
+}
+
+// referencingAsProposed is referencingKind as a screen reviewing a change
+// set sees it: a draft's references replace those of the version it
+// changes, and a new manifest's are added.
+func (e *Engine) referencingAsProposed(ctx context.Context, toKind string, ids []string) (map[string][]Summary, error) {
+	out, err := referencingKind(ctx, e.manifests, toKind, ids)
+	if err != nil {
+		return nil, err
+	}
+	refs := inPlayRefs(ctx)
+	if len(refs) == 0 {
+		return out, nil
+	}
+	drafted := map[Ref]bool{}
+	for _, r := range refs {
+		drafted[r] = true
+	}
+	for id, froms := range out {
+		kept := froms[:0]
+		for _, f := range froms {
+			if !drafted[Ref{Kind: f.Kind, ID: f.ID}] {
+				kept = append(kept, f)
+			}
+		}
+		out[id] = kept
+	}
+	for _, r := range refs {
+		text, _ := inPlay(ctx, r.Kind, r.ID)
+		var doc map[string]any
+		if e.codec.DecodeInto(text, &doc) != nil {
+			continue
+		}
+		name := r.ID
+		if md, ok := doc["metadata"].(map[string]any); ok {
+			if n, _ := md["name"].(string); n != "" {
+				name = n
+			}
+		}
+		named := map[string]bool{}
+		for _, f := range extractRefs(doc, e.refRules[r.Kind]) {
+			if f.kind == toKind && !named[f.id] {
+				named[f.id] = true
+				out[f.id] = append(out[f.id], Summary{Kind: r.Kind, ID: r.ID, Name: name})
+			}
+		}
+	}
+	return out, nil
+}

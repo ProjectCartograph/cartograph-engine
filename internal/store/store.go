@@ -45,6 +45,11 @@ type Summary struct {
 	// draft's own save time. False (the zero value) for every ordinary,
 	// committed Summary a store adapter's own ListSummaries builds.
 	Draft bool
+
+	// Proposed is "new" or "changed" when a list is read as if a change
+	// set were accepted (docs/adr/0024) and this summary is its draft;
+	// empty otherwise. Set by the engine, never by an adapter.
+	Proposed string
 }
 
 // Ref is one outgoing reference recorded for a manifest: at Path (a JSON

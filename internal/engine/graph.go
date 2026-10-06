@@ -21,6 +21,9 @@ func WithLayout(l layout.Layout) Option {
 // GraphNode is one manifest in the workspace graph.
 type GraphNode struct {
 	Kind, ID, Name string
+	// Proposed is "new" or "changed" when the graph is read as if a
+	// change set were accepted and this manifest is in it.
+	Proposed string
 	// Level is a goal's level (goal, objective, outcome); empty otherwise.
 	Level string
 	// Stage is the stage of the order of work it is written in; empty
@@ -82,8 +85,9 @@ func (e *Engine) Graph(ctx context.Context, focus *Ref) (Graph, error) {
 		if err != nil {
 			return Graph{}, err
 		}
+		summaries = e.withProposedSummaries(ctx, kind, Filter{}, summaries)
 		for _, s := range summaries {
-			n := GraphNode{Kind: kind, ID: s.ID, Name: s.Name}
+			n := GraphNode{Kind: kind, ID: s.ID, Name: s.Name, Proposed: s.Proposed}
 			if kind == "Goal" {
 				n.Level = levels[s.ID]
 			}
@@ -103,7 +107,7 @@ func (e *Engine) Graph(ctx context.Context, focus *Ref) (Graph, error) {
 				ids = append(ids, n.ID)
 			}
 		}
-		by, err := referencingKind(ctx, e.manifests, kind, ids)
+		by, err := e.referencingAsProposed(ctx, kind, ids)
 		if err != nil {
 			return Graph{}, err
 		}

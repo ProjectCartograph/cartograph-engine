@@ -861,9 +861,12 @@ func (e *Engine) InChangeSet(ctx context.Context, set string) (context.Context, 
 		return ctx, err
 	}
 	texts := make(map[string][]byte, len(items))
+	bases := make(map[string]int, len(items))
 	for _, it := range items {
 		texts[it.Kind+"/"+it.ID] = it.Text
+		bases[it.Kind+"/"+it.ID] = it.Base
 	}
+	ctx = context.WithValue(ctx, basesKey{}, bases)
 	// What it leaves for its person, so the order of work passes it by.
 	left := map[string]string{}
 	if cs, err := s.GetChangeSet(ctx, set); err == nil {
@@ -876,6 +879,43 @@ func (e *Engine) InChangeSet(ctx context.Context, set string) (context.Context, 
 	// (a lookup, a check, a guide's plan, relevance) reads them as if
 	// saved.
 	return e.withInPlay(context.WithValue(ctx, changeSetKey{}, texts)), nil
+}
+
+// Preview reads as if a change set were accepted: every read on the
+// context it returns sees the change set's drafts in place of the
+// records they change, and the records it creates (docs/adr/0024).
+// ErrNotFound when there is no such change set.
+func (e *Engine) Preview(ctx context.Context, set string) (context.Context, error) {
+	s, err := e.changeSetStore()
+	if err != nil {
+		return ctx, err
+	}
+	if _, err := s.GetChangeSet(ctx, set); errors.Is(err, store.ErrNoChangeSet) {
+		return ctx, fmt.Errorf("%w: change set %s", ErrNotFound, set)
+	} else if err != nil {
+		return ctx, err
+	}
+	return e.InChangeSet(ctx, set)
+}
+
+// basesKey carries the version each of a change set's items started
+// from, "Kind/id" to the number, 0 for one the change set creates.
+type basesKey struct{}
+
+// Proposed says how a manifest stands in the change set read on ctx:
+// "new" when the change set creates it, "changed" when it changes one
+// that exists, "" when it is not in the change set or none is read.
+func Proposed(ctx context.Context, kind, id string) string {
+	bases, _ := ctx.Value(basesKey{}).(map[string]int)
+	base, ok := bases[kind+"/"+id]
+	switch {
+	case !ok:
+		return ""
+	case base == 0:
+		return "new"
+	default:
+		return "changed"
+	}
 }
 
 // inPlay is a manifest's text in the change set on ctx, if it has one.

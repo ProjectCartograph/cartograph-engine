@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
+	"sort"
 	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -469,6 +470,15 @@ func (e *Engine) Get(ctx context.Context, kind, id string) (Version, error) {
 	if err != nil {
 		return Version{}, err
 	}
+	// Read as if a change set were accepted: its draft in place of the
+	// version it started from, numbered as that version (docs/adr/0024).
+	if text, ok := inPlay(ctx, kind, id); ok {
+		number := 0
+		if found {
+			number = v.Number
+		}
+		return Version{Kind: kind, ID: id, Number: number, YAML: e.normalizeLegacy(kind, text)}, nil
+	}
 	if !found {
 		return Version{}, fmt.Errorf("%w: %s/%s", ErrNotFound, kind, id)
 	}
@@ -489,7 +499,70 @@ func (e *Engine) List(ctx context.Context, kind string, f Filter, includeDrafts 
 	for i, r := range f.Refs {
 		filters[i] = store.RefFilter{Kind: r.Kind, ID: r.ID}
 	}
-	return e.manifests.ListSummaries(ctx, kind, f.Q, filters)
+	out, err := e.manifests.ListSummaries(ctx, kind, f.Q, filters)
+	if err != nil {
+		return nil, err
+	}
+	return e.withProposedSummaries(ctx, kind, f, out), nil
+}
+
+// withProposedSummaries lays a change set's drafts of a kind over a list,
+// when the list is read as if the change set were accepted: a changed
+// manifest takes its draft's name and is marked changed, a new one is
+// added and marked new, each still held to the list's filters.
+func (e *Engine) withProposedSummaries(ctx context.Context, kind string, f Filter, list []Summary) []Summary {
+	refs := inPlayRefs(ctx)
+	if len(refs) == 0 {
+		return list
+	}
+	at := map[string]int{}
+	for i, s := range list {
+		at[s.ID] = i
+	}
+	q := strings.ToLower(strings.TrimSpace(f.Q))
+	for _, r := range refs {
+		if r.Kind != kind {
+			continue
+		}
+		text, _ := inPlay(ctx, r.Kind, r.ID)
+		var doc map[string]any
+		if e.codec.DecodeInto(text, &doc) != nil {
+			continue
+		}
+		name := r.ID
+		if md, ok := doc["metadata"].(map[string]any); ok {
+			if n, _ := md["name"].(string); n != "" {
+				name = n
+			}
+		}
+		if i, ok := at[r.ID]; ok {
+			list[i].Name, list[i].Proposed = name, "changed"
+			continue
+		}
+		if q != "" && !strings.Contains(strings.ToLower(name), q) && !strings.Contains(r.ID, q) {
+			continue
+		}
+		if !namesAll(extractRefs(doc, e.refRules[kind]), f.Refs) {
+			continue
+		}
+		list = append(list, Summary{Kind: kind, ID: r.ID, Name: name, Proposed: "new"})
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].ID < list[j].ID })
+	return list
+}
+
+// namesAll reports whether found references every one of want.
+func namesAll(found []foundRef, want []Ref) bool {
+	for _, w := range want {
+		ok := false
+		for _, f := range found {
+			ok = ok || f.kind == w.Kind && f.id == w.ID
+		}
+		if !ok {
+			return false
+		}
+	}
+	return true
 }
 
 // References returns what a manifest points to (Outgoing) and what points

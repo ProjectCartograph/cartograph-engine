@@ -1,0 +1,70 @@
+package api_test
+
+import (
+	"io"
+	"net/http"
+	"strings"
+	"testing"
+
+	apigen "github.com/ProjectCartograph/cartograph-engine/v2/internal/api/gen"
+)
+
+// A screen reads the workspace as if a change set were accepted by
+// naming it: the change set's drafts stand in for the records they
+// change, the records it creates are there too, and each is marked
+// (docs/adr/0024). Without it, the record reads as it is.
+func TestTheWorkspaceReadsAsIfAChangeSetWereAccepted(t *testing.T) {
+	_, base := newTestServer(t)
+	commitTeam(t, base, "t1", "anyone")
+	resp := doJSON(t, http.MethodPost, base+"/changesets", map[string]string{"title": "Two teams"}, nil)
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("start a change set: %d %s", resp.StatusCode, b)
+	}
+	set := decode[apigen.ChangeSet](t, resp).Id
+	put := func(id, name string) {
+		yaml := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: " + id + "\n  name: " + name + "\nspec:\n  description: Team\n"
+		resp := doJSON(t, http.MethodPut, base+"/changesets/"+set+"/items/Team/"+id, apigen.ChangeSetEdit{Yaml: yaml}, nil)
+		if resp.StatusCode/100 != 2 {
+			b, _ := io.ReadAll(resp.Body)
+			t.Fatalf("draft %s: %d %s", id, resp.StatusCode, b)
+		}
+		resp.Body.Close()
+	}
+	put("t1", "Grading team")
+	put("t9", "Intake team")
+
+	resp = doJSON(t, http.MethodGet, base+"/manifests/Team/t9?changeSet="+set, nil, nil)
+	view := decode[apigen.ManifestView](t, resp)
+	if view.Proposed == nil || *view.Proposed != apigen.New || !strings.Contains(view.Yaml, "Intake team") {
+		t.Fatalf("a record the change set creates: %+v", view)
+	}
+	if resp := doJSON(t, http.MethodGet, base+"/manifests/Team/t9", nil, nil); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("a proposed record read without the change set: %d", resp.StatusCode)
+	}
+	resp = doJSON(t, http.MethodGet, base+"/manifests/Team?changeSet="+set, nil, nil)
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	list := string(b)
+	if !strings.Contains(list, `"name":"Grading team"`) || !strings.Contains(list, `"proposed":"changed"`) || !strings.Contains(list, `"proposed":"new"`) {
+		t.Fatalf("the list as proposed: %s", list)
+	}
+	goal := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g-sound\n  name: Sound fruit\nspec:\n  level: goal\n  objective: Deliver sound fruit to every buyer\n"
+	resp = doJSON(t, http.MethodPut, base+"/changesets/"+set+"/items/Goal/g-sound", apigen.ChangeSetEdit{Yaml: goal}, nil)
+	resp.Body.Close()
+	resp = doJSON(t, http.MethodGet, base+"/goals/tree?changeSet="+set, nil, nil)
+	b, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if !strings.Contains(string(b), `"id":"g-sound"`) || !strings.Contains(string(b), `"proposed":"new"`) {
+		t.Fatalf("the strategy as proposed: %s", b)
+	}
+	resp = doJSON(t, http.MethodGet, base+"/goals/tree", nil, nil)
+	b, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if strings.Contains(string(b), "g-sound") {
+		t.Fatalf("the strategy as it is shows a proposed goal: %s", b)
+	}
+	if resp := doJSON(t, http.MethodGet, base+"/manifests/Team?changeSet=nope", nil, nil); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("an unknown change set: %d", resp.StatusCode)
+	}
+}
