@@ -23,6 +23,9 @@ import (
 
 var phaseOrder = map[string]int{"define": 0, "measure": 1, "align": 2}
 
+// aimMeasureChecks are the checks an aim's measures settle.
+var aimMeasureChecks = map[string]bool{"smart-measurable": true, "smart-attainable": true, "smart-time-bound": true}
+
 // Task is one open check of one manifest, placed in the order of work.
 type Task struct {
 	Phase   string `json:"phase"`
@@ -206,8 +209,18 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 			if !ok {
 				pl = checkPlace{"define", c.Section, 99, "", ""}
 			}
+			if r.Kind == "Goal" && aimMeasureChecks[c.ID] && !e.hasKeyResults(ctx, r) {
+				// An aim is measured by its key results or by the KPIs
+				// aligned to it, and those are written after the aims:
+				// asked where the KPIs are, in the step that holds them.
+				pl = checkPlace{"measure", "measures", pl.order, "link:KPI", ""}
+			}
 			placed[len(out.Tasks)] = placeOf(r.Kind, rec.level, pl)
 			own[len(out.Tasks)] = rank(r.Kind, rec.level)
+			if pl.field == "link:KPI" && r.Kind == "Goal" && aimMeasureChecks[c.ID] {
+				// After the KPIs' own tasks, once one can be aligned.
+				own[len(out.Tasks)] = 1 << 20
+			}
 			stepOrder[len(out.Tasks)] = pl.order
 			out.Tasks = append(out.Tasks, Task{Phase: pl.phase, Kind: r.Kind, ID: r.ID, Name: rec.name, Check: c.ID, State: c.State,
 				Message: c.Message, Step: pl.step, Do: words[r.Kind].Checks[c.ID], Choices: e.choices(l, r.Kind, rec.level, pl.field)})
@@ -327,4 +340,27 @@ func (e *Engine) choices(l *lookup, kind, level, field string) []Candidate {
 		cs = cs[:maxChoices]
 	}
 	return cs
+}
+
+// hasKeyResults reports whether an aim, as the work holds it, measures
+// itself; one that does not waits for the KPIs aligned to it.
+func (e *Engine) hasKeyResults(ctx context.Context, r Ref) bool {
+	text, ok := inPlay(ctx, r.Kind, r.ID)
+	if !ok {
+		var found bool
+		var err error
+		if text, found, err = e.manifests.GetWorking(ctx, r.Kind, r.ID); err != nil || !found {
+			doc, _, _ := e.currentDoc(ctx, r.Kind, r.ID)
+			spec, _ := doc["spec"].(map[string]any)
+			krs, _ := spec["keyResults"].([]any)
+			return len(krs) > 0
+		}
+	}
+	var doc map[string]any
+	if err := e.codec.DecodeInto(text, &doc); err != nil {
+		return false
+	}
+	spec, _ := doc["spec"].(map[string]any)
+	krs, _ := spec["keyResults"].([]any)
+	return len(krs) > 0
 }

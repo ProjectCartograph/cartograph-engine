@@ -236,8 +236,11 @@ type Around struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id"`
 	Name string `json:"name,omitempty"`
-	// Link is how it is joined: Holder at Path names the other.
+	// Link is how it is joined: Holder at Path names the other. Via is
+	// that other, where it is not the manifest the work is about: a KPI
+	// on the same cycle is joined through the cycle, not to this one.
 	Link string `json:"link"`
+	Via  string `json:"via,omitempty"`
 	// Draft is true while it has no version, or a draft newer than one.
 	Draft bool    `json:"draft,omitempty"`
 	Open  []Check `json:"open"`
@@ -298,8 +301,8 @@ func (e *Engine) WorkAround(ctx context.Context, kind, id string, also []Ref) ([
 	}
 
 	type found struct {
-		ref  Ref
-		link string
+		ref       Ref
+		link, via string
 	}
 	var order []found
 	visited := map[Ref]bool{{Kind: kind, ID: id}: true}
@@ -316,7 +319,11 @@ func (e *Engine) WorkAround(ctx context.Context, kind, id string, also []Ref) ([
 					return
 				}
 				visited[r] = true
-				order = append(order, found{r, link})
+				via := ""
+				if at.Kind != kind || at.ID != id {
+					via = at.Kind + "/" + at.ID
+				}
+				order = append(order, found{r, link, via})
 				next = append(next, r)
 			}
 			// What this one names that it needs, or that needs it.
@@ -371,7 +378,7 @@ func (e *Engine) WorkAround(ctx context.Context, kind, id string, also []Ref) ([
 		if err != nil {
 			return nil, err
 		}
-		a := Around{Kind: f.ref.Kind, ID: f.ref.ID, Link: f.link, Draft: drafts[key], Open: []Check{}}
+		a := Around{Kind: f.ref.Kind, ID: f.ref.ID, Link: f.link, Via: f.via, Draft: drafts[key], Open: []Check{}}
 		if meta, ok := doc["metadata"].(map[string]any); ok {
 			a.Name, _ = meta["name"].(string)
 		}

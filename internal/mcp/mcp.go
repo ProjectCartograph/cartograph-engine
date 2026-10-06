@@ -958,17 +958,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			out := map[string]any{"open": w.Open}
 			if len(w.Tasks) == 0 {
-				// Nothing open in what is drafted: the next stage of the
-				// workspace, if one is still unwritten, else propose.
-				if o, err := e.WorkspaceOrder(c.ctx); err == nil && o.Next != "" {
-					stage, _ := workspaceNext(c.ctx, e)
-					if m, ok := stage.(map[string]any); ok {
-						out["next"] = "Nothing is open in what you have drafted. " + fmt.Sprint(m["next"]) +
-							" Propose the change set with propose once the work your person asked for is drafted."
-						return out, nil
-					}
-				}
-				out["next"] = "Every check across this work is met. Propose the change set with propose."
+				out["next"] = allMet(c.ctx, e)
 				return out, nil
 			}
 			out["next"] = nextLine(w.Tasks[0])
@@ -1308,7 +1298,7 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 		if len(w.Tasks) > 0 {
 			out["next"] = nextLine(w.Tasks[0])
 		} else {
-			out["next"] = "Every check across this work is met. Propose the change set with propose."
+			out["next"] = allMet(c.ctx, c.o.Engine)
 		}
 	}
 	around, err := c.o.Engine.WorkAround(c.ctx, kind, id, also)
@@ -1355,6 +1345,19 @@ func workspaceNext(ctx context.Context, e *engine.Engine) (any, error) {
 			"Call guide for %s, start_work, and define one with your person.", st.Key, what)
 	}
 	return out, nil
+}
+
+// allMet is what to do when nothing drafted has an open check: the
+// workspace's next stage while one is still unwritten, else propose.
+func allMet(ctx context.Context, e *engine.Engine) string {
+	if o, err := e.WorkspaceOrder(ctx); err == nil && o.Next != "" {
+		stage, _ := workspaceNext(ctx, e)
+		if m, ok := stage.(map[string]any); ok {
+			return "Nothing is open in what you have drafted. " + fmt.Sprint(m["next"]) +
+				" Propose the change set with propose once the work your person asked for is drafted."
+		}
+	}
+	return "Every check across this work is met. Propose the change set with propose."
 }
 
 func nextLine(t engine.Task) string {

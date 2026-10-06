@@ -62,8 +62,14 @@ func TestTheOrderOfWork(t *testing.T) {
 	}
 	// One visit per manifest: once the work moves on from one, it never
 	// comes back to it.
+	// An aim with no key results of its own is measured by the KPIs
+	// aligned to it, so its measure checks wait for the KPI stage.
+	waits := map[string]bool{"smart-measurable": true, "smart-attainable": true, "smart-time-bound": true}
 	left := map[string]bool{}
 	for i, task := range w.Tasks {
+		if task.Kind == "Goal" && waits[task.Check] {
+			continue
+		}
 		key := task.Kind + "/" + task.ID
 		if left[key] {
 			t.Fatalf("task %d goes back to %s: %+v", i, key, task)
@@ -73,6 +79,9 @@ func TestTheOrderOfWork(t *testing.T) {
 				left[prev] = true
 			}
 		}
+	}
+	if m := index("Goal", "smart-measurable"); m < index("KPI", "kpi-aligned") {
+		t.Fatalf("an aim with no key results is asked for its measures at %d, before the KPI that would measure it is aligned", m)
 	}
 	statement, target, aligned := index("Goal", "smart-specific"), index("KPI", "kpi-target"), index("KPI", "kpi-aligned")
 	states, measured := index("Gap", "gap-states"), index("Gap", "gap-measured")
