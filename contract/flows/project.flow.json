@@ -786,7 +786,8 @@
             "title": "Handed over to",
             "hint": "The operation that runs the result, or a new one defined alongside.",
             "checks": [
-              "landing-operation"
+              "landing-operation",
+              "landing-service-funding"
             ]
           },
           {

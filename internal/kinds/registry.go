@@ -8,6 +8,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/goal"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kpireadings"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/operation"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/portfolio"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/portfoliodecisions"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/programme"
@@ -49,7 +50,7 @@ var All = []Spec{
 	{Name: "KPIReadings", SchemaFile: "kpireadings.schema.json", Rules: kpireadings.Rules},
 	{Name: "Portfolio", SchemaFile: "portfolio.schema.json", Rules: portfolio.Rules},
 	{Name: "Programme", SchemaFile: "programme.schema.json", Rules: programme.Rules},
-	{Name: "Operation", SchemaFile: "operation.schema.json"},
+	{Name: "Operation", SchemaFile: "operation.schema.json", Rules: operation.Rules},
 	{Name: "Project", SchemaFile: "project.schema.json", Rules: project.Rules},
 	{Name: "StakeholderMap", SchemaFile: "stakeholdermap.schema.json", Rules: stakeholdermap.Rules},
 	{Name: "PortfolioDecisions", SchemaFile: "portfoliodecisions.schema.json", Rules: portfoliodecisions.Rules},

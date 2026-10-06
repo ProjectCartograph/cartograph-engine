@@ -46,6 +46,19 @@ func OperationCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 	d.table([]string{"Indicator", "Baseline", "Target", "Data source", "Frequency"},
 		measures(ctx, e, n, strs(spec["kpis"])))
 
+	// What pays to run it, per period (TAXONOMY.md D39): a running cost
+	// recurs, so each amount is labelled with the period it is for.
+	if lines := list(spec["funding"]); len(lines) > 0 {
+		d.h2("Running costs")
+		rows, _ := budget(n, lines)
+		for i, f := range lines {
+			if per := str(f["per"]); per != "" && rows[i][0] != "" {
+				rows[i][0] += " a " + per
+			}
+		}
+		d.table([]string{"Amount", "Funding source", "Status"}, rows)
+	}
+
 	d.data(n, obj(spec["data"]))
 
 	var landing [][]string

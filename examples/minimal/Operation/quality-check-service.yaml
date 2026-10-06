@@ -8,6 +8,14 @@ spec:
   purpose: Check every delivery for quality and route failures into rework.
   team: quality-team
   serviceWindow: Every delivery day, ongoing.
+  # What pays to run the service, for as long as it runs: a recurring
+  # cost, so each line says the period its amount is for.
+  funding:
+    - amount: 18000
+      currency: USD
+      per: year
+      source: operating-budget
+      status: approved
   kpis: [quality-pass-rate]
   data:
     consumes:

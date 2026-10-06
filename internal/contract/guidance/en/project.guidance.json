@@ -648,6 +648,7 @@
     "success-owner": "Name the role that tracks every criterion.",
     "closing-criteria": "Give every deliverable a test it is accepted against.",
     "landing-operation": "Name the operation the result is handed over to, or a new one.",
+    "landing-service-funding": "Name on the planned service the budget that pays to run it, with the amount per month or year.",
     "landing-criteria": "Add a success criterion that falls due at handover or after it.",
     "landing-owner": "Name a service owner in Resources to accept the handover.",
     "measures-kpis-once": "Name each KPI once, with one reason; merge the reasons if it was named twice.",

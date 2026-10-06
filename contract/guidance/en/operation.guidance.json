@@ -106,6 +106,37 @@
         }
       ]
     },
+    "/spec/funding": {
+      "guide": "The budgets that pay to run the service, each with what it costs per month or per year. A running cost starts once the project that sets the service up has closed, so it is named here, not on the project's funding. One line per currency and period.",
+      "good": [
+        "Refresher training, monitoring and the annual list review, 85,000 a year from the operating budget, requested"
+      ],
+      "poor": [
+        {
+          "text": "The project's last funding line, kept open after it closes",
+          "why": "A project's funding pays for the project until it closes. What pays to run the service belongs on the service."
+        },
+        {
+          "text": "A line with no amount, for a cost nobody has worked out yet",
+          "why": "A funding line states money. An uncosted need is an issue: record it on the project's risks and escalate it to whoever decides funding."
+        }
+      ]
+    },
+    "/spec/funding/-/amount": {
+      "guide": "What running the service costs for one period, in the line's currency."
+    },
+    "/spec/funding/-/per": {
+      "guide": "The period the amount is for: month or year. A service's cost recurs for as long as it runs."
+    },
+    "/spec/funding/-/source": {
+      "guide": "The budget this line draws on, a funding source declared once with its code. Leave it empty while no budget is found, and set the status to requested or unfunded.",
+      "good": [
+        "operating-budget"
+      ]
+    },
+    "/spec/funding/-/status": {
+      "guide": "Whether the money is approved, requested or unfunded. A planned service with unfunded running costs is worth saying early."
+    },
     "/spec/programmes": {
       "guide": "The programmes this service is part of. Name one only when the programme coordinates this service towards its change; an operation outside any programme is normal, and nothing advises against it. The programme reads its components back from here.",
       "good": [

@@ -54,6 +54,37 @@
             "checks": [
               "service-hours"
             ]
+          },
+          {
+            "path": "/spec/funding",
+            "control": "list",
+            "key": "currency",
+            "title": "Running costs",
+            "hint": "What pays to run the service, per month or per year.",
+            "fields": [
+              {
+                "path": "/amount",
+                "control": "number"
+              },
+              {
+                "path": "/currency",
+                "control": "choice"
+              },
+              {
+                "path": "/per",
+                "control": "choice",
+                "title": "Per"
+              },
+              {
+                "path": "/source",
+                "control": "reference",
+                "title": "Budget"
+              },
+              {
+                "path": "/status",
+                "control": "choice"
+              }
+            ]
           }
         ],
         "links": [

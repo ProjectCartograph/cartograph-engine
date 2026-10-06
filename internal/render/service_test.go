@@ -46,3 +46,26 @@ func TestChartersSayWhereAServiceIs(t *testing.T) {
 		t.Errorf("the project charter does not say its service is planned")
 	}
 }
+
+// A service's running costs are printed with the period each is for
+// (TAXONOMY.md D39).
+func TestServiceChartersPrintRunningCosts(t *testing.T) {
+	ctx := context.Background()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	y := "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: checks\n  name: Quality Check Service\nspec:\n  purpose: Check every delivery\n  status: planned\n  team: t1\n  funding:\n    - {amount: 85000, currency: USD, per: year, status: requested}\n"
+	if err := e.PutWorking(ctx, "Operation", "checks", []byte(y)); err != nil {
+		t.Fatal(err)
+	}
+	html, err := OperationCharter(ctx, e, "checks")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Running costs", "USD 85,000 a year"} {
+		if !strings.Contains(string(html), want) {
+			t.Errorf("the service charter lacks %q", want)
+		}
+	}
+}

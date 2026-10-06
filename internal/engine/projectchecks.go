@@ -449,6 +449,16 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	default:
 		c.add("landing-operation", "landing", phaseLanding, checkOK, "Lands in a running service.")
 	}
+	// A planned service is paid for once the project closes, from budgets
+	// the service names (TAXONOMY.md D39). Asked of the project that sets
+	// it up, because that is where the question is answered in time.
+	if e.operationStatus(ctx, operation) == "planned" {
+		if e.operationFunded(ctx, operation) {
+			c.add("landing-service-funding", "landing", phaseLanding, checkOK, "The service names what pays to run it.")
+		} else {
+			c.add("landing-service-funding", "landing", phaseLanding, checkWarn, "Who pays to run the service once the project closes? It names no funding yet.")
+		}
+	}
 	if isComponent && !criterionExists(criteria, "atLanding") && !criterionExists(criteria, "postClosingCycle") {
 		// A component is accepted into its parent and lands with it: the
 		// parent's landing test is the one that is judged (TAXONOMY.md D15).
@@ -1215,4 +1225,23 @@ func (e *Engine) operationStatus(ctx context.Context, id string) string {
 		return s
 	}
 	return "running"
+}
+
+// operationFunded reports whether the operation names at least one
+// funding line to run it.
+func (e *Engine) operationFunded(ctx context.Context, id string) bool {
+	if id == "" || id == "new" {
+		return false
+	}
+	v, found, err := e.manifests.GetCurrent(ctx, "Operation", id)
+	if err != nil || !found {
+		return false
+	}
+	var doc map[string]any
+	if e.codec.DecodeInto(v.YAML, &doc) != nil {
+		return false
+	}
+	spec, _ := doc["spec"].(map[string]any)
+	funding, _ := spec["funding"].([]any)
+	return len(funding) > 0
 }

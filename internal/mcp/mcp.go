@@ -128,7 +128,9 @@ Work this way, every time:
    an outcome, its "target" a KPI's target, its "problem" a gap, and a
    milestone that names work a task under the deliverable it produces,
    without its date (a milestone that is only a date is the planning
-   tool's, not Cartograph's). Keep the
+   tool's, not Cartograph's), and a service's recurrent costs funding
+   lines on the operation, per month or year, never on the project
+   that sets it up. Keep the
    document's own wording in the statement and cite it as the source;
    never add a kind, level or field Cartograph does not have, and when a
    thing fits no kind, say so to your person rather than forcing it.

@@ -1193,3 +1193,25 @@ on them. The charter prints them as a work breakdown, coded by position
 (D2, D2.1, D2.2), and the handoff bundle carries the same list for the
 planning tool to import. A milestone in a ported document becomes a task
 only where it names work, and never brings its date.
+
+### D39. A service names the budgets that pay to run it, per period. *(resolved)*
+
+**The problem.** A service's running cost had no home. A project's
+funding lines pay for the project until it closes, so a running cost
+put there misstated the project. A portfolio's funding covers projects,
+programmes and portfolios, never operations, and a programme carries no
+funding of its own. A FundingSource naming the services it pays would
+point from an early register to later work, against the order of work
+(D28). What was left was the operation's notes: text no check or report
+reads.
+
+**What Cartograph does.** An operation names its funding
+(`spec.funding`): the project's line, `{amount, currency, source,
+status}`, plus `per`, month or year, because a service's cost recurs for
+as long as it runs. At most one line per currency and period. A project
+that lands in a planned service warns, at landing, until the service
+names a line: who pays to run it once the project closes? A running
+service is not asked; it is recorded as it stands. The service's
+document prints its running costs, each labelled with its period. An
+uncosted need is not a line with no amount; it is an issue on the
+project's risks until it is costed.

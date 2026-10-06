@@ -98,3 +98,33 @@ func TestAServiceIsPlannedUntilItRuns(t *testing.T) {
 		t.Fatalf("the project's landing: %+v %v", checksByID(checks.Items)["landing-operation"], err)
 	}
 }
+
+// A project that sets up a planned service asks who pays to run it once
+// the project closes, until the service names its funding (TAXONOMY.md
+// D39). A running service is not asked.
+func TestAPlannedServiceNamesWhatPaysToRunIt(t *testing.T) {
+	e := seededEngine(t)
+	ctx := context.Background()
+	svc := "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: svc\n  name: svc\nspec:\n  purpose: Check deliveries\n  team: t1\n  status: planned\n"
+	mustCommit(t, e, "Operation", "svc", "p1", svc)
+	mustCommit(t, e, "Project", "set-up", "p1", projectYAML("set-up", "  operation: svc\n"))
+	funding := func() engine.ProjectCheckItem {
+		t.Helper()
+		checks, err := e.ProjectChecks(ctx, "set-up", false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return checksByID(checks.Items)["landing-service-funding"]
+	}
+	if c := funding(); c.State != "warn" || !strings.Contains(c.Message, "Who pays") {
+		t.Fatalf("a planned service with no funding: %+v", c)
+	}
+	mustCommit(t, e, "Operation", "svc", "p1", svc+"  funding:\n    - {amount: 1200, currency: USD, per: year, status: requested}\n")
+	if c := funding(); c.State != "ok" {
+		t.Fatalf("a planned service with funding: %+v", c)
+	}
+	mustCommit(t, e, "Operation", "svc", "p1", strings.Replace(svc, "planned", "running", 1))
+	if c := funding(); c.ID != "" {
+		t.Fatalf("a running service is asked about funding: %+v", c)
+	}
+}
