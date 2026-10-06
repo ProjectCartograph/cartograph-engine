@@ -333,6 +333,50 @@ func (e *Engine) RetitleChangeSet(ctx context.Context, id, title, description st
 	return cs, s.PutChangeSet(ctx, cs)
 }
 
+// LeaveOpen records that a check on a draft is left for the person the
+// change set is for, with the reason they will read: something only they
+// can settle (a figure no document gives, a score nobody has made). The
+// order of work then passes it by, and proposing waives it with that
+// reason, so an agent says why once, as it goes, rather than all at the
+// end. An empty reason takes it back.
+func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason string) error {
+	s, err := e.changeSetStore()
+	if err != nil {
+		return err
+	}
+	cs, err := e.WorkingChangeSet(ctx, set)
+	if err != nil {
+		return err
+	}
+	on := kind + "/" + id
+	kept := cs.Waivers[:0:0]
+	for _, w := range cs.Waivers {
+		if w.On != on || w.Check != check {
+			kept = append(kept, w)
+		}
+	}
+	if reason = strings.TrimSpace(reason); reason != "" {
+		kept = append(kept, store.Waiver{On: on, Check: check, Reason: reason})
+	}
+	cs.Waivers, cs.Updated = kept, timeNow().UTC()
+	return s.PutChangeSet(ctx, cs)
+}
+
+// leftKey carries the checks a change set leaves for its person, as
+// "Kind/id#check" to the reason.
+type leftKey struct{}
+
+// LeftFor is the reason a check on a manifest is left for the person, in
+// the change set on ctx, or "".
+func LeftFor(ctx context.Context, kind, id, check string) string {
+	return leftFor(ctx, kind, id, check)
+}
+
+func leftFor(ctx context.Context, kind, id, check string) string {
+	left, _ := ctx.Value(leftKey{}).(map[string]string)
+	return left[kind+"/"+id+"#"+check]
+}
+
 // DiscardChangeItem drops a draft from a change set the principal works
 // in, as if it had never been drafted there: a draft saved under the wrong
 // id, or one the work no longer needs. Refused while another draft in the
@@ -456,6 +500,26 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 	if err != nil {
 		return store.ChangeSet{}, err
 	}
+	// The checks left for the person as the work went, with their
+	// reasons; one given now as well wins.
+	recorded := map[string]map[string]string{}
+	for _, w := range cs.Waivers {
+		if recorded[w.On] == nil {
+			recorded[w.On] = map[string]string{}
+		}
+		recorded[w.On][w.Check] = w.Reason
+	}
+	for on, checks := range waive {
+		for check, why := range checks {
+			if recorded[on] == nil {
+				recorded[on] = map[string]string{}
+			}
+			if strings.TrimSpace(why) != "" {
+				recorded[on][check] = why
+			}
+		}
+	}
+	waive = recorded
 	var unmet []OpenCheck
 	var waivers []store.Waiver
 	for _, c := range open {
@@ -513,7 +577,7 @@ func (e *Engine) openIn(ctx context.Context, s store.ChangeSetStore, id string) 
 		}
 		for _, c := range checks {
 			if c.Open() {
-				open = append(open, OpenCheck{Kind: m.Kind, ManifestID: m.ID, Check: c})
+				open = append(open, OpenCheck{Kind: m.Kind, ManifestID: m.ID, Check: c, Left: leftFor(ctx, m.Kind, m.ID, c.ID)})
 			}
 		}
 	}
@@ -699,6 +763,14 @@ func (e *Engine) InChangeSet(ctx context.Context, set string) (context.Context, 
 	for _, it := range items {
 		texts[it.Kind+"/"+it.ID] = it.Text
 	}
+	// What it leaves for its person, so the order of work passes it by.
+	left := map[string]string{}
+	if cs, err := s.GetChangeSet(ctx, set); err == nil {
+		for _, w := range cs.Waivers {
+			left[w.On+"#"+w.Check] = w.Reason
+		}
+	}
+	ctx = context.WithValue(ctx, leftKey{}, left)
 	// The drafts parsed too, so whatever reads the record on this context
 	// (a lookup, a check, a guide's plan, relevance) reads them as if
 	// saved.

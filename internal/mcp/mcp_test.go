@@ -112,7 +112,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	}
 	for _, tl := range tools.Tools {
 		readOnly := tl.Annotations != nil && tl.Annotations.ReadOnlyHint
-		if !readOnly && tl.Name != "save_draft" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
+		if !readOnly && tl.Name != "save_draft" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
 			t.Errorf("tool %s may change something and is neither a draft nor a proposal", tl.Name)
 		}
 	}
@@ -488,5 +488,41 @@ func TestReadingToolsSeeTheChangeSetsDrafts(t *testing.T) {
 		if p.Kind == "ReportingCycle" && p.Missing {
 			t.Fatalf("the guide calls the drafted cycle missing: %s", text)
 		}
+	}
+}
+
+// An agent leaves a check only its person can settle, with the reason,
+// as it goes: next passes it by, checks lists it apart, and propose
+// waives it with that reason.
+func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
+	e, _, cs := setup(t, nil)
+	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-sound", "name": "Sound fruit"},
+		"spec": map[string]any{"level": "goal", "objective": "Sound fruit"}}
+	callTool(t, cs, "start_work", map[string]any{"title": "A goal"})
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-sound", "manifest": goal})
+	_, before := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-sound"})
+	var report struct {
+		Open []struct {
+			ID string `json:"id"`
+		} `json:"open"`
+	}
+	if err := json.Unmarshal([]byte(before), &report); err != nil || len(report.Open) == 0 {
+		t.Fatalf("no open checks to leave: %s", before)
+	}
+	for _, o := range report.Open {
+		if res, text := callTool(t, cs, "leave_open", map[string]any{"kind": "Goal", "id": "g-sound", "check": o.ID, "reason": "Only the person knows " + o.ID}); res.IsError {
+			t.Fatalf("leave_open: %s", text)
+		}
+	}
+	_, after := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-sound"})
+	if !strings.Contains(after, `"left":[`) || !strings.Contains(after, `"open":[]`) {
+		t.Fatalf("the left checks are still open: %s", after)
+	}
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a goal"}); res.IsError {
+		t.Fatalf("propose refused what was left with reasons: %s", text)
+	}
+	sets, _ := e.ChangeSets(identity.WithPrincipal(context.Background(), ada), "proposed", false)
+	if len(sets) == 0 || len(sets[0].Waivers) != len(report.Open) || !strings.HasPrefix(sets[0].Waivers[0].Reason, "Only the person knows") {
+		t.Fatalf("the proposal's waivers: %+v", sets)
 	}
 }

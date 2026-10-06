@@ -88,6 +88,9 @@ type OpenChecksError struct {
 type OpenCheck struct {
 	Kind, ManifestID string
 	Check
+	// Left is the reason it is left for the person, where the agent said
+	// so as it went.
+	Left string
 }
 
 func (e *OpenChecksError) Error() string {

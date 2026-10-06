@@ -200,9 +200,12 @@ Work this way, every time:
    owner.
 8. Propose your change set with propose when every check across it is
    met; your person accepts it whole, after trimming anything not ready.
-   An open check refuses the proposal. Leave one open only when
-   your person cannot settle it now, naming it with the reason in
-   openChecks; your person reads each reason.
+   An open check refuses the proposal. When a check needs what only
+   your person can supply (a figure or date no document gives, a score,
+   a choice that is theirs), call leave_open for it with the reason as
+   soon as you know, and carry on: next passes it by, and propose waives
+   it with your reason, which your person reads. Never leave one you
+   could meet from the documents.
 9. Your work ends in a proposal, never in a chat message asking the
    person to accept: they accept in Cartograph, after reading it. Tell
    them what you proposed, and what you left open and why.
@@ -508,6 +511,13 @@ type (
 	kindOnly struct {
 		Kind string `json:"kind" jsonschema:"a kind, such as Goal or Project"`
 	}
+	leaveIn struct {
+		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out"`
+		Kind      string `json:"kind"`
+		ID        string `json:"id"`
+		Check     string `json:"check" jsonschema:"the check's id, as checks reports it"`
+		Reason    string `json:"reason" jsonschema:"what your person must supply or decide, in one line they can act on; empty takes it back"`
+	}
 	manifestRef struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
 		Kind      string `json:"kind" jsonschema:"the manifest's kind"`
@@ -754,7 +764,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, err
 			}
 			c.announce(step{Step: "checks", Kind: in.Kind, ID: in.ID, Checks: checks, ChangeSet: cs.ID})
-			out := withAround(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID, in.Work)
+			out := withAround(c, leaving(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID), in.Kind, in.ID, in.Work)
 			if !found {
 				return out, nil
 			}
@@ -893,7 +903,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, err
 			}
 			c.announce(step{Step: "draft", Kind: in.Kind, ID: in.ID, Text: text, Fields: e.ChangedFields(before, text, 32), Checks: checks, ChangeSet: cs.ID})
-			out := withAround(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID, in.Work)
+			out := withAround(c, leaving(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID), in.Kind, in.ID, in.Work)
 			out["saved"], out["problems"], out["changeSet"] = "draft", problems, cs.ID
 			return out, nil
 		})
@@ -989,11 +999,26 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			fields = append(fields, in.Unset...)
 			sort.Strings(fields)
 			c.announce(step{Step: "draft", Kind: in.Kind, ID: in.ID, Text: text, Fields: fields, Checks: checks, ChangeSet: cs.ID})
-			out := withAround(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID, in.Work)
+			out := withAround(c, leaving(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID), in.Kind, in.ID, in.Work)
 			// The whole draft, as everyone in the change set now has it:
 			// what the person changed is in here to build on.
 			out["saved"], out["problems"], out["draft"], out["changeSet"] = "draft", problems, string(text), cs.ID
 			return out, nil
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "leave_open", Description: "Leave a check on one of your drafts for your person, with the reason they will read: only for what only they can settle, " +
+		"a figure or date no document gives, a score nobody has made, a choice that is theirs. next then passes it by, and propose waives it with this reason, " +
+		"so you say why once, as you go. An empty reason takes it back. Never leave a check you could meet from the documents.", Annotations: drafting},
+		func(c call, in leaveIn) (any, error) {
+			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
+			if err != nil {
+				return nil, err
+			}
+			if err := e.LeaveOpen(c.ctx, cs.ID, in.Kind, in.ID, in.Check, in.Reason); err != nil {
+				return nil, err
+			}
+			return map[string]any{"left": in.Kind + "/" + in.ID + " " + in.Check, "reason": in.Reason, "changeSet": cs.ID,
+				"next": "Carry on with next: it passes this check by, and propose waives it with your reason."}, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "discard_draft", Description: "Drop a draft from your change set, as if it had never been drafted there: one saved under the wrong id, " +
@@ -1167,21 +1192,50 @@ func withSet(c call, out map[string]any, set, kind, id string) (map[string]any, 
 	if err != nil {
 		return nil, err
 	}
-	var elsewhere []map[string]any
+	var elsewhere, left []map[string]any
 	for _, oc := range open {
+		if oc.Left != "" {
+			left = append(left, map[string]any{"kind": oc.Kind, "id": oc.ManifestID, "check": oc.ID, "reason": oc.Left})
+			continue
+		}
 		if oc.Kind == kind && oc.ManifestID == id {
 			continue
 		}
 		elsewhere = append(elsewhere, map[string]any{"kind": oc.Kind, "id": oc.ManifestID, "check": oc.ID, "state": oc.State, "message": oc.Message, "section": oc.Section})
 	}
 	out["openInChangeSet"] = elsewhere
+	if len(left) > 0 {
+		out["leftForYourPerson"] = left
+	}
 	if len(elsewhere) > 0 {
 		out["setNext"] = fmt.Sprintf("%d check%s still open on other drafts in this change set (openInChangeSet). "+
 			"propose refuses until each is met, or waived with a reason your person can read.", len(elsewhere), map[bool]string{true: " is", false: "s are"}[len(elsewhere) == 1])
-	} else if len(open) == 0 {
-		out["setNext"] = "Nothing is open across the change set: propose will accept it."
+	} else if len(open) == len(left) {
+		out["setNext"] = "Nothing is open across the change set but what you left for your person: propose will accept it, with your reasons."
 	}
 	return out, nil
+}
+
+// leaving moves the checks left for the person out of a report's open
+// list, into left with their reasons.
+func leaving(c call, out map[string]any, kind, id string) map[string]any {
+	open, _ := out["open"].([]engine.Check)
+	var still []engine.Check
+	var left []map[string]any
+	for _, ch := range open {
+		if why := engine.LeftFor(c.ctx, kind, id, ch.ID); why != "" {
+			left = append(left, map[string]any{"check": ch.ID, "reason": why})
+		} else {
+			still = append(still, ch)
+		}
+	}
+	if len(left) > 0 {
+		if still == nil {
+			still = []engine.Check{}
+		}
+		out["open"], out["left"] = still, left
+	}
+	return out
 }
 
 func checkReport(checks []engine.Check) map[string]any {

@@ -157,7 +157,13 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 		for _, a := range around {
 			r := Ref{Kind: a.Kind, ID: a.ID}
 			if _, ok := records[r]; !ok {
-				records[r] = &record{ref: r, name: a.Name, open: a.Open}
+				var open []Check
+				for _, c := range a.Open {
+					if leftFor(ctx, a.Kind, a.ID, c.ID) == "" {
+						open = append(open, c)
+					}
+				}
+				records[r] = &record{ref: r, name: a.Name, open: open}
 			}
 		}
 		if _, ok := records[w]; ok {
@@ -170,7 +176,8 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 		}
 		var open []Check
 		for _, c := range checks {
-			if c.Open() {
+			// A check left for the person is not the agent's next task.
+			if c.Open() && leftFor(ctx, w.Kind, w.ID, c.ID) == "" {
 				open = append(open, c)
 			}
 		}
