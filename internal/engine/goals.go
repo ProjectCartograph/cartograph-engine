@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -20,6 +21,26 @@ type Settings struct {
 	Examples map[string][]string `json:"examples,omitempty"`
 	// Why everything below exists: the vision and mission (D24).
 	Purpose *Purpose `json:"purpose,omitempty"`
+	// How the record may change (docs/adr/0024). Nil: as before 0024,
+	// every write path open.
+	ChangeControl *ChangeControl `json:"changeControl,omitempty"`
+}
+
+// ChangeControl is a workspace's change-control policy.
+type ChangeControl struct {
+	// ChangeSetsRequired refuses every direct write: each change is made
+	// in a change set and rolled in.
+	ChangeSetsRequired bool `json:"changeSetsRequired,omitempty" yaml:"changeSetsRequired"`
+	// RollIn is what a change set needs before it is rolled in.
+	RollIn RollInPolicy `json:"rollIn,omitempty" yaml:"rollIn"`
+}
+
+// RollInPolicy is what a change set needs before it is rolled into the
+// record, for people and agents alike.
+type RollInPolicy struct {
+	ChecksMet       bool `json:"checksMet,omitempty" yaml:"checksMet"`
+	NothingLeftOpen bool `json:"nothingLeftOpen,omitempty" yaml:"nothingLeftOpen"`
+	SecondReviewer  bool `json:"secondReviewer,omitempty" yaml:"secondReviewer"`
 }
 
 // Purpose is the vault's vision and mission, stated once above every goal.
@@ -96,6 +117,7 @@ func (e *Engine) settingsOnly(ctx context.Context) (Settings, error) {
 			Chromium         string              `yaml:"chromium"`
 			Examples         map[string][]string `yaml:"examples"`
 			Purpose          *Purpose            `yaml:"purpose"`
+			ChangeControl    *ChangeControl      `yaml:"changeControl"`
 		} `yaml:"spec"`
 	}
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
@@ -115,7 +137,27 @@ func (e *Engine) settingsOnly(ctx context.Context) (Settings, error) {
 	}
 	out.Examples = doc.Spec.Examples
 	out.Purpose = doc.Spec.Purpose
+	out.ChangeControl = doc.Spec.ChangeControl
 	return out, nil
+}
+
+// ErrChangeSetRequired is a direct write in a workspace whose policy
+// sends every change through a change set (docs/adr/0024).
+var ErrChangeSetRequired = errors.New("this workspace makes every change in a change set: make it in one, review it, and roll it in")
+
+// DirectWrite answers whether a write may go straight to the record (a
+// version, a working copy, a snapshot, a delete, a project state) or
+// must be made in a change set: ErrChangeSetRequired when the
+// workspace's policy says so.
+func (e *Engine) DirectWrite(ctx context.Context) error {
+	s, err := e.settingsOnly(ctx)
+	if err != nil {
+		return err
+	}
+	if s.ChangeControl != nil && s.ChangeControl.ChangeSetsRequired {
+		return ErrChangeSetRequired
+	}
+	return nil
 }
 
 // DeleteGoal deletes a goal (goals are easily mutable), allowed only

@@ -290,6 +290,8 @@ paths:
             schema:
               $ref: "#/components/schemas/DeleteGoalRequest"
       responses:
+        "409":
+          $ref: "#/components/responses/ChangeSetRequired"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -363,6 +365,8 @@ paths:
             schema:
               $ref: "#/components/schemas/ProjectStateTransitionRequest"
       responses:
+        "409":
+          $ref: "#/components/responses/ChangeSetRequired"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -1970,6 +1974,8 @@ paths:
             schema:
               $ref: "#/components/schemas/DeleteRequest"
       responses:
+        "409":
+          $ref: "#/components/responses/ChangeSetRequired"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -2056,6 +2062,8 @@ paths:
                   minLength: 1
                   description: Reason for this snapshot
       responses:
+        "409":
+          $ref: "#/components/responses/ChangeSetRequired"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -2342,6 +2350,15 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ConflictResponse"
+    ChangeSetRequired:
+      description: >-
+        The workspace requires every change to go through a change set
+        (Settings.changeControl.changeSetsRequired, docs/adr/0024): make
+        this change in a change set and roll it in.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemList"
     Unprocessable:
       description: Schema, reference or kind rule violation
       content:
@@ -3685,6 +3702,34 @@ components:
             type: array
             items:
               type: string
+        changeControl:
+          $ref: "#/components/schemas/ChangeControl"
+
+    ChangeControl:
+      type: object
+      description: >-
+        How the record may change (docs/adr/0024). Absent or false, every
+        write path works as before.
+      properties:
+        changeSetsRequired:
+          type: boolean
+          description: >-
+            Every change goes through a change set; direct saves, working
+            copies, snapshots, deletes and project state changes are refused
+            with a problem of type change-control.
+        rollIn:
+          type: object
+          description: What a change set needs before it is rolled into the record.
+          properties:
+            checksMet:
+              type: boolean
+              description: Every check on every record in it is met.
+            nothingLeftOpen:
+              type: boolean
+              description: No check is left open for the person, even with a reason.
+            secondReviewer:
+              type: boolean
+              description: Someone other than its author rolls it in.
 
     GoalAligned:
       type: object

@@ -149,7 +149,7 @@ func writeError(w http.ResponseWriter, _ *http.Request, err error) {
 	switch {
 	case errors.Is(err, auth.ErrForbidden), errors.Is(err, engine.ErrReadOnly):
 		status = http.StatusForbidden
-	case errors.Is(err, engine.ErrSelf):
+	case errors.Is(err, engine.ErrSelf), errors.Is(err, engine.ErrChangeSetRequired):
 		status = http.StatusConflict
 	}
 	w.Header().Set("Content-Type", "application/json")

@@ -172,6 +172,9 @@ func (s *Server) GetGoalChecks(ctx context.Context, req apigen.GetGoalChecksRequ
 }
 
 func (s *Server) DeleteGoal(ctx context.Context, req apigen.DeleteGoalRequestObject) (apigen.DeleteGoalResponseObject, error) {
+	if err := s.Engine.DirectWrite(ctx); err != nil {
+		return nil, err
+	}
 	reason := ""
 	if req.Body != nil {
 		reason = req.Body.Reason
@@ -197,6 +200,9 @@ func (s *Server) DeleteGoal(ctx context.Context, req apigen.DeleteGoalRequestObj
 
 // DeleteManifest excludes a manifest from the live state (any kind).
 func (s *Server) DeleteManifest(ctx context.Context, req apigen.DeleteManifestRequestObject) (apigen.DeleteManifestResponseObject, error) {
+	if err := s.Engine.DirectWrite(ctx); err != nil {
+		return nil, err
+	}
 	reason := ""
 	if req.Body != nil {
 		reason = req.Body.Reason
@@ -471,6 +477,9 @@ func (s *Server) GetProjectState(ctx context.Context, req apigen.GetProjectState
 // with a reason. Snapshots the working copy if one exists, otherwise
 // the current version. The author is from Settings.spec.operator.
 func (s *Server) PostSnapshot(ctx context.Context, req apigen.PostSnapshotRequestObject) (apigen.PostSnapshotResponseObject, error) {
+	if err := s.Engine.DirectWrite(ctx); err != nil {
+		return nil, err
+	}
 	reason := ""
 	if req.Body != nil {
 		reason = req.Body.Reason
@@ -539,6 +548,9 @@ func (s *Server) DiscardWorking(ctx context.Context, req apigen.DiscardWorkingRe
 }
 
 func (s *Server) PutWorking(ctx context.Context, req apigen.PutWorkingRequestObject) (apigen.PutWorkingResponseObject, error) {
+	if err := s.Engine.DirectWrite(ctx); err != nil {
+		return nil, err
+	}
 	yamlBytes, problem := s.resolveBody(&req.Body.Yaml, nil)
 	if problem != nil {
 		return apigen.PutWorking400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse(toProblemList([]engine.Problem{*problem}))}, nil
@@ -584,6 +596,9 @@ func (s *Server) PutWorking(ctx context.Context, req apigen.PutWorkingRequestObj
 }
 
 func (s *Server) TransitionProjectState(ctx context.Context, req apigen.TransitionProjectStateRequestObject) (apigen.TransitionProjectStateResponseObject, error) {
+	if err := s.Engine.DirectWrite(ctx); err != nil {
+		return nil, err
+	}
 	reason := ""
 	if req.Body != nil && req.Body.Reason != nil {
 		reason = *req.Body.Reason
@@ -1040,6 +1055,9 @@ func (s *Server) GetManifest(ctx context.Context, req apigen.GetManifestRequestO
 }
 
 func (s *Server) PutManifest(ctx context.Context, req apigen.PutManifestRequestObject) (apigen.PutManifestResponseObject, error) {
+	if err := s.Engine.DirectWrite(ctx); err != nil {
+		return nil, err
+	}
 	yamlBytes, problem := s.resolveBody(req.Body.Yaml, req.Body.Manifest)
 	if problem != nil {
 		return apigen.PutManifest400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse(toProblemList([]engine.Problem{*problem}))}, nil

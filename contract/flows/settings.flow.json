@@ -47,6 +47,34 @@
             "title": "Chromium path"
           }
         ]
+      },
+      {
+        "key": "change-control",
+        "title": "Change control",
+        "guide": "How the record may change: whether every change goes through a change set, and what a change set needs before it is rolled in.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/changeControl/changeSetsRequired",
+            "control": "toggle",
+            "title": "Every change in a change set"
+          },
+          {
+            "path": "/spec/changeControl/rollIn/checksMet",
+            "control": "toggle",
+            "title": "Every check met before rolling in"
+          },
+          {
+            "path": "/spec/changeControl/rollIn/nothingLeftOpen",
+            "control": "toggle",
+            "title": "Nothing left open before rolling in"
+          },
+          {
+            "path": "/spec/changeControl/rollIn/secondReviewer",
+            "control": "toggle",
+            "title": "Rolled in by someone other than its author"
+          }
+        ]
       }
     ],
     "review": true

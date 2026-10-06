@@ -536,6 +536,24 @@ type Change struct {
 // ChangeOp defines model for Change.Op.
 type ChangeOp string
 
+// ChangeControl How the record may change (docs/adr/0024). Absent or false, every write path works as before.
+type ChangeControl struct {
+	// ChangeSetsRequired Every change goes through a change set; direct saves, working copies, snapshots, deletes and project state changes are refused with a problem of type change-control.
+	ChangeSetsRequired *bool `json:"changeSetsRequired,omitempty"`
+
+	// RollIn What a change set needs before it is rolled into the record.
+	RollIn *struct {
+		// ChecksMet Every check on every record in it is met.
+		ChecksMet *bool `json:"checksMet,omitempty"`
+
+		// NothingLeftOpen No check is left open for the person, even with a reason.
+		NothingLeftOpen *bool `json:"nothingLeftOpen,omitempty"`
+
+		// SecondReviewer Someone other than its author rolls it in.
+		SecondReviewer *bool `json:"secondReviewer,omitempty"`
+	} `json:"rollIn,omitempty"`
+}
+
 // ChangeSet A piece of work kept apart from the record and from every other piece of work until it is accepted, as a pull request is (docs/adr/0022).
 type ChangeSet struct {
 	// Agent The agent working in it, if one is.
@@ -1441,6 +1459,9 @@ type SessionAccessScopes string
 
 // Settings defines model for Settings.
 type Settings struct {
+	// ChangeControl How the record may change (docs/adr/0024). Absent or false, every write path works as before.
+	ChangeControl *ChangeControl `json:"changeControl,omitempty"`
+
 	// Examples Examples this vault shows per field, in its own words (TAXONOMY.md D20). Absent when the vault supplies none.
 	Examples *map[string][]string `json:"examples,omitempty"`
 
@@ -1619,6 +1640,9 @@ type ProposalParam = string
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ProblemList
+
+// ChangeSetRequired defines model for ChangeSetRequired.
+type ChangeSetRequired = ProblemList
 
 // Conflict defines model for Conflict.
 type Conflict = ConflictResponse
@@ -4714,6 +4738,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 type BadRequestJSONResponse ProblemList
 
+type ChangeSetRequiredJSONResponse ProblemList
+
 type ConflictJSONResponse ConflictResponse
 
 type ForbiddenJSONResponse ProblemList
@@ -6798,6 +6824,20 @@ func (response DeleteGoal404JSONResponse) VisitDeleteGoalResponse(w http.Respons
 	return err
 }
 
+type DeleteGoal409JSONResponse struct{ ChangeSetRequiredJSONResponse }
+
+func (response DeleteGoal409JSONResponse) VisitDeleteGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DeleteGoal422JSONResponse ProblemList
 
 func (response DeleteGoal422JSONResponse) VisitDeleteGoalResponse(w http.ResponseWriter) error {
@@ -7472,6 +7512,20 @@ func (response TransitionProjectState404JSONResponse) VisitTransitionProjectStat
 	return err
 }
 
+type TransitionProjectState409JSONResponse struct{ ChangeSetRequiredJSONResponse }
+
+func (response TransitionProjectState409JSONResponse) VisitTransitionProjectStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type TransitionProjectState422JSONResponse struct{ UnprocessableJSONResponse }
 
 func (response TransitionProjectState422JSONResponse) VisitTransitionProjectStateResponse(w http.ResponseWriter) error {
@@ -7686,6 +7740,20 @@ func (response DeleteManifest404JSONResponse) VisitDeleteManifestResponse(w http
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteManifest409JSONResponse struct{ ChangeSetRequiredJSONResponse }
+
+func (response DeleteManifest409JSONResponse) VisitDeleteManifestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8330,6 +8398,20 @@ func (response PostSnapshot404JSONResponse) VisitPostSnapshotResponse(w http.Res
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostSnapshot409JSONResponse struct{ ChangeSetRequiredJSONResponse }
+
+func (response PostSnapshot409JSONResponse) VisitPostSnapshotResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }

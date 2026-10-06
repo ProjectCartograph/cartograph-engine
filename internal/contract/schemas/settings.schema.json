@@ -88,6 +88,40 @@
             }
           },
           "description": "Deprecated: the vision and mission are the Purpose kind's, at the top of the strategy (TAXONOMY.md D24, ADR 0020). Read where no Purpose manifest exists, from a workspace saved before 2.7.0; never written."
+        },
+        "changeControl": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "How the record may change (docs/adr/0024). Absent, every write path works as before: an existing workspace keeps working until an administrator sets this.",
+          "properties": {
+            "changeSetsRequired": {
+              "type": "boolean",
+              "default": false,
+              "description": "Every change goes through a change set: a direct save, working copy, snapshot, delete or project state change is refused, naming change sets as the way."
+            },
+            "rollIn": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "What a change set needs before it is rolled into the record, for people and agents alike.",
+              "properties": {
+                "checksMet": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Every check on every record in it is met."
+                },
+                "nothingLeftOpen": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "No check is left open for the person, even with a reason."
+                },
+                "secondReviewer": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Someone other than its author rolls it in."
+                }
+              }
+            }
+          }
         }
       }
     }

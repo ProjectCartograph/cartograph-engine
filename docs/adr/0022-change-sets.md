@@ -1,6 +1,7 @@
 # 0022. Change sets
 
-**Status:** Accepted
+**Status:** Accepted. Its keeping people on the shared drafts is
+superseded by [0024](0024-every-change-goes-through-a-change-set.md).
 
 ## Context
 
