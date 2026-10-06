@@ -982,6 +982,19 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return out, nil
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "discard_draft", Description: "Drop a draft from your change set, as if it had never been drafted there: one saved under the wrong id, " +
+		"or one the work no longer needs. Refused while another draft in the set names it; change or discard that one first.", Annotations: drafting},
+		func(c call, in manifestRef) (any, error) {
+			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
+			if err != nil {
+				return nil, err
+			}
+			if err := e.DiscardChangeItem(c.ctx, cs.ID, in.Kind, in.ID); err != nil {
+				return nil, err
+			}
+			return map[string]any{"discarded": in.Kind + "/" + in.ID, "changeSet": cs.ID}, nil
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "start_work", Description: "Open a new change set for a new piece of work, with a title and what it is for, as you would open a branch for a task. " +
 		"Everything you draft afterwards goes into it, apart from your other work and every other agent's, and your person reviews and accepts it whole.", Annotations: drafting},
 		func(c call, in startWorkIn) (any, error) {

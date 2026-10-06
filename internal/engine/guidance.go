@@ -428,10 +428,16 @@ func (e *Engine) template(kind, level string) map[string]any {
 	if kind == "Goal" && level != "" {
 		spec["level"] = level
 	}
+	// A kind there is one of in a workspace has its id already: an agent
+	// that guessed another had a draft no save would ever take.
+	var id any
+	if singletons[kind] {
+		id = "default"
+	}
 	return map[string]any{
 		"apiVersion": "cartograph/v1",
 		"kind":       kind,
-		"metadata":   map[string]any{"id": nil, "name": nil},
+		"metadata":   map[string]any{"id": id, "name": nil},
 		"spec":       spec,
 	}
 }
@@ -525,3 +531,7 @@ func (e *Engine) requiredAt(kind, path string) bool {
 	}
 	return false
 }
+
+// singletons are the kinds a workspace holds one of, always under the id
+// "default" (their kind rules refuse any other).
+var singletons = map[string]bool{"Purpose": true, "Settings": true}

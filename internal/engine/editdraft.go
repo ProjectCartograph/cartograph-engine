@@ -102,6 +102,9 @@ func pointerTokens(p string) ([]string, error) {
 	if p == "" || p[0] != '/' {
 		return nil, fmt.Errorf("%w: %q is not a JSON pointer", ErrBadEdit, p)
 	}
+	if p == "/" {
+		return nil, fmt.Errorf("%w: \"/\" names no field; to drop the whole draft, discard it", ErrBadEdit)
+	}
 	parts := strings.Split(p[1:], "/")
 	for i, t := range parts {
 		parts[i] = strings.ReplaceAll(strings.ReplaceAll(t, "~1", "/"), "~0", "~")

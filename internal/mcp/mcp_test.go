@@ -112,7 +112,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	}
 	for _, tl := range tools.Tools {
 		readOnly := tl.Annotations != nil && tl.Annotations.ReadOnlyHint
-		if !readOnly && tl.Name != "save_draft" && tl.Name != "edit_draft" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
+		if !readOnly && tl.Name != "save_draft" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
 			t.Errorf("tool %s may change something and is neither a draft nor a proposal", tl.Name)
 		}
 	}
@@ -434,5 +434,25 @@ func TestAnAgentFollowsTheChangeSetItProposed(t *testing.T) {
 	res, text = callTool(t, cs, "get", map[string]any{"kind": "Team", "id": "t1"})
 	if res.IsError || !strings.Contains(text, "Drafted by an agent") {
 		t.Fatalf("after proposing, get reads the record, not the proposed draft: %s", text)
+	}
+}
+
+// A draft saved under the wrong id is discarded, not left to block the
+// change set; one another draft names is kept until that one changes.
+func TestAnAgentDiscardsADraft(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	bad := map[string]any{"apiVersion": "cartograph/v1", "kind": "Purpose", "metadata": map[string]any{"id": "purpose", "name": "Purpose"}, "spec": map[string]any{"organisation": "Example"}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Purpose", "id": "purpose", "manifest": bad})
+	if res, text := callTool(t, cs, "discard_draft", map[string]any{"kind": "Purpose", "id": "purpose"}); res.IsError {
+		t.Fatalf("discard: %s", text)
+	}
+	if res, text := callTool(t, cs, "checks", map[string]any{}); res.IsError || strings.Contains(text, "Purpose") {
+		t.Fatalf("the discarded draft is still in the set: %s", text)
+	}
+	if res, text := callTool(t, cs, "guide", map[string]any{"kind": "Purpose"}); res.IsError || !strings.Contains(text, `"id":"default"`) {
+		t.Fatalf("the Purpose template does not give its id: %.300s", text)
+	}
+	if res, _ := callTool(t, cs, "edit_draft", map[string]any{"kind": "Team", "id": "t1", "unset": []string{"/"}}); !res.IsError {
+		t.Fatal("unsetting / was taken as an edit")
 	}
 }

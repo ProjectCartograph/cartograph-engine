@@ -331,6 +331,51 @@ func (e *Engine) RetitleChangeSet(ctx context.Context, id, title, description st
 	return cs, s.PutChangeSet(ctx, cs)
 }
 
+// DiscardChangeItem drops a draft from a change set the principal works
+// in, as if it had never been drafted there: a draft saved under the wrong
+// id, or one the work no longer needs. Refused while another draft in the
+// set names it, listing them, since those would then name nothing.
+func (e *Engine) DiscardChangeItem(ctx context.Context, set, kind, id string) error {
+	s, err := e.changeSetStore()
+	if err != nil {
+		return err
+	}
+	cs, err := e.WorkingChangeSet(ctx, set)
+	if err != nil {
+		return err
+	}
+	items, err := s.ListChangeItems(ctx, cs.ID)
+	if err != nil {
+		return err
+	}
+	found := false
+	var naming []Problem
+	for _, it := range items {
+		if it.Kind == kind && it.ID == id {
+			found = true
+			continue
+		}
+		var doc map[string]any
+		if e.codec.DecodeInto(it.Text, &doc) != nil {
+			continue
+		}
+		for _, r := range extractRefs(doc, e.refRules[it.Kind]) {
+			if r.kind == kind && r.id == id {
+				naming = append(naming, Problem{Path: it.Kind + "/" + it.ID + r.path,
+					Message: fmt.Sprintf("names %s/%s: change it, or discard it first", kind, id)})
+				break
+			}
+		}
+	}
+	if !found {
+		return fmt.Errorf("%w: %s/%s is not in the change set", ErrNotFound, kind, id)
+	}
+	if len(naming) > 0 {
+		return &ValidationError{Problems: naming}
+	}
+	return s.DeleteChangeItem(ctx, cs.ID, kind, id)
+}
+
 // IncludeChangeItem includes an item in the next acceptance, or trims it
 // from it: the person it is for may, while it is open or proposed.
 func (e *Engine) IncludeChangeItem(ctx context.Context, set, kind, id string, included bool) error {
@@ -436,6 +481,18 @@ func (e *Engine) OpenInChangeSet(ctx context.Context, id string) ([]OpenCheck, e
 	s, err := e.changeSetStore()
 	if err != nil {
 		return nil, err
+	}
+	// A set with nothing to propose has nothing open.
+	items, err := s.ListChangeItems(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	any := false
+	for _, it := range items {
+		any = any || it.Included
+	}
+	if !any {
+		return nil, nil
 	}
 	return e.openIn(ctx, s, id)
 }
