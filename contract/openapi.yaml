@@ -1470,6 +1470,60 @@ paths:
               schema:
                 $ref: "#/components/schemas/ChangeSet"
 
+  /changesets/{set}/items/{kind}/{id}/removal:
+    put:
+      operationId: removeInChangeSet
+      summary: >-
+        Make the change set delete this record when it is rolled in
+        (docs/adr/0024). The item starts from the record as it stands;
+        rolling in deletes it after the change set's saves, refused then
+        if something still references it. Dropping the item takes the
+        delete back.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "204":
+          description: The item now deletes the record.
+
+  /changesets/{set}/items/Project/{id}/state:
+    put:
+      operationId: moveInChangeSet
+      summary: >-
+        Make the change set move this project to another state when it is
+        rolled in (docs/adr/0024): after its saves and deletes, checked as
+        a direct state change is. A hand-off renders the charter then.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [state]
+              properties:
+                state:
+                  type: string
+                  description: The state to move to, as ProjectState names them.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "204":
+          description: The item now moves the project.
+
   /changesets/{set}/items/{kind}/{id}:
     get:
       operationId: getChangeSetItem
@@ -3631,6 +3685,15 @@ components:
         stale:
           type: integer
           description: The version saved since it started, when one was; accepting is refused until it is reviewed again.
+        op:
+          type: string
+          enum: [save, delete, state]
+          description: >-
+            What rolling it in does to the record: saves the draft as the
+            next version, deletes the record, or moves a project to state.
+        state:
+          type: string
+          description: The state a project moves to, when op is state.
     ChangeSetReview:
       type: object
       required: [changeSet, items]

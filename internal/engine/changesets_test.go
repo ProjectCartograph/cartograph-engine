@@ -78,7 +78,8 @@ func TestChangeSetsKeepWorkApartAndMergeWhole(t *testing.T) {
 	if _, err := e.AcceptChangeSet(actingAs(sam), mine.ID, ""); !errors.Is(err, engine.ErrNotTheirChangeSet) {
 		t.Fatalf("someone else accepted it: %v", err)
 	}
-	saved, err := e.AcceptChangeSet(seed, mine.ID, "looks right")
+	accepted, err := e.AcceptChangeSet(seed, mine.ID, "looks right")
+	saved := accepted.Saved
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,5 +115,58 @@ func TestChangeSetsKeepWorkApartAndMergeWhole(t *testing.T) {
 	}
 	if _, err := e.CloseChangeSet(seed, theirs.ID, "superseded"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// A change set deletes records and moves projects as well as saving
+// them (docs/adr/0024): rolled in, the saves land first, then the deletes,
+// then the state changes; what cannot be applied stays in it.
+func TestAChangeSetDeletesAndMovesAsWellAsSaves(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	seed := actingAs(ada)
+	mustCommit(t, e, "Project", "p-move", "p1", projectYAML("p-move", ""))
+	if _, err := e.Commit(seed, "Team", "t-gone", []byte("apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t-gone\n  name: Going\nspec:\n  description: going\n"), "ada@example.org", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.EditInChangeSet(seed, "", "Team", "t-kept", map[string]any{"/metadata/name": "Kept", "/spec/description": "new"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, _ := e.WorkingChangeSet(seed, "")
+	if err := e.MarkInChangeSet(seed, cs.ID, "Team", "t-gone", store.ItemDelete, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.MarkInChangeSet(seed, cs.ID, "Project", "p-move", store.ItemState, engine.ProjectStateCancelled); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.MarkInChangeSet(seed, cs.ID, "Team", "nobody", store.ItemDelete, ""); !errors.Is(err, engine.ErrNotFound) {
+		t.Fatalf("deleting what does not exist: %v", err)
+	}
+	view, err := e.ViewChangeSet(seed, cs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ops := map[string]string{}
+	for _, it := range view.Items {
+		ops[it.Item.Kind+"/"+it.Item.ID] = it.Item.Op + ":" + fmt.Sprint(it.Changes)
+	}
+	if !strings.HasPrefix(ops["Team/t-gone"], "delete:") || !strings.Contains(ops["Project/p-move"], "cancelled") {
+		t.Fatalf("the review: %v", ops)
+	}
+	if _, err := e.ProposeChangeSet(seed, cs.ID, "tidy up", nil); err != nil {
+		t.Fatal(err)
+	}
+	got, err := e.AcceptChangeSet(seed, cs.ID, "agreed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Saved) != 1 || len(got.Deleted) != 1 || len(got.Moved) != 1 || len(got.Kept) != 0 {
+		t.Fatalf("rolled in: %+v", got)
+	}
+	if got.Deleted[0] != (engine.Ref{Kind: "Team", ID: "t-gone"}) || got.Moved[0] != (engine.Ref{Kind: "Project", ID: "p-move"}) {
+		t.Fatalf("what was deleted and moved: %+v", got)
+	}
+	if st, _ := e.GetProjectState(seed, "p-move"); st.State != engine.ProjectStateCancelled {
+		t.Fatalf("the project's state: %+v", st)
 	}
 }

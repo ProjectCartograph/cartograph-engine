@@ -111,13 +111,13 @@ func (m *ManifestStore) MoveChangeSet(ctx context.Context, id, from, to, by, rea
 	return cs, err
 }
 
-const changeItemColumns = `set_id, kind, manifest_id, text, base, included, by, at`
+const changeItemColumns = `set_id, kind, manifest_id, text, base, included, by, at, op, state`
 
 func scanChangeItem(r rowScanner) (store.ChangeItem, error) {
 	var it store.ChangeItem
 	var text, at string
 	var included int
-	if err := r.Scan(&it.Set, &it.Kind, &it.ID, &text, &it.Base, &included, &it.By, &at); err != nil {
+	if err := r.Scan(&it.Set, &it.Kind, &it.ID, &text, &it.Base, &included, &it.By, &at, &it.Op, &it.State); err != nil {
 		return store.ChangeItem{}, err
 	}
 	it.Text, it.Included = []byte(text), included != 0
@@ -131,10 +131,10 @@ func (m *ManifestStore) PutChangeItem(ctx context.Context, it store.ChangeItem) 
 	if it.Included {
 		included = 1
 	}
-	_, err := m.ex.ExecContext(ctx, `INSERT INTO change_items (`+changeItemColumns+`) VALUES (?,?,?,?,?,?,?,?)
+	_, err := m.ex.ExecContext(ctx, `INSERT INTO change_items (`+changeItemColumns+`) VALUES (?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT (set_id, kind, manifest_id) DO UPDATE SET text = excluded.text, base = excluded.base,
-		included = excluded.included, by = excluded.by, at = excluded.at`,
-		it.Set, it.Kind, it.ID, string(it.Text), it.Base, included, it.By, stamp(it.At))
+		included = excluded.included, by = excluded.by, at = excluded.at, op = excluded.op, state = excluded.state`,
+		it.Set, it.Kind, it.ID, string(it.Text), it.Base, included, it.By, stamp(it.At), it.Op, it.State)
 	return err
 }
 

@@ -67,6 +67,27 @@ func (e ChangeSetStatus) Valid() bool {
 	}
 }
 
+// Defines values for ChangeSetItemOp.
+const (
+	ChangeSetItemOpDelete ChangeSetItemOp = "delete"
+	ChangeSetItemOpSave   ChangeSetItemOp = "save"
+	ChangeSetItemOpState  ChangeSetItemOp = "state"
+)
+
+// Valid indicates whether the value is a known member of the ChangeSetItemOp enum.
+func (e ChangeSetItemOp) Valid() bool {
+	switch e {
+	case ChangeSetItemOpDelete:
+		return true
+	case ChangeSetItemOpSave:
+		return true
+	case ChangeSetItemOpState:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GoalCheckState.
 const (
 	GoalCheckStateOk   GoalCheckState = "ok"
@@ -273,19 +294,19 @@ func (e ProjectStateName) Valid() bool {
 
 // Defines values for ProposalOp.
 const (
-	Append ProposalOp = "append"
-	Save   ProposalOp = "save"
-	State  ProposalOp = "state"
+	ProposalOpAppend ProposalOp = "append"
+	ProposalOpSave   ProposalOp = "save"
+	ProposalOpState  ProposalOp = "state"
 )
 
 // Valid indicates whether the value is a known member of the ProposalOp enum.
 func (e ProposalOp) Valid() bool {
 	switch e {
-	case Append:
+	case ProposalOpAppend:
 		return true
-	case Save:
+	case ProposalOpSave:
 		return true
-	case State:
+	case ProposalOpState:
 		return true
 	default:
 		return false
@@ -634,9 +655,18 @@ type ChangeSetItem struct {
 	Kind     string  `json:"kind"`
 	Name     *string `json:"name,omitempty"`
 
+	// Op What rolling it in does to the record: saves the draft as the next version, deletes the record, or moves a project to state.
+	Op *ChangeSetItemOp `json:"op,omitempty"`
+
 	// Stale The version saved since it started, when one was; accepting is refused until it is reviewed again.
 	Stale *int `json:"stale,omitempty"`
+
+	// State The state a project moves to, when op is state.
+	State *string `json:"state,omitempty"`
 }
+
+// ChangeSetItemOp What rolling it in does to the record: saves the draft as the next version, deletes the record, or moves a project to state.
+type ChangeSetItemOp string
 
 // ChangeSetProposal defines model for ChangeSetProposal.
 type ChangeSetProposal struct {
@@ -1714,6 +1744,12 @@ type ListChangeSetsParams struct {
 // ListChangeSetsParamsStatus defines parameters for ListChangeSets.
 type ListChangeSetsParamsStatus string
 
+// MoveInChangeSetJSONBody defines parameters for MoveInChangeSet.
+type MoveInChangeSetJSONBody struct {
+	// State The state to move to, as ProjectState names them.
+	State string `json:"state"`
+}
+
 // FromIdeaJSONBody defines parameters for FromIdea.
 type FromIdeaJSONBody struct {
 	Idea string `json:"idea"`
@@ -1911,6 +1947,9 @@ type AcceptChangeSetJSONRequestBody = ProposalDecision
 // CloseChangeSetJSONRequestBody defines body for CloseChangeSet for application/json ContentType.
 type CloseChangeSetJSONRequestBody = ProposalDecision
 
+// MoveInChangeSetJSONRequestBody defines body for MoveInChangeSet for application/json ContentType.
+type MoveInChangeSetJSONRequestBody MoveInChangeSetJSONBody
+
 // IncludeChangeSetItemJSONRequestBody defines body for IncludeChangeSetItem for application/json ContentType.
 type IncludeChangeSetItemJSONRequestBody = ChangeSetInclude
 
@@ -2074,6 +2113,9 @@ type ServerInterface interface {
 	// CloseChangeSet End a change set without saving it.
 	// (POST /changesets/{set}/close)
 	CloseChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// MoveInChangeSet Make the change set move this project to another state when it is rolled in (docs/adr/0024): after its saves and deletes, checked as a direct state change is. A hand-off renders the charter then.
+	// (PUT /changesets/{set}/items/Project/{id}/state)
+	MoveInChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam, id IdParam)
 	// DropChangeSetItem Take an item out of a change set altogether.
 	// (DELETE /changesets/{set}/items/{kind}/{id})
 	DropChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam)
@@ -2086,6 +2128,9 @@ type ServerInterface interface {
 	// PutChangeSetItem Keep a manifest's draft in a change set. With previous (the text the editor last had), only the fields that changed since are applied, so what someone else changed in other fields meanwhile is kept.
 	// (PUT /changesets/{set}/items/{kind}/{id})
 	PutChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam)
+	// RemoveInChangeSet Make the change set delete this record when it is rolled in (docs/adr/0024). The item starts from the record as it stands; rolling in deletes it after the change set's saves, refused then if something still references it. Dropping the item takes the delete back.
+	// (PUT /changesets/{set}/items/{kind}/{id}/removal)
+	RemoveInChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam)
 	// ProposeChangeSet Put a change set up for its person to accept: every included item is checked with the others, open checks refused unless each is left open with a reason.
 	// (POST /changesets/{set}/propose)
 	ProposeChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
@@ -2619,6 +2664,41 @@ func (siw *ServerInterfaceWrapper) CloseChangeSet(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// MoveInChangeSet operation middleware
+func (siw *ServerInterfaceWrapper) MoveInChangeSet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MoveInChangeSet(w, r, set, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // DropChangeSetItem operation middleware
 func (siw *ServerInterfaceWrapper) DropChangeSetItem(w http.ResponseWriter, r *http.Request) {
 
@@ -2786,6 +2866,50 @@ func (siw *ServerInterfaceWrapper) PutChangeSetItem(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PutChangeSetItem(w, r, set, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveInChangeSet operation middleware
+func (siw *ServerInterfaceWrapper) RemoveInChangeSet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveInChangeSet(w, r, set, kind, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4844,6 +4968,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/changesets", wrapper.StartChangeSet)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/changesets/{set}", wrapper.GetChangeSet)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/changesets/{set}", wrapper.RetitleChangeSet)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}/removal", wrapper.RemoveInChangeSet)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/changesets/{set}/items/Project/{id}/state", wrapper.MoveInChangeSet)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}", wrapper.DropChangeSetItem)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}", wrapper.GetChangeSetItem)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}", wrapper.IncludeChangeSetItem)
@@ -5785,6 +5911,66 @@ func (response CloseChangeSet409JSONResponse) VisitCloseChangeSetResponse(w http
 	return err
 }
 
+type MoveInChangeSetRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Id   IdParam        `json:"id"`
+	Body *MoveInChangeSetJSONRequestBody
+}
+
+type MoveInChangeSetResponseObject interface {
+	VisitMoveInChangeSetResponse(w http.ResponseWriter) error
+}
+
+type MoveInChangeSet204Response struct {
+}
+
+func (response MoveInChangeSet204Response) VisitMoveInChangeSetResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type MoveInChangeSet401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response MoveInChangeSet401JSONResponse) VisitMoveInChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveInChangeSet403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response MoveInChangeSet403JSONResponse) VisitMoveInChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveInChangeSet404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response MoveInChangeSet404JSONResponse) VisitMoveInChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DropChangeSetItemRequestObject struct {
 	Set  ChangeSetParam `json:"set"`
 	Kind KindParam      `json:"kind"`
@@ -6091,6 +6277,66 @@ func (response PutChangeSetItem422JSONResponse) VisitPutChangeSetItemResponse(w 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveInChangeSetRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Kind KindParam      `json:"kind"`
+	Id   IdParam        `json:"id"`
+}
+
+type RemoveInChangeSetResponseObject interface {
+	VisitRemoveInChangeSetResponse(w http.ResponseWriter) error
+}
+
+type RemoveInChangeSet204Response struct {
+}
+
+func (response RemoveInChangeSet204Response) VisitRemoveInChangeSetResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RemoveInChangeSet401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response RemoveInChangeSet401JSONResponse) VisitRemoveInChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveInChangeSet403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response RemoveInChangeSet403JSONResponse) VisitRemoveInChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveInChangeSet404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RemoveInChangeSet404JSONResponse) VisitRemoveInChangeSetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -10249,6 +10495,9 @@ type StrictServerInterface interface {
 	// CloseChangeSet End a change set without saving it.
 	// (POST /changesets/{set}/close)
 	CloseChangeSet(ctx context.Context, request CloseChangeSetRequestObject) (CloseChangeSetResponseObject, error)
+	// MoveInChangeSet Make the change set move this project to another state when it is rolled in (docs/adr/0024): after its saves and deletes, checked as a direct state change is. A hand-off renders the charter then.
+	// (PUT /changesets/{set}/items/Project/{id}/state)
+	MoveInChangeSet(ctx context.Context, request MoveInChangeSetRequestObject) (MoveInChangeSetResponseObject, error)
 	// DropChangeSetItem Take an item out of a change set altogether.
 	// (DELETE /changesets/{set}/items/{kind}/{id})
 	DropChangeSetItem(ctx context.Context, request DropChangeSetItemRequestObject) (DropChangeSetItemResponseObject, error)
@@ -10261,6 +10510,9 @@ type StrictServerInterface interface {
 	// PutChangeSetItem Keep a manifest's draft in a change set. With previous (the text the editor last had), only the fields that changed since are applied, so what someone else changed in other fields meanwhile is kept.
 	// (PUT /changesets/{set}/items/{kind}/{id})
 	PutChangeSetItem(ctx context.Context, request PutChangeSetItemRequestObject) (PutChangeSetItemResponseObject, error)
+	// RemoveInChangeSet Make the change set delete this record when it is rolled in (docs/adr/0024). The item starts from the record as it stands; rolling in deletes it after the change set's saves, refused then if something still references it. Dropping the item takes the delete back.
+	// (PUT /changesets/{set}/items/{kind}/{id}/removal)
+	RemoveInChangeSet(ctx context.Context, request RemoveInChangeSetRequestObject) (RemoveInChangeSetResponseObject, error)
 	// ProposeChangeSet Put a change set up for its person to accept: every included item is checked with the others, open checks refused unless each is left open with a reason.
 	// (POST /changesets/{set}/propose)
 	ProposeChangeSet(ctx context.Context, request ProposeChangeSetRequestObject) (ProposeChangeSetResponseObject, error)
@@ -10868,6 +11120,40 @@ func (sh *strictHandler) CloseChangeSet(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// MoveInChangeSet operation middleware
+func (sh *strictHandler) MoveInChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam, id IdParam) {
+	var request MoveInChangeSetRequestObject
+
+	request.Set = set
+	request.Id = id
+
+	var body MoveInChangeSetJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MoveInChangeSet(ctx, request.(MoveInChangeSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MoveInChangeSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MoveInChangeSetResponseObject); ok {
+		if err := validResponse.VisitMoveInChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // DropChangeSetItem operation middleware
 func (sh *strictHandler) DropChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam) {
 	var request DropChangeSetItemRequestObject
@@ -10987,6 +11273,34 @@ func (sh *strictHandler) PutChangeSetItem(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PutChangeSetItemResponseObject); ok {
 		if err := validResponse.VisitPutChangeSetItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveInChangeSet operation middleware
+func (sh *strictHandler) RemoveInChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam) {
+	var request RemoveInChangeSetRequestObject
+
+	request.Set = set
+	request.Kind = kind
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveInChangeSet(ctx, request.(RemoveInChangeSetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveInChangeSet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveInChangeSetResponseObject); ok {
+		if err := validResponse.VisitRemoveInChangeSetResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -49,7 +49,19 @@ type ChangeItem struct {
 	Included bool
 	By       string
 	At       time.Time
+	// Op is what the item does to its record when the change set is
+	// rolled in (docs/adr/0024): "" saves Text as its next version,
+	// ItemDelete deletes the record, ItemState moves a project to State.
+	Op    string
+	State string
 }
+
+// What an item does to its record.
+const (
+	ItemSave   = ""
+	ItemDelete = "delete"
+	ItemState  = "state"
+)
 
 // Where a change set stands.
 const (

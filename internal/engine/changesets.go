@@ -289,9 +289,17 @@ func (e *Engine) ViewChangeSet(ctx context.Context, id string) (ChangeSetView, e
 				_ = e.codec.DecodeInto(v.YAML, &before)
 			}
 		}
-		item.Changes = diffValues("", before, doc)
-		if checks, err := e.ChecksOf(checkCtx, it.Kind, it.ID, it.Text); err == nil {
-			item.Checks = checks
+		switch it.Op {
+		case store.ItemDelete:
+			// The whole record goes: nothing in it to diff or check.
+			item.Changes = []Change{{Path: "", Op: "remove"}}
+		case store.ItemState:
+			item.Changes = append(diffValues("", before, doc), Change{Path: "/state", Op: "replace", To: it.State})
+		default:
+			item.Changes = diffValues("", before, doc)
+			if checks, err := e.ChecksOf(checkCtx, it.Kind, it.ID, it.Text); err == nil {
+				item.Checks = checks
+			}
 		}
 		if latest, err := latestNumber(ctx, e.manifests, it.Kind, it.ID); err == nil && latest != it.Base {
 			item.Stale = latest
@@ -563,16 +571,88 @@ func (e *Engine) included(ctx context.Context, s store.ChangeSetStore, set strin
 	var in []store.ChangeItem
 	var members []SetMember
 	for _, it := range items {
-		if it.Included {
-			in = append(in, it)
+		if !it.Included {
+			continue
+		}
+		in = append(in, it)
+		// Only a save is a new version; a delete or a state change acts
+		// on the record as it stands once the saves are in.
+		if it.Op == store.ItemSave {
 			members = append(members, SetMember{Kind: it.Kind, ID: it.ID, Text: it.Text})
 		}
 	}
-	if len(members) == 0 {
+	if len(in) == 0 {
 		return nil, nil, nil, fmt.Errorf("%w: nothing in the change set is included", ErrConflict)
+	}
+	if len(members) == 0 {
+		return in, nil, map[string]map[string]any{}, nil
 	}
 	ordered, docs, err := e.checkMembers(ctx, members)
 	return in, ordered, docs, err
+}
+
+// HandoffFunc hands a project off: renders its charter and records the
+// hand-off (Engine.Handoff). The caller that can render supplies it, on
+// the context a change set is rolled in with (WithHandoff); without one,
+// a change set's hand-off item is kept for later.
+type HandoffFunc func(ctx context.Context, projectID, actor, reason string) error
+
+type handoffKey struct{}
+
+// WithHandoff returns ctx carrying how to hand a project off.
+func WithHandoff(ctx context.Context, f HandoffFunc) context.Context {
+	return context.WithValue(ctx, handoffKey{}, f)
+}
+
+// MarkInChangeSet makes a change set's item of a manifest delete it
+// (store.ItemDelete), or move a project to another state
+// (store.ItemState, to). The item starts from the record as it stands,
+// which must exist; an item the change set already holds keeps its text.
+// Rolling the change set in applies it after the saves (docs/adr/0024).
+func (e *Engine) MarkInChangeSet(ctx context.Context, set, kind, id, op, to string) error {
+	switch {
+	case op == store.ItemDelete:
+	case op == store.ItemState && kind == "Project" && to != "":
+	default:
+		return fmt.Errorf("%w: %s on %s/%s", ErrBadEdit, op, kind, id)
+	}
+	s, err := e.changeSetStore()
+	if err != nil {
+		return err
+	}
+	cs, err := e.WorkingChangeSet(ctx, set)
+	if err != nil {
+		return err
+	}
+	v, found, err := e.manifests.GetCurrent(ctx, kind, id)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("%w: %s/%s", ErrNotFound, kind, id)
+	}
+	if op == store.ItemDelete {
+		if err := e.guardDoc(ctx, kind, id, nil); err != nil {
+			return err
+		}
+	}
+	it, held, err := s.GetChangeItem(ctx, cs.ID, kind, id)
+	if err != nil {
+		return err
+	}
+	if !held {
+		it = store.ChangeItem{Set: cs.ID, Kind: kind, ID: id, Text: e.normalizeLegacy(kind, v.YAML), Base: v.Number, Included: true}
+	}
+	p := identity.PrincipalFrom(ctx)
+	it.Op, it.State, it.By, it.At = op, to, p.Actor(e.operator(ctx)), timeNow().UTC()
+	if op == store.ItemDelete {
+		it.State = ""
+	}
+	if err := s.PutChangeItem(ctx, it); err != nil {
+		return err
+	}
+	cs.Updated = it.At
+	return s.PutChangeSet(ctx, cs)
 }
 
 // ProposeChangeSet puts a change set up for its person to accept: every
@@ -690,59 +770,91 @@ func (e *Engine) openIn(ctx context.Context, s store.ChangeSetStore, id string) 
 // need, each still on the version it started from. It is claimed first,
 // so two acceptances never both save it. Items trimmed from it stay, and
 // the change set is open again with them; with none left it is merged.
-func (e *Engine) AcceptChangeSet(ctx context.Context, id, reason string) ([]Version, error) {
+// AcceptResult is what rolling a change set in did: the versions it
+// saved, the records it deleted and the projects it moved, and what it
+// could not apply, which stays in the change set.
+type AcceptResult struct {
+	Saved   []Version
+	Deleted []Ref
+	Moved   []Ref
+	Kept    []Problem
+}
+
+func (e *Engine) AcceptChangeSet(ctx context.Context, id, reason string) (AcceptResult, error) {
+	saved, done, kept, err := e.acceptChangeSet(ctx, id, reason)
+	out := AcceptResult{Saved: saved, Kept: kept}
+	for _, it := range done {
+		switch it.Op {
+		case store.ItemDelete:
+			out.Deleted = append(out.Deleted, Ref{Kind: it.Kind, ID: it.ID})
+		case store.ItemState:
+			out.Moved = append(out.Moved, Ref{Kind: it.Kind, ID: it.ID})
+		}
+	}
+	return out, err
+}
+
+func (e *Engine) acceptChangeSet(ctx context.Context, id, reason string) ([]Version, []store.ChangeItem, []Problem, error) {
 	if err := refuseAgent(ctx); err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	s, err := e.changeSetStore()
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	cs, err := s.GetChangeSet(ctx, id)
 	if errors.Is(err, store.ErrNoChangeSet) {
-		return nil, fmt.Errorf("%w: change set %s", ErrNotFound, id)
+		return nil, nil, nil, fmt.Errorf("%w: change set %s", ErrNotFound, id)
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	p := identity.PrincipalFrom(ctx)
 	if cs.For != personKey(p) {
-		return nil, ErrNotTheirChangeSet
+		return nil, nil, nil, ErrNotTheirChangeSet
 	}
 	actor := p.Actor(e.operator(ctx))
 	now := timeNow().UTC()
 	// Claimed, so nobody else accepts or closes it meanwhile.
 	if _, err := s.MoveChangeSet(ctx, id, store.ChangeSetProposed, store.ChangeSetMerging, actor, reason, now); err != nil {
 		if errors.Is(err, store.ErrChangeSetMoved) {
-			return nil, fmt.Errorf("%w: the change set is not proposed", ErrConflict)
+			return nil, nil, nil, fmt.Errorf("%w: the change set is not proposed", ErrConflict)
 		}
-		return nil, err
+		return nil, nil, nil, err
 	}
 	release := func() { _, _ = s.MoveChangeSet(ctx, id, store.ChangeSetMerging, store.ChangeSetProposed, "", "", now) }
 	in, ordered, docs, err := e.included(ctx, s, id)
 	if err != nil {
 		release()
-		return nil, err
+		return nil, nil, nil, err
 	}
 	base := map[string]int{}
 	for _, it := range in {
 		latest, err := latestNumber(ctx, e.manifests, it.Kind, it.ID)
 		if err != nil {
 			release()
-			return nil, err
+			return nil, nil, nil, err
 		}
 		if latest != it.Base {
 			release()
-			return nil, fmt.Errorf("%w: %s/%s started from version %d, and version %d is saved now", ErrProposalStale, it.Kind, it.ID, it.Base, latest)
+			return nil, nil, nil, fmt.Errorf("%w: %s/%s started from version %d, and version %d is saved now", ErrProposalStale, it.Kind, it.ID, it.Base, latest)
 		}
 		base[it.Kind+"/"+it.ID] = it.Base
+		// A state change that cannot be made is refused before anything
+		// is saved, not after.
+		if it.Op == store.ItemState && it.State != "handed off" {
+			if _, err := e.checkTransition(ctx, it.ID, it.State, actor, reason); err != nil {
+				release()
+				return nil, nil, nil, err
+			}
+		}
 	}
 	if p, err := e.checkActor(ctx, actor); err != nil {
 		release()
-		return nil, err
+		return nil, nil, nil, err
 	} else if p != nil {
 		release()
-		return nil, &ValidationError{Problems: []Problem{*p}}
+		return nil, nil, nil, &ValidationError{Problems: []Problem{*p}}
 	}
 	why := cs.Title
 	if cs.Agent != "" {
@@ -778,25 +890,56 @@ func (e *Engine) AcceptChangeSet(ctx context.Context, id, reason string) ([]Vers
 	})
 	if err != nil {
 		release()
-		return nil, err
+		return nil, nil, nil, err
 	}
 	for _, v := range saved {
 		e.afterVersion(ctx, v)
 	}
-	for _, it := range in {
-		_ = s.DeleteChangeItem(ctx, id, it.Kind, it.ID)
+	// Deletes, then state changes, on the record as the saves left it;
+	// one that cannot be applied stays in the change set, with why.
+	var done []store.ChangeItem
+	var kept []Problem
+	for _, op := range []string{store.ItemSave, store.ItemDelete, store.ItemState} {
+		for _, it := range in {
+			if it.Op != op {
+				continue
+			}
+			var err error
+			switch op {
+			case store.ItemDelete:
+				err = e.Delete(ctx, it.Kind, it.ID, actor, why)
+			case store.ItemState:
+				if it.State == "handed off" {
+					handoff, _ := ctx.Value(handoffKey{}).(HandoffFunc)
+					if handoff == nil {
+						err = fmt.Errorf("a hand-off is made where the charter can be rendered")
+					} else {
+						err = handoff(ctx, it.ID, actor, why)
+					}
+				} else {
+					_, err = e.TransitionProjectState(ctx, it.ID, it.State, actor, why)
+				}
+			}
+			if err != nil {
+				kept = append(kept, Problem{Path: it.Kind + "/" + it.ID, Message: err.Error()})
+				continue
+			}
+			done = append(done, it)
+			_ = s.DeleteChangeItem(ctx, id, it.Kind, it.ID)
+		}
 	}
 	rest, _ := s.ListChangeItems(ctx, id)
 	to := store.ChangeSetMerged
 	if len(rest) > 0 {
-		// What was trimmed goes back to being worked on.
+		// What was trimmed, or could not be applied, goes back to being
+		// worked on.
 		to = store.ChangeSetOpen
 	}
 	if _, err := s.MoveChangeSet(ctx, id, store.ChangeSetMerging, to, actor, reason, now); err != nil {
-		return saved, err
+		return saved, done, kept, err
 	}
 	sort.Slice(saved, func(i, j int) bool { return saved[i].Kind+saved[i].ID < saved[j].Kind+saved[j].ID })
-	return saved, nil
+	return saved, done, kept, nil
 }
 
 // CloseChangeSet ends a change set without saving it: its person, or who

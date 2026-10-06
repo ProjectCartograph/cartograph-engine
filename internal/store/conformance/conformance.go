@@ -324,6 +324,12 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 		if items, _ := cs.ListChangeItems(ctx, "a"); len(items) != 2 {
 			t.Fatalf("a replaced item was added: %+v", items)
 		}
+		// An item says what it does to its record.
+		must(t, cs.PutChangeItem(ctx, store.ChangeItem{Set: "b", Kind: "Project", ID: "p1", Text: []byte("p"), Base: 3, Included: true, By: "y", At: at,
+			Op: store.ItemState, State: "handed off"}))
+		if it, _, _ := cs.GetChangeItem(ctx, "b", "Project", "p1"); it.Op != store.ItemState || it.State != "handed off" {
+			t.Fatalf("an item's op: %+v", it)
+		}
 		must(t, cs.DeleteChangeItem(ctx, "a", "KPI", "k1"))
 		must(t, cs.DeleteChangeItem(ctx, "a", "KPI", "nothing"))
 		if items, _ := cs.ListChangeItems(ctx, "a"); len(items) != 1 {

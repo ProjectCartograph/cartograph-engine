@@ -129,12 +129,12 @@ func (m *ManifestStore) MoveChangeSet(ctx context.Context, id, from, to, by, rea
 	return cs, err
 }
 
-const changeItemColumns = `set_id, kind, manifest_id, text, base, included, by, at`
+const changeItemColumns = `set_id, kind, manifest_id, text, base, included, by, at, op, state`
 
 func scanChangeItem(r pgx.Row) (store.ChangeItem, error) {
 	var it store.ChangeItem
 	var text string
-	if err := r.Scan(&it.Set, &it.Kind, &it.ID, &text, &it.Base, &it.Included, &it.By, &it.At); err != nil {
+	if err := r.Scan(&it.Set, &it.Kind, &it.ID, &text, &it.Base, &it.Included, &it.By, &it.At, &it.Op, &it.State); err != nil {
 		return store.ChangeItem{}, err
 	}
 	it.Text, it.At = []byte(text), it.At.UTC()
@@ -143,10 +143,10 @@ func scanChangeItem(r pgx.Row) (store.ChangeItem, error) {
 
 // PutChangeItem keeps an item.
 func (m *ManifestStore) PutChangeItem(ctx context.Context, it store.ChangeItem) error {
-	_, err := m.q.Exec(ctx, `INSERT INTO change_items (`+changeItemColumns+`) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	_, err := m.q.Exec(ctx, `INSERT INTO change_items (`+changeItemColumns+`) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (set_id, kind, manifest_id) DO UPDATE SET text = EXCLUDED.text, base = EXCLUDED.base,
-		included = EXCLUDED.included, by = EXCLUDED.by, at = EXCLUDED.at`,
-		it.Set, it.Kind, it.ID, string(it.Text), it.Base, it.Included, it.By, it.At.UTC())
+		included = EXCLUDED.included, by = EXCLUDED.by, at = EXCLUDED.at, op = EXCLUDED.op, state = EXCLUDED.state`,
+		it.Set, it.Kind, it.ID, string(it.Text), it.Base, it.Included, it.By, it.At.UTC(), it.Op, it.State)
 	if err != nil {
 		return fmt.Errorf("put change item: %w", err)
 	}

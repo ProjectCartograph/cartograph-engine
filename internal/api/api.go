@@ -636,20 +636,7 @@ func (s *Server) TransitionProjectState(ctx context.Context, req apigen.Transiti
 			}
 		}
 
-		htmlBytes, jsonBytes, err := render.Charter(ctx, s.Engine, req.Id, snapshotNum)
-		if err != nil {
-			return nil, err
-		}
-		// A PDF is a convenience: no printer, no PDF, and the handoff
-		// still goes through with the HTML and the JSON.
-		pdfBytes, _ := s.Printer.Print(ctx, htmlBytes)
-
-		_, err = s.Engine.Handoff(ctx, req.Id, actor, engine.HandoffRequest{
-			HtmlBytes: htmlBytes,
-			JsonBytes: jsonBytes,
-			PdfBytes:  pdfBytes,
-		})
-		if err != nil {
+		if err := s.handoffAt(ctx, req.Id, actor, snapshotNum); err != nil {
 			var ve *engine.ValidationError
 			if errors.As(err, &ve) {
 				return apigen.TransitionProjectState422JSONResponse{UnprocessableJSONResponse: apigen.UnprocessableJSONResponse(toProblemList(ve.Problems))}, nil
@@ -1774,4 +1761,29 @@ func proposedOf(p string) *apigen.Proposed {
 	}
 	out := apigen.Proposed(p)
 	return &out
+}
+
+// handoffAt renders a project's charter at a snapshot and records the
+// hand-off with it.
+func (s *Server) handoffAt(ctx context.Context, id, actor string, snapshot int) error {
+	htmlBytes, jsonBytes, err := render.Charter(ctx, s.Engine, id, snapshot)
+	if err != nil {
+		return err
+	}
+	// A PDF is a convenience: no printer, no PDF, and the handoff still
+	// goes through with the HTML and the JSON.
+	pdfBytes, _ := s.Printer.Print(ctx, htmlBytes)
+	_, err = s.Engine.Handoff(ctx, id, actor, engine.HandoffRequest{HtmlBytes: htmlBytes, JsonBytes: jsonBytes, PdfBytes: pdfBytes})
+	return err
+}
+
+// handoffItem is how a change set's hand-off item is applied when it is
+// rolled in: the gate, then the charter rendered at the version the gate
+// names.
+func (s *Server) handoffItem(ctx context.Context, id, actor, _ string) error {
+	snapshot, err := s.Engine.HandoffGate(ctx, id)
+	if err != nil {
+		return err
+	}
+	return s.handoffAt(ctx, id, actor, snapshot)
 }

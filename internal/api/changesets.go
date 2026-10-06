@@ -117,6 +117,15 @@ func (s *Server) GetChangeSet(ctx context.Context, req apigen.GetChangeSetReques
 			stale := it.Stale
 			item.Stale = &stale
 		}
+		op := apigen.ChangeSetItemOpSave
+		switch it.Item.Op {
+		case store.ItemDelete:
+			op = apigen.ChangeSetItemOpDelete
+		case store.ItemState:
+			op = apigen.ChangeSetItemOpState
+			item.State = opt(it.Item.State)
+		}
+		item.Op = &op
 		out.Items[i] = item
 	}
 	return apigen.GetChangeSet200JSONResponse(out), nil
@@ -239,7 +248,7 @@ func (s *Server) AcceptChangeSet(ctx context.Context, req apigen.AcceptChangeSet
 	if err != nil {
 		return nil, err
 	}
-	_, err = s.Engine.AcceptChangeSet(ctx, req.Set, reason)
+	_, err = s.Engine.AcceptChangeSet(engine.WithHandoff(ctx, s.handoffItem), req.Set, reason)
 	if code, body, ok := changeSetError(err); ok {
 		switch code {
 		case 404:
@@ -301,4 +310,26 @@ func (s *Server) ReopenChangeSet(ctx context.Context, req apigen.ReopenChangeSet
 		return nil, err
 	}
 	return apigen.ReopenChangeSet200JSONResponse(toChangeSet(cs)), nil
+}
+
+func (s *Server) RemoveInChangeSet(ctx context.Context, req apigen.RemoveInChangeSetRequestObject) (apigen.RemoveInChangeSetResponseObject, error) {
+	err := s.Engine.MarkInChangeSet(ctx, req.Set, req.Kind, req.Id, store.ItemDelete, "")
+	if errors.Is(err, engine.ErrNotFound) {
+		return apigen.RemoveInChangeSet404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return apigen.RemoveInChangeSet204Response{}, nil
+}
+
+func (s *Server) MoveInChangeSet(ctx context.Context, req apigen.MoveInChangeSetRequestObject) (apigen.MoveInChangeSetResponseObject, error) {
+	err := s.Engine.MarkInChangeSet(ctx, req.Set, "Project", req.Id, store.ItemState, req.Body.State)
+	if errors.Is(err, engine.ErrNotFound) {
+		return apigen.MoveInChangeSet404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return apigen.MoveInChangeSet204Response{}, nil
 }

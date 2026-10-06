@@ -69,3 +69,26 @@ func TestTheWorkspaceReadsAsIfAChangeSetWereAccepted(t *testing.T) {
 		t.Fatalf("an unknown change set: %d", resp.StatusCode)
 	}
 }
+
+// A change set can delete a record as well as save one: the review says
+// so, and rolling it in deletes it.
+func TestAChangeSetDeletesOverHTTP(t *testing.T) {
+	t.Parallel()
+	_, base := newTestServer(t)
+	commitTeam(t, base, "t5", "anyone")
+	resp := doJSON(t, http.MethodPost, base+"/changesets", map[string]string{"title": "Tidy"}, nil)
+	set := decode[apigen.ChangeSet](t, resp).Id
+	if resp := doJSON(t, http.MethodPut, base+"/changesets/"+set+"/items/Team/t5/removal", nil, nil); resp.StatusCode != http.StatusNoContent {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("mark the delete: %d %s", resp.StatusCode, b)
+	}
+	resp = doJSON(t, http.MethodGet, base+"/changesets/"+set, nil, nil)
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if !strings.Contains(string(b), `"op":"delete"`) {
+		t.Fatalf("the review: %s", b)
+	}
+	if resp := doJSON(t, http.MethodPut, base+"/changesets/"+set+"/items/Team/none/removal", nil, nil); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("deleting what is not there: %d", resp.StatusCode)
+	}
+}
