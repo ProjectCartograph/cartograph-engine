@@ -1238,3 +1238,22 @@ held to nothing new. `dueOffsetDays` applies to every period. The
 engine derives the periods (`GET
 /manifests/ReportingCycle/{id}/periods`), each with its label ("Term I
 2026/27") and due day, so every interface lays them out the same way.
+
+### D41. A risk may name the role that owns it. *(resolved)*
+
+**The problem.** A risk said who it escalates to beyond tolerance, not
+who manages it day to day. The manager owns the register, but PRINCE2
+and PMBOK name an owner per risk: the role best placed to manage it. An
+owner written into the mitigation text is not something a check, report
+or filter can read.
+
+**What Cartograph does.** A project's or a programme's risk may name
+its `owner`: a role, as a reference (a role on the work, or one from the
+Resource catalogue), the shape a success criterion's owner takes. Never
+a person. A high-impact risk with no owner warns (`risks-owned`); a
+lower one may go unowned, and the manager answers for it by default,
+which the register prints. The owner is accountability, so it sits in
+the definition beside the sponsor and the service owner; who carries
+out a mitigation action (PRINCE2's risk actionee) is planning, and a
+task under a deliverable can name that role (D38). Escalation still
+names whose decision is needed beyond tolerance.

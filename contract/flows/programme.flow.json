@@ -230,6 +230,15 @@
                 ]
               },
               {
+                "path": "/owner",
+                "control": "reference",
+                "title": "Owned by",
+                "hint": "The role that manages it day to day.",
+                "checks": [
+                  "risks-owned"
+                ]
+              },
+              {
                 "path": "/depends/direction",
                 "control": "choice"
               },

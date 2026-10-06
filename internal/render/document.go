@@ -432,9 +432,20 @@ func (d *doc) problems(n names, items []map[string]any) {
 // risks prints the risk list a project and a programme share. An
 // escalated line says whose decision it needs and what the decision is:
 // a bare "escalated" told a reader neither.
+// risks prints the register. Each row names its owner (TAXONOMY.md D41);
+// an unowned row is the manager's, so it prints the manager's role, or
+// "Manager" when none is named.
 func (d *doc) risks(n names, spec map[string]any, items []map[string]any) {
+	manager := strings.Join(roleNames(n, list(spec["resources"]), "manager"), ", ")
+	if manager == "" {
+		manager = "Manager"
+	}
 	rows := make([][]string, 0, len(items))
 	for _, r := range items {
+		owner := n.ref(r["owner"], "Resource", spec)
+		if owner == "" {
+			owner = manager + " (by default)"
+		}
 		decision := ""
 		if escalation, ok := r["escalate"].(map[string]any); ok {
 			if flag, _ := escalation["flag"].(bool); flag {
@@ -451,14 +462,14 @@ func (d *doc) risks(n names, spec map[string]any, items []map[string]any) {
 		rows = append(rows, []string{
 			chip("riskType", str(r["type"])), str(r["description"]),
 			chip("level", str(r["impact"])), chip("level", str(r["likelihood"])),
-			str(r["mitigation"]), decision,
+			owner, str(r["mitigation"]), decision,
 		})
 	}
 	if len(rows) == 0 {
 		return
 	}
 	d.h2("Risks, issues and dependencies")
-	d.table([]string{"Type", "Description", "Impact", "Likelihood", "Response", "Decision needed from"}, rows)
+	d.table([]string{"Type", "Description", "Impact", "Likelihood", "Owner", "Response", "Decision needed from"}, rows)
 }
 
 func (d *doc) mandate(items []map[string]any) {

@@ -262,6 +262,14 @@ func programmeRiskChecks(spec map[string]any) []ProgrammeCheck {
 			State:   programmeCheckWarn,
 			Message: fmt.Sprintf("%d of %d risks have no mitigation.", missingMitigation, len(risks))})
 	}
+	if unowned := unownedHighRisks(risks); unowned == 0 {
+		out = append(out, ProgrammeCheck{ID: "risks-owned", Section: "risks",
+			State: programmeCheckOK, Message: "Every high-impact risk names the role that owns it."})
+	} else {
+		out = append(out, ProgrammeCheck{ID: "risks-owned", Section: "risks",
+			State:   programmeCheckWarn,
+			Message: unownedMessage(unowned)})
+	}
 	if deps > 0 {
 		if edges == deps {
 			out = append(out, ProgrammeCheck{ID: "risks-dependency-edges", Section: "risks",

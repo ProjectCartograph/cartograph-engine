@@ -211,6 +211,8 @@ spec:
         needBy: pilot-at-two-depots
       impact: high
       likelihood: low
+      # The role that manages it day to day, not who it escalates to.
+      owner: {local: resources, id: analytics}
     - id: board-approval
       description: The board must approve extending the check beyond the two pilot depots.
       type: dependency
@@ -221,6 +223,7 @@ spec:
       impact: high
       likelihood: low
       mitigation: Put the pilot's results to the board one month before rollout starts.
+      owner: {local: resources, id: lead}
   compliance:
     - item: Data protection review of member delivery records
       status: inProgress

@@ -300,6 +300,23 @@
         }
       ]
     },
+    "/spec/risks/-/owner": {
+      "guide": "The role that manages this risk day to day: the role best placed to watch it and act on it, picked from the roles already named here. Never a person. Not who it escalates to, which is the escalation's role. Name one for every high-impact risk; a lower one left unowned is the manager's.",
+      "good": [
+        "delivery-lead",
+        "quality-reviewer"
+      ],
+      "poor": [
+        {
+          "text": "Ada Okafor",
+          "why": "A person, not a role: Cartograph names roles, and people hold them."
+        },
+        {
+          "text": "The sponsor, for every risk",
+          "why": "The sponsor is who a risk escalates to beyond tolerance. The owner is whoever manages it day to day."
+        }
+      ]
+    },
     "/spec/risks/-/depends/direction": {
       "guide": "For a dependency: whether this programme needs the other thing, or the other thing needs this programme. Declare the edge at one end only; the other end is derived."
     },
@@ -464,6 +481,7 @@
     "alignment-goals": "Align the programme to at least one outcome in the strategy.",
     "alignment-kpis": "Name at least one indicator the programme is judged by.",
     "risks-mitigation": "Give every risk a mitigation.",
+    "risks-owned": "Name the role that owns every high-impact risk.",
     "risks-dependency-edges": "Say what every dependency waits on: a manifest, or an external party named as written.",
     "risks-dependency-cycle": "Break the loop by removing or redirecting one of the dependencies, so nothing this programme waits on is waiting on it.",
     "components-serve-outcomes": "Each project that names this programme aligns to one of its outcomes; if it serves none, it belongs elsewhere or the programme is missing an outcome.",

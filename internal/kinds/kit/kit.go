@@ -198,6 +198,10 @@ func RiskProblems(spec map[string]any, hasPhases bool) []Problem {
 			}
 		}
 
+		if p := LocalRefProblem(spec, rm["owner"], path+"/owner"); p != nil {
+			problems = append(problems, *p)
+		}
+
 		dep, hasDep := rm["depends"].(map[string]any)
 		if !hasDep {
 			continue

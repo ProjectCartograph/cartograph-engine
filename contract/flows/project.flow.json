@@ -593,6 +593,7 @@
             "key": "id",
             "checks": [
               "risks-mitigation",
+              "risks-owned",
               "risks-escalated",
               "risks-dependency-edges",
               "risks-dependency-cycle",
@@ -624,6 +625,15 @@
                 "control": "sentence",
                 "checks": [
                   "risks-mitigation"
+                ]
+              },
+              {
+                "path": "/owner",
+                "control": "reference",
+                "title": "Owned by",
+                "hint": "The role that manages it day to day.",
+                "checks": [
+                  "risks-owned"
                 ]
               },
               {

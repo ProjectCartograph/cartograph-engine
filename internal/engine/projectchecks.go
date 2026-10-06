@@ -928,6 +928,12 @@ func addRiskChecks(c checkAdder, spec map[string]any) {
 				fmt.Sprintf("%d of %d risks have no impact or likelihood yet.", unplaced, scored))
 		}
 	}
+	if unowned := unownedHighRisks(risks); unowned == 0 {
+		c.add("risks-owned", "risks", phaseInitiation, checkOK, "Every high-impact risk names the role that owns it.")
+	} else {
+		c.add("risks-owned", "risks", phaseInitiation, checkWarn,
+			unownedMessage(unowned))
+	}
 	if escalated > 0 {
 		c.add("risks-escalated", "risks", phaseInitiation, checkOK,
 			fmt.Sprintf("%d risk%s escalated.", escalated, plural(escalated)))
@@ -1272,4 +1278,28 @@ func (e *Engine) operationFunded(ctx context.Context, id string) bool {
 	spec, _ := doc["spec"].(map[string]any)
 	funding, _ := spec["funding"].([]any)
 	return len(funding) > 0
+}
+
+// unownedHighRisks counts the rows of high impact that name no owner
+// (TAXONOMY.md D41). A lower risk may go unowned: the manager answers for
+// it by default.
+func unownedHighRisks(risks []any) int {
+	n := 0
+	for _, r := range risks {
+		rm, _ := r.(map[string]any)
+		if imp, _ := rm["impact"].(string); imp != "high" {
+			continue
+		}
+		if _, ok := parseRef(rm["owner"]); !ok {
+			n++
+		}
+	}
+	return n
+}
+
+func unownedMessage(n int) string {
+	if n == 1 {
+		return "1 high-impact risk names no owner."
+	}
+	return fmt.Sprintf("%d high-impact risks name no owner.", n)
 }

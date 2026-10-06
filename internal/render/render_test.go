@@ -364,3 +364,36 @@ spec:
 		}
 	}
 }
+
+// The risk register names each risk's owner, and the manager where a
+// risk names none (TAXONOMY.md D41).
+func TestCharterRiskOwners(t *testing.T) {
+	ctx := context.Background()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectYAML := `apiVersion: cartograph/v1
+kind: Project
+metadata:
+  id: test-project
+  name: Test Project
+spec:
+  team: test-team
+  risks:
+    - {id: r1, description: Depots skip training, type: risk, impact: high, owner: {external: Delivery lead}}
+    - {id: r2, description: Slides arrive late, type: risk, impact: low}
+`
+	if err := e.PutWorking(ctx, "Project", "test-project", []byte(projectYAML)); err != nil {
+		t.Fatal(err)
+	}
+	html, _, err := Charter(ctx, e, "test-project", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"<th>Owner</th>", "Delivery lead", "Manager (by default)"} {
+		if !contains(string(html), want) {
+			t.Errorf("charter lacks %q", want)
+		}
+	}
+}

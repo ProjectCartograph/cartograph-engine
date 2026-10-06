@@ -158,6 +158,10 @@
                 "type": "string",
                 "maxLength": 160
               },
+              "owner": {
+                "$ref": "common.schema.json#/$defs/Ref",
+                "description": "The role that manages this risk day to day, as a reference: the role best placed to manage it (PRINCE2's risk owner). Never a person. Not who it escalates to, which is escalate.to, and not who carries out a mitigation action, which is planning. Unowned, the manager answers for it. See TAXONOMY.md D41."
+              },
               "escalate": {
                 "type": "object",
                 "additionalProperties": false,

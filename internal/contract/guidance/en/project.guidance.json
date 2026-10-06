@@ -558,6 +558,23 @@
         }
       ]
     },
+    "/spec/risks/-/owner": {
+      "guide": "The role that manages this risk day to day: the role best placed to watch it and act on it, picked from the roles already named here. Never a person. Not who it escalates to, which is the escalation's role. Name one for every high-impact risk; a lower one left unowned is the manager's.",
+      "good": [
+        "delivery-lead",
+        "quality-reviewer"
+      ],
+      "poor": [
+        {
+          "text": "Ada Okafor",
+          "why": "A person, not a role: Cartograph names roles, and people hold them."
+        },
+        {
+          "text": "The sponsor, for every risk",
+          "why": "The sponsor is who a risk escalates to beyond tolerance. The owner is whoever manages it day to day."
+        }
+      ]
+    },
     "/spec/risks/-/depends/direction": {
       "guide": "Whether this project waits on the other end, or the other end waits on it. Declared at one end only."
     },
@@ -643,6 +660,7 @@
     "data-capture-decided": "Decide how records get into each data source a target is read from, on the data source.",
     "data-capture-turnaround": "Read a turnaround target from a source whose records get in fast enough, or have this project change how they get in.",
     "risks-mitigation": "Give every risk a mitigation.",
+    "risks-owned": "Name the role that owns every high-impact risk.",
     "risks-escalated": "Flag a risk for escalation when it needs a decision above the project, and name whose.",
     "risks-dependency-edges": "Give every dependency its direction and the other end.",
     "risks-dependency-cycle": "Break the loop: one end of it must not wait on the other.",
