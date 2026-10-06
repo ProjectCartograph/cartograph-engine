@@ -16,7 +16,10 @@
           {
             "path": "/metadata/name",
             "control": "text",
-            "hint": "A few words naming the shortfall, such as Faults are found after dispatch."
+            "hint": "A few words naming the shortfall, such as Faults are found after dispatch.",
+            "checks": [
+              "gap-results"
+            ]
           },
           {
             "path": "/spec/measure",
@@ -101,10 +104,7 @@
           {
             "path": "/spec/statement",
             "control": "sentence",
-            "hint": "The finding in the source's own words.",
-            "checks": [
-              "gap-results"
-            ]
+            "hint": "The finding in the source's own words."
           },
           {
             "path": "/spec/dataSources",

@@ -76,7 +76,8 @@ accepts it whole in Cartograph after reviewing every change in it.
 Recording a reading and moving a project are proposals of their own.
 
 Work this way, every time:
-- First, call decision_model. When it is ready, call relevant with what
+- First, call decision_model. When it is ready and the workspace (or
+  your change set) holds records to choose from, call relevant with what
   the work is about before you choose what a draft names (the outcomes it
   serves, its programme, indicators, groups, data sources), and offer
   that shortlist first: the decision model is Cartograph's way of finding
@@ -144,7 +145,9 @@ Work this way, every time:
    fill in, and the organisation's existing records. Use its words; they
    are the discipline's. If an existing record already says what the
    person wants, work on that one instead of defining another.
-3. Follow the guide's plan, in its order. Its "before" items are what
+3. Follow the guide's plan, in its order (a kind nothing names, such as
+   a project, has prepare instead: what must exist before it). Its
+   "before" items are what
    the new thing names: each must exist before the new thing is written
    (offer the existing records by name; define one with guide for its
    kind only when none fits). Then define the new thing, whole. Its
@@ -511,6 +514,7 @@ type (
 		Check     string      `json:"check,omitempty" jsonschema:"the check's id, as checks reports it"`
 		Reason    string      `json:"reason" jsonschema:"what your person must supply or decide, in one line they can act on; empty takes it back"`
 		Also      []leaveItem `json:"also,omitempty" jsonschema:"more checks the same missing fact leaves open, on this draft or others, each {kind, id, check}: one reason for all of them"`
+		Correct   bool        `json:"correct,omitempty" jsonschema:"true to put this reason in place of the one already given; left out, a second fact behind the same check adds its reason to the first"`
 	}
 	leaveItem struct {
 		Kind  string `json:"kind"`
@@ -692,8 +696,19 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return map[string]any{"version": v.Number, "yaml": string(v.YAML)}, nil
 		})
 
-	tool(s, o, person, &sdk.Tool{Name: "schema", Description: "The JSON Schema of a kind: every field, its type, allowed values and what it refers to.", Annotations: readOnly},
-		func(c call, in kindOnly) (any, error) { return e.Schema(in.Kind) })
+	tool(s, o, person, &sdk.Tool{Name: "schema", Description: "The JSON Schema of a kind: every field, its type, allowed values and what it refers to, " +
+		"with the shared definitions it points to (metadata, references, key results) in defs.", Annotations: readOnly},
+		func(c call, in kindOnly) (any, error) {
+			schema, err := e.Schema(in.Kind)
+			if err != nil {
+				return nil, err
+			}
+			defs, err := e.SchemaDefs(in.Kind)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"schema": schema, "defs": defs}, nil
+		})
 
 	tool(s, o, person, &sdk.Tool{Name: "guide", Description: "Read this before drafting any manifest. How to define a kind well, for one level: what it is, every step and field in order, " +
 		"what each field must say with right and wrong examples, the checks each answers and how to meet them, the links to make on other kinds, " +
@@ -706,14 +721,14 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			c.announce(step{Step: "guide", Kind: in.Kind})
 			if in.Step == "" {
-				return guided{Guide: g, Next: nextSteps}, nil
+				return withPrepare(e, g), nil
 			}
 			// One step only, for a long flow such as a project's; the
 			// step keys come from a guide without step.
 			for _, st := range g.Steps {
 				if st.Key == in.Step {
 					g.Steps = []engine.GuideStep{st}
-					return guided{Guide: g, Next: nextSteps}, nil
+					return withPrepare(e, g), nil
 				}
 			}
 			return nil, fmt.Errorf("%s has no step %q", in.Kind, in.Step)
@@ -978,7 +993,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				out["next"] = allMet(c.ctx, e)
 				return out, nil
 			}
-			out["next"] = nextLine(w.Tasks[0])
+			out["next"] = firstNext(c.ctx, e, w.Tasks[0])
 			then := w.Tasks[1:]
 			if len(then) > 8 {
 				then = then[:8]
@@ -1044,10 +1059,14 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			var left []string
 			for _, it := range items {
-				if err := e.LeaveOpen(c.ctx, cs.ID, it.Kind, it.ID, it.Check, in.Reason); err != nil {
+				if err := e.LeaveOpen(c.ctx, cs.ID, it.Kind, it.ID, it.Check, in.Reason, in.Correct); err != nil {
 					return nil, err
 				}
 				left = append(left, it.Kind+"/"+it.ID+" "+it.Check)
+			}
+			if strings.TrimSpace(in.Reason) == "" {
+				return map[string]any{"takenBack": left, "changeSet": cs.ID,
+					"next": "These checks are open again: meet each, or leave it with a reason, before you propose."}, nil
 			}
 			return map[string]any{"left": left, "reason": in.Reason, "changeSet": cs.ID,
 				"next": "Carry on with next: it passes this check by, and propose waives it with your reason."}, nil
@@ -1318,7 +1337,7 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 		out["next"] = "Fix what a save would refuse first (the schema checks in open), then save the draft again."
 	} else if w, err := c.o.Engine.Work(c.ctx, append([]engine.Ref{{Kind: kind, ID: id}}, also...), ""); err == nil {
 		if len(w.Tasks) > 0 {
-			out["next"] = nextLine(w.Tasks[0])
+			out["next"] = firstNext(c.ctx, c.o.Engine, w.Tasks[0])
 		} else {
 			out["next"] = allMet(c.ctx, c.o.Engine)
 		}
@@ -1409,6 +1428,40 @@ func allMet(ctx context.Context, e *engine.Engine) string {
 	return "Every check across this work is met. Propose the change set with propose."
 }
 
+// firstNext is the first task, unless it waits on a stage the workspace
+// has not reached: a gap to close when no KPI exists yet to measure it.
+// Then the stage comes first, and the task after it.
+func firstNext(ctx context.Context, e *engine.Engine, t engine.Task) string {
+	if t.By == "" {
+		return nextLine(t)
+	}
+	o, err := e.WorkspaceOrder(ctx)
+	if err != nil || o.Next == "" {
+		return nextLine(t)
+	}
+	at := map[string]int{}
+	for i, st := range o.Stages {
+		if _, ok := at[st.Kind]; !ok {
+			at[st.Kind] = i
+		}
+	}
+	next, by := -1, -1
+	for i, st := range o.Stages {
+		if st.Key == o.Next {
+			next = i
+		}
+	}
+	if i, ok := at[t.By]; ok {
+		by = i
+	}
+	if next < 0 || by < 0 || next >= by {
+		return nextLine(t)
+	}
+	stage, _ := workspaceNext(ctx, e)
+	m, _ := stage.(map[string]any)
+	return fmt.Sprint(m["next"]) + " After it: " + nextLine(t)
+}
+
 func nextLine(t engine.Task) string {
 	name := t.Name
 	if name == "" {
@@ -1432,7 +1485,30 @@ func nextLine(t engine.Task) string {
 // it, where a small model reads it last and remembers it best.
 type guided struct {
 	engine.Guide
-	Next []string `json:"next"`
+	// Prepare is what must exist before a kind nothing names (a project)
+	// is written, from its flow: its plan is empty, since nothing waits
+	// on it.
+	Prepare json.RawMessage `json:"prepare,omitempty"`
+	Next    []string        `json:"next"`
+}
+
+// withPrepare adds the flow's prepare list to a guide with no plan.
+func withPrepare(e *engine.Engine, g engine.Guide) guided {
+	out := guided{Guide: g, Next: nextSteps}
+	if len(g.Plan) > 0 {
+		return out
+	}
+	if raw, found, err := e.FlowJSON(g.Kind); err == nil && found {
+		var flow struct {
+			Spec struct {
+				Prepare json.RawMessage `json:"prepare"`
+			} `json:"spec"`
+		}
+		if json.Unmarshal(raw, &flow) == nil {
+			out.Prepare = flow.Spec.Prepare
+		}
+	}
+	return out
 }
 
 // nextSteps is the method, named by tool, at the end of every guide.

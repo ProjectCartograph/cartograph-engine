@@ -185,8 +185,8 @@ func (e *Engine) agentOrderProblems(ctx context.Context, set map[string]bool, ki
 			continue
 		}
 		out = append(out, Problem{Path: f.path, Message: fmt.Sprintf(
-			"names the %s %q, which does not exist yet: define it first (guide for %s, then save_draft in this change set), then name it here. Cartograph is written in order: a %s names only what already exists",
-			kindWord(f.kind), f.id, f.kind, kindWord(kind))})
+			"names the %s %q, which does not exist yet: define it first (guide for %s, then save_draft in this change set), then name it here. Cartograph is written in order: %s names only what already exists",
+			kindWord(f.kind), f.id, f.kind, withArticle(kindWord(kind)))})
 	}
 	out = append(out, e.orderProblems(kind, id, doc, l)...)
 	return out
@@ -222,4 +222,12 @@ func (e *Engine) stepOfField(kind, path string) string {
 		}
 	}
 	return ""
+}
+
+// withArticle puts "a" or "an" before a word, by its first letter.
+func withArticle(word string) string {
+	if word != "" && strings.ContainsRune("aeiou", rune(word[0])) {
+		return "an " + word
+	}
+	return "a " + word
 }

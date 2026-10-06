@@ -151,6 +151,41 @@ func (e *Engine) Schema(kind string) (map[string]any, error) {
 	return doc, nil
 }
 
+// SchemaDefs are the shared definitions a kind's schema points into
+// (common.schema.json's Metadata, Ref, KeyResult and the rest), by name,
+// followed through each other: so whoever reads the schema can see every
+// field without resolving a reference.
+func (e *Engine) SchemaDefs(kind string) (map[string]any, error) {
+	doc, err := e.Schema(kind)
+	if err != nil {
+		return nil, err
+	}
+	common, _ := e.schemas.raw["common.schema.json"]["$defs"].(map[string]any)
+	out := map[string]any{}
+	var walk func(any)
+	walk = func(n any) {
+		switch v := n.(type) {
+		case map[string]any:
+			if ref, _ := v["$ref"].(string); ref != "" {
+				name := ref[strings.LastIndex(ref, "/")+1:]
+				if def, ok := common[name]; ok && out[name] == nil && strings.Contains(ref, "$defs/") {
+					out[name] = def
+					walk(def)
+				}
+			}
+			for _, c := range v {
+				walk(c)
+			}
+		case []any:
+			for _, c := range v {
+				walk(c)
+			}
+		}
+	}
+	walk(doc)
+	return out, nil
+}
+
 // Validate checks a manifest's schema, its references and its kind's
 // rules, in that order, against the current store state (no in-flight
 // import batch).

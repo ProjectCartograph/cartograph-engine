@@ -520,6 +520,12 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 	if !strings.Contains(after, "Only the person knows "+report.Open[0].ID+" Also: A second fact is missing") {
 		t.Fatalf("the first reason was lost: %s", after)
 	}
+	// A correction puts its reason in place of the first.
+	callTool(t, cs, "leave_open", map[string]any{"kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "Only the person knows " + report.Open[0].ID, "correct": true})
+	_, after = callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-sound"})
+	if strings.Contains(after, "A second fact is missing") {
+		t.Fatalf("a correction kept the reason it corrects: %s", after)
+	}
 	if !strings.Contains(after, `"left":[`) || !strings.Contains(after, `"open":[]`) {
 		t.Fatalf("the left checks are still open: %s", after)
 	}
@@ -592,5 +598,38 @@ func TestASaveDoesNotClobberADraft(t *testing.T) {
 	}
 	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-once", "manifest": goal, "replace": true}); res.IsError {
 		t.Fatalf("a replace was refused: %s", text)
+	}
+}
+
+// A KPI's target left for the person leaves the aims it measures waiting
+// on the same fact: they are left with its reason, and propose takes it.
+func TestAnAimWaitsOnItsKPIsLeftFigure(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "A measured goal"})
+	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-graded", "name": "Graded fruit"},
+		"spec": map[string]any{"level": "goal", "objective": "Grade every lot the same way"}}
+	kpi := map[string]any{"apiVersion": "cartograph/v1", "kind": "KPI", "metadata": map[string]any{"id": "k-graded", "name": "Lots graded"},
+		"spec": map[string]any{"definition": "Lots graded at intake", "direction": "increase", "goals": []any{"g-graded"}}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-graded", "manifest": goal})
+	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "KPI", "id": "k-graded", "manifest": kpi}); res.IsError {
+		t.Fatalf("save the KPI: %s", text)
+	}
+	callTool(t, cs, "leave_open", map[string]any{"kind": "KPI", "id": "k-graded", "check": "kpi-target", "reason": "The board sets the target after the baseline"})
+	_, text := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-graded"})
+	var report struct {
+		Open []struct {
+			ID string `json:"id"`
+		} `json:"open"`
+	}
+	if err := json.Unmarshal([]byte(text), &report); err != nil {
+		t.Fatal(err)
+	}
+	for _, o := range report.Open {
+		if o.ID == "smart-measurable" || o.ID == "smart-time-bound" {
+			t.Fatalf("an aim still asks for the figure its KPI waits on: %s", text)
+		}
+	}
+	if !strings.Contains(text, "whose figure is left for you: The board sets the target") {
+		t.Fatalf("the aim does not say what it waits on: %s", text)
 	}
 }

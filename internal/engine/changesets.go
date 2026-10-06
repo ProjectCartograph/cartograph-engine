@@ -374,8 +374,9 @@ func (e *Engine) UnnamedInChangeSet(ctx context.Context, set string) ([]Ref, err
 // can settle (a figure no document gives, a score nobody has made). The
 // order of work then passes it by, and proposing waives it with that
 // reason, so an agent says why once, as it goes, rather than all at the
-// end. An empty reason takes it back.
-func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason string) error {
+// end. An empty reason takes it back; a second reason is added to the
+// first unless correct puts it in its place.
+func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason string, correct bool) error {
 	s, err := e.changeSetStore()
 	if err != nil {
 		return err
@@ -394,9 +395,9 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason str
 		}
 		// A check two missing facts leave open keeps both reasons: the
 		// person reads every one. No reason takes the check back.
-		if reason != "" && !strings.Contains(w.Reason, reason) {
+		if reason != "" && !correct && !strings.Contains(w.Reason, reason) {
 			reason = w.Reason + " Also: " + reason
-		} else if reason != "" {
+		} else if reason != "" && !correct {
 			reason = w.Reason
 		}
 	}
@@ -419,7 +420,33 @@ func LeftFor(ctx context.Context, kind, id, check string) string {
 
 func leftFor(ctx context.Context, kind, id, check string) string {
 	left, _ := ctx.Value(leftKey{}).(map[string]string)
-	return left[kind+"/"+id+"#"+check]
+	if why := left[kind+"/"+id+"#"+check]; why != "" || kind != "Goal" || !aimMeasureChecks[check] {
+		return why
+	}
+	// An aim's measures fail while a KPI aligned to it waits on a figure
+	// left for the person: the same missing fact, so the same reason,
+	// without the agent having to foresee every aim it reaches.
+	for key, doc := range proposedDocs(ctx) {
+		kpi, ok := strings.CutPrefix(key, "KPI/")
+		if !ok {
+			continue
+		}
+		spec, _ := doc["spec"].(map[string]any)
+		goals, _ := spec["goals"].([]any)
+		named := false
+		for _, g := range goals {
+			named = named || g == id
+		}
+		if !named {
+			continue
+		}
+		for _, c := range []string{"kpi-target", "kpi-baseline"} {
+			if why := left[key+"#"+c]; why != "" {
+				return "Measured by KPI " + kpi + ", whose figure is left for you: " + why
+			}
+		}
+	}
+	return ""
 }
 
 // DiscardChangeItem drops a draft from a change set the principal works
@@ -541,7 +568,11 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 	if err != nil {
 		return store.ChangeSet{}, err
 	}
-	open, err := e.openIn(ctx, s, cs.ID)
+	left := map[string]string{}
+	for _, w := range cs.Waivers {
+		left[w.On+"#"+w.Check] = w.Reason
+	}
+	open, err := e.openIn(context.WithValue(ctx, leftKey{}, left), s, cs.ID)
 	if err != nil {
 		return store.ChangeSet{}, err
 	}
@@ -568,7 +599,13 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 	var unmet []OpenCheck
 	var waivers []store.Waiver
 	for _, c := range open {
-		if why := strings.TrimSpace(waive[c.Kind+"/"+c.ManifestID][c.ID]); why != "" {
+		why := strings.TrimSpace(waive[c.Kind+"/"+c.ManifestID][c.ID])
+		if why == "" {
+			// Left by way of another draft's check (an aim waiting on a
+			// KPI's figure).
+			why = c.Left
+		}
+		if why != "" {
 			waivers = append(waivers, store.Waiver{On: c.Kind + "/" + c.ManifestID, Check: c.ID, Message: c.Message, Reason: why})
 			continue
 		}
@@ -622,7 +659,7 @@ func (e *Engine) openIn(ctx context.Context, s store.ChangeSetStore, id string) 
 		}
 		for _, c := range checks {
 			if c.Open() {
-				open = append(open, OpenCheck{Kind: m.Kind, ManifestID: m.ID, Check: c, Left: leftFor(ctx, m.Kind, m.ID, c.ID)})
+				open = append(open, OpenCheck{Kind: m.Kind, ManifestID: m.ID, Check: c, Left: leftFor(checkCtx, m.Kind, m.ID, c.ID)})
 			}
 		}
 	}

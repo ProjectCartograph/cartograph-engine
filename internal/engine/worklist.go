@@ -39,6 +39,9 @@ type Task struct {
 	// to do about it.
 	Step string `json:"step,omitempty"`
 	Do   string `json:"do,omitempty"`
+	// By is the kind written to settle it, where that is another kind (a
+	// gap settles an outcome's closes-gap): the stage it waits for.
+	By string `json:"by,omitempty"`
 	// Choices are the records that already exist to settle it with, where
 	// a reference or a link settles it: offered before defining another.
 	Choices []Candidate `json:"choices,omitempty"`
@@ -222,8 +225,12 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 				own[len(out.Tasks)] = 1 << 20
 			}
 			stepOrder[len(out.Tasks)] = pl.order
+			by, _ := strings.CutPrefix(pl.field, "link:")
+			if by == pl.field || by == r.Kind {
+				by = ""
+			}
 			out.Tasks = append(out.Tasks, Task{Phase: pl.phase, Kind: r.Kind, ID: r.ID, Name: rec.name, Check: c.ID, State: c.State,
-				Message: c.Message, Step: pl.step, Do: words[r.Kind].Checks[c.ID], Choices: e.choices(l, r.Kind, rec.level, pl.field)})
+				Message: c.Message, Step: pl.step, Do: words[r.Kind].Checks[c.ID], By: by, Choices: e.choices(l, r.Kind, rec.level, pl.field)})
 			out.Open[pl.phase]++
 		}
 	}

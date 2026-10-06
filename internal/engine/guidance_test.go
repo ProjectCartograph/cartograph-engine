@@ -217,3 +217,24 @@ func TestTheGuideGivesEachFieldItsLimitsChoicesAndShape(t *testing.T) {
 		t.Errorf("a baseline's shape: %+v", f)
 	}
 }
+
+// A kind's schema comes with the shared definitions it points to, so
+// metadata.alias and a reference's forms are readable without resolving.
+func TestASchemaComesWithItsSharedDefinitions(t *testing.T) {
+	e := seededEngine(t)
+	defs, err := e.SchemaDefs("Project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta, _ := defs["Metadata"].(map[string]any)
+	props, _ := meta["properties"].(map[string]any)
+	if _, ok := props["alias"]; !ok || defs["Ref"] == nil || defs["KeyResult"] == nil {
+		t.Fatalf("the shared definitions: %v", func() []string {
+			var names []string
+			for k := range defs {
+				names = append(names, k)
+			}
+			return names
+		}())
+	}
+}

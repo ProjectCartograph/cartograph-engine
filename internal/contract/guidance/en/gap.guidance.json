@@ -204,7 +204,27 @@
         "label": "a missing resource, tool, budget or method"
       },
       "pass": "Describes a shortfall in results.",
-      "fail": "Reads as a missing resource or method: say which result falls short, and by how much."
+      "fail": "Reads as a missing resource or method: say which result falls short, and by how much.",
+      "opens": [
+        "need",
+        "needs",
+        "needed",
+        "lack",
+        "lacking",
+        "insufficient",
+        "inadequate",
+        "shortage",
+        "shortages",
+        "more",
+        "improve",
+        "introduce",
+        "install",
+        "buy",
+        "hire",
+        "procure",
+        "fund",
+        "not"
+      ]
     }
   }
 }
