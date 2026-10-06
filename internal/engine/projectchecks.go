@@ -394,7 +394,11 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 		c.addFix("success-criteria", "success", phaseInitiation, checkOK,
 			fmt.Sprintf("%d success criteri%s.", len(criteria), plural2(len(criteria), "on", "a")),
 			phaseInitiation, "success")
+		// A criterion read once, at closing or at landing, needs its
+		// standard and source but no cycle: only one judged after closing
+		// is read again and again.
 		unmeasured, unowned := 0, 0
+		var noStandard, noSource, noCycle int
 		for _, cr := range criteria {
 			cm, ok := cr.(map[string]any)
 			if !ok {
@@ -402,10 +406,22 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 			}
 			metric, _ := cm["metric"].(string)
 			if metric != "compliance" {
-				standard, _ := cm["standard"].(string)
-				source, _ := cm["source"].(string)
-				cycle, _ := cm["cycle"].(string)
-				if strings.TrimSpace(standard) == "" || strings.TrimSpace(source) == "" || strings.TrimSpace(cycle) == "" {
+				blank := func(k string) bool {
+					v, _ := cm[k].(string)
+					return strings.TrimSpace(v) == ""
+				}
+				when, _ := cm["when"].(string)
+				missing := false
+				if blank("standard") {
+					noStandard, missing = noStandard+1, true
+				}
+				if blank("source") {
+					noSource, missing = noSource+1, true
+				}
+				if when == "postClosingCycle" && blank("cycle") {
+					noCycle, missing = noCycle+1, true
+				}
+				if missing {
 					unmeasured++
 				}
 			}
@@ -418,8 +434,20 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 				"Every measured criterion says what it clears, where it is read and how often.",
 				phaseInitiation, "success")
 		} else {
+			var parts []string
+			for _, p := range []struct {
+				n    int
+				what string
+			}{{noStandard, "a standard"}, {noSource, "a data source"}, {noCycle, "a reporting cycle, read after closing"}} {
+				switch {
+				case p.n == 1:
+					parts = append(parts, "1 needs "+p.what)
+				case p.n > 1:
+					parts = append(parts, fmt.Sprintf("%d need %s", p.n, p.what))
+				}
+			}
 			c.addFix("success-measured", "success", phaseInitiation, checkBlock,
-				fmt.Sprintf("%d criteri%s cannot be measured as written.", unmeasured, plural2(unmeasured, "on", "a")),
+				fmt.Sprintf("%d criteri%s cannot be measured as written: %s.", unmeasured, plural2(unmeasured, "on", "a"), strings.Join(parts, "; ")),
 				phaseInitiation, "success")
 		}
 		if unowned == 0 {

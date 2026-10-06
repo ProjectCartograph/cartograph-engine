@@ -1,6 +1,12 @@
 package engine_test
 
-import "testing"
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+)
 
 // Project gains successCriteria (third I0 delta) and deliverables (fourth).
 //
@@ -104,4 +110,38 @@ func TestObjectiveMustBeQualitative(t *testing.T) {
 			yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj3\n  name: Project Three\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n  objectives:\n    - objective: Deliver 1200 orders this year\n",
 		},
 	})
+}
+
+// A criterion read once, at closing or at landing, needs its standard and
+// source but no cycle; one judged after closing is read repeatedly and
+// needs a cycle too. The check names what is missing.
+func TestOnlyACriterionReadAfterClosingNeedsACycle(t *testing.T) {
+	e := seededEngine(t)
+	ctx := context.Background()
+	criterion := func(when, extra string) string {
+		return "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: once\n  name: Once\nspec:\n  team: t1\n  successCriteria:\n    - id: sc-1\n      statement: Operators show a measured knowledge gain\n      metric: team\n      standard: 20 points above the pre-training score\n      source: d1\n      confirmedBy: {external: Sponsor}\n      when: " + when + "\n" + extra
+	}
+	measured := func(y string) engine.ProjectCheckItem {
+		t.Helper()
+		if err := e.PutWorking(ctx, "Project", "once", []byte(y)); err != nil {
+			t.Fatal(err)
+		}
+		checks, err := e.ProjectChecks(ctx, "once", false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return checksByID(checks.Items)["success-measured"]
+	}
+	if c := measured(criterion("atClosing", "")); c.State != "ok" {
+		t.Fatalf("read once at closing, no cycle: %+v", c)
+	}
+	if c := measured(criterion("postClosingCycle", "")); c.State != "block" || !strings.Contains(c.Message, "1 needs a reporting cycle") {
+		t.Fatalf("read after closing, no cycle: %+v", c)
+	}
+	if c := measured(criterion("postClosingCycle", "      cycle: c1\n")); c.State != "ok" {
+		t.Fatalf("read after closing, with a cycle: %+v", c)
+	}
+	if c := measured(strings.Replace(criterion("atLanding", ""), "      source: d1\n", "", 1)); c.State != "block" || !strings.Contains(c.Message, "1 needs a data source") {
+		t.Fatalf("no source: %+v", c)
+	}
 }

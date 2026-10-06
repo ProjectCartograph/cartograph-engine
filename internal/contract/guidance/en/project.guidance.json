@@ -424,6 +424,10 @@
         {
           "text": "The training pack is produced.",
           "why": "That is a deliverable's acceptance, not success. Say what is true once the pack is in use."
+        },
+        {
+          "text": "Depot staff training delivered on 2 September with attendance recorded.",
+          "why": "An output delivered on a date: that is the training deliverable's acceptance, where it needs no cycle. A criterion is the state the outputs are for, such as staff running the check unaided."
         }
       ]
     },
@@ -447,7 +451,7 @@
       "guide": "The data source the measurement is read from, named once in the register. A compliance criterion takes none."
     },
     "/spec/successCriteria/-/cycle": {
-      "guide": "How often it is read, a reporting cycle from the register. A compliance criterion takes none.",
+      "guide": "How often it is read, a reporting cycle from the register. Needed only for a criterion judged after handover, which is read again and again; one read once, at closure or at handover, takes none. A compliance criterion takes none.",
       "good": [
         "seasonal-cycle"
       ]
@@ -644,7 +648,7 @@
     "risks-dependency-cycle": "Break the loop: one end of it must not wait on the other.",
     "risks-dependency-schedule": "Move the needed-by phase, or agree an earlier finish with the other end.",
     "success-criteria": "Add at least one success criterion.",
-    "success-measured": "Give every measured criterion a target, a data source and a reporting cycle.",
+    "success-measured": "Give every measured criterion its standard and data source, and a reporting cycle when it is judged after handover.",
     "success-owner": "Name the role that tracks every criterion.",
     "closing-criteria": "Give every deliverable a test it is accepted against.",
     "landing-operation": "Name the operation the result is handed over to, or a new one.",

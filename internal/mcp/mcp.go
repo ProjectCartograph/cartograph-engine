@@ -131,7 +131,9 @@ Work this way, every time:
    tool's, not Cartograph's), and a service's recurrent costs funding
    lines on the operation, per month or year, never on the project
    that sets it up, and reporting "termly" or "per survey wave" a
-   reporting cycle of named periods, each by the month it ends. Keep the
+   reporting cycle of named periods, each by the month it ends. A
+   success criterion that only says an output was delivered is that
+   deliverable's acceptance, not a criterion. Keep the
    document's own wording in the statement and cite it as the source;
    never add a kind, level or field Cartograph does not have, and when a
    thing fits no kind, say so to your person rather than forcing it.
