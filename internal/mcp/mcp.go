@@ -410,7 +410,11 @@ func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[strin
 
 // changeSetOut is a change set as an agent reads it after proposing.
 func changeSetOut(cs store.ChangeSet, items []string) map[string]any {
-	return map[string]any{"changeSet": cs.ID, "title": cs.Title, "status": cs.Status, "items": items,
+	waived := make([]map[string]any, len(cs.Waivers))
+	for i, w := range cs.Waivers {
+		waived[i] = map[string]any{"on": w.On, "check": w.Check, "reason": w.Reason}
+	}
+	return map[string]any{"changeSet": cs.ID, "title": cs.Title, "status": cs.Status, "items": items, "leftForYourPerson": waived,
 		"next": "Proposed. Your person reviews the whole change set in Cartograph, under Change sets, and accepts it there; tell them what it holds and what you left open."}
 }
 
@@ -500,8 +504,14 @@ type (
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out"`
 		Kind      string `json:"kind"`
 		ID        string `json:"id"`
-		Check     string `json:"check" jsonschema:"the check's id, as checks reports it"`
+		Check     string `json:"check,omitempty" jsonschema:"the check's id, as checks reports it"`
 		Reason    string `json:"reason" jsonschema:"what your person must supply or decide, in one line they can act on; empty takes it back"`
+		Also      []leaveItem `json:"also,omitempty" jsonschema:"more checks the same missing fact leaves open, on this draft or others, each {kind, id, check}: one reason for all of them"`
+	}
+	leaveItem struct {
+		Kind  string `json:"kind"`
+		ID    string `json:"id"`
+		Check string `json:"check"`
 	}
 	manifestRef struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
@@ -720,7 +730,15 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				if !found {
 					return nil, fmt.Errorf("no change set open: name the manifest to check, or start_work")
 				}
-				return withSet(c, checkReport(nil), cs.ID, "", "")
+				out, err := withSet(c, checkReport(nil), cs.ID, "", "")
+				if err == nil {
+					// For the whole set, its own line is the one to follow.
+					out["next"] = out["setNext"]
+					delete(out, "setNext")
+					delete(out, "open")
+					delete(out, "met")
+				}
+				return out, err
 			}
 			if in.Manifest != nil {
 				text, err := e.Codec().Encode(in.Manifest)
@@ -940,6 +958,16 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			out := map[string]any{"open": w.Open}
 			if len(w.Tasks) == 0 {
+				// Nothing open in what is drafted: the next stage of the
+				// workspace, if one is still unwritten, else propose.
+				if o, err := e.WorkspaceOrder(c.ctx); err == nil && o.Next != "" {
+					stage, _ := workspaceNext(c.ctx, e)
+					if m, ok := stage.(map[string]any); ok {
+						out["next"] = "Nothing is open in what you have drafted. " + fmt.Sprint(m["next"]) +
+							" Propose the change set with propose once the work your person asked for is drafted."
+						return out, nil
+					}
+				}
 				out["next"] = "Every check across this work is met. Propose the change set with propose."
 				return out, nil
 			}
@@ -1000,10 +1028,21 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
-			if err := e.LeaveOpen(c.ctx, cs.ID, in.Kind, in.ID, in.Check, in.Reason); err != nil {
-				return nil, err
+			items := in.Also
+			if in.Check != "" {
+				items = append([]leaveItem{{Kind: in.Kind, ID: in.ID, Check: in.Check}}, items...)
 			}
-			return map[string]any{"left": in.Kind + "/" + in.ID + " " + in.Check, "reason": in.Reason, "changeSet": cs.ID,
+			if len(items) == 0 {
+				return nil, fmt.Errorf("name the check to leave: check, or also for several")
+			}
+			var left []string
+			for _, it := range items {
+				if err := e.LeaveOpen(c.ctx, cs.ID, it.Kind, it.ID, it.Check, in.Reason); err != nil {
+					return nil, err
+				}
+				left = append(left, it.Kind+"/"+it.ID+" "+it.Check)
+			}
+			return map[string]any{"left": left, "reason": in.Reason, "changeSet": cs.ID,
 				"next": "Carry on with next: it passes this check by, and propose waives it with your reason."}, nil
 		})
 

@@ -552,3 +552,22 @@ func TestChecksListDraftsNothingNames(t *testing.T) {
 		t.Fatalf("an unnamed draft is not pointed out: %s", text)
 	}
 }
+
+// Once a stage is drafted with nothing open, next names the stage after
+// it rather than telling the agent to propose; checks on the whole set
+// says one thing.
+func TestNextMovesOnFromADraftedStage(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	purpose := map[string]any{"apiVersion": "cartograph/v1", "kind": "Purpose", "metadata": map[string]any{"id": "default", "name": "Purpose"},
+		"spec": map[string]any{"organisation": "Example Cooperative", "vision": "Every member's produce reaches a buyer sound.", "mission": "We check, store and move produce for our members."}}
+	callTool(t, cs, "start_work", map[string]any{"title": "Our purpose"})
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Purpose", "id": "default", "manifest": purpose})
+	res, text := callTool(t, cs, "next", map[string]any{})
+	if res.IsError || !strings.Contains(text, "the goal stage") {
+		t.Fatalf("next after a drafted purpose: %s", text)
+	}
+	res, text = callTool(t, cs, "checks", map[string]any{})
+	if res.IsError || strings.Contains(text, "Every check is met") && strings.Contains(text, "still open") {
+		t.Fatalf("checks on the set contradicts itself: %s", text)
+	}
+}

@@ -282,6 +282,20 @@ func (e *Engine) WorkspaceOrder(ctx context.Context) (Order, error) {
 		}
 		walk(tree.Nodes)
 	}
+	// Drafts being worked on together count as written, so the order moves
+	// on as an agent drafts the stages in one change set.
+	for key, doc := range proposedDocs(ctx) {
+		kind, id, _ := strings.Cut(key, "/")
+		if _, found, err := e.manifests.GetCurrent(ctx, kind, id); err == nil && !found {
+			counts[kind]++
+			if kind == "Goal" {
+				spec, _ := doc["spec"].(map[string]any)
+				if lv, _ := spec["level"].(string); lv != "" {
+					levels[lv]++
+				}
+			}
+		}
+	}
 	// The purpose may still live in the settings (ADR 0020).
 	if counts["Purpose"] == 0 {
 		if s, err := e.GetSettings(ctx); err == nil && s.Purpose != nil && (strings.TrimSpace(s.Purpose.Vision) != "" || strings.TrimSpace(s.Purpose.Mission) != "") {
