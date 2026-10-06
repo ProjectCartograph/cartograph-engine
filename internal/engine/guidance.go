@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/contract"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
 )
 
 // A guide is how to define one kind well, put together for whoever is
@@ -139,6 +140,11 @@ type GuideField struct {
 	Checks     []string    `json:"checks,omitempty"`
 	References string      `json:"references,omitempty"`
 	Candidates []Candidate `json:"candidates,omitempty"`
+	// Required says the field must be filled: the schema requires it
+	// where it sits, or one of its checks blocks a handoff while it is
+	// empty. Every interface marks it the same way, and an agent knows
+	// which answers it cannot leave out.
+	Required bool `json:"required,omitempty"`
 }
 
 // GuideLink is a link held on another kind, naming this manifest: what to
@@ -296,7 +302,7 @@ func (e *Engine) Guide(ctx context.Context, kind, level, locale string) (Guide, 
 					continue
 				}
 				path := prefix + f.Path
-				gf := GuideField{Path: path, Control: f.Control, Checks: f.Checks, Guide: f.Hint}
+				gf := GuideField{Path: path, Control: f.Control, Checks: f.Checks, Guide: f.Hint, Required: e.requiredAt(kind, path) || anyBlocking(f.Checks)}
 				if w, ok := words.Fields[path]; ok {
 					if lw, ok := w.Levels[level]; ok && level != "" {
 						w = lw
@@ -481,4 +487,41 @@ func (e *Engine) Taxonomy(locale string) ([]TaxonomyEntry, error) {
 		out = append(out, entry)
 	}
 	return out, nil
+}
+
+// requiredAt reports whether the schema requires the field at path: the
+// object holding it lists it as required. A field inside a list item
+// (/spec/deliverables/-/name) is required of every item, though the list
+// itself may be optional.
+func (e *Engine) requiredAt(kind, path string) bool {
+	spec, ok := kinds.ByName(kind)
+	if !ok {
+		return false
+	}
+	w := shapeWalker{all: e.schemas.raw, keys: map[string]string{}, seen: map[string]bool{}}
+	node, file := w.resolve(e.schemas.raw[spec.SchemaFile], spec.SchemaFile, "")
+	tokens := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	for i, t := range tokens {
+		if node == nil {
+			return false
+		}
+		if t == "-" {
+			items, _ := node["items"].(map[string]any)
+			node, file = w.resolve(items, file, "")
+			continue
+		}
+		if i == len(tokens)-1 {
+			required, _ := node["required"].([]any)
+			for _, r := range required {
+				if r == t {
+					return true
+				}
+			}
+			return false
+		}
+		props, _ := node["properties"].(map[string]any)
+		next, _ := props[t].(map[string]any)
+		node, file = w.resolve(next, file, "")
+	}
+	return false
 }

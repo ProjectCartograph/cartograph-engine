@@ -151,3 +151,34 @@ func TestGuidanceNamesOnlyRealChecks(t *testing.T) {
 		}
 	}
 }
+
+// The guide marks what a definition cannot leave out: what the schema
+// requires where it sits, and what a handoff waits on, and nothing else.
+func TestTheGuideMarksRequiredFields(t *testing.T) {
+	e := seededEngine(t)
+	g, err := e.Guide(context.Background(), "Project", "", "en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	required := map[string]bool{}
+	seen := map[string]bool{}
+	for _, st := range g.Steps {
+		for _, f := range st.Fields {
+			seen[f.Path] = true
+			required[f.Path] = required[f.Path] || f.Required
+		}
+	}
+	for path, want := range map[string]bool{
+		"/metadata/name":                   true,  // the schema requires a name
+		"/spec/deliverables":               true,  // a handoff waits on a deliverable
+		"/spec/deliverables/-/name":        true,  // every deliverable has a name
+		"/spec/deliverables/-/tasks":       false, // tasks are optional
+		"/spec/deliverables/-/description": false,
+	} {
+		if !seen[path] {
+			t.Errorf("the guide has no %s", path)
+		} else if required[path] != want {
+			t.Errorf("%s required = %v, want %v", path, required[path], want)
+		}
+	}
+}

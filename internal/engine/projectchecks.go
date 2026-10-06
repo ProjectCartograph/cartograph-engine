@@ -1295,3 +1295,24 @@ func unownedMessage(n int) string {
 	}
 	return fmt.Sprintf("%d high-impact risks name no owner.", n)
 }
+
+// blockingChecks are the checks that stop a project's handoff while they
+// are unmet: a field one of them reads is required (Guide marks it). Kept
+// beside the checks, and a test holds it to every check added as
+// checkBlock.
+var blockingChecks = map[string]bool{
+	"aim-problem-change": true, "components-parent": true, "data-personal-data": true, "data-sink": true,
+	"deliverables-count": true, "closing-criteria": true, "landing-criteria": true, "success-criteria": true,
+	"success-measured": true, "goals-aligned": true, "goals-functional-level": true, "goals-key-results-baseline": true,
+	"goals-key-results-count": true, "goals-key-results-source": true, "goals-key-results-target": true,
+	"goals-objective": true, "landing-operation": true, "resources-sponsor-lead": true, "timeline-start-phases": true,
+}
+
+func anyBlocking(checks []string) bool {
+	for _, c := range checks {
+		if blockingChecks[c] {
+			return true
+		}
+	}
+	return false
+}

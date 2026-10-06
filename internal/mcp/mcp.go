@@ -149,7 +149,8 @@ Work this way, every time:
    never add a kind, level or field Cartograph does not have, and when a
    thing fits no kind, say so to your person rather than forcing it.
 2. Call guide for that kind and level before drafting anything. It gives
-   the definition, every step and field in order, what each field must
+   the definition, every step and field in order (a field marked
+   required cannot be left out), what each field must
    say with right and wrong examples, the links to make, the template to
    fill in, and the organisation's existing records. Use its words; they
    are the discipline's. If an existing record already says what the

@@ -913,6 +913,9 @@ type GuideField struct {
 
 	// References The kind the field references.
 	References *string `json:"references,omitempty"`
+
+	// Required The field must be filled: the schema requires it where it sits, or one of its checks blocks a handoff while it is empty. Absent when it may be left out.
+	Required *bool `json:"required,omitempty"`
 }
 
 // GuideLink defines model for GuideLink.
