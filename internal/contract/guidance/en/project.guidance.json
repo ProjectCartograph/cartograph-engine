@@ -380,6 +380,32 @@
         }
       ]
     },
+    "/spec/deliverables/-/tasks": {
+      "guide": "The work that produces this deliverable, as a loose list: names only, in any order. Dates, durations and what waits on what belong to the planning tool, which takes this list as its starting point. Optional."
+    },
+    "/spec/deliverables/-/tasks/-/name": {
+      "guide": "The work, as a short verb phrase that produces part of this deliverable.",
+      "good": [
+        "Prepare the facilitator guide",
+        "Record attendance and questions"
+      ],
+      "poor": [
+        {
+          "text": "Training delivered by 2 September",
+          "why": "A date or a milestone, not work. Dates belong to the planning tool."
+        },
+        {
+          "text": "Agree the budget",
+          "why": "Produces no part of this deliverable. Work that serves no deliverable is out of scope, or a sign of a missing deliverable."
+        }
+      ]
+    },
+    "/spec/deliverables/-/tasks/-/role": {
+      "guide": "The role that does this work, if it is known, picked from the roles in Resources. Never a person. Leave it empty when nobody knows yet."
+    },
+    "/spec/deliverables/-/tasks/-/note": {
+      "guide": "Anything the planner should know, in one sentence. Optional."
+    },
     "/spec/successCriteria": {
       "guide": "What has to be true for the project to have succeeded, not merely to have finished. Each criterion names the state, its dimension and the bar it clears, where that is read from and how often, the role that tracks it, the role that signs it off, and when it falls due: at closure, at handover or after handover. A criterion is the floor the project must clear; a key result is the stretch it reaches for."
     },

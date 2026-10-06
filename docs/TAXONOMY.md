@@ -1165,3 +1165,31 @@ return it with them. It is the name the organisation's own people use,
 not an identifier: nothing references it. A new workspace asks for it
 first, then the vision and the mission, then the goals: the strategy
 top-down, in the order of work (D28).
+
+### D38. A deliverable may list the tasks that produce it; their order and dates are the planning tool's. *(resolved)*
+
+**The problem.** Both standards split breaking work down from
+scheduling it. PMBOK's scope baseline holds the work breakdown
+structure, deliverables decomposed into work packages, and defining,
+sequencing and scheduling activities follows in schedule management;
+PRINCE2's product-based planning describes products first and their
+flow and activities after. Cartograph held the top of the breakdown
+(deliverables and their acceptance) and left the schedule to the
+planning tool, but the level between, what has to be done to produce
+each deliverable, had nowhere to go. A charter ported into Cartograph
+showed the cost: its milestones mixed work, dates and dependencies, and
+had nowhere to land but notes.
+
+**What Cartograph does.** A deliverable may list its tasks
+(`spec.deliverables[].tasks`, each `{id, name, role?, note?}`): names
+only, unordered, with no dates, durations, dependencies, progress or
+milestones, which stay the planning tool's. A task may name the role
+that does it, when it is known, as a reference; never a person. Tasks
+hang from deliverables, not from the project, so every task produces
+part of a deliverable (the work breakdown's 100% rule) and scope stays
+traceable without a check; a task no deliverable needs is out of scope,
+or a sign of a missing deliverable. No check asks for tasks or blocks
+on them. The charter prints them as a work breakdown, coded by position
+(D2, D2.1, D2.2), and the handoff bundle carries the same list for the
+planning tool to import. A milestone in a ported document becomes a task
+only where it names work, and never brings its date.

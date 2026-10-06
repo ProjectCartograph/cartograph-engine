@@ -93,6 +93,17 @@ spec:
           outcome: signs off the pack as ready to run
         - by: {local: resources, id: quality-reviewer}
           outcome: confirms the practice materials match the published standard
+      # The work that produces the pack, loosely: no order and no dates,
+      # which the planning tool adds.
+      tasks:
+        - id: tk-draft-slides
+          name: Draft the slides and the facilitator guide
+          role: {local: resources, id: training-facilitator}
+        - id: tk-practice-materials
+          name: Prepare the practice materials
+        - id: tk-review-pack
+          name: Review the pack against the published standard
+          role: {local: resources, id: quality-reviewer}
     - id: dv-reporting-view
       name: Quality results view
       description: A shared view of quality check results by depot, refreshed each season.

@@ -431,6 +431,34 @@
                     "title": "Confirms that"
                   }
                 ]
+              },
+              {
+                "path": "/tasks",
+                "control": "list",
+                "key": "id",
+                "title": "Tasks",
+                "hint": "The work that produces it, in any order. No dates.",
+                "fields": [
+                  {
+                    "path": "/id",
+                    "control": "readonly"
+                  },
+                  {
+                    "path": "/name",
+                    "control": "text",
+                    "title": "Task"
+                  },
+                  {
+                    "path": "/role",
+                    "control": "reference",
+                    "title": "Done by"
+                  },
+                  {
+                    "path": "/note",
+                    "control": "sentence",
+                    "title": "Note"
+                  }
+                ]
               }
             ]
           }

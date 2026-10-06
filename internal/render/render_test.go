@@ -315,3 +315,52 @@ func findSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+// TestCharterWorkBreakdown checks a deliverable's tasks are printed under
+// it and carried in the JSON coded D1, D1.1, for the planning tool.
+func TestCharterWorkBreakdown(t *testing.T) {
+	ctx := context.Background()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectYAML := `apiVersion: cartograph/v1
+kind: Project
+metadata:
+  id: test-project
+  name: Test Project
+spec:
+  team: test-team
+  deliverables:
+    - id: dv-1
+      name: Training pack
+      tasks:
+        - id: t-1
+          name: Prepare the facilitator guide
+          role: {external: Trainer}
+        - id: t-2
+          name: Record attendance
+          note: Use the sign-in sheet
+    - id: dv-2
+      name: Results view
+  resources:
+    - role: sponsor
+`
+	if err := e.PutWorking(ctx, "Project", "test-project", []byte(projectYAML)); err != nil {
+		t.Fatal(err)
+	}
+	html, js, err := Charter(ctx, e, "test-project", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Work breakdown", "D1.1", "Prepare the facilitator guide", "Trainer", "D2"} {
+		if !contains(string(html), want) {
+			t.Errorf("charter HTML lacks %q", want)
+		}
+	}
+	for _, want := range []string{`"workBreakdown"`, `"code": "D1.2"`, `"note": "Use the sign-in sheet"`, `"code": "D2"`} {
+		if !contains(string(js), want) {
+			t.Errorf("charter JSON lacks %s", want)
+		}
+	}
+}

@@ -189,6 +189,13 @@ func referenceProblems(spec map[string]any) []kit.Problem {
 			add(kit.LocalRefProblem(spec, cm["by"],
 				fmt.Sprintf("/spec/deliverables/%d/acceptance/%d/by", di, ci)))
 		}
+		tasks, _ := dm["tasks"].([]any)
+		for ti, t := range tasks {
+			if tm, ok := t.(map[string]any); ok {
+				add(kit.LocalRefProblem(spec, tm["role"],
+					fmt.Sprintf("/spec/deliverables/%d/tasks/%d/role", di, ti)))
+			}
+		}
 	}
 
 	criteria, _ := spec["successCriteria"].([]any)

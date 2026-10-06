@@ -46,6 +46,16 @@ func Charter(ctx context.Context, e *engine.Engine, projectID string, snapshot i
 		"version":  vers,
 		"checks":   projectChecks.Items,
 	}
+	// The work breakdown travels in the bundle for the planning tool to
+	// import, coded D1, D1.1 and so on; absent when no deliverable lists
+	// tasks.
+	_, spec, err := manifestOf(e, vers, projectID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if wbs := workBreakdown(loadNames(ctx, e), spec); hasTasks(wbs) {
+		data["workBreakdown"] = wbs
+	}
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal json: %w", err)
@@ -154,6 +164,18 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 			rows = append(rows, []string{str(dv["name"]), str(dv["description"]), strings.Join(tests, "; ")})
 		}
 		d.table([]string{"Deliverable", "Description", "Acceptance criteria"}, rows)
+
+		// The work breakdown under the deliverables (TAXONOMY.md D38),
+		// numbered as the planning tool imports it. Unordered and undated:
+		// sequencing is the planning tool's.
+		if wbs := workBreakdown(n, spec); hasTasks(wbs) {
+			d.h3("Work breakdown")
+			var rows [][]string
+			for _, w := range wbs {
+				rows = append(rows, []string{w.Code, w.Name, w.Role, w.Note})
+			}
+			d.table([]string{"Code", "Deliverable or task", "Done by", "Note"}, rows)
+		}
 	}
 
 	// Components are read back from the projects that name this one as
@@ -335,4 +357,46 @@ func month(s string) string {
 		return t.Format("January 2006")
 	}
 	return s
+}
+
+// WorkItem is one line of a project's work breakdown: a deliverable
+// (D2) or one task under it (D2.1).
+type WorkItem struct {
+	Code        string `json:"code"`
+	Deliverable string `json:"deliverable"`
+	Task        string `json:"task,omitempty"`
+	Name        string `json:"name"`
+	Role        string `json:"role,omitempty"`
+	Note        string `json:"note,omitempty"`
+}
+
+// workBreakdown lists the deliverables in their written order, each
+// followed by its tasks. The codes number by position, so they are the
+// same for the same version and need no stored field.
+func workBreakdown(n names, spec map[string]any) []WorkItem {
+	var out []WorkItem
+	for i, dv := range list(spec["deliverables"]) {
+		code := fmt.Sprintf("D%d", i+1)
+		out = append(out, WorkItem{Code: code, Deliverable: str(dv["id"]), Name: str(dv["name"])})
+		for j, t := range list(dv["tasks"]) {
+			out = append(out, WorkItem{
+				Code:        fmt.Sprintf("%s.%d", code, j+1),
+				Deliverable: str(dv["id"]),
+				Task:        str(t["id"]),
+				Name:        str(t["name"]),
+				Role:        n.ref(t["role"], "Resource", spec),
+				Note:        str(t["note"]),
+			})
+		}
+	}
+	return out
+}
+
+func hasTasks(wbs []WorkItem) bool {
+	for _, w := range wbs {
+		if w.Task != "" {
+			return true
+		}
+	}
+	return false
 }

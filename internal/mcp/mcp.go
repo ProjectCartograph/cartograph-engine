@@ -125,7 +125,10 @@ Work this way, every time:
    different plans. Call taxonomy, and record each thing a document says
    as the Cartograph kind and level it is by definition, whatever the
    document calls it: a plan's "priority" may be a goal, its "objective"
-   an outcome, its "target" a KPI's target, its "problem" a gap. Keep the
+   an outcome, its "target" a KPI's target, its "problem" a gap, and a
+   milestone that names work a task under the deliverable it produces,
+   without its date (a milestone that is only a date is the planning
+   tool's, not Cartograph's). Keep the
    document's own wording in the statement and cite it as the source;
    never add a kind, level or field Cartograph does not have, and when a
    thing fits no kind, say so to your person rather than forcing it.
