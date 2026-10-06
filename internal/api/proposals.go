@@ -174,6 +174,10 @@ func toChecks(cs []engine.Check) []apigen.ManifestCheck {
 			section := c.Section
 			out[i].Section = &section
 		}
+		if c.Path != "" {
+			path := c.Path
+			out[i].Path = &path
+		}
 	}
 	return out
 }

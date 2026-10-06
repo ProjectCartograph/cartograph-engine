@@ -175,3 +175,31 @@ func TestAChangeSetDeletesAndMovesAsWellAsSaves(t *testing.T) {
 		t.Fatalf("the project's state: %+v", st)
 	}
 }
+
+// A change set's review names what a record must have before it can be
+// merged, field by field, rather than leaving the merge to refuse it.
+func TestAReviewNamesWhatARecordNeedsToMerge(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	seed := actingAs(ada)
+	if _, err := e.EditInChangeSet(seed, "", "Project", "p-half", map[string]any{"/metadata/name": "Half", "/spec/summary/problems/0/problem/situation": ""}, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, _ := e.WorkingChangeSet(seed, "")
+	view, err := e.ViewChangeSet(seed, cs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var paths []string
+	for _, c := range view.Items[0].Checks {
+		if strings.HasPrefix(c.ID, "required:") {
+			if c.State != "block" {
+				t.Fatalf("%s is %s, want block", c.ID, c.State)
+			}
+			paths = append(paths, c.Path)
+		}
+	}
+	if len(paths) == 0 {
+		t.Fatalf("the review names nothing the team needs: %+v", view.Items[0].Checks)
+	}
+}

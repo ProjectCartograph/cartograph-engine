@@ -311,6 +311,10 @@ func (e *Engine) ViewChangeSet(ctx context.Context, id string) (ChangeSetView, e
 			if checks, err := e.ChecksOf(checkCtx, it.Kind, it.ID, it.Text); err == nil {
 				item.Checks = checks
 			}
+			// What the schema requires is not advice: the record cannot
+			// be merged without it, so the review says so before anyone
+			// tries.
+			item.Checks = append(item.Checks, e.requiredChecks(ctx, it.Kind, it.Text)...)
 		}
 		if latest, err := latestNumber(ctx, e.manifests, it.Kind, it.ID); err == nil && latest != it.Base {
 			item.Stale = latest
@@ -1211,6 +1215,31 @@ func roleRefProblems(doc map[string]any, rules []refRule) []Problem {
 				break
 			}
 		}
+	}
+	return out
+}
+
+// requiredChecks turns what stops a record being saved as a version into
+// blocking checks, one per field, so a change set's review names them
+// before it is merged rather than refusing the merge.
+func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte) []Check {
+	problems, err := e.Validate(ctx, kind, text)
+	if err != nil {
+		return nil
+	}
+	out := make([]Check, 0, len(problems))
+	for _, p := range problems {
+		path := p.Path
+		// A missing property is reported on the object that lacks it;
+		// the field is the property.
+		if i := strings.Index(p.Message, "missing property '"); i >= 0 {
+			name := strings.TrimSuffix(p.Message[i+len("missing property '"):], "'")
+			if j := strings.Index(name, "'"); j >= 0 {
+				name = name[:j]
+			}
+			path = strings.TrimSuffix(path, "/") + "/" + name
+		}
+		out = append(out, Check{ID: "required:" + path, State: checkBlock, Message: "Needed before this can be merged.", Path: path})
 	}
 	return out
 }

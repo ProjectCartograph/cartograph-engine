@@ -16,6 +16,10 @@ type Check struct {
 	State   string `json:"state"`
 	Message string `json:"message"`
 	Section string `json:"section,omitempty"`
+	// Path is the field the check is about, as a JSON pointer, where it is
+	// one field: what a record must have before it can be saved as a
+	// version.
+	Path string `json:"path,omitempty"`
 }
 
 // Open reports whether a check is not yet met.

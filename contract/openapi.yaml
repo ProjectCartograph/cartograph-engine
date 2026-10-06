@@ -3386,6 +3386,11 @@ components:
         section:
           type: string
           description: The editor's section where it is fixed.
+        path:
+          type: string
+          description: >-
+            The field it is about, as a JSON pointer, where it is one field:
+            what the record must have before it can be merged.
 
     ProposalReview:
       type: object

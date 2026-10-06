@@ -1111,6 +1111,9 @@ type ManifestCheck struct {
 	Id      string `json:"id"`
 	Message string `json:"message"`
 
+	// Path The field it is about, as a JSON pointer, where it is one field: what the record must have before it can be merged.
+	Path *string `json:"path,omitempty"`
+
 	// Section The editor's section where it is fixed.
 	Section *string            `json:"section,omitempty"`
 	State   ManifestCheckState `json:"state"`
