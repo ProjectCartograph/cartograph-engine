@@ -242,10 +242,13 @@ func (e *Engine) writeItem(ctx context.Context, set, kind, id string, change fun
 // the version it started from, its checks with the rest of the change set,
 // and whether the record has moved on since.
 type ChangeSetItem struct {
-	Item    store.ChangeItem
-	Name    string
-	Changes []Change
-	Checks  []Check
+	Item store.ChangeItem
+	Name string
+	// Proposed is "new" when the change set creates the record, else
+	// "changed".
+	Proposed string
+	Changes  []Change
+	Checks   []Check
 	// Stale is the version saved since the item started, 0 when none was.
 	Stale int
 }
@@ -284,7 +287,10 @@ func (e *Engine) ViewChangeSet(ctx context.Context, id string) (ChangeSetView, e
 	view := ChangeSetView{ChangeSet: cs, Items: []ChangeSetItem{}}
 	for _, it := range items {
 		doc := docs[it.Kind+"/"+it.ID]
-		item := ChangeSetItem{Item: it, Changes: []Change{}, Checks: []Check{}}
+		item := ChangeSetItem{Item: it, Changes: []Change{}, Checks: []Check{}, Proposed: "new"}
+		if _, found, err := e.manifests.GetCurrent(ctx, it.Kind, it.ID); err == nil && found {
+			item.Proposed = "changed"
+		}
 		if meta, ok := doc["metadata"].(map[string]any); ok {
 			item.Name, _ = meta["name"].(string)
 		}
@@ -1009,12 +1015,16 @@ func (e *Engine) InChangeSet(ctx context.Context, set string) (context.Context, 
 		return ctx, err
 	}
 	texts := make(map[string][]byte, len(items))
-	bases := make(map[string]int, len(items))
+	// Whether each item's record exists: a record in a vault may have no
+	// numbered version, so a base of 0 does not mean the change set
+	// creates it.
+	exists := make(map[string]bool, len(items))
 	for _, it := range items {
 		texts[it.Kind+"/"+it.ID] = it.Text
-		bases[it.Kind+"/"+it.ID] = it.Base
+		_, found, err := e.manifests.GetCurrent(ctx, it.Kind, it.ID)
+		exists[it.Kind+"/"+it.ID] = err == nil && found
 	}
-	ctx = context.WithValue(ctx, basesKey{}, bases)
+	ctx = context.WithValue(ctx, basesKey{}, exists)
 	// What it leaves for its person, so the order of work passes it by.
 	left := map[string]string{}
 	if cs, err := s.GetChangeSet(ctx, set); err == nil {
@@ -1046,20 +1056,20 @@ func (e *Engine) Preview(ctx context.Context, set string) (context.Context, erro
 	return e.InChangeSet(ctx, set)
 }
 
-// basesKey carries the version each of a change set's items started
-// from, "Kind/id" to the number, 0 for one the change set creates.
+// basesKey carries whether the record behind each of a change set's
+// items exists, "Kind/id" to true, false for one the change set creates.
 type basesKey struct{}
 
 // Proposed says how a manifest stands in the change set read on ctx:
 // "new" when the change set creates it, "changed" when it changes one
 // that exists, "" when it is not in the change set or none is read.
 func Proposed(ctx context.Context, kind, id string) string {
-	bases, _ := ctx.Value(basesKey{}).(map[string]int)
-	base, ok := bases[kind+"/"+id]
+	exists, _ := ctx.Value(basesKey{}).(map[string]bool)
+	found, ok := exists[kind+"/"+id]
 	switch {
 	case !ok:
 		return ""
-	case base == 0:
+	case !found:
 		return "new"
 	default:
 		return "changed"

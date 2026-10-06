@@ -126,6 +126,7 @@ func (s *Server) GetChangeSet(ctx context.Context, req apigen.GetChangeSetReques
 			item.State = opt(it.Item.State)
 		}
 		item.Op = &op
+		item.Proposed = proposedOf(it.Proposed)
 		out.Items[i] = item
 	}
 	return apigen.GetChangeSet200JSONResponse(out), nil

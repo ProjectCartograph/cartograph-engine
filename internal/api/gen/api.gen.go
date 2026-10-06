@@ -658,6 +658,9 @@ type ChangeSetItem struct {
 	// Op What rolling it in does to the record: saves the draft as the next version, deletes the record, or moves a project to state.
 	Op *ChangeSetItemOp `json:"op,omitempty"`
 
+	// Proposed Present when read with changeSet and the change set creates this record (new) or changes it (changed); absent otherwise.
+	Proposed *Proposed `json:"proposed,omitempty"`
+
 	// Stale The version saved since it started, when one was; accepting is refused until it is reviewed again.
 	Stale *int `json:"stale,omitempty"`
 

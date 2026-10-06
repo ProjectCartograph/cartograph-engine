@@ -3728,6 +3728,8 @@ components:
         state:
           type: string
           description: The state a project moves to, when op is state.
+        proposed:
+          $ref: "#/components/schemas/Proposed"
     ChangeSetReview:
       type: object
       required: [changeSet, items]
