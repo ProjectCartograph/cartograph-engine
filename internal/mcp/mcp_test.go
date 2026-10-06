@@ -359,3 +359,23 @@ func TestAnAgentIsHeldToTheOrderOfWork(t *testing.T) {
 		t.Fatalf("edit_draft named what does not exist: %s", text)
 	}
 }
+
+// A draft with a missing required field is saved
+// (drafts never refuse), but save_draft, edit_draft and checks all report
+// what a save would refuse as an open check, so the agent hears it now
+// rather than at propose.
+func TestADraftsSchemaProblemsAreOpenChecks(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	draft := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t2"},
+		"spec": map[string]any{"description": "Drafted by an agent"}}
+	res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t2", "manifest": draft})
+	if res.IsError || !strings.Contains(text, `"id":"schema"`) || !strings.Contains(text, "Fix what a save would refuse first") {
+		t.Fatalf("save_draft with no name: %s", text)
+	}
+	if res, text := callTool(t, cs, "checks", map[string]any{"kind": "Team", "id": "t2"}); res.IsError || !strings.Contains(text, `"id":"schema"`) || !strings.Contains(text, "/metadata") {
+		t.Fatalf("checks with no name: %s", text)
+	}
+	if res, text := callTool(t, cs, "edit_draft", map[string]any{"kind": "Team", "id": "t2", "set": map[string]any{"/metadata/name": "Team Two"}}); res.IsError || strings.Contains(text, `"id":"schema"`) {
+		t.Fatalf("edit_draft that fixes the name: %s", text)
+	}
+}

@@ -717,7 +717,11 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				if err != nil {
 					return nil, err
 				}
-				return checkReport(checks), nil
+				problems, err := e.Validate(c.ctx, in.Kind, text)
+				if err != nil {
+					return nil, err
+				}
+				return checkReport(withProblems(checks, problems)), nil
 			}
 			checks, err := e.DraftChecks(c.ctx, in.Kind, in.ID)
 			if errors.Is(err, engine.ErrNotFound) {
@@ -726,8 +730,12 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
+			problems, err := e.DraftProblems(c.ctx, in.Kind, in.ID)
+			if err != nil {
+				return nil, err
+			}
 			c.announce(step{Step: "checks", Kind: in.Kind, ID: in.ID, Checks: checks, ChangeSet: cs.ID})
-			return withAround(c, checkReport(checks), in.Kind, in.ID, in.Work), nil
+			return withAround(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID, in.Work), nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "goal_tree", Description: "Every goal, objective and outcome as a tree, with what is aligned to each.", Annotations: readOnly},
@@ -826,13 +834,16 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
 				return nil, err
 			}
-			problems, _ := e.Validate(c.ctx, in.Kind, text)
+			problems, err := e.DraftProblems(c.ctx, in.Kind, in.ID)
+			if err != nil {
+				return nil, err
+			}
 			checks, err := e.DraftChecks(c.ctx, in.Kind, in.ID)
 			if err != nil {
 				return nil, err
 			}
 			c.announce(step{Step: "draft", Kind: in.Kind, ID: in.ID, Text: text, Fields: e.ChangedFields(before, text, 32), Checks: checks, ChangeSet: cs.ID})
-			out := withAround(c, checkReport(checks), in.Kind, in.ID, in.Work)
+			out := withAround(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID, in.Work)
 			out["saved"], out["problems"], out["changeSet"] = "draft", problems, cs.ID
 			return out, nil
 		})
@@ -913,7 +924,10 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
 				return nil, err
 			}
-			problems, _ := e.Validate(c.ctx, in.Kind, text)
+			problems, err := e.DraftProblems(c.ctx, in.Kind, in.ID)
+			if err != nil {
+				return nil, err
+			}
 			checks, err := e.DraftChecks(c.ctx, in.Kind, in.ID)
 			if err != nil {
 				return nil, err
@@ -925,7 +939,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			fields = append(fields, in.Unset...)
 			sort.Strings(fields)
 			c.announce(step{Step: "draft", Kind: in.Kind, ID: in.ID, Text: text, Fields: fields, Checks: checks, ChangeSet: cs.ID})
-			out := withAround(c, checkReport(checks), in.Kind, in.ID, in.Work)
+			out := withAround(c, checkReport(withProblems(checks, problems)), in.Kind, in.ID, in.Work)
 			// The whole draft, as everyone in the change set now has it:
 			// what the person changed is in here to build on.
 			out["saved"], out["problems"], out["draft"], out["changeSet"] = "draft", problems, string(text), cs.ID
@@ -1051,6 +1065,25 @@ func proposed(p store.Proposal) any {
 
 // checkReport is checks as an agent acts on them: what is still open
 // first, then what is met, and what to do next.
+// withProblems puts what a save would refuse in front of the checks, as
+// open checks of their own: a draft with a missing required field or an
+// over-long name is not ready to propose, and an agent reading only the
+// open checks must hear it now rather than at propose.
+func withProblems(checks []engine.Check, problems []engine.Problem) []engine.Check {
+	if len(problems) == 0 {
+		return checks
+	}
+	out := make([]engine.Check, 0, len(problems)+len(checks))
+	for _, p := range problems {
+		msg := p.Message
+		if p.Path != "" {
+			msg = p.Path + ": " + msg
+		}
+		out = append(out, engine.Check{ID: "schema", State: "block", Message: msg})
+	}
+	return append(out, checks...)
+}
+
 func checkReport(checks []engine.Check) map[string]any {
 	open, met := []engine.Check{}, []string{}
 	for _, c := range checks {
@@ -1080,7 +1113,11 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 	}
 	// What to do next across the whole piece of work, so the agent is led
 	// one step at a time without being told the order.
-	if w, err := c.o.Engine.Work(c.ctx, append([]engine.Ref{{Kind: kind, ID: id}}, also...), ""); err == nil {
+	// What a save would refuse comes first: the work's own order knows
+	// nothing of it.
+	if open, _ := out["open"].([]engine.Check); len(open) > 0 && open[0].ID == "schema" {
+		out["next"] = "Fix what a save would refuse first (the schema checks in open), then save the draft again."
+	} else if w, err := c.o.Engine.Work(c.ctx, append([]engine.Ref{{Kind: kind, ID: id}}, also...), ""); err == nil {
 		if len(w.Tasks) > 0 {
 			out["next"] = nextLine(w.Tasks[0])
 		} else {

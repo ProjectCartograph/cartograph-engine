@@ -104,6 +104,25 @@ func (e *Engine) DraftChecks(ctx context.Context, kind, id string) ([]Check, err
 	return e.ChecksOf(ctx, kind, id, text)
 }
 
+// DraftProblems validates a manifest as it stands, its draft where there
+// is one, against its schema and rules, reading the other drafts of the
+// change set on ctx as if saved: what a save or a proposal would refuse,
+// said while the draft is being written rather than at the end.
+func (e *Engine) DraftProblems(ctx context.Context, kind, id string) ([]Problem, error) {
+	text, ok := inPlay(ctx, kind, id)
+	if !ok {
+		working, found, err := e.manifests.GetWorking(ctx, kind, id)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			return nil, nil
+		}
+		text = working
+	}
+	return e.Validate(e.withInPlay(ctx), kind, text)
+}
+
 // proposedKey carries the manifests of a proposal being checked, so a
 // check that reads other manifests also sees the ones proposed with this
 // one: an outcome is closed by a gap proposed beside it.
