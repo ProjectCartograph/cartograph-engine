@@ -2,7 +2,7 @@
   "$id": "kpireadings.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "KPIReadings",
-  "description": "What one KPI actually read, period by period. Its own file beside the KPI rather than a list inside it, because the two have different lifetimes: a definition is written once and rarely changes, and a reading arrives every cycle forever. Keeping them together would make every quarterly number a new version of the definition, and every diff would read as though the definition had changed when only the world had. Scoped to one KPI the way a StakeholderMap is scoped to one piece of work. See TAXONOMY.md D8.",
+  "description": "What one KPI actually read, period by period. Its own file beside the KPI rather than a list inside it, because the two have different lifetimes: a definition is written once and rarely changes, and a reading arrives every cycle forever. Keeping them together would make every quarterly number a new version of the definition, and every diff would read as though the definition had changed when only the world had. Scoped to one KPI the way a StakeholderMap is scoped to one project, programme or operation. See TAXONOMY.md D8.",
   "type": "object",
   "additionalProperties": false,
   "required": [

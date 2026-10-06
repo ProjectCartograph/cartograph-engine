@@ -11,7 +11,7 @@
       {
         "key": "scope",
         "title": "Scope",
-        "guide": "The piece of work this map is about.",
+        "guide": "The project, programme or operation this map is about.",
         "fields": [
           {
             "path": "/spec/scope",

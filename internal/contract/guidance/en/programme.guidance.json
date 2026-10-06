@@ -14,7 +14,7 @@
     "flagship",
     "strategic programme"
   ],
-  "definition": "A programme coordinates related projects, and sub-programmes, to realise outcomes and benefits they share (MSP; PMI, The Standard for Program Management). What makes it a programme is causal coherence: a theory of change linking what its projects deliver to the outcomes and the change it seeks, so each project is a step the change needs. It holds only what is its own: the change it seeks (aim), the problems that change answers (citing gaps), the outcomes and indicators it is judged on, its theory of change, its programme-level risks and its governance. What is in it says so itself: its components, the projects, sub-programmes and operations that each name it (TAXONOMY.md D1, D2, D32). A programme is not a portfolio (work grouped to decide what to fund, which need not depend on one another), not a project (one piece of work producing outputs, under one person in charge and one budget), not an operation (work that keeps running), and not a goal (an aim in the strategy).",
+  "definition": "A programme coordinates related projects, and sub-programmes, to realise outcomes and benefits they share (MSP; PMI, The Standard for Program Management). What makes it a programme is causal coherence: a theory of change linking what its projects deliver to the outcomes and the change it seeks, so each project is a step the change needs. It holds only what is its own: the change it seeks (aim), the problems that change answers (citing gaps), the outcomes and indicators it is judged on, its theory of change, its programme-level risks and its governance. What is in it says so itself: its components, the projects, sub-programmes and operations that each name it (TAXONOMY.md D1, D2, D32). A programme is not a portfolio (work grouped to decide what to fund, which need not depend on one another), not a project (work with a start and an end that produces outputs, under one person in charge and one budget), not an operation (work that keeps running), and not a goal (an aim in the strategy).",
   "cues": {
     "programme": "related projects coordinated together towards one shared change"
   },
@@ -481,7 +481,7 @@
   "links": {
     "Project:/spec/alignment/programmes": {
       "ask": "Which projects does this programme coordinate? A project names the programmes it belongs to, so open each project and choose this programme under Part of.",
-      "ifNone": "A new programme often coordinates nothing yet, and that is not a reason to stop. Define the programme first, then start each piece of work that finishes and that one team can deliver as a project, and have it name this programme."
+      "ifNone": "A new programme often coordinates nothing yet, and that is not a reason to stop. Define the programme first, then start as a project each part that has an end and that one team can deliver, and have it name this programme."
     },
     "Operation:/spec/programmes": {
       "ask": "Which operations sit inside this programme? Business as usual is inside the programme boundary, and an operation names the programmes it is part of, so open the operation and choose this programme.",

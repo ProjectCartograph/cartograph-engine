@@ -173,7 +173,7 @@
             "measure",
             "align"
           ],
-          "description": "When in the work this is settled. Define says what each thing is (a gap's two states, an outcome's statement); measure gives it numbers (baselines and targets, from the sources at hand); align links it to the rest (which outcome a gap closes, which aims a KPI measures). Everything in define comes before measure, and measure before align, across every manifest in a piece of work, so a person and an agent settle a strategy in the same order. A step without one defines; a field or link may differ from its step."
+          "description": "When in the work this is settled. Define says what each thing is (a gap's two states, an outcome's statement); measure gives it numbers (baselines and targets, from the sources at hand); align links it to the rest (which outcome a gap closes, which aims a KPI measures). Everything in define comes before measure, and measure before align, across every record of a project, programme or operation, so a person and an agent settle a strategy in the same order. A step without one defines; a field or link may differ from its step."
         }
       }
     },
@@ -242,7 +242,7 @@
             "measure",
             "align"
           ],
-          "description": "When in the work this is settled. Define says what each thing is (a gap's two states, an outcome's statement); measure gives it numbers (baselines and targets, from the sources at hand); align links it to the rest (which outcome a gap closes, which aims a KPI measures). Everything in define comes before measure, and measure before align, across every manifest in a piece of work, so a person and an agent settle a strategy in the same order. A step without one defines; a field or link may differ from its step."
+          "description": "When in the work this is settled. Define says what each thing is (a gap's two states, an outcome's statement); measure gives it numbers (baselines and targets, from the sources at hand); align links it to the rest (which outcome a gap closes, which aims a KPI measures). Everything in define comes before measure, and measure before align, across every record of a project, programme or operation, so a person and an agent settle a strategy in the same order. A step without one defines; a field or link may differ from its step."
         }
       }
     },
@@ -288,7 +288,7 @@
             "measure",
             "align"
           ],
-          "description": "When in the work this is settled. Define says what each thing is (a gap's two states, an outcome's statement); measure gives it numbers (baselines and targets, from the sources at hand); align links it to the rest (which outcome a gap closes, which aims a KPI measures). Everything in define comes before measure, and measure before align, across every manifest in a piece of work, so a person and an agent settle a strategy in the same order. A step without one defines; a field or link may differ from its step."
+          "description": "When in the work this is settled. Define says what each thing is (a gap's two states, an outcome's statement); measure gives it numbers (baselines and targets, from the sources at hand); align links it to the rest (which outcome a gap closes, which aims a KPI measures). Everything in define comes before measure, and measure before align, across every record of a project, programme or operation, so a person and an agent settle a strategy in the same order. A step without one defines; a field or link may differ from its step."
         }
       }
     },

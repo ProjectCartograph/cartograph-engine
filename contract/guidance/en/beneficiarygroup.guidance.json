@@ -11,7 +11,7 @@
     "client group",
     "stakeholder group served"
   ],
-  "definition": "A beneficiary group is a group of people a piece of work is for: who perceives the benefit when it comes. Cartograph has no Benefit kind; a goal and its key results say what improves, an indicator says how it is measured, and a beneficiary group says who perceives it (TAXONOMY.md D4). It is defined once in the register so every project and programme that names it means the same people. It is qualitative: it says who, and no count belongs in it. It is not a segment (a slice a gap's evidence was observed in), not a stakeholder (a party with an interest, held on a stakeholder map), not a person, and not the team or role that does the work (that is a Team or a Resource).",
+  "definition": "A beneficiary group is a group of people a project, programme or operation serves: who perceives the benefit when it comes. Cartograph has no Benefit kind; a goal and its key results say what improves, an indicator says how it is measured, and a beneficiary group says who perceives it (TAXONOMY.md D4). It is defined once in the register so every project and programme that names it means the same people. It is qualitative: it says who, and no count belongs in it. It is not a segment (a slice a gap's evidence was observed in), not a stakeholder (a party with an interest, held on a stakeholder map), not a person, and not the team or role that does the work (that is a Team or a Resource).",
   "steps": {},
   "fields": {
     "/metadata/name": {

@@ -1,25 +1,25 @@
 {
   "locale": "en",
   "kind": "StakeholderMap",
-  "summary": "A list of the people and organisations who care about a piece of work, and how much say each has in it.",
+  "summary": "A list of the people and organisations who care about a project, programme or operation, and how much say each has in it.",
   "example": "Quality Check Rollout stakeholders: the analytics partner cares a lot and has some say; the transport contractor has little of either.",
   "knownAs": [
     "stakeholder analysis",
     "stakeholder register",
     "power-interest grid"
   ],
-  "definition": "The stakeholders of one piece of work, and how much power each holds over it: a stakeholder is anyone who can affect the work or is affected by it. A map is scoped to one project, programme or operation (TAXONOMY.md, what a programme carries), and each entry names either a Resource from the catalogue or one of the work's beneficiary groups (group), exactly one, so a party is declared once and scored separately on every piece of work it touches. Each stakeholder is identified first, as primary (directly affected) or secondary (indirectly affected, Clarkson), and placed later by influence and interest, whose grid gives the engagement approach (Mendelow): manage closely, keep satisfied, keep informed, monitor. A stakeholder map is not the list of roles a project staffs (those are its resources), not the beneficiary groups (who gains value), and not a list of persons.",
+  "definition": "The stakeholders of one project, programme or operation, and how much power each holds over it: a stakeholder is anyone who can affect the work or is affected by it. A map is scoped to one project, programme or operation (TAXONOMY.md, what a programme carries), and each entry names either a Resource from the catalogue or one of the work's beneficiary groups (group), exactly one, so a party is declared once and scored separately on every project, programme or operation it touches. Each stakeholder is identified first, as primary (directly affected) or secondary (indirectly affected, Clarkson), and placed later by influence and interest, whose grid gives the engagement approach (Mendelow): manage closely, keep satisfied, keep informed, monitor. A stakeholder map is not the list of roles a project staffs (those are its resources), not the beneficiary groups (who gains value), and not a list of persons.",
   "steps": {},
   "fields": {
     "/spec/scope": {
-      "guide": "The project, programme or operation this map is about, by kind and id. Nothing else can be a scope: a stakeholder has a stake in a piece of work. Define the work first.",
+      "guide": "The project, programme or operation this map is about, by kind and id. Nothing else can be a scope: a stakeholder has a stake in a project, programme or operation. Define the work first.",
       "good": [
         "Project quality-check-rollout"
       ],
       "poor": [
         {
           "text": "Team quality-team",
-          "why": "A team is not a piece of work, and a map scoped to one is refused. Scope it to the project, programme or operation the team runs."
+          "why": "A team is not a project, programme or operation, and a map scoped to one is refused. Scope it to the project, programme or operation the team runs."
         }
       ]
     },
