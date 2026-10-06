@@ -1302,3 +1302,24 @@ edit scope by deciding. Its membership, meeting rhythm and registers of
 decisions and actions stay outside Cartograph: they run governance
 rather than define it. This supersedes the external form for bodies
 inside the workspace.
+
+### D44. An indicator names its owner, a source who keeps it, and work its escalation route. *(resolved)*
+
+**The problem.** Porting a charter showed three things with nowhere to
+go. Its KPI register named an owner for every indicator; a KPI had no
+owner. Several data sources were kept by bodies outside the
+organisation, a statistics office, another ministry's research unit,
+while a source's team must be one of the organisation's own; the real
+keeper was lost. And its escalation route, from the project board up
+through a steering committee and a cross-government committee, had no
+field: the bodies on it were declared and referenced by nothing.
+
+**What Cartograph does.** A KPI may name its `owner`, the role that
+answers for it, as a Resource or an outside party (D41's rule for
+owners). A data source may name who keeps it, `keptBy`, where that is
+outside the organisation; `team` stays the organisation's own team that
+reads it and answers for its use. A project and a programme may name
+their `escalationRoute`, the bodies and roles a matter goes up through,
+nearest first; a body on it is listed among what it receives (D43). A
+data source's refresh may be `termly`. A body that only receives
+reports or notes changes is not on the route: reporting is planning.

@@ -638,6 +638,12 @@
     },
     "/spec/summary/idea": {
       "guide": "Your idea as you first wrote it, kept as it was. Each step offers the sentence of it that answers its question."
+    },
+    "/spec/escalationRoute": {
+      "guide": "The bodies and roles a matter goes up through when it cannot be settled at this level, in order, the nearest first, as the document's escalation route gives them. Governance bodies and roles in the workspace by reference; a body outside it, such as a government, as external. A body that only receives reports or notes changes is not on the route.",
+      "good": [
+        "[{\"kind\":\"Resource\",\"id\":\"project-board\"}, {\"kind\":\"Resource\",\"id\":\"steering-committee\"}, {\"external\":\"The national government\"}]"
+      ]
     }
   },
   "links": {

@@ -322,6 +322,13 @@
             "$ref": "common.schema.json#/$defs/Mandate"
           }
         },
+        "escalationRoute": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Ref"
+          },
+          "description": "The bodies and roles a matter goes up through when it cannot be settled at this level, in order, the nearest first: a project board, then a steering committee, then a government above them. Governance bodies and roles inside the workspace by reference, a body outside it as external. A risk's escalate.to names where one particular matter goes; this is the route every matter follows. See TAXONOMY.md D44."
+        },
         "notes": {
           "type": "object",
           "description": "A note per step of the walk, keyed by the step's own name. One map rather than a property per step, because a note is the same thing wherever it is written and a schema that names every step has to be edited whenever the walk changes. What belongs here is what the fields above cannot hold and nobody should have to hold in their head: a caveat, a reason a choice was made, something to come back to. Not a substitute for a field: anything Cartograph can hold in a shape belongs in that shape, where it can be checked, rolled up and read back.",

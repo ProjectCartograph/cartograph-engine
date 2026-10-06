@@ -89,7 +89,7 @@
       ]
     },
     "/spec/refresh": {
-      "guide": "How often the contents change: daily, weekly, monthly, quarterly, annual, or irregular when there is no rhythm. It bounds how often a measure read from it can move.",
+      "guide": "How often the contents change: daily, weekly, monthly, quarterly, annual, or irregular when there is no rhythm. It bounds how often a measure read from it can move. termly for one that changes once each term the organisation keeps.",
       "good": [
         "weekly",
         "annual"
@@ -142,6 +142,19 @@
         {
           "text": "None",
           "why": "Rarely true, and it reads as checked when it was not. Leave it empty when nothing is known yet."
+        }
+      ]
+    },
+    "/spec/keptBy": {
+      "guide": "Who keeps the source, where that is outside the organisation: another public body, an agency, a partner. The team field stays your own team that reads it. Left out, your team keeps it.",
+      "good": [
+        "{\"kind\":\"Resource\",\"id\":\"national-statistics-office\"}",
+        "{\"external\":\"The regional health authority\"}"
+      ],
+      "poor": [
+        {
+          "text": "The team field set to an outside body",
+          "why": "The team is one of your own teams; who keeps it outside goes here."
         }
       ]
     }

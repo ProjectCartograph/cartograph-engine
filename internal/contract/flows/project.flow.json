@@ -357,6 +357,12 @@
                 "hint": "A body Cartograph does not hold, such as a regulator."
               }
             ]
+          },
+          {
+            "path": "/spec/escalationRoute",
+            "control": "references",
+            "title": "Escalation route",
+            "hint": "Where a matter goes when it cannot be settled here, nearest first."
           }
         ]
       },

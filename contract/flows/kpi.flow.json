@@ -125,6 +125,12 @@
             "checks": [
               "kpi-cycle"
             ]
+          },
+          {
+            "path": "/spec/owner",
+            "control": "reference",
+            "title": "Owned by",
+            "hint": "The role that answers for the indicator."
           }
         ],
         "links": [

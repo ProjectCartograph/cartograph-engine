@@ -31,6 +31,12 @@
             "path": "/spec/team",
             "control": "reference",
             "hint": "The team that keeps it."
+          },
+          {
+            "path": "/spec/keptBy",
+            "control": "reference",
+            "title": "Kept by",
+            "hint": "Who keeps it, where that is outside the organisation."
           }
         ],
         "links": [

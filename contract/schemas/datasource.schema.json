@@ -57,6 +57,10 @@
           "$ref": "common.schema.json#/$defs/Slug",
           "x-cartograph-ref": "Team"
         },
+        "keptBy": {
+          "$ref": "common.schema.json#/$defs/Ref",
+          "description": "Who keeps the source where it is kept outside the organisation: another public body, an agency, a partner, as a Resource ({\"kind\":\"Resource\",...}) or an outside party ({\"external\":...}). team stays the organisation's own team that reads it and answers for its use here. Left out, the team keeps it. See TAXONOMY.md D44."
+        },
         "access": {
           "type": "string"
         },
@@ -67,6 +71,7 @@
             "weekly",
             "monthly",
             "quarterly",
+            "termly",
             "annual",
             "irregular"
           ]

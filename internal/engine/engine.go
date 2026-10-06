@@ -496,7 +496,7 @@ func useOf(path string) string {
 	switch {
 	case strings.Contains(path, "/confirmedBy"):
 		return "confirms"
-	case strings.Contains(path, "/escalate/to"):
+	case strings.Contains(path, "/escalate/to"), strings.Contains(path, "/escalationRoute/"):
 		return "receives"
 	case strings.Contains(path, "/mandate/") && strings.Contains(path, "/issuer"):
 		return "decided"

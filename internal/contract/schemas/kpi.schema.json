@@ -77,6 +77,10 @@
           "$ref": "common.schema.json#/$defs/Slug",
           "x-cartograph-ref": "ReportingCycle"
         },
+        "owner": {
+          "$ref": "common.schema.json#/$defs/Ref",
+          "description": "The role that answers for the indicator: keeps its readings coming and says what they mean. A Resource from the catalogue ({\"kind\":\"Resource\",...}), a unit of category orgUnit where the unit answers as a whole, or an outside party; never a person. See TAXONOMY.md D44."
+        },
         "goals": {
           "type": "array",
           "items": {

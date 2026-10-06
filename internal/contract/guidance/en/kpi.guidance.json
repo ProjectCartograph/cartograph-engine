@@ -187,6 +187,19 @@
           "why": "Members' opinion of quality is a different number from the share of deliveries meeting the standard at intake."
         }
       ]
+    },
+    "/spec/owner": {
+      "guide": "The role that answers for the indicator: it keeps the readings coming and says what they mean. A role or unit from the Resource catalogue, or a party outside the workspace; never a person. Where a document names several units, the one that leads, with the others in the note.",
+      "good": [
+        "{\"kind\":\"Resource\",\"id\":\"data-analyst\"}",
+        "{\"kind\":\"Resource\",\"id\":\"quality-team-unit\"}, a unit answering as a whole"
+      ],
+      "poor": [
+        {
+          "text": "Ada Okafor",
+          "why": "A person, not a role."
+        }
+      ]
     }
   },
   "links": {

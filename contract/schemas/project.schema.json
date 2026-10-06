@@ -189,6 +189,13 @@
             "$ref": "common.schema.json#/$defs/Mandate"
           }
         },
+        "escalationRoute": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Ref"
+          },
+          "description": "The bodies and roles a matter goes up through when it cannot be settled at this level, in order, the nearest first: a project board, then a steering committee, then a government above them. Governance bodies and roles inside the workspace by reference, a body outside it as external. A risk's escalate.to names where one particular matter goes; this is the route every matter follows. See TAXONOMY.md D44."
+        },
         "funding": {
           "type": "array",
           "maxItems": 3,

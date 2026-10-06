@@ -216,6 +216,7 @@
         "weekly",
         "monthly",
         "quarterly",
+        "termly",
         "annual",
         "irregular"
       ]

@@ -38,3 +38,19 @@ func TestAGovernanceBodyIsNamedOnceAndReferenced(t *testing.T) {
 		t.Fatalf("an issuer named twice was accepted: %v", err)
 	}
 }
+
+// A body on a project's escalation route receives what goes up it, and
+// an indicator and a source name their owner and outside keeper
+// (TAXONOMY.md D44).
+func TestAnEscalationRouteAndOwnersAreNamed(t *testing.T) {
+	e := seededEngine(t)
+	ctx := context.Background()
+	mustCommit(t, e, "Resource", "steering", "p1", "apiVersion: cartograph/v1\nkind: Resource\nmetadata:\n  id: steering\n  name: Steering Committee\nspec:\n  category: governanceBody\n")
+	mustCommit(t, e, "Project", "routed", "p1", projectYAML("routed", "  escalationRoute: [{kind: Resource, id: steering}, {external: The national government}]\n"))
+	refs, err := e.References(ctx, "Resource", "steering")
+	if err != nil || len(refs.Uses) != 1 || refs.Uses[0].As != "receives" {
+		t.Fatalf("the route's body: %+v %v", refs.Uses, err)
+	}
+	mustCommit(t, e, "KPI", "owned", "p1", "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: owned\n  name: Owned\nspec:\n  definition: Share of depots checked\n  unit: percent\n  direction: increase\n  sources: [d1]\n  owner: {kind: Resource, id: steering}\n")
+	mustCommit(t, e, "DataSource", "kept", "p1", "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: kept\n  name: Kept\nspec:\n  category: database\n  team: t1\n  keptBy: {external: The statistics office}\n  refresh: termly\n")
+}
