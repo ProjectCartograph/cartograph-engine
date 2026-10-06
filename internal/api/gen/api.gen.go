@@ -822,7 +822,9 @@ type GoalCheckState string
 
 // GoalCheckFix defines model for GoalCheckFix.
 type GoalCheckFix struct {
-	Section string `json:"section"`
+	// Goal The goal, objective or outcome whose editor holds the fix, when it is not the one checked: an objective's outcome that closes no gap is fixed on the outcome.
+	Goal    *string `json:"goal,omitempty"`
+	Section string  `json:"section"`
 }
 
 // GoalNode defines model for GoalNode.

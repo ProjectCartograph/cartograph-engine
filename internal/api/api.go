@@ -317,6 +317,9 @@ func toGoalCheck(c engine.GoalCheck) apigen.GoalCheck {
 	out := apigen.GoalCheck{Id: c.ID, State: apigen.GoalCheckState(c.State), Message: c.Message}
 	if c.Fix != nil {
 		out.Fix = &apigen.GoalCheckFix{Section: c.Fix.Section}
+		if c.Fix.Goal != "" {
+			out.Fix.Goal = &c.Fix.Goal
+		}
 	}
 	return out
 }

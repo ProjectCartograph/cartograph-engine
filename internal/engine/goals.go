@@ -447,6 +447,9 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 // GoalCheckFix names which section of the goal editor addresses a check.
 type GoalCheckFix struct {
 	Section string `json:"section"`
+	// Goal is the aim whose editor holds the fix, when it is not the one
+	// checked.
+	Goal string `json:"goal,omitempty"`
 }
 
 // GoalCheck is one assessability check on a Goal. Checks never block a
@@ -538,6 +541,7 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 			return nil, err
 		}
 		var unanswered []string
+		first := ""
 		for _, child := range ids {
 			closing, err := e.gapsClosing(ctx, child.id)
 			if err != nil {
@@ -547,6 +551,9 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 			// answered here by the same reason, not asked twice.
 			if len(closing) == 0 && leftFor(ctx, "Goal", child.id, "closes-gap") == "" {
 				unanswered = append(unanswered, child.name)
+				if first == "" {
+					first = child.id
+				}
 			}
 		}
 		switch {
@@ -555,7 +562,8 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 			checks = append(checks, GoalCheck{ID: "outcomes-close-gaps", State: goalCheckOK, Message: "Every outcome under it closes a gap."})
 		default:
 			checks = append(checks, GoalCheck{ID: "outcomes-close-gaps", State: goalCheckWarn,
-				Message: "Closes no gap yet: " + englishList(unanswered) + ". Name the gap each closes, or define it."})
+				Message: "Closes no gap yet: " + englishList(unanswered) + ". Choose the gap each closes, or add one.",
+				Fix:     &GoalCheckFix{Section: "closesGap", Goal: first}})
 		}
 	}
 
@@ -571,7 +579,8 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 				Message: "Closes " + englishList(closing) + "."})
 		} else {
 			checks = append(checks, GoalCheck{ID: "closes-gap", State: goalCheckWarn,
-				Message: "No gap names this outcome yet. Write the gap it closes next; the gap names it."})
+				Message: "Closes no gap yet. Choose the gap it closes, or add one.",
+				Fix:     &GoalCheckFix{Section: "closesGap"}})
 		}
 	}
 
