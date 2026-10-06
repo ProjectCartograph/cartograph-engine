@@ -876,8 +876,16 @@ func addDataChecks(c checkAdder, spec map[string]any) {
 		}
 	}
 	if manualReentry > 0 {
-		c.add("data-handoff", "data", phaseInitiation, checkWarn,
-			fmt.Sprintf("%d consumed source%s handed off by manual re-entry.", manualReentry, plural(manualReentry)))
+		// Re-entry is a choice that can be right; once the step's note says
+		// why, the question is answered.
+		notes, _ := spec["notes"].(map[string]any)
+		if why, _ := notes["data"].(string); strings.TrimSpace(why) != "" {
+			c.add("data-handoff", "data", phaseInitiation, checkOK,
+				fmt.Sprintf("%d consumed source%s handed off by manual re-entry, and the note says why.", manualReentry, plural(manualReentry)))
+		} else {
+			c.add("data-handoff", "data", phaseInitiation, checkWarn,
+				fmt.Sprintf("%d consumed source%s handed off by manual re-entry: say why in the step's note, or choose a feed.", manualReentry, plural(manualReentry)))
+		}
 	}
 }
 
@@ -905,7 +913,9 @@ func addRiskChecks(c checkAdder, spec map[string]any) {
 				unplaced++
 			}
 		}
-		if m, _ := rm["mitigation"].(string); strings.TrimSpace(m) == "" {
+		// A constraint is a fixed limit the work lives within: there is
+		// nothing to mitigate.
+		if m, _ := rm["mitigation"].(string); strings.TrimSpace(m) == "" && rm["type"] != "constraint" {
 			missingMitigation++
 		}
 		if esc, ok := rm["escalate"].(map[string]any); ok {
@@ -918,7 +928,7 @@ func addRiskChecks(c checkAdder, spec map[string]any) {
 		c.add("risks-mitigation", "risks", phaseInitiation, checkOK, "Every risk has a mitigation.")
 	} else {
 		c.add("risks-mitigation", "risks", phaseInitiation, checkWarn,
-			fmt.Sprintf("%d of %d risks have no mitigation.", missingMitigation, len(risks)))
+			fmt.Sprintf("%d of %d risks, issues and dependencies have no mitigation.", missingMitigation, mitigable(risks)))
 	}
 	if scored > 0 {
 		if unplaced == 0 {
@@ -1315,4 +1325,15 @@ func anyBlocking(checks []string) bool {
 		}
 	}
 	return false
+}
+
+// mitigable counts the rows that can be mitigated: all but constraints.
+func mitigable(risks []any) int {
+	n := 0
+	for _, r := range risks {
+		if rm, _ := r.(map[string]any); rm["type"] != "constraint" {
+			n++
+		}
+	}
+	return n
 }

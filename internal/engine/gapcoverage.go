@@ -255,6 +255,13 @@ func (e *Engine) gapChecksOf(ctx context.Context, id string, doc map[string]any)
 	segs, _ := spec["segments"].([]any)
 	if len(segs) == 0 {
 		add("gap-segments", "scope", programmeCheckWarn, "No segments named yet.")
+		// With no segments to cover, the gap is covered once anything
+		// works on it.
+		if len(coverage.Whole) > 0 {
+			add("gap-covered", "scope", programmeCheckOK, "Work is addressing this gap.")
+		} else {
+			add("gap-covered", "scope", programmeCheckWarn, "Nothing is working on this yet.")
+		}
 	} else {
 		var unaddressed []string
 		for _, s := range coverage.Segments {
@@ -267,7 +274,7 @@ func (e *Engine) gapChecksOf(ctx context.Context, id string, doc map[string]any)
 			// Somebody claimed the whole gap while parts of it have
 			// nobody: the claim is what is hiding them.
 			add("gap-covered", "scope", programmeCheckWarn, fmt.Sprintf(
-				"%d of %d segments have nobody, and %d citation%s claims the whole gap without naming segments.",
+				"%d of %d segments have nobody, and %d citation%s claims the whole gap without naming segments: name each segment the work reaches, all of them if it reaches every one.",
 				len(unaddressed), len(coverage.Segments), len(coverage.Whole), plural(len(coverage.Whole))))
 		case len(unaddressed) == len(coverage.Segments):
 			add("gap-covered", "scope", programmeCheckWarn, "Nothing is working on any part of this yet.")

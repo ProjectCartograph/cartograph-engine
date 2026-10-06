@@ -42,6 +42,8 @@ func (e *Engine) ChecksOf(ctx context.Context, kind, id string, text []byte) ([]
 		advisory = e.stakeholderMapChecksOf
 	case "KPI":
 		advisory = e.kpiChecksOf
+	case "Purpose":
+		advisory = purposeChecksOf
 	case "Goal", "Project":
 	default:
 		return out, nil
@@ -220,4 +222,25 @@ func (e *Engine) withInPlay(ctx context.Context) context.Context {
 		}
 	}
 	return withProposed(ctx, docs)
+}
+
+// purposeChecksOf asks a purpose for what every goal is judged relevant
+// against: whose purpose it is, its vision and its mission. Empty, they
+// show here, where they are written, rather than only as each goal's
+// relevance failing.
+func purposeChecksOf(_ context.Context, _ string, doc map[string]any) ([]ProgrammeCheck, error) {
+	spec, _ := doc["spec"].(map[string]any)
+	var out []ProgrammeCheck
+	add := func(id, field, ok, warn string) {
+		v, _ := spec[field].(string)
+		if strings.TrimSpace(v) != "" {
+			out = append(out, ProgrammeCheck{ID: id, Section: "purpose", State: programmeCheckOK, Message: ok})
+		} else {
+			out = append(out, ProgrammeCheck{ID: id, Section: "purpose", State: programmeCheckWarn, Message: warn})
+		}
+	}
+	add("purpose-organisation", "organisation", "The organisation is named.", "No organisation named yet.")
+	add("purpose-vision", "vision", "The vision is stated.", "No vision yet: the future the organisation works towards.")
+	add("purpose-mission", "mission", "The mission is stated.", "No mission yet: what the organisation does to get there.")
+	return out, nil
 }

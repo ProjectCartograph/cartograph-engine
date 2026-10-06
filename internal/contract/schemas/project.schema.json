@@ -96,7 +96,7 @@
                             "$ref": "common.schema.json#/$defs/Slug",
                             "x-cartograph-ref": "Segment"
                           },
-                          "description": "Which of the gap's own segments this work reaches. Absent means all of them, so a gap that names no segments needs no ceremony. A kind rule refuses a segment the gap does not have: claiming to address a gap somewhere it was never observed is a different claim, not a narrower one."
+                          "description": "Which of the gap's own segments this work reaches. Left out, the citation claims the whole gap: right for a gap that names no segments, which needs no ceremony. For a gap that names segments, name each one the work reaches, all of them when it reaches every one, since a claim on the whole can hide a segment nobody works on (gap-covered says so). A kind rule refuses a segment the gap does not have: claiming to address a gap somewhere it was never observed is a different claim, not a narrower one."
                         }
                       }
                     }

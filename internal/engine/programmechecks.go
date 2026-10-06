@@ -238,7 +238,7 @@ func programmeRiskChecks(spec map[string]any) []ProgrammeCheck {
 			missingMitigation++
 			continue
 		}
-		if m, _ := rm["mitigation"].(string); strings.TrimSpace(m) == "" {
+		if m, _ := rm["mitigation"].(string); strings.TrimSpace(m) == "" && rm["type"] != "constraint" {
 			missingMitigation++
 		}
 		if t, _ := rm["type"].(string); t != "dependency" {
@@ -260,7 +260,7 @@ func programmeRiskChecks(spec map[string]any) []ProgrammeCheck {
 	} else {
 		out = append(out, ProgrammeCheck{ID: "risks-mitigation", Section: "risks",
 			State:   programmeCheckWarn,
-			Message: fmt.Sprintf("%d of %d risks have no mitigation.", missingMitigation, len(risks))})
+			Message: fmt.Sprintf("%d of %d risks, issues and dependencies have no mitigation.", missingMitigation, mitigable(risks))})
 	}
 	if unowned := unownedHighRisks(risks); unowned == 0 {
 		out = append(out, ProgrammeCheck{ID: "risks-owned", Section: "risks",

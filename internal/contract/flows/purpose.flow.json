@@ -21,19 +21,28 @@
             "path": "/spec/organisation",
             "control": "text",
             "title": "Organisation",
-            "hint": "The name your organisation goes by."
+            "hint": "The name your organisation goes by.",
+            "checks": [
+              "purpose-organisation"
+            ]
           },
           {
             "path": "/spec/vision",
             "control": "sentence",
             "title": "Vision",
-            "hint": "The future the organisation is working towards."
+            "hint": "The future the organisation is working towards.",
+            "checks": [
+              "purpose-vision"
+            ]
           },
           {
             "path": "/spec/mission",
             "control": "sentence",
             "title": "Mission",
-            "hint": "What the organisation does to get there."
+            "hint": "What the organisation does to get there.",
+            "checks": [
+              "purpose-mission"
+            ]
           },
           {
             "path": "/spec/source",

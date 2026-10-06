@@ -82,5 +82,10 @@
         "Our purpose"
       ]
     }
+  },
+  "checks": {
+    "purpose-organisation": "Name the organisation, as its own people say it.",
+    "purpose-vision": "State the future the organisation works towards, from its own documents; ask your person when none says it.",
+    "purpose-mission": "State what the organisation does to get there, from its own documents; ask your person when none says it."
   }
 }

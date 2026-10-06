@@ -238,9 +238,25 @@ func schemaProblems(err error) []Problem {
 	walk = func(u jsonschema.OutputUnit) {
 		if len(u.Errors) == 0 {
 			if u.Error != nil {
-				problems = append(problems, Problem{Path: u.InstanceLocation, Message: u.Error.String()})
+				problems = append(problems, Problem{Path: u.InstanceLocation, Message: plainPattern(u.Error.String())})
 			}
 			return
+		}
+		// Under a choice of forms (oneOf, anyOf) every form's failures
+		// come back, and the real one is buried among forms the value was
+		// never meant to be: only the nearest form, the one with fewest
+		// failures, is reported.
+		if strings.HasSuffix(u.KeywordLocation, "/oneOf") || strings.HasSuffix(u.KeywordLocation, "/anyOf") {
+			best, fewest := -1, 0
+			for i, c := range u.Errors {
+				if n := leaves(c); best < 0 || n < fewest {
+					best, fewest = i, n
+				}
+			}
+			if best >= 0 {
+				walk(u.Errors[best])
+				return
+			}
 		}
 		for _, c := range u.Errors {
 			walk(c)
@@ -251,6 +267,36 @@ func schemaProblems(err error) []Problem {
 		problems = append(problems, Problem{Path: "", Message: err.Error()})
 	}
 	return problems
+}
+
+// plainPattern says a date pattern's failure in words: how to write the
+// value, rather than the regular expression it missed.
+func plainPattern(msg string) string {
+	for pattern, how := range map[string]string{
+		"'^[0-9]{4}-(0[1-9]|1[0-2])$'":                             "write it as a year and month, YYYY-MM",
+		"'^[0-9]{4}(-(0[1-9]|1[0-2]))?$'":                          "write it as a year, YYYY, or a year and month, YYYY-MM",
+		"'^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$'": "write it as YYYY-MM-DD or YYYY-MM",
+	} {
+		if i := strings.Index(msg, "does not match pattern "+pattern); i >= 0 {
+			return msg[:i] + "is not written as asked: " + how
+		}
+	}
+	return msg
+}
+
+// leaves counts the failures under an output unit.
+func leaves(u jsonschema.OutputUnit) int {
+	if len(u.Errors) == 0 {
+		if u.Error != nil {
+			return 1
+		}
+		return 0
+	}
+	n := 0
+	for _, c := range u.Errors {
+		n += leaves(c)
+	}
+	return n
 }
 
 func docID(doc map[string]any) (string, bool) {
