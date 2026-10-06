@@ -464,7 +464,7 @@ func failed(err error) *sdk.CallToolResult {
 		}
 		b.WriteString("\nMeet each one: ask your person for what only they know (an owner, a figure, a date), never invent it, " +
 			"save the draft, and call checks until none is open. Only a check you cannot meet without them may be left, " +
-			"by passing openChecks (for propose_save {check id: why}; for propose_set {Kind/id: {check id: why}}); your person sees each reason before deciding.")
+			"by passing openChecks to propose ({Kind/id: {check id: why}}); your person sees each reason before deciding.")
 		text = b.String()
 	}
 	return &sdk.CallToolResult{IsError: true, Content: []sdk.Content{&sdk.TextContent{Text: text}}}
@@ -930,7 +930,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			out := map[string]any{"open": w.Open}
 			if len(w.Tasks) == 0 {
-				out["next"] = "Every check across this work is met. Propose it, with propose_set when there is more than one manifest."
+				out["next"] = "Every check across this work is met. Propose the change set with propose."
 				return out, nil
 			}
 			out["next"] = nextLine(w.Tasks[0])
@@ -1207,7 +1207,7 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 		if len(w.Tasks) > 0 {
 			out["next"] = nextLine(w.Tasks[0])
 		} else {
-			out["next"] = "Every check across this work is met. Propose it, with propose_set when there is more than one manifest."
+			out["next"] = "Every check across this work is met. Propose the change set with propose."
 		}
 	}
 	around, err := c.o.Engine.WorkAround(c.ctx, kind, id, also)
@@ -1223,7 +1223,7 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 	out["around"] = around
 	if unfinished > 0 {
 		out["aroundNext"] = fmt.Sprintf("%d manifest%s joined to this one still lack%s something (around, open). "+
-			"The work is not finished until they are: settle each with your person, then propose them together with propose_set.",
+			"The work is not finished until they are: settle each with your person, then propose the change set with propose.",
 			unfinished, map[bool]string{true: "", false: "s"}[unfinished == 1], map[bool]string{true: "s", false: ""}[unfinished == 1])
 	}
 	return out
@@ -1291,7 +1291,7 @@ var nextSteps = []string{
 		"A before item with no existing record must be defined first, in this change set: a draft that names what does not exist yet is refused.",
 	"Settle each step with your person, in order, using the field guides and their examples; never invent a figure, date, source or owner.",
 	"Create each draft with save_draft as soon as you know its name, then edit_draft field by field; pass work (every Kind/id you are defining together) and meet every open check it returns, its own and around.",
-	"Then propose: propose_save for one manifest, propose_set for several that reference each other. Your work is not done until it is proposed; your person accepts it in Cartograph, not in this conversation.",
+	"Then propose the change set with propose. Your work is not done until it is proposed; your person accepts it in Cartograph, not in this conversation.",
 }
 
 // ProductName is a User-Agent's first product as a person reads it:

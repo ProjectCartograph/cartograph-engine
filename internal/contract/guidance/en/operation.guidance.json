@@ -233,10 +233,10 @@
       ]
     },
     "/spec/mandate/-/issuer": {
-      "guide": "The governance body or role that issued it, picked from the Resource catalogue, so the body's page lists what it decided. When the body is not there yet, add it as a governance body first.",
+      "guide": "The governance body or role that issued it, picked from the Resource catalogue, so the body's page lists what it decided. When the body is not there yet, add it as a governance body first. Written as a reference, never a bare id.",
       "good": [
-        "steering-committee",
-        "sponsor"
+        "{\"kind\":\"Resource\",\"id\":\"steering-committee\"}, a governance body in the catalogue",
+        "{\"local\":\"resources\",\"id\":\"sponsor\"}, one of this work's roles"
       ],
       "poor": [
         {

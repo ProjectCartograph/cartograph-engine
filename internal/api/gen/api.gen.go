@@ -904,8 +904,14 @@ type GuideField struct {
 	Candidates *[]GuideCandidate `json:"candidates,omitempty"`
 	Checks     *[]string         `json:"checks,omitempty"`
 	Control    string            `json:"control"`
-	Good       *[]string         `json:"good,omitempty"`
-	Guide      *string           `json:"guide,omitempty"`
+
+	// Format How a dated value is written, such as YYYY-MM.
+	Format *string   `json:"format,omitempty"`
+	Good   *[]string `json:"good,omitempty"`
+	Guide  *string   `json:"guide,omitempty"`
+
+	// MaxLength The longest the value may be, in characters, where the schema limits it.
+	MaxLength *int `json:"maxLength,omitempty"`
 
 	// Path The field's JSON pointer; list items as /spec/keyResults/-/metric.
 	Path string       `json:"path"`
@@ -916,6 +922,12 @@ type GuideField struct {
 
 	// Required The field must be filled: the schema requires it where it sits, or one of its checks blocks a handoff while it is empty. Absent when it may be left out.
 	Required *bool `json:"required,omitempty"`
+
+	// Shape For a reference, a period, an object or a list: a compact example of the JSON it is written as, alternatives joined by " | ", an optional property marked with "?".
+	Shape *string `json:"shape,omitempty"`
+
+	// Values The values the field may take, where the schema lists them.
+	Values *[]interface{} `json:"values,omitempty"`
 }
 
 // GuideLink defines model for GuideLink.

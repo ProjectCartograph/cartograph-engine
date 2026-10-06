@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
 // The guide for an outcome: the outcome's own words and examples, a
@@ -180,5 +182,36 @@ func TestTheGuideMarksRequiredFields(t *testing.T) {
 		} else if required[path] != want {
 			t.Errorf("%s required = %v, want %v", path, required[path], want)
 		}
+	}
+}
+
+// A guide's field says what the schema holds it to, so an agent writes a
+// value the save will take without reading the schema.
+func TestTheGuideGivesEachFieldItsLimitsChoicesAndShape(t *testing.T) {
+	e := seededEngine(t)
+	g, err := e.Guide(context.Background(), "Project", "", "en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	byPath := map[string]engine.GuideField{}
+	for _, st := range g.Steps {
+		for _, f := range st.Fields {
+			byPath[f.Path] = f
+		}
+	}
+	if f := byPath["/spec/deliverables/-/name"]; f.MaxLength != 60 {
+		t.Errorf("a deliverable's name: %+v", f)
+	}
+	if f := byPath["/spec/mandate/-/kind"]; len(f.Values) != 6 {
+		t.Errorf("a mandate's kind: %+v", f)
+	}
+	if f := byPath["/spec/timeline/start"]; f.Format != "YYYY-MM" {
+		t.Errorf("the start: %+v", f)
+	}
+	if f := byPath["/spec/mandate/-/issuer"]; !strings.Contains(f.Shape, `{"local":"resources","id":"<role id>"}`) {
+		t.Errorf("a reference's shape: %+v", f)
+	}
+	if f := byPath["/spec/objectives/-/keyResults/-/baseline"]; !strings.Contains(f.Shape, `"unknownReason"`) {
+		t.Errorf("a baseline's shape: %+v", f)
 	}
 }

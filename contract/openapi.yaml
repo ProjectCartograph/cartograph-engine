@@ -3400,6 +3400,22 @@ components:
         references:
           type: string
           description: The kind the field references.
+        maxLength:
+          type: integer
+          description: The longest the value may be, in characters, where the schema limits it.
+        values:
+          type: array
+          items: {}
+          description: The values the field may take, where the schema lists them.
+        format:
+          type: string
+          description: How a dated value is written, such as YYYY-MM.
+        shape:
+          type: string
+          description: >-
+            For a reference, a period, an object or a list: a compact
+            example of the JSON it is written as, alternatives joined by
+            " | ", an optional property marked with "?".
         required:
           type: boolean
           description: >-

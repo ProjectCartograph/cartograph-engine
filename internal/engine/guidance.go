@@ -145,6 +145,15 @@ type GuideField struct {
 	// empty. Every interface marks it the same way, and an agent knows
 	// which answers it cannot leave out.
 	Required bool `json:"required,omitempty"`
+	// MaxLength, Values, Format and Shape are what the schema holds the
+	// field to, so an agent writes a value it will take without reading
+	// the schema: the longest it may be, the values it may take, how a
+	// date is written, and the JSON a reference, a period or a list item
+	// is written as.
+	MaxLength int    `json:"maxLength,omitempty"`
+	Values    []any  `json:"values,omitempty"`
+	Format    string `json:"format,omitempty"`
+	Shape     string `json:"shape,omitempty"`
 }
 
 // GuideLink is a link held on another kind, naming this manifest: what to
@@ -303,6 +312,7 @@ func (e *Engine) Guide(ctx context.Context, kind, level, locale string) (Guide, 
 				}
 				path := prefix + f.Path
 				gf := GuideField{Path: path, Control: f.Control, Checks: f.Checks, Guide: f.Hint, Required: e.requiredAt(kind, path) || anyBlocking(f.Checks)}
+				gf.MaxLength, gf.Values, gf.Format, gf.Shape = e.fieldFacts(kind, path)
 				if w, ok := words.Fields[path]; ok {
 					if lw, ok := w.Levels[level]; ok && level != "" {
 						w = lw
@@ -535,3 +545,193 @@ func (e *Engine) requiredAt(kind, path string) bool {
 // singletons are the kinds a workspace holds one of, always under the id
 // "default" (their kind rules refuse any other).
 var singletons = map[string]bool{"Purpose": true, "Settings": true}
+
+// schemaAt is the schema node at a guide path, its $refs followed, with
+// the name of the last $def it came through ("Ref", "Horizon").
+func (e *Engine) schemaAt(kind, path string) (map[string]any, string, string) {
+	spec, ok := kinds.ByName(kind)
+	if !ok {
+		return nil, "", ""
+	}
+	w := shapeWalker{all: e.schemas.raw, keys: map[string]string{}, seen: map[string]bool{}}
+	node, file := e.schemas.raw[spec.SchemaFile], spec.SchemaFile
+	def := ""
+	step := func(n map[string]any) {
+		if ref, _ := n["$ref"].(string); ref != "" {
+			def = ref[strings.LastIndex(ref, "/")+1:]
+		} else {
+			def = ""
+		}
+		node, file = w.resolve(n, file, "")
+	}
+	step(node)
+	for _, t := range strings.Split(strings.TrimPrefix(path, "/"), "/") {
+		if node == nil {
+			return nil, "", ""
+		}
+		var next map[string]any
+		if t == "-" {
+			next, _ = node["items"].(map[string]any)
+		} else {
+			props, _ := node["properties"].(map[string]any)
+			next, _ = props[t].(map[string]any)
+		}
+		if next == nil {
+			return nil, "", ""
+		}
+		step(next)
+	}
+	return node, file, def
+}
+
+// fieldFacts reads what the schema holds a field to: its longest, its
+// allowed values, how a date in it is written, and, for anything that is
+// not plain text or a number, the JSON it is written as.
+func (e *Engine) fieldFacts(kind, path string) (maxLength int, values []any, format, shape string) {
+	node, file, def := e.schemaAt(kind, path)
+	if node == nil {
+		return 0, nil, "", ""
+	}
+	if n, ok := node["maxLength"].(float64); ok {
+		maxLength = int(n)
+	}
+	if v, ok := node["enum"].([]any); ok {
+		values = v
+	} else if v, ok := node["x-cartograph-enum"].([]any); ok {
+		values = v
+	}
+	format = formatOf(node)
+	if def == "Ref" || isStructured(node) {
+		w := shapeWalker{all: e.schemas.raw, keys: map[string]string{}, seen: map[string]bool{}}
+		shape = shapeText(w, node, file, def, 0)
+	}
+	return maxLength, values, format, shape
+}
+
+func isStructured(n map[string]any) bool {
+	t, _ := n["type"].(string)
+	_, props := n["properties"]
+	_, one := n["oneOf"]
+	_, any := n["anyOf"]
+	return t == "object" || t == "array" || props || one || any
+}
+
+// formatOf names how a dated string is written, from its pattern.
+func formatOf(n map[string]any) string {
+	pattern, _ := n["pattern"].(string)
+	switch {
+	case pattern == "^[0-9]{4}-(0[1-9]|1[0-2])$":
+		return "YYYY-MM"
+	case pattern == "^[0-9]{4}(-(0[1-9]|1[0-2]))?$":
+		return "YYYY or YYYY-MM"
+	case strings.HasPrefix(pattern, "^[0-9]{4}-(0[1-9]|1[0-2])(-"):
+		return "YYYY-MM-DD or YYYY-MM"
+	}
+	if f, _ := n["format"].(string); f == "date" {
+		return "YYYY-MM-DD"
+	}
+	return ""
+}
+
+// shapeText writes a compact example of the JSON a field takes: an
+// object's properties with what each holds, a list's item in brackets,
+// alternatives joined by " | ".
+func shapeText(w shapeWalker, n map[string]any, file, def string, depth int) string {
+	if def == "Ref" {
+		return `{"kind":"<Kind>","id":"<id>"} | {"local":"resources","id":"<role id>"} | {"external":"<name, outside the workspace>"}`
+	}
+	if depth > 2 {
+		return "…"
+	}
+	for _, k := range []string{"oneOf", "anyOf"} {
+		if alts, ok := n[k].([]any); ok && n["properties"] == nil {
+			var parts []string
+			for _, a := range alts {
+				if m, ok := a.(map[string]any); ok {
+					sub, subFile := w.resolve(m, file, "")
+					parts = append(parts, shapeText(w, sub, subFile, refName(m), depth+1))
+				}
+			}
+			return strings.Join(parts, " | ")
+		}
+	}
+	if items, ok := n["items"].(map[string]any); ok {
+		if ref, _ := items["x-cartograph-ref"].(string); ref != "" && ref != "*" {
+			return `["<` + ref + ` id>", …]`
+		}
+		sub, subFile := w.resolve(items, file, "")
+		return "[" + shapeText(w, sub, subFile, refName(items), depth+1) + ", …]"
+	}
+	if props, ok := n["properties"].(map[string]any); ok {
+		names := make([]string, 0, len(props))
+		for k := range props {
+			names = append(names, k)
+		}
+		sort.Strings(names)
+		req := map[string]bool{}
+		for _, r := range asSlice(n["required"]) {
+			if s, ok := r.(string); ok {
+				req[s] = true
+			}
+		}
+		// Required properties first, so the shortest valid value reads first.
+		sort.SliceStable(names, func(i, j int) bool { return req[names[i]] && !req[names[j]] })
+		var parts []string
+		for _, k := range names {
+			p, _ := props[k].(map[string]any)
+			if p == nil || strings.HasPrefix(fmt.Sprint(p["description"]), "Deprecated") {
+				continue
+			}
+			v := ""
+			if ref, _ := p["x-cartograph-ref"].(string); ref != "" && ref != "*" {
+				v = `"<` + ref + ` id>"`
+			} else {
+				sub, subFile := w.resolve(p, file, "")
+				v = shapeText(w, sub, subFile, refName(p), depth+1)
+			}
+			if !req[k] {
+				k += "?"
+			}
+			parts = append(parts, fmt.Sprintf("%q:%s", k, v))
+		}
+		return "{" + strings.Join(parts, ",") + "}"
+	}
+	if v, ok := n["enum"].([]any); ok {
+		// A long list (currencies) is the field's own values; the shape
+		// only says one of them goes here.
+		if len(v) > 12 {
+			return `"<one of its values>"`
+		}
+		var vals []string
+		for _, x := range v {
+			vals = append(vals, fmt.Sprint(x))
+		}
+		return `"` + strings.Join(vals, "|") + `"`
+	}
+	if ref, _ := n["x-cartograph-ref"].(string); ref != "" {
+		return `"<` + ref + ` id>"`
+	}
+	switch t, _ := n["type"].(string); t {
+	case "integer", "number":
+		return "0"
+	case "boolean":
+		return "true"
+	}
+	if f := formatOf(n); f != "" {
+		return `"` + f + `"`
+	}
+	return `"text"`
+}
+
+func refName(n map[string]any) string {
+	ref, _ := n["$ref"].(string)
+	if ref == "" {
+		return ""
+	}
+	return ref[strings.LastIndex(ref, "/")+1:]
+}
+
+func asSlice(v any) []any {
+	s, _ := v.([]any)
+	return s
+}
