@@ -671,9 +671,11 @@ objectives and deliverables, and operations with their service levels.
   Time-bound reads each target against the horizon; a check flags a horizon
   that runs outside the one above it, and asks for an owner. The ministry's
   reading objective might be owned by its head of early grades, a role.
-- The editor shows the level, horizon, owner and SMART marks together, with
-  the usual horizon for the level as a hint, and puts Measures (key results
-  and aligned indicators) directly under the statement. The Strategy view
+- The editor shows the level, horizon, owner and SMART marks together, and
+  puts Measures (key results and aligned indicators) directly under the
+  statement. It suggests no length for a horizon: Cartograph is used at
+  every scale, from a national plan to a club's year, and the lengths the
+  discipline quotes are one practice among many. The Strategy view
   shows each goal's horizon and, in the side panel, the owner.
 
 **Not adopted.** A goal "type" field (time-bound, outcome-oriented,

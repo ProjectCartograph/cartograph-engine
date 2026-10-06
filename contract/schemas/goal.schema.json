@@ -65,7 +65,7 @@
         },
         "horizon": {
           "$ref": "common.schema.json#/$defs/Horizon",
-          "description": "The period this aim covers. A goal usually spans the plan period (three to five years), an objective one to three years inside it. Optional below a goal: an objective or outcome without one takes its parent's. Time-bound (SMART) reads targets against it, and a check flags a horizon that runs past its parent's (TAXONOMY.md D26)."
+          "description": "When work on this aim starts and when it should be reached, as a year or a year and month. Optional below a goal: an objective or outcome without one takes its parent's. Time-bound (SMART) reads targets against it, and a check flags a horizon that runs past its parent's (TAXONOMY.md D26)."
         },
         "whyItMatters": {
           "type": "string",

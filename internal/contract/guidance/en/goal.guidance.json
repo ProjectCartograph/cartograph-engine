@@ -155,7 +155,7 @@
       ]
     },
     "/spec/horizon": {
-      "guide": "The period the aim covers, as years or years and months. A goal usually spans the plan, an objective one to three years inside its goal; an outcome may take its objective's. It must sit inside the horizon above it."
+      "guide": "When work on this aim starts and when it should be reached, as a year or a year and month. An objective or outcome left empty uses the dates of the aim above it, and one with its own dates sits inside them."
     },
     "/spec/whyItMatters": {
       "guide": "Why this aim, in one sentence a reader would accept: what it changes for whom. It is what makes the aim relevant under its parent.",
