@@ -328,7 +328,13 @@
       ]
     },
     "/spec/funding": {
-      "guide": "The money the project draws on, one line per currency: the amount, the currency, the budget it comes from and whether it is approved, requested or unfunded. A component is funded through its parent."
+      "guide": "The money the project draws on, one line per currency: the amount, the currency, the budget it comes from and whether it is approved, requested or unfunded. A component is funded through its parent. A need nobody has costed yet is not a line: record it as an issue in Risks, escalated to whoever decides funding, and add the line once it is costed. Until then the funding check keeps saying no line is named, which is true.",
+      "poor": [
+        {
+          "text": "A line with no amount, for field costs still being worked out",
+          "why": "A funding line states money; even unfunded means the amount is known. An uncosted need is an issue: record it in Risks and escalate it to whoever decides funding."
+        }
+      ]
     },
     "/spec/funding/-/amount": {
       "guide": "The amount on this line, in the line's currency. Write the figure as approved or requested; nothing else about money is held anywhere else."

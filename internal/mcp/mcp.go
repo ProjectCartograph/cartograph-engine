@@ -141,7 +141,10 @@ Work this way, every time:
    board that decides is a governance body: a Resource named once and
    referenced as a mandate's issuer, as who confirms success and as
    whom a risk escalates to, never typed as text; only a body outside
-   the workspace, such as a government, stays as text. Keep the
+   the workspace, such as a government, stays as text. An uncosted or
+   unfunded requirement is an issue on the work's risks, escalated to
+   whoever decides funding, until it is costed; then it is a funding
+   line. Keep the
    document's own wording in the statement and cite it as the source;
    never add a kind, level or field Cartograph does not have, and when a
    thing fits no kind, say so to your person rather than forcing it.
