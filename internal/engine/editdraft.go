@@ -136,8 +136,14 @@ func pointerSet(doc map[string]any, p string, v any) error {
 				return setInParent(doc, tokens[:i], append(c, v))
 			}
 			n, err := strconv.Atoi(t)
+			if err == nil && n == len(c) && last {
+				// The next index adds an item, as JSON Patch's add does.
+				return setInParent(doc, tokens[:i], append(c, v))
+			}
 			if err != nil || n < 0 || n >= len(c) {
-				return fmt.Errorf("%w: %s: no item %s", ErrBadEdit, p, t)
+				list := "/" + strings.Join(tokens[:i], "/")
+				return fmt.Errorf("%w: %s: no item %s; %s holds %d item%s, and %s/- adds one at the end",
+					ErrBadEdit, p, t, list, len(c), map[bool]string{true: "", false: "s"}[len(c) == 1], list)
 			}
 			if last {
 				c[n] = v
@@ -205,7 +211,14 @@ func applyEdit(doc map[string]any, id string, set map[string]any, unset []string
 	sort.Slice(paths, func(i, j int) bool {
 		return len(paths[i]) < len(paths[j]) || len(paths[i]) == len(paths[j]) && paths[i] < paths[j]
 	})
+	unset = append([]string(nil), unset...)
 	for _, p := range paths {
+		// Setting a field to null clears it: a stored null is a value no
+		// schema allows, and what the editor meant was "none".
+		if set[p] == nil {
+			unset = append(unset, p)
+			continue
+		}
 		if err := pointerSet(doc, p, set[p]); err != nil {
 			return err
 		}

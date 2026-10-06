@@ -551,7 +551,7 @@ type (
 		Kind      string         `json:"kind"`
 		ID        string         `json:"id"`
 		Work      []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
-		Set       map[string]any `json:"set,omitempty" jsonschema:"fields to set, by JSON pointer, such as {\"/spec/objective\": \"...\"}; in a list, a number replaces that item and - appends one"`
+		Set       map[string]any `json:"set,omitempty" jsonschema:"fields to set, by JSON pointer, such as {\"/spec/objective\": \"...\"}; in a list, a number replaces that item, and - (or the next number) appends one; null removes the field"`
 		Unset     []string       `json:"unset,omitempty" jsonschema:"fields or list items to remove, by JSON pointer"`
 	}
 	manifestIn struct {
