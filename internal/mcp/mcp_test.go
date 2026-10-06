@@ -414,3 +414,25 @@ func TestChecksAndProposeAgree(t *testing.T) {
 		t.Fatalf("checks found %d open; propose said: %s", len(whole.Open), refused)
 	}
 }
+
+// An agent follows what it proposed: my_proposals lists the change set
+// with its items, and checks still reads the set's drafts until the
+// person accepts it.
+func TestAnAgentFollowsTheChangeSetItProposed(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	team := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t1", "name": "Team One"},
+		"spec": map[string]any{"description": "Drafted by an agent"}}
+	callTool(t, cs, "start_work", map[string]any{"title": "Describe the team"})
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t1", "manifest": team})
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "describe the team"}); res.IsError {
+		t.Fatalf("propose: %s", text)
+	}
+	res, text := callTool(t, cs, "my_proposals", map[string]any{})
+	if res.IsError || !strings.Contains(text, `"title":"Describe the team"`) || !strings.Contains(text, `"Team/t1"`) {
+		t.Fatalf("my_proposals does not list the change set: %s", text)
+	}
+	res, text = callTool(t, cs, "get", map[string]any{"kind": "Team", "id": "t1"})
+	if res.IsError || !strings.Contains(text, "Drafted by an agent") {
+		t.Fatalf("after proposing, get reads the record, not the proposed draft: %s", text)
+	}
+}

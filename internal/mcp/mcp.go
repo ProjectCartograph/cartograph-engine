@@ -814,9 +814,33 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return e.Events(c.ctx, in.After, limit)
 		})
 
-	tool(s, o, person, &sdk.Tool{Name: "my_proposals", Description: "The proposals waiting for your person to decide.", Annotations: readOnly},
+	tool(s, o, person, &sdk.Tool{Name: "my_proposals", Description: "What is waiting for your person to decide: the change sets proposed (changeSets, each with " +
+		"its items) and the single items proposed, such as a KPI reading (items). A proposed change set's drafts still stand: checks and next read them " +
+		"until your person accepts it.", Annotations: readOnly},
 		func(c call, _ none) (any, error) {
-			return e.Proposals(c.ctx, store.ProposalFilter{Status: store.ProposalOpen})
+			items, err := e.Proposals(c.ctx, store.ProposalFilter{Status: store.ProposalOpen})
+			if err != nil {
+				return nil, err
+			}
+			sets, err := e.ChangeSets(c.ctx, store.ChangeSetProposed, false)
+			if err != nil {
+				return nil, err
+			}
+			changeSets := []map[string]any{}
+			for _, cs := range sets {
+				view, err := e.ViewChangeSet(c.ctx, cs.ID)
+				if err != nil {
+					return nil, err
+				}
+				var parts []string
+				for _, it := range view.Items {
+					if it.Item.Included {
+						parts = append(parts, it.Item.Kind+"/"+it.Item.ID)
+					}
+				}
+				changeSets = append(changeSets, map[string]any{"changeSet": cs.ID, "title": cs.Title, "reason": cs.Reason, "items": parts})
+			}
+			return map[string]any{"changeSets": changeSets, "items": items}, nil
 		})
 
 	if o.Reports != nil {

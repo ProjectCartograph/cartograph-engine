@@ -661,22 +661,43 @@ func inPlayRefs(ctx context.Context) []Ref {
 	return out
 }
 
-// CurrentChangeSet is the change set the principal on ctx works in now,
-// without opening one: found is false when they have none open.
+// CurrentChangeSet is the change set the principal on ctx reads in now,
+// without opening one: the one named, open or proposed; else their
+// latest open one; else the one they proposed last, whose drafts still
+// stand until it is accepted, so an agent that has proposed can follow
+// its work. found is false when there is none.
 func (e *Engine) CurrentChangeSet(ctx context.Context, id string) (store.ChangeSet, bool, error) {
-	if id != "" {
-		cs, err := e.WorkingChangeSet(ctx, id)
-		return cs, err == nil, err
-	}
 	s, err := e.changeSetStore()
 	if err != nil {
 		return store.ChangeSet{}, false, err
 	}
-	open, err := s.ListChangeSets(ctx, store.ChangeSetFilter{Owner: ownerOf(identity.PrincipalFrom(ctx)), Status: store.ChangeSetOpen})
-	if err != nil || len(open) == 0 {
-		return store.ChangeSet{}, false, err
+	p := identity.PrincipalFrom(ctx)
+	if id != "" {
+		cs, err := s.GetChangeSet(ctx, id)
+		if errors.Is(err, store.ErrNoChangeSet) {
+			return store.ChangeSet{}, false, fmt.Errorf("%w: change set %s", ErrNotFound, id)
+		}
+		if err != nil {
+			return store.ChangeSet{}, false, err
+		}
+		if !e.mayWorkIn(p, cs) {
+			return store.ChangeSet{}, false, ErrNotTheirChangeSet
+		}
+		if cs.Status != store.ChangeSetOpen && cs.Status != store.ChangeSetProposed {
+			return store.ChangeSet{}, false, ErrNotOpen
+		}
+		return cs, true, nil
 	}
-	return open[0], true, nil
+	for _, status := range []string{store.ChangeSetOpen, store.ChangeSetProposed} {
+		sets, err := s.ListChangeSets(ctx, store.ChangeSetFilter{Owner: ownerOf(p), Status: status})
+		if err != nil {
+			return store.ChangeSet{}, false, err
+		}
+		if len(sets) > 0 {
+			return sets[0], true, nil
+		}
+	}
+	return store.ChangeSet{}, false, nil
 }
 
 // MergeInChangeSet applies to a change set's draft what changed between
