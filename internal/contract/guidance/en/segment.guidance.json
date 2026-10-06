@@ -1,7 +1,7 @@
 {
   "locale": "en",
   "kind": "Segment",
-  "summary": "A way of splitting up what you serve so you can compare the parts, such as by region or product line.",
+  "summary": "A way of splitting up the people, places or things your work is about, so you can compare the parts: by region, by depot, by product line.",
   "example": "Region: members are split by the growing region they farm in, so regions can be compared.",
   "knownAs": [
     "region",
@@ -12,7 +12,7 @@
     "breakdown",
     "disaggregation"
   ],
-  "definition": "A segment is a way of slicing up what the organisation serves, so a gap can say where it was found and a KPI can be broken down the same way: by region, by depot, by product line, by holding size. Define the slicing first, as a segment with no parent (Region), then each slice under it (the northern region). Both gaps and KPIs name the same segments, so a finding and its measure always cut the work the same way. A segment is not a beneficiary group (people the work is for), not a team (who does the work), not a label (a free cut nobody planned), and not a period of time (the reporting cycle's job).",
+  "definition": "A segment is a slice of what the organisation serves or works across, used to compare one part with another: a finding in one region against another, a measure in one depot against another. First define the slicing itself, as a segment with no parent (Region), then each slice under it (Northern region). A gap names the slices its evidence covers, a piece of work says which of those it reaches, and a KPI is broken down by the same slicing, so a finding and its measure always cut the work the same way. A segment describes where or what, never who does the work: it is not a resource (a role, unit, partner, system or place the work draws on, such as a Depot supervisor), not a beneficiary group (the people the work is for, such as Depot staff), not a team (who carries the work), not a label (a free tag nobody planned), and not a period of time (that is a reporting cycle). The test: if you would count or compare a measure across it, it is a segment; if it does something, decides something or is paid for, it is not.",
   "fields": {
     "/spec/parent": {
       "guide": "The slicing this is one slice of (Region, for the northern region), or the broader slice it sits inside. Leave it empty for the slicing itself. A segment can never sit under itself, directly or further up, and such a parent is refused on save. When the slicing does not exist yet, define it first.",
@@ -45,7 +45,36 @@
       ]
     },
     "/metadata/name": {
-      "guide": "The name, as people say it and as lists show it."
+      "guide": "The slicing (Region, Product line) or one slice of it (Northern region, Fresh produce), as people say it.",
+      "good": [
+        "Region",
+        "Northern region",
+        "Depot",
+        "Product line",
+        "Holding size: under two hectares"
+      ],
+      "poor": [
+        {
+          "text": "Depot supervisor",
+          "why": "A role, which is a resource: it does work. A segment is a slice you compare a measure across, such as the depot itself."
+        },
+        {
+          "text": "Depot staff",
+          "why": "The people the work is for, which is a beneficiary group. Slice by where they work (Depot) if you need to compare."
+        },
+        {
+          "text": "Quality team",
+          "why": "Who carries the work, which is a team."
+        },
+        {
+          "text": "Season 2026",
+          "why": "A period of time, which a reporting cycle holds."
+        },
+        {
+          "text": "Urgent",
+          "why": "A free label, not a planned way of slicing what you serve."
+        }
+      ]
     }
   },
   "links": {
