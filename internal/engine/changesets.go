@@ -203,6 +203,9 @@ func (e *Engine) writeItem(ctx context.Context, set, kind, id string, change fun
 	if err := e.guard(ctx, kind, id, before, after); err != nil {
 		return err
 	}
+	if problems := deprecatedFieldProblems(kind, after); len(problems) > 0 {
+		return &ValidationError{Problems: problems}
+	}
 	p := identity.PrincipalFrom(ctx)
 	// An agent is held to the order of work (TAXONOMY.md D31): what it
 	// names is in the record or in its change set already, and it leaves

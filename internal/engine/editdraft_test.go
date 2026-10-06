@@ -34,3 +34,15 @@ func TestAnEditReadsNullAndTheNextIndexAsMeant(t *testing.T) {
 		t.Fatalf("an index past the end: %v", err)
 	}
 }
+
+// A gap's measuredBy, read from older manifests and never written, is
+// refused in a draft with the fields to use instead.
+func TestADraftRefusesAGapsMeasuredBy(t *testing.T) {
+	e := seededEngine(t)
+	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
+	_, err := e.EditInChangeSet(agent, "", "Gap", "gap-x", map[string]any{"/metadata/name": "Gap X", "/spec/measuredBy": "kpi-x"}, nil)
+	var ve *engine.ValidationError
+	if !errors.As(err, &ve) || len(ve.Problems) != 1 || ve.Problems[0].Path != "/spec/measuredBy" || !strings.Contains(ve.Problems[0].Message, "measure") {
+		t.Fatalf("measuredBy in a draft: %v", err)
+	}
+}

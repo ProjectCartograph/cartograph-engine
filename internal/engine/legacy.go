@@ -881,3 +881,27 @@ func liftAssumptionRisks(spec map[string]any) []string {
 	}
 	return notes
 }
+
+// deprecatedFieldProblems refuses, in a draft being written, a field that
+// is read from older manifests but never written. Accepted, it would be
+// checked as what it once meant and fail later with a message about
+// something else: a gap's measuredBy is read as a data source, so an
+// agent that meant the KPI measuring the gap heard about a missing data
+// source at propose. Saved manifests are still read and folded as before.
+func deprecatedFieldProblems(kind string, doc map[string]any) []Problem {
+	spec, _ := doc["spec"].(map[string]any)
+	var problems []Problem
+	switch kind {
+	case "Gap":
+		if _, ok := spec["measuredBy"]; ok {
+			problems = append(problems, Problem{Path: "/spec/measuredBy",
+				Message: "measuredBy is no longer written: name the KPI whose baseline and target are this gap's two states in measure, and the data sources it is watched in under dataSources"})
+		}
+	case "KPI":
+		if _, ok := spec["source"]; ok {
+			problems = append(problems, Problem{Path: "/spec/source",
+				Message: "source is no longer written: list the data sources it is read from under sources"})
+		}
+	}
+	return problems
+}
