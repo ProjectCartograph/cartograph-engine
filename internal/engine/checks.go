@@ -82,7 +82,13 @@ func (e *Engine) ChecksOf(ctx context.Context, kind, id string, text []byte) ([]
 		return nil, err
 	}
 	for _, c := range pc.Items {
-		out = append(out, Check{ID: c.ID, State: c.State, Message: c.Message, Section: c.Fix.Section})
+		// Where it is fixed: its own fix's section, else the section it
+		// is about.
+		section := c.Fix.Section
+		if section == "" {
+			section = c.Section
+		}
+		out = append(out, Check{ID: c.ID, State: c.State, Message: c.Message, Section: section})
 	}
 	return out, nil
 }
