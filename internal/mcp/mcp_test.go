@@ -510,18 +510,23 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 		t.Fatalf("no open checks to leave: %s", before)
 	}
 	for _, o := range report.Open {
-		if res, text := callTool(t, cs, "leave_open", map[string]any{"kind": "Goal", "id": "g-sound", "check": o.ID, "reason": "Only the person knows " + o.ID}); res.IsError {
+		if res, text := callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, because the document is silent; they will decide later", "kind": "Goal", "id": "g-sound", "check": o.ID, "reason": "Only the person knows " + o.ID}); res.IsError {
 			t.Fatalf("leave_open: %s", text)
 		}
 	}
+	// Leaving a check without having asked is refused: the person may
+	// know the figure, or decide it now.
+	if res, text := callTool(t, cs, "leave_open", map[string]any{"kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "Unknown"}); !res.IsError || !strings.Contains(text, "ask your person first") {
+		t.Fatalf("a check was left without asking: %s", text)
+	}
 	// A second missing fact behind the same check adds its reason.
-	callTool(t, cs, "leave_open", map[string]any{"kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "A second fact is missing"})
+	callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, because the document is silent; they will decide later", "kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "A second fact is missing"})
 	_, after := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-sound"})
 	if !strings.Contains(after, "Only the person knows "+report.Open[0].ID+" Also: A second fact is missing") {
 		t.Fatalf("the first reason was lost: %s", after)
 	}
 	// A correction puts its reason in place of the first.
-	callTool(t, cs, "leave_open", map[string]any{"kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "Only the person knows " + report.Open[0].ID, "correct": true})
+	callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, because the document is silent; they will decide later", "kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "Only the person knows " + report.Open[0].ID, "correct": true})
 	_, after = callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-sound"})
 	if strings.Contains(after, "A second fact is missing") {
 		t.Fatalf("a correction kept the reason it corrects: %s", after)
@@ -614,7 +619,7 @@ func TestAnAimWaitsOnItsKPIsLeftFigure(t *testing.T) {
 	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "KPI", "id": "k-graded", "manifest": kpi}); res.IsError {
 		t.Fatalf("save the KPI: %s", text)
 	}
-	callTool(t, cs, "leave_open", map[string]any{"kind": "KPI", "id": "k-graded", "check": "kpi-target", "reason": "The board sets the target after the baseline"})
+	callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, because the document is silent; they will decide later", "kind": "KPI", "id": "k-graded", "check": "kpi-target", "reason": "The board sets the target after the baseline"})
 	_, text := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-graded"})
 	var report struct {
 		Open []struct {
@@ -644,7 +649,7 @@ func TestAGoalWaitsOnAVisionLeftOpen(t *testing.T) {
 	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-quality", "name": "Quality"},
 		"spec": map[string]any{"level": "goal", "objective": "Raise produce quality", "whyItMatters": "Buyers reject bruised produce."}}
 	callTool(t, cs, "save_draft", map[string]any{"kind": "Purpose", "id": "default", "manifest": purpose})
-	callTool(t, cs, "leave_open", map[string]any{"kind": "Purpose", "id": "default", "check": "purpose-vision", "reason": "Only the board can state the vision",
+	callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, because the document is silent; they will decide later", "kind": "Purpose", "id": "default", "check": "purpose-vision", "reason": "Only the board can state the vision",
 		"also": []any{map[string]any{"kind": "Purpose", "id": "default", "check": "purpose-mission"}}})
 	callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-quality", "manifest": goal})
 	_, text := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-quality"})

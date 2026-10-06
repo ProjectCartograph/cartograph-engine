@@ -186,16 +186,18 @@ Work this way, every time:
    later settles by naming it is placed with that later thing. The next
    tool gives the same, with what follows.
 7. Take what the documents your person gave you say: figures, dates,
-   sources and owners, quoting where each came from. Ask your person
-   only for what they do not say, a step at a time, with examples from
-   their own records. Never invent a figure, a date, a source or an
-   owner.
+   sources and owners, quoting where each came from. For what they do
+   not say, ask your person, one question at a time, as soon as a check
+   needs it: say why you ask (what the document says, or that it is
+   silent, and which check waits on it), and offer the options you can
+   draw from the document and their records, so they can pick. A target
+   the document defers is still asked: they may know it, or decide it
+   now. Never invent a figure, a date, a source or an owner.
 8. Propose your change set with propose when every check across it is
    met; your person accepts it whole, after trimming anything not ready.
-   An open check refuses the proposal. When a check needs what only
-   your person can supply (a figure or date no document gives, a score,
-   a choice that is theirs), call leave_open for it with the reason as
-   soon as you know, and carry on: next passes it by, and propose waives
+   An open check refuses the proposal. When your person, asked, cannot
+   answer yet (a figure decided later, a score nobody has made), call
+   leave_open for it with the reason and what you asked, and carry on: next passes it by, and propose waives
    it with your reason, which your person reads. Never leave one you
    could meet from the documents.
 9. Your work ends in a proposal, never in a chat message asking the
@@ -515,6 +517,7 @@ type (
 		Reason    string      `json:"reason" jsonschema:"what your person must supply or decide, in one line they can act on; empty takes it back"`
 		Also      []leaveItem `json:"also,omitempty" jsonschema:"more checks the same missing fact leaves open, on this draft or others, each {kind, id, check}: one reason for all of them"`
 		Correct   bool        `json:"correct,omitempty" jsonschema:"true to put this reason in place of the one already given; left out, a second fact behind the same check adds its reason to the first"`
+		Asked     string      `json:"asked,omitempty" jsonschema:"what you asked your person, with the reason you gave, and what they answered; \"not available\" only when you were told to work without them. Required to leave a check"`
 	}
 	leaveItem struct {
 		Kind  string `json:"kind"`
@@ -1053,13 +1056,19 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return out, nil
 		})
 
-	tool(s, o, person, &sdk.Tool{Name: "leave_open", Description: "Leave a check on one of your drafts for your person, with the reason they will read: only for what only they can settle, " +
+	tool(s, o, person, &sdk.Tool{Name: "leave_open", Description: "Leave a check on one of your drafts for your person, with the reason they will read: only after asking them, for what they cannot settle yet, " +
 		"a figure or date no document gives, a score nobody has made, a choice that is theirs. next then passes it by, and propose waives it with this reason, " +
 		"so you say why once, as you go. An empty reason takes it back. Never leave a check you could meet from the documents.", Annotations: drafting},
 		func(c call, in leaveIn) (any, error) {
 			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
 			if err != nil {
 				return nil, err
+			}
+			if strings.TrimSpace(in.Reason) != "" && strings.TrimSpace(in.Asked) == "" {
+				// A check is left for the person only once they were asked:
+				// they may know the figure, or decide it now.
+				return nil, fmt.Errorf("ask your person first: say what the check needs and why you ask (what the document says or leaves out), " +
+					"offer the options you have, and pass what they answered as asked; \"not available\" only when you were told to work without them")
 			}
 			items := in.Also
 			if in.Check != "" {
@@ -1482,6 +1491,7 @@ func nextLine(t engine.Task) string {
 	if t.Do != "" {
 		line += " " + t.Do
 	}
+	line += " Where the documents do not give it, ask your person, saying why you ask and offering the options you have."
 	if len(t.Choices) > 0 {
 		names := make([]string, 0, len(t.Choices))
 		for _, c := range t.Choices {
