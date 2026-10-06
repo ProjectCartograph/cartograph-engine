@@ -13,6 +13,16 @@ spec:
       influence: 2
       interest: 3
       tier: primary
+    # The people the work is for are stakeholders too, named as the
+    # beneficiary group rather than again as a resource. The stake says
+    # what they care about here; the owner is the role that keeps the
+    # relationship.
+    - group: depot-staff
+      stake: Wants the check to take no longer at intake than today.
+      owner: {kind: Resource, id: operations-lead}
+      influence: 2
+      interest: 3
+      tier: primary
     - resource: transport-contractor
       influence: 1
       interest: 2

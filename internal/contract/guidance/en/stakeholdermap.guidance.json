@@ -38,8 +38,21 @@
     "/spec/entries": {
       "guide": "One entry per stakeholder, each a Resource from the catalogue, scored at most once. A party need not be one the work draws on: a party with power over a project is often not part of it. An entry with no score is a stakeholder named and not yet placed, which is a real state."
     },
+    "/spec/entries/-/group": {
+      "guide": "A beneficiary group of the work, when the stakeholder is the people it is for. Pick one of the groups the work already names; there is no need to record them again as a Resource. An entry names a group or a resource, not both.",
+      "good": [
+        "depot-staff",
+        "member-growers"
+      ],
+      "poor": [
+        {
+          "text": "member-growers, also added as a Resource",
+          "why": "The same people recorded twice. Name the group here."
+        }
+      ]
+    },
     "/spec/entries/-/resource": {
-      "guide": "The catalogue entry for the stakeholder: a role, unit, party, system or facility. External bodies count. When the party is not in the catalogue, declare it there first.",
+      "guide": "The catalogue entry for the stakeholder: a role, unit, party, system or facility. External bodies count. When the party is not in the catalogue, declare it there first. A group of the people the work is for goes in group instead.",
       "good": [
         "analytics-partner",
         "transport-contractor",
@@ -53,6 +66,35 @@
         {
           "text": "Everyone at the depots",
           "why": "Not a catalogue entry, and too broad to place on the grid. Name the unit or the role."
+        }
+      ]
+    },
+    "/spec/entries/-/stake": {
+      "guide": "What this party cares about in this work, in one sentence. Influence and interest say how much; this says what. It is about this work, not about who they are.",
+      "good": [
+        "Wants fewer rejected loads, and no slower intake at busy depots.",
+        "Must sign off any change to how member delivery records are kept."
+      ],
+      "poor": [
+        {
+          "text": "The regional transport contractor.",
+          "why": "Who they are, which the catalogue entry already says. Say what they care about here."
+        },
+        {
+          "text": "High interest.",
+          "why": "How much, which interest already scores. Say what the interest is in."
+        }
+      ]
+    },
+    "/spec/entries/-/owner": {
+      "guide": "The role that manages the relationship with this stakeholder, from the Resource catalogue. Never a person. How and when to engage them belongs to the communications plan.",
+      "good": [
+        "operations-lead"
+      ],
+      "poor": [
+        {
+          "text": "Ada Okafor",
+          "why": "A person, not a role: Cartograph names roles, and people hold them."
         }
       ]
     },

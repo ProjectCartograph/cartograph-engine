@@ -1257,3 +1257,23 @@ the definition beside the sponsor and the service owner; who carries
 out a mitigation action (PRINCE2's risk actionee) is planning, and a
 task under a deliverable can name that role (D38). Escalation still
 names whose decision is needed beyond tolerance.
+
+### D42. A stakeholder entry says its stake and who owns the relationship, and may name a beneficiary group. *(resolved)*
+
+**The problem.** An engagement plan says, for each party, what it cares
+about in the work and who manages the relationship. A stakeholder map
+held influence and interest, which say how much, not what; a Resource's
+description is general to the party, not to this work. Who managed the
+relationship had nowhere to go. And the map named only Resources, so the
+people the work is for, already recorded as beneficiary groups, had to
+be recorded a second time as Resources to appear on it.
+
+**What Cartograph does.** An entry may state its `stake`, one sentence
+on what this party cares about in this work, and its `owner`, the role
+that owns the relationship, as a catalogue or external reference (the
+map holds no roles of its own). Never a person: accountability, like a
+risk's owner (D41). An entry names either a `resource` or a `group` (a
+BeneficiaryGroup), exactly one, each scored once. The approach stays
+derived from the grid (Mendelow), and the channels and timing of
+engagement stay the communications plan's: planning, not definition.
+`stakeholders-placed` counts groups as it counts resources.

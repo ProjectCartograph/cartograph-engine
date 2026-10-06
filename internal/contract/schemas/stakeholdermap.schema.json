@@ -24,12 +24,26 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["resource"],
+            "description": "One stakeholder: a Resource or a beneficiary group, exactly one of the two (a kind rule; TAXONOMY.md D42).",
             "properties": {
               "resource": {
                 "$ref": "common.schema.json#/$defs/Slug",
                 "x-cartograph-ref": "Resource",
                 "description": "The catalogue entry being scored. It need not be one the work references: a party with power over a project is often not part of it."
+              },
+              "group": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "BeneficiaryGroup",
+                "description": "A beneficiary group being scored, in place of a resource: the people the work is for are stakeholders too, and naming the group here saves recording it a second time as a Resource."
+              },
+              "stake": {
+                "type": "string",
+                "maxLength": 160,
+                "description": "What this party cares about in this work, in one sentence. Influence and interest say how much; this says what. Not who they are, which the resource or group already says."
+              },
+              "owner": {
+                "$ref": "common.schema.json#/$defs/Ref",
+                "description": "The role that owns the relationship with this stakeholder, as a reference to a catalogue role or an external one. Never a person. Accountability, like a risk's owner; the channels and timing of engagement are planning."
               },
               "influence": {
                 "type": "integer",

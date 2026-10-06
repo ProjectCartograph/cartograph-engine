@@ -118,12 +118,18 @@ func stakeholders(ctx context.Context, e *engine.Engine, n names, kind, id strin
 			return
 		}
 		for _, entry := range list(spec["entries"]) {
+			who := n.of("Resource", str(entry["resource"]))
+			if g := str(entry["group"]); g != "" {
+				who = n.of("BeneficiaryGroup", g)
+			}
 			rows = append(rows, []string{
-				n.of("Resource", str(entry["resource"])),
+				who,
+				str(entry["stake"]),
 				chip("level", number(entry["influence"])),
 				chip("level", number(entry["interest"])),
 				chip("approach", approach(entry["influence"], entry["interest"])),
 				chip("priority", str(entry["tier"])),
+				n.ref(entry["owner"], "Resource", spec),
 			})
 		}
 	})
@@ -135,7 +141,7 @@ func (d *doc) stakeholders(rows [][]string) {
 		return
 	}
 	d.h2("Stakeholders")
-	d.table([]string{"Stakeholder", "Influence", "Interest", "Approach", "Type"}, rows)
+	d.table([]string{"Stakeholder", "Stake", "Influence", "Interest", "Approach", "Type", "Relationship owner"}, rows)
 }
 
 // approach reads Mendelow's power and interest grid: high on both is

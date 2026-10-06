@@ -134,7 +134,10 @@ Work this way, every time:
    reporting cycle of named periods, each by the month it ends. A
    success criterion that only says an output was delivered is that
    deliverable's acceptance, not a criterion. A risk's owner is a role,
-   never a person. Keep the
+   never a person. A stakeholder plan ports each party's stake and the
+   role that owns the relationship to the stakeholder map, naming the
+   work's own beneficiary groups as groups rather than again as
+   resources; its channels and timing are planning. Keep the
    document's own wording in the statement and cite it as the source;
    never add a kind, level or field Cartograph does not have, and when a
    thing fits no kind, say so to your person rather than forcing it.

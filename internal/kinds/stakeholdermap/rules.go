@@ -40,6 +40,8 @@ func Rules(doc map[string]any, _ kit.RuleContext) []kit.Problem {
 		}
 	}
 
+	// An entry names a resource or a beneficiary group, exactly one
+	// (TAXONOMY.md D42), and each is scored once.
 	entries, _ := spec["entries"].([]any)
 	seen := map[string]int{}
 	for i, e := range entries {
@@ -47,18 +49,36 @@ func Rules(doc map[string]any, _ kit.RuleContext) []kit.Problem {
 		if !ok {
 			continue
 		}
+		path := fmt.Sprintf("/spec/entries/%d", i)
 		resource, _ := em["resource"].(string)
-		if resource == "" {
+		group, _ := em["group"].(string)
+		switch {
+		case resource != "" && group != "":
+			problems = append(problems, kit.Problem{Path: path, Message: "an entry names a resource or a beneficiary group, not both"})
+			continue
+		case resource == "" && group == "":
+			problems = append(problems, kit.Problem{Path: path, Message: "an entry names the resource or the beneficiary group it scores"})
 			continue
 		}
-		if first, dup := seen[resource]; dup {
+		// The map holds no roles of its own, so its owner is a catalogue
+		// role or an external one, never the local form.
+		if owner, ok := em["owner"].(map[string]any); ok {
+			if local, _ := owner["local"].(string); local != "" {
+				problems = append(problems, kit.Problem{Path: path + "/owner", Message: "name the owner from the Resource catalogue, or as an external role"})
+			}
+		}
+		field, key := "resource", "Resource/"+resource
+		if group != "" {
+			field, key = "group", "BeneficiaryGroup/"+group
+		}
+		if first, dup := seen[key]; dup {
 			problems = append(problems, kit.Problem{
-				Path:    fmt.Sprintf("/spec/entries/%d/resource", i),
-				Message: fmt.Sprintf("%q is already scored at index %d; one score per stakeholder", resource, first),
+				Path:    path + "/" + field,
+				Message: fmt.Sprintf("%q is already scored at index %d; one score per stakeholder", resource+group, first),
 			})
 			continue
 		}
-		seen[resource] = i
+		seen[key] = i
 	}
 	return problems
 }

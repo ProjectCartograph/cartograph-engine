@@ -69,3 +69,32 @@ func TestServiceChartersPrintRunningCosts(t *testing.T) {
 		}
 	}
 }
+
+// A stakeholder table names a beneficiary group as readily as a resource,
+// with its stake and the role that owns the relationship (TAXONOMY.md
+// D42).
+func TestStakeholdersShowGroupsStakesAndOwners(t *testing.T) {
+	ctx := context.Background()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	put := func(kind, id, y string) {
+		t.Helper()
+		if err := e.PutWorking(ctx, kind, id, []byte(y)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put("BeneficiaryGroup", "staff", "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: staff\n  name: Depot staff\nspec: {}\n")
+	put("Operation", "checks", "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: checks\n  name: Quality Check Service\nspec:\n  purpose: Check every delivery\n  team: t1\n")
+	put("StakeholderMap", "checks-map", "apiVersion: cartograph/v1\nkind: StakeholderMap\nmetadata:\n  id: checks-map\n  name: Map\nspec:\n  scope: {kind: Operation, id: checks}\n  entries:\n    - group: staff\n      stake: Wants intake no slower than today\n      owner: {external: Operations lead}\n")
+	html, err := OperationCharter(ctx, e, "checks")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Depot staff", "Wants intake no slower than today", "Operations lead", "Relationship owner"} {
+		if !strings.Contains(string(html), want) {
+			t.Errorf("the stakeholder table lacks %q", want)
+		}
+	}
+}

@@ -35,8 +35,27 @@
             "key": "resource",
             "fields": [
               {
+                "path": "/group",
+                "control": "reference",
+                "title": "Beneficiary group",
+                "hint": "The people the work is for, offered first."
+              },
+              {
                 "path": "/resource",
-                "control": "reference"
+                "control": "reference",
+                "hint": "Or a party, role or unit from the catalogue."
+              },
+              {
+                "path": "/stake",
+                "control": "sentence",
+                "title": "Their stake",
+                "hint": "What they care about in this work."
+              },
+              {
+                "path": "/owner",
+                "control": "reference",
+                "title": "Relationship owned by",
+                "hint": "The role that manages the relationship."
               },
               {
                 "path": "/tier",
@@ -62,6 +81,10 @@
             "key": "resource",
             "hint": "Leave a score blank until you know it.",
             "fields": [
+              {
+                "path": "/group",
+                "control": "readonly"
+              },
               {
                 "path": "/resource",
                 "control": "readonly"
