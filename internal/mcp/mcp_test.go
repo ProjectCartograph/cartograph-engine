@@ -456,3 +456,37 @@ func TestAnAgentDiscardsADraft(t *testing.T) {
 		t.Fatal("unsetting / was taken as an edit")
 	}
 }
+
+// What an agent drafts in its change set counts wherever it reads: a
+// manifest naming a drafted team validates, and a guide's plan does not
+// call a drafted cycle missing.
+func TestReadingToolsSeeTheChangeSetsDrafts(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	team := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t-new", "name": "New team"}, "spec": map[string]any{"description": "Drafted"}}
+	cycle := map[string]any{"apiVersion": "cartograph/v1", "kind": "ReportingCycle", "metadata": map[string]any{"id": "quarterly", "name": "Quarterly"}, "spec": map[string]any{"periodMonths": 3, "startMonth": 1}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t-new", "manifest": team})
+	callTool(t, cs, "save_draft", map[string]any{"kind": "ReportingCycle", "id": "quarterly", "manifest": cycle})
+	source := map[string]any{"apiVersion": "cartograph/v1", "kind": "DataSource", "metadata": map[string]any{"id": "d-new", "name": "New source"}, "spec": map[string]any{"category": "database", "team": "t-new"}}
+	res, text := callTool(t, cs, "validate", map[string]any{"kind": "DataSource", "id": "d-new", "manifest": source})
+	if res.IsError || strings.Contains(text, "does not exist") {
+		t.Fatalf("validate does not see the drafted team: %s", text)
+	}
+	res, text = callTool(t, cs, "guide", map[string]any{"kind": "KPI"})
+	if res.IsError {
+		t.Fatal(text)
+	}
+	var g struct {
+		Plan []struct {
+			Kind    string `json:"kind"`
+			Missing bool   `json:"missing"`
+		} `json:"plan"`
+	}
+	if err := json.Unmarshal([]byte(text), &g); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range g.Plan {
+		if p.Kind == "ReportingCycle" && p.Missing {
+			t.Fatalf("the guide calls the drafted cycle missing: %s", text)
+		}
+	}
+}

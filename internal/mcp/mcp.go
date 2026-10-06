@@ -386,6 +386,16 @@ func (c call) inChangeSet(id string, open bool) (store.ChangeSet, call, bool, er
 	return cs, c, true, nil
 }
 
+// reading joins the change set the agent works in, where it has one, so a
+// tool that only reads (validate, guide, relevant, match) sees its drafts
+// as saved, as the tools that write do.
+func (c call) reading(set string) call {
+	if _, in, found, err := c.inChangeSet(set, false); err == nil && found {
+		return in
+	}
+	return c
+}
+
 // proposeChangeSet proposes the change set, and announces it.
 func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[string]map[string]string) (any, error) {
 	e := c.o.Engine
@@ -672,6 +682,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 		"what each field must say with right and wrong examples, the checks each answers and how to meet them, the links to make on other kinds, " +
 		"and the organisation's existing records to reuse for each reference and link.", Annotations: readOnly},
 		func(c call, in guideIn) (any, error) {
+			c = c.reading("")
 			g, err := e.Guide(c.ctx, in.Kind, in.Level, in.Locale)
 			if err != nil {
 				return nil, err
@@ -759,6 +770,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 	tool(s, o, person, &sdk.Tool{Name: "match", Description: "Before defining anything, the existing records of a kind that already say what it would say, most likely first: " +
 		"judged by Cartograph's decision model where one is configured, else by the words they share (by says which). Work on a match instead of defining another.", Annotations: readOnly},
 		func(c call, in matchIn) (any, error) {
+			c = c.reading("")
 			return map[string]any{"matches": e.MatchExisting(c.ctx, in.Kind, in.Level, in.Text)}, nil
 		})
 
@@ -772,6 +784,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 		"ranked by the decision model where one answers, else by shared words (available says which). Call it with what the work is about before choosing what a draft names, " +
 		"and offer its shortlist first. It ranks; it never decides: your person still chooses, and anything else in the register remains a choice.", Annotations: readOnly},
 		func(c call, in relevantIn) (any, error) {
+			c = c.reading("")
 			return e.Relevant(c.ctx, in.Text, in.Kinds, in.Level, 0)
 		})
 
@@ -798,6 +811,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 
 	tool(s, o, person, &sdk.Tool{Name: "validate", Description: "Check a manifest against its schema and rules without saving anything.", Annotations: readOnly},
 		func(c call, in manifestIn) (any, error) {
+			c = c.reading(in.ChangeSet)
 			text, err := e.Codec().Encode(in.Manifest)
 			if err != nil {
 				return nil, err

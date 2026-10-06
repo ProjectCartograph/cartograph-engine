@@ -697,7 +697,10 @@ func (e *Engine) InChangeSet(ctx context.Context, set string) (context.Context, 
 	for _, it := range items {
 		texts[it.Kind+"/"+it.ID] = it.Text
 	}
-	return context.WithValue(ctx, changeSetKey{}, texts), nil
+	// The drafts parsed too, so whatever reads the record on this context
+	// (a lookup, a check, a guide's plan, relevance) reads them as if
+	// saved.
+	return e.withInPlay(context.WithValue(ctx, changeSetKey{}, texts)), nil
 }
 
 // inPlay is a manifest's text in the change set on ctx, if it has one.

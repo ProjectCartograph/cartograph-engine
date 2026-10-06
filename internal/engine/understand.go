@@ -564,6 +564,8 @@ func (e *Engine) Relevant(ctx context.Context, text string, kinds []string, leve
 		pool = append(pool, e.matchCandidates(ctx, k, lv, text, perKind)...)
 	}
 	if len(pool) == 0 {
+		// Nothing to rank: the model is as available as it says it is.
+		out.Available = e.DecisionModel(ctx).Ready
 		return out, nil
 	}
 	qs := make(map[string]decide.Question, len(pool))
