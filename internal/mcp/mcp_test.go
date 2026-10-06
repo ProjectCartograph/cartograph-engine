@@ -526,3 +526,19 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 		t.Fatalf("the proposal's waivers: %+v", sets)
 	}
 }
+
+// taxonomy says where each part of a document goes, and what stays out,
+// so an agent porting a charter has nothing to judge that the discipline
+// has settled.
+func TestTheTaxonomySaysWhereEachPartOfADocumentGoes(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	res, text := callTool(t, cs, "taxonomy", map[string]any{})
+	if res.IsError {
+		t.Fatal(text)
+	}
+	for _, want := range []string{`"porting":[`, "Workstreams under one sponsor", "Not ported", "governanceBody", "A measure taken once"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("the porting map lacks %q", want)
+		}
+	}
+}

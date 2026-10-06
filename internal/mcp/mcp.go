@@ -108,9 +108,10 @@ Work this way, every time:
    status running, recorded as it stands, whatever else exists; a new
    one is an Operation with status planned, written before the project
    that sets it up, which names it as where it lands. Work that ends:
-   one accountable person and one budget make one Project, and a part
-   under the same person and budget is a component of it (partOf); work
-   that needs its own person or budget is a Project of its own. Projects
+   one sponsor and one budget make one Project, and a part under the
+   same sponsor and budget is a component of it (partOf), even with a
+   lead of its own; work that needs its own sponsor or budget is a
+   Project of its own. Projects
    that each need the others to bring about one change, with a theory of
    change linking what they deliver to that change, are a Programme
    (it may hold sub-programmes). Projects and programmes grouped to
@@ -125,26 +126,10 @@ Work this way, every time:
    different plans. Call taxonomy, and record each thing a document says
    as the Cartograph kind and level it is by definition, whatever the
    document calls it: a plan's "priority" may be a goal, its "objective"
-   an outcome, its "target" a KPI's target, its "problem" a gap, and a
-   milestone that names work a task under the deliverable it produces,
-   without its date (a milestone that is only a date is the planning
-   tool's, not Cartograph's), and a service's recurrent costs funding
-   lines on the operation, per month or year, never on the project
-   that sets it up, and reporting "termly" or "per survey wave" a
-   reporting cycle of named periods, each by the month it ends. A
-   success criterion that only says an output was delivered is that
-   deliverable's acceptance, not a criterion. A risk's owner is a role,
-   never a person. A stakeholder plan ports each party's stake and the
-   role that owns the relationship to the stakeholder map, naming the
-   work's own beneficiary groups as groups rather than again as
-   resources; its channels and timing are planning. A committee or
-   board that decides is a governance body: a Resource named once and
-   referenced as a mandate's issuer, as who confirms success and as
-   whom a risk escalates to, never typed as text; only a body outside
-   the workspace, such as a government, stays as text. An uncosted or
-   unfunded requirement is an issue on the work's risks, escalated to
-   whoever decides funding, until it is costed; then it is a funding
-   line. Keep the
+   an outcome, its "target" a KPI's target, its "problem" a gap.
+   taxonomy's porting map says, part by part, where each part of a
+   charter or plan goes and what stays out; follow it rather than
+   judging. Keep the
    document's own wording in the statement and cite it as the source;
    never add a kind, level or field Cartograph does not have, and when a
    thing fits no kind, say so to your person rather than forcing it.
@@ -917,7 +902,8 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, err
 			}
 			return map[string]any{"kinds": t, "rule": "Map by what a thing is, against each summary and the guide's definition, never by the word a document uses. " +
-				"Record it as Cartograph's kind and level, keep the document's wording in its statement, and cite the document as its source."}, nil
+				"Record it as Cartograph's kind and level, keep the document's wording in its statement, and cite the document as its source. " +
+				"porting says where each part of a charter or plan goes, and what stays out.", "porting": porting}, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "next", Description: "What to do next, in the order of work: the record is a directed acyclic graph, written from the top down " +
