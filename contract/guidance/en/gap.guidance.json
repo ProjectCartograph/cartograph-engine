@@ -89,6 +89,12 @@
         }
       ]
     },
+    "/spec/affects": {
+      "guide": "The groups of people this shortfall falls on. A problem that cites this gap names its groups from these, so the two always describe the same people.",
+      "good": [
+        "member-growers, for the gap Faults are found after dispatch"
+      ]
+    },
     "/spec/outcomes": {
       "guide": "The outcome or outcomes that would be true once this gap is closed: where the desired state is reached. Outcome-level goals only. This is how the gap connects to the strategy above it; one outcome can close several gaps. When no outcome fits, define it first under its objective.",
       "good": [

@@ -6,6 +6,7 @@ metadata:
 spec:
   current: Each depot checks against its own checklist.
   desired: Every depot checks against one published standard.
+  affects: [depot-staff]
   outcomes: [depot-staff-apply-the-standard-alike]
   statement: Each depot keeps its own checklist and none of them agree.
   source: Quality review of the 2025 spring season, section 4

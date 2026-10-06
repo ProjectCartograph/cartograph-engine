@@ -55,6 +55,14 @@
           "x-cartograph-ref": "KPI",
           "description": "The KPI whose baseline and target already are this gap's two states. A gap is the distance between where we are and where we should be, and Cartograph holds both on the KPI, so a measured gap references it rather than restating a pair of numbers that could then disagree with the measure they came from. Optional: most findings are not instrumented, and a gap without one is an observation, which a check says rather than a schema refusing it and inviting an invented number."
         },
+        "affects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "BeneficiaryGroup"
+          },
+          "description": "The beneficiary groups this shortfall falls on. A problem that cites the gap names groups among these, and a gap it cites affects one of its groups (TAXONOMY.md D45)."
+        },
         "segments": {
           "type": "array",
           "items": {

@@ -254,6 +254,20 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 		}
 	}
 
+	// A problem and the gaps it cites must be about the same people
+	// (D45): every group it names is affected by a gap it cites, and every
+	// gap it cites affects one of its groups.
+	if broken, unknown, err := e.problemGapBreaks(ctx, problems); err != nil {
+		return pc, err
+	} else if len(broken) > 0 {
+		c.add("problem-groups-match-gaps", "aim", phaseInitiation, checkBlock, strings.Join(broken, " "))
+	} else if len(unknown) > 0 {
+		c.add("problem-groups-match-gaps", "aim", phaseInitiation, checkWarn,
+			"Say who "+englishList(unknown)+" affects, so the problem's groups can be checked against it.")
+	} else if cited(problems) {
+		c.add("problem-groups-match-gaps", "aim", phaseInitiation, checkOK, "Each problem's groups and gaps are about the same people.")
+	}
+
 	// scope
 	scopeIn, _ := summary["scopeIn"].([]any)
 	if len(scopeIn) > 0 {
@@ -1334,7 +1348,7 @@ func unownedMessage(n int) string {
 // beside the checks, and a test holds it to every check added as
 // checkBlock.
 var blockingChecks = map[string]bool{
-	"aim-problem-change": true, "components-parent": true, "data-personal-data": true, "data-sink": true,
+	"aim-problem-change": true, "problem-groups-match-gaps": true, "components-parent": true, "data-personal-data": true, "data-sink": true,
 	"deliverables-count": true, "closing-criteria": true, "landing-criteria": true, "success-criteria": true,
 	"success-measured": true, "goals-aligned": true, "goals-functional-level": true, "goals-key-results-baseline": true,
 	"goals-key-results-count": true, "goals-key-results-source": true, "goals-key-results-target": true,
@@ -1379,4 +1393,106 @@ func hasHave(n int) string {
 		return "has"
 	}
 	return "have"
+}
+
+// cited reports whether any problem cites a gap.
+func cited(problems []any) bool {
+	for _, p := range problems {
+		pm, _ := p.(map[string]any)
+		if gs, _ := pm["gaps"].([]any); len(gs) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// problemGapBreaks reads each problem against the gaps it cites (D45):
+// sentences for every group no cited gap affects and every cited gap that
+// affects none of the problem's groups, and the names of cited gaps that
+// say nothing about whom they affect.
+func (e *Engine) problemGapBreaks(ctx context.Context, problems []any) (broken, unknown []string, err error) {
+	seenUnknown := map[string]bool{}
+	for _, p := range problems {
+		pm, ok := p.(map[string]any)
+		if !ok {
+			continue
+		}
+		var groups []string
+		gs, _ := pm["groups"].([]any)
+		for _, g := range gs {
+			if id, ok := g.(string); ok && id != "" {
+				groups = append(groups, id)
+			}
+		}
+		cites, _ := pm["gaps"].([]any)
+		if len(cites) == 0 || len(groups) == 0 {
+			continue
+		}
+		affected := map[string]bool{}
+		known := false
+		for _, c := range cites {
+			// A citation is a gap's id, or the id with the segments it
+			// covers.
+			gapID, _ := c.(string)
+			if cm, ok := c.(map[string]any); ok {
+				gapID, _ = cm["gap"].(string)
+			}
+			if gapID == "" {
+				continue
+			}
+			doc, found, err := e.currentDoc(ctx, "Gap", gapID)
+			if err != nil {
+				return nil, nil, err
+			}
+			if !found {
+				continue
+			}
+			gapName := nameOf(doc, gapID)
+			spec, _ := doc["spec"].(map[string]any)
+			affects, _ := spec["affects"].([]any)
+			if len(affects) == 0 {
+				if !seenUnknown[gapID] {
+					seenUnknown[gapID] = true
+					unknown = append(unknown, gapName)
+				}
+				continue
+			}
+			known = true
+			touches := false
+			for _, a := range affects {
+				id, _ := a.(string)
+				affected[id] = true
+				for _, g := range groups {
+					if g == id {
+						touches = true
+					}
+				}
+			}
+			if !touches {
+				broken = append(broken, "The gap "+gapName+" affects none of the groups its problem names.")
+			}
+		}
+		if !known {
+			continue
+		}
+		var outside []string
+		for _, g := range groups {
+			if !affected[g] {
+				outside = append(outside, e.nameOrID(ctx, "BeneficiaryGroup", g))
+			}
+		}
+		if len(outside) > 0 {
+			broken = append(broken, "No gap this problem cites affects "+englishList(outside)+".")
+		}
+	}
+	return broken, unknown, nil
+}
+
+// nameOrID is the name of kind/id as a check reads it, or the id.
+func (e *Engine) nameOrID(ctx context.Context, kind, id string) string {
+	doc, found, err := e.currentDoc(ctx, kind, id)
+	if err != nil || !found {
+		return id
+	}
+	return nameOf(doc, id)
 }

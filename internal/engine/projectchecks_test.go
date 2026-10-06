@@ -794,3 +794,46 @@ func TestProjectChecksDataSink(t *testing.T) {
 		t.Fatal("expected the old produces shape to be refused")
 	}
 }
+
+// A problem and the gaps it cites are about the same people (D45): a group
+// no cited gap affects, or a gap that affects none of the problem's
+// groups, blocks; the example agrees with itself.
+func TestAProblemAgreesWithItsGaps(t *testing.T) {
+	t.Parallel()
+	e := newTestEngine(t)
+	ctx := actingAs(ada)
+	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	if checks, err := e.ProjectChecks(ctx, "quality-check-rollout", false); err == nil {
+		for _, it := range checks.Items {
+			if it.ID == "problem-groups-match-gaps" && it.State != "ok" {
+				t.Fatalf("the example breaks its own problem: %s", it.Message)
+			}
+		}
+	}
+	// The example's first problem, said about a group its gap does not
+	// fall on.
+	v, err := e.Get(ctx, "Project", "quality-check-rollout")
+	if err != nil {
+		t.Fatal(err)
+	}
+	y := strings.Replace(string(v.YAML), "          - delivering-members\n          - retail-partners\n", "          - seasonal-workers\n", 1)
+	if y == string(v.YAML) {
+		t.Fatal("the example's groups moved; update this test")
+	}
+	mustCommit(t, e, "Project", "quality-check-rollout", "p1", y)
+	checks, err := e.ProjectChecks(ctx, "quality-check-rollout", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range checks.Items {
+		if it.ID == "problem-groups-match-gaps" {
+			if it.State != "block" || !strings.Contains(it.Message, "affects none of the groups") {
+				t.Fatalf("a mismatch reads %s: %s", it.State, it.Message)
+			}
+			return
+		}
+	}
+	t.Fatal("no check on the problem's groups and gaps")
+}

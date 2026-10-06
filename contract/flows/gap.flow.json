@@ -48,6 +48,11 @@
             ]
           },
           {
+            "path": "/spec/affects",
+            "control": "references",
+            "hint": "The groups of people this shortfall falls on."
+          },
+          {
             "path": "/spec/outcomes",
             "control": "references",
             "hint": "The outcome that would be true once this gap is closed.",

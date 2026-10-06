@@ -6,6 +6,7 @@ metadata:
 spec:
   current: One fault in five is found at intake; buyers find the rest.
   desired: Most faults are found at intake, before produce leaves the depot.
+  affects: [delivering-members, retail-partners]
   outcomes: [faults-found-before-dispatch]
   statement: Four in five quality faults are found by a buyer rather than at intake.
   source: Quality review of the 2025 spring season, section 2

@@ -116,8 +116,8 @@
               {
                 "path": "/problem/cause",
                 "control": "sentence",
-                "title": "Cause",
-                "hint": "The main reason. If it were fixed, the problem would go away."
+                "title": "Potential cause",
+                "hint": "What you think lies behind the problem."
               },
               {
                 "path": "/change/what",

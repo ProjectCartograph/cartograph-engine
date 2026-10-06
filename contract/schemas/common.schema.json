@@ -512,7 +512,7 @@
         "cause": {
           "type": "string",
           "maxLength": 600,
-          "description": "The one thing behind it: \"checks happen after dispatch, when the produce has already left\". Optional, since a situation nobody has traced to a cause is still a situation."
+          "description": "The potential cause: what the person believes lies behind it, to be tested rather than proved (TAXONOMY.md D45): \"checks happen after dispatch, when the produce has already left\". Optional."
         }
       }
     },

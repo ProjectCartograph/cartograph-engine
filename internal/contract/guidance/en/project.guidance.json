@@ -99,7 +99,7 @@
       ]
     },
     "/spec/summary/problems/-/problem/cause": {
-      "guide": "The one thing behind the situation: if it were fixed, the problem would go away.",
+      "guide": "What you think lies behind the problem. It is a potential cause, to be tested, not a proven one.",
       "good": [
         "checks happen after dispatch and the produce has already left the depot",
         "each depot keeps its own checklist and none of them agree"

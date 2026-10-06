@@ -1325,3 +1325,30 @@ their `escalationRoute`, the bodies and roles a matter goes up through,
 nearest first; a body on it is listed among what it receives (D43). A
 data source's refresh may be `termly`. A body that only receives
 reports or notes changes is not on the route: reporting is planning.
+
+### D45. A gap names who it affects, and a problem agrees with its gaps. *(resolved)*
+
+**The problem.** A problem names the beneficiary groups that feel it and
+cites the gaps it answers, but a gap said nothing about people: only the
+slices its evidence covers. So a problem could name groups no gap it
+cites touches, or cite a gap about someone else entirely, and nothing
+could tell. That is a contradiction in the charter, not a matter of
+taste: if the shortfall is the depots', the people the project serves
+must be among those it falls on. A problem's cause also read as settled
+fact, when establishing cause belongs to a theory of change, not to a
+project definition.
+
+**What Cartograph does.** A gap may name the beneficiary groups it
+`affects`. A problem's groups and its gaps must agree both ways: every
+group the problem names is affected by at least one gap it cites, and
+every gap it cites affects at least one of its groups. A break is a
+blocking check on the problem (`problem-groups-match-gaps`), shown where
+the problem is written and holding the handoff. Where a gap names no
+groups yet, the check asks for them on the gap rather than guessing. A
+problem's `cause` is shown and described as its potential cause: what
+the person believes lies behind it, to be tested, not proved. The field
+keeps its name, so saved definitions read as before.
+
+**Not adopted.** Deriving a problem's groups from its gaps and storing
+none: a project may serve some of the people a gap falls on and not
+others, and saying which is the problem's to say.
