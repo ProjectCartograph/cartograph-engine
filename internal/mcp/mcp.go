@@ -1193,6 +1193,14 @@ func withSet(c call, out map[string]any, set, kind, id string) (map[string]any, 
 	if len(left) > 0 {
 		out["leftForYourPerson"] = left
 	}
+	if unnamed, err := c.o.Engine.UnnamedInChangeSet(c.ctx, set); err == nil && len(unnamed) > 0 {
+		names := make([]string, len(unnamed))
+		for i, u := range unnamed {
+			names[i] = u.Kind + "/" + u.ID
+		}
+		out["namedByNothing"] = names
+		out["namedByNothingNext"] = "Nothing names these drafts: name each where it belongs (a role in resources, a body on the escalation route, a source a KPI reads), or discard_draft it."
+	}
 	if len(elsewhere) > 0 {
 		out["setNext"] = fmt.Sprintf("%d check%s still open on other drafts in this change set (openInChangeSet). "+
 			"propose refuses until each is met, or waived with a reason your person can read.", len(elsewhere), map[bool]string{true: " is", false: "s are"}[len(elsewhere) == 1])

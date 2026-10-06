@@ -41,6 +41,7 @@ var porting = []portingRule{
 	{"Committees and boards that decide", "Resource, category governanceBody", "Referenced as a mandate's issuer, who confirms success, whom a risk escalates to, and on the escalation route; never typed as text."},
 	{"An escalation route", "Project.escalationRoute (or Programme's)", "The bodies a matter goes up through, nearest first. A body that only receives reports or notes changes is not on it."},
 	{"Owners named as units", "A role or unit Resource", "Where a field asks who (an owner, a verifier, who confirms), name the role that answers; a unit that answers as a whole as its orgUnit Resource; several units: the one that leads, the others in the note. Never a team, never a person."},
+	{"Roles and bodies a definition names", "Resource, defined before the goal, project, programme or KPI that names them", "A project's own positions then go in its resources, each pointing at its Resource; every Resource declared should be named somewhere (checks lists those nothing names)."},
 	{"Names and acronyms", "As the document writes them", "Never expand an acronym from outside knowledge; the person can."},
 	// Risk.
 	{"Risks", "Risks of type risk, with impact, likelihood, mitigation and owner", ""},

@@ -542,3 +542,13 @@ func TestTheTaxonomySaysWhereEachPartOfADocumentGoes(t *testing.T) {
 		}
 	}
 }
+
+// A register draft nothing names is pointed out before propose.
+func TestChecksListDraftsNothingNames(t *testing.T) {
+	_, _, cs := setup(t, nil)
+	team := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t-lonely", "name": "Lonely team"}, "spec": map[string]any{"description": "Named by nothing"}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t-lonely", "manifest": team})
+	if res, text := callTool(t, cs, "checks", map[string]any{}); res.IsError || !strings.Contains(text, `"namedByNothing":["Team/t-lonely"]`) {
+		t.Fatalf("an unnamed draft is not pointed out: %s", text)
+	}
+}

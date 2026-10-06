@@ -333,6 +333,42 @@ func (e *Engine) RetitleChangeSet(ctx context.Context, id, title, description st
 	return cs, s.PutChangeSet(ctx, cs)
 }
 
+// registerKinds are the registers a definition names from: a draft of one
+// that nothing names was declared for nothing.
+var registerKinds = map[string]bool{
+	"Team": true, "Resource": true, "Unit": true, "ReportingCycle": true, "Segment": true,
+	"DataSource": true, "FundingSource": true, "BeneficiaryGroup": true, "Assumption": true,
+}
+
+// UnnamedInChangeSet lists the register drafts in a change set that no
+// record and no other draft names: declared, as a document listed them,
+// and then never used. Not wrong in itself, but worth a look before
+// proposing: either something should name it, or it should not be there.
+func (e *Engine) UnnamedInChangeSet(ctx context.Context, set string) ([]Ref, error) {
+	s, err := e.changeSetStore()
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.ListChangeItems(ctx, set)
+	if err != nil {
+		return nil, err
+	}
+	var out []Ref
+	for _, it := range items {
+		if !it.Included || !registerKinds[it.Kind] {
+			continue
+		}
+		refs, err := e.referencing(ctx, it.Kind, it.ID)
+		if err != nil {
+			return nil, err
+		}
+		if len(refs) == 0 {
+			out = append(out, Ref{Kind: it.Kind, ID: it.ID})
+		}
+	}
+	return out, nil
+}
+
 // LeaveOpen records that a check on a draft is left for the person the
 // change set is for, with the reason they will read: something only they
 // can settle (a figure no document gives, a score nobody has made). The
