@@ -161,6 +161,24 @@ func (e *Engine) GetMany(ctx context.Context, kind string, ids []string) ([]Vers
 			}
 		}
 	}
+	// Read as the change set on ctx would leave them, as Get reads one
+	// (docs/adr/0024): its drafts over the saved versions, and the
+	// records it creates.
+	at := make(map[string]int, len(out))
+	for i, v := range out {
+		at[v.ID] = i
+	}
+	for _, id := range ids {
+		text, ok := inPlay(ctx, kind, id)
+		if !ok {
+			continue
+		}
+		if i, seen := at[id]; seen {
+			out[i].YAML = text
+		} else {
+			out = append(out, Version{Kind: kind, ID: id, YAML: text})
+		}
+	}
 	for i := range out {
 		out[i].YAML = e.normalizeLegacy(kind, out[i].YAML)
 	}

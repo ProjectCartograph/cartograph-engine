@@ -50,6 +50,13 @@ func TestTheWorkspaceReadsAsIfAChangeSetWereAccepted(t *testing.T) {
 	if !strings.Contains(list, `"name":"Grading team"`) || !strings.Contains(list, `"proposed":"changed"`) || !strings.Contains(list, `"proposed":"new"`) {
 		t.Fatalf("the list as proposed: %s", list)
 	}
+	// With each record's spec too: the drafts' specs, not the saved ones.
+	resp = doJSON(t, http.MethodGet, base+"/manifests/Team?expand=spec&changeSet="+set, nil, nil)
+	b, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if strings.Count(string(b), `"description":"Team"`) < 2 {
+		t.Fatalf("the list with specs as proposed: %s", b)
+	}
 	goal := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g-sound\n  name: Sound fruit\nspec:\n  level: goal\n  objective: Deliver sound fruit to every buyer\n"
 	resp = doJSON(t, http.MethodPut, base+"/changesets/"+set+"/items/Goal/g-sound", apigen.ChangeSetEdit{Yaml: goal}, nil)
 	resp.Body.Close()
