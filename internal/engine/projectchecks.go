@@ -320,8 +320,12 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	}
 
 	// timeline
+	// A component runs within its parent's schedule (TAXONOMY.md D15)
+	// unless it states one of its own.
 	if haveTimeline && start != "" && len(phases) > 0 {
 		c.add("timeline-start-phases", "timeline", phaseInitiation, checkOK, "A start month and at least one phase are set.")
+	} else if isComponent && start == "" && len(phases) == 0 {
+		c.add("timeline-start-phases", "timeline", phaseInitiation, checkOK, "Runs within the schedule of the project it is part of.")
 	} else {
 		c.add("timeline-start-phases", "timeline", phaseInitiation, checkBlock, "A start month and at least one phase are both needed.")
 	}
@@ -387,7 +391,12 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 			fmt.Sprintf("%d compliance line%s kept apart from the success criteria: record each as a criterion of compliance.", len(lines), plural(len(lines))),
 			phaseInitiation, "success")
 	}
-	if len(criteria) == 0 {
+	if len(criteria) == 0 && isComponent {
+		// A component is judged by its parent's criteria (TAXONOMY.md D15);
+		// it states its own only where it has them.
+		c.addFix("success-criteria", "success", phaseInitiation, checkOK,
+			"Judged by the success criteria of the project it is part of.", phaseInitiation, "success")
+	} else if len(criteria) == 0 {
 		c.addFix("success-criteria", "success", phaseInitiation, checkBlock,
 			"No success criterion yet.", phaseInitiation, "success")
 	} else {
@@ -466,6 +475,9 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	// it advises, and never blocks a handoff it did not block before.
 	operation, _ := spec["operation"].(string)
 	switch status := e.operationStatus(ctx, operation); {
+	case strings.TrimSpace(operation) == "" && isComponent:
+		// A component lands with its parent, in the parent's service.
+		c.add("landing-operation", "landing", phaseLanding, checkOK, "Lands with the project it is part of.")
 	case strings.TrimSpace(operation) == "":
 		c.add("landing-operation", "landing", phaseLanding, checkBlock, "No operation is named yet.")
 	case operation == "new":
@@ -480,7 +492,9 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	// A planned service is paid for once the project closes, from budgets
 	// the service names (TAXONOMY.md D39). Asked of the project that sets
 	// it up, because that is where the question is answered in time.
-	if e.operationStatus(ctx, operation) == "planned" {
+	// Asked of the project that sets the service up, never of each of its
+	// components as well: the question is the parent's.
+	if e.operationStatus(ctx, operation) == "planned" && !isComponent {
 		if e.operationFunded(ctx, operation) {
 			c.add("landing-service-funding", "landing", phaseLanding, checkOK, "The service names what pays to run it.")
 		} else {
@@ -501,6 +515,8 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	}
 	if len(resourcesWithRole(spec, "serviceOwner")) > 0 {
 		c.addFix("landing-owner", "landing", phaseLanding, checkOK, "A service owner is named to accept the handover.", phaseInitiation, "resources")
+	} else if isComponent {
+		c.addFix("landing-owner", "landing", phaseLanding, checkOK, "Handed over with the project it is part of.", phaseInitiation, "resources")
 	} else {
 		c.addFix("landing-owner", "landing", phaseLanding, checkWarn, "No service owner named to accept the handover.", phaseInitiation, "resources")
 	}
