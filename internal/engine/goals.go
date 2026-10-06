@@ -63,19 +63,20 @@ func (e *Engine) GetSettings(ctx context.Context) (Settings, error) {
 	return out, nil
 }
 
-// statedPurpose reads the Purpose manifest, its draft where there is one.
+// statedPurpose reads the Purpose manifest, its draft where one is being
+// checked with the work on ctx (a change set's, a proposal's), so a goal
+// drafted beside the purpose is judged against it.
 func (e *Engine) statedPurpose(ctx context.Context) (*Purpose, bool, error) {
-	v, found, err := e.manifests.GetCurrent(ctx, "Purpose", "default")
+	doc, found, err := e.currentDoc(ctx, "Purpose", "default")
 	if err != nil || !found {
 		return nil, false, err
 	}
-	var doc struct {
-		Spec Purpose `yaml:"spec"`
+	spec, _ := doc["spec"].(map[string]any)
+	text := func(k string) string {
+		s, _ := spec[k].(string)
+		return s
 	}
-	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
-		return nil, false, fmt.Errorf("parse purpose: %w", err)
-	}
-	return &doc.Spec, true, nil
+	return &Purpose{Organisation: text("organisation"), Vision: text("vision"), Mission: text("mission"), Source: text("source")}, true, nil
 }
 
 func (e *Engine) settingsOnly(ctx context.Context) (Settings, error) {

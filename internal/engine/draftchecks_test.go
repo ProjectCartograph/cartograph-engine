@@ -66,3 +66,32 @@ func TestChecksReadTheDraftsInTheirChangeSet(t *testing.T) {
 		t.Errorf("a drafted gap a drafted project works on: %+v", c)
 	}
 }
+
+// A goal drafted beside the purpose is judged relevant against it, not
+// told there is no vision or mission to judge it by.
+func TestAGoalIsJudgedAgainstADraftedPurpose(t *testing.T) {
+	e := seededEngine(t)
+	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
+	for _, d := range []struct{ kind, id, text string }{
+		{"Purpose", "default", "apiVersion: cartograph/v1\nkind: Purpose\nmetadata:\n  id: default\n  name: Purpose\nspec:\n  vision: Every member's produce reaches a buyer sound\n"},
+		{"Goal", "goal-new", "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: goal-new\n  name: Sound produce\nspec:\n  level: goal\n  statement: Sound produce\n"},
+	} {
+		if err := e.SaveInChangeSet(agent, "", d.kind, d.id, []byte(d.text)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cs, _ := e.WorkingChangeSet(agent, "")
+	ctx, err := e.InChangeSet(agent, cs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checks, err := e.DraftChecks(ctx, "Goal", "goal-new")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range checks {
+		if c.ID == "smart-relevant" && strings.Contains(c.Message, "no vision or mission") {
+			t.Fatalf("the drafted purpose was not read: %+v", c)
+		}
+	}
+}
