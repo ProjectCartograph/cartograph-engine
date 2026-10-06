@@ -186,7 +186,7 @@
   "checks": {
     "gap-states": "State both the current and the desired state, or choose the KPI whose baseline and target are them.",
     "gap-outcome": "Name the outcome that would be true once the gap is closed, defining it under its objective first if there is none.",
-    "gap-measured": "Choose the KPI that tracks this shortfall, or leave the gap as an observation until one exists.",
+    "gap-measured": "Choose the KPI that tracks this shortfall. Until one exists, state the current and desired states in words and name the source: the gap is then an observation, and this check is met.",
     "gap-source": "Name the document and section the finding was written down in.",
     "gap-segments": "Name the segments the evidence covers, as values rather than only their dimension.",
     "gap-covered": "Have the work that addresses this gap cite it and name the segments it reaches, so no segment is left with nobody and no citation hides one by claiming the whole.",

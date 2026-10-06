@@ -501,11 +501,11 @@ type (
 		Kind string `json:"kind" jsonschema:"a kind, such as Goal or Project"`
 	}
 	leaveIn struct {
-		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out"`
-		Kind      string `json:"kind"`
-		ID        string `json:"id"`
-		Check     string `json:"check,omitempty" jsonschema:"the check's id, as checks reports it"`
-		Reason    string `json:"reason" jsonschema:"what your person must supply or decide, in one line they can act on; empty takes it back"`
+		ChangeSet string      `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out"`
+		Kind      string      `json:"kind"`
+		ID        string      `json:"id"`
+		Check     string      `json:"check,omitempty" jsonschema:"the check's id, as checks reports it"`
+		Reason    string      `json:"reason" jsonschema:"what your person must supply or decide, in one line they can act on; empty takes it back"`
 		Also      []leaveItem `json:"also,omitempty" jsonschema:"more checks the same missing fact leaves open, on this draft or others, each {kind, id, check}: one reason for all of them"`
 	}
 	leaveItem struct {

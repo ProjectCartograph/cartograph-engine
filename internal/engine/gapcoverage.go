@@ -236,13 +236,20 @@ func (e *Engine) gapChecksOf(ctx context.Context, id string, doc map[string]any)
 	} else {
 		add("gap-outcome", "shortfall", programmeCheckWarn, "Not linked to an outcome yet.")
 	}
-	if measured {
+	source, _ := spec["source"].(string)
+	switch {
+	case measured:
 		add("gap-measured", "shortfall", programmeCheckOK, "An indicator tracks this gap.")
-	} else {
+	case text("current") && text("desired") && strings.TrimSpace(source) != "":
+		// Stated in words from a named source, the gap is an observation
+		// the guidance accepts until an indicator exists; asking for one
+		// would only make an agent leave the check open for its person.
+		add("gap-measured", "shortfall", programmeCheckOK, "Stated from its source; no indicator tracks it yet.")
+	default:
 		add("gap-measured", "shortfall", programmeCheckWarn, "No indicator tracks this gap yet.")
 	}
 
-	if source, _ := spec["source"].(string); strings.TrimSpace(source) != "" {
+	if strings.TrimSpace(source) != "" {
 		add("gap-source", "evidence", programmeCheckOK, "Source named.")
 	} else {
 		add("gap-source", "evidence", programmeCheckWarn, "No source yet.")

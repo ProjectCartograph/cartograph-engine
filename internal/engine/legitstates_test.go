@@ -75,3 +75,27 @@ func TestASchemaProblemNamesTheNearestFormInWords(t *testing.T) {
 		t.Fatalf("a year-only baseline: %+v", problems)
 	}
 }
+
+// A gap stated in words from a named source is an observation the
+// guidance accepts; without a source it still asks for an indicator.
+func TestAGapStatedFromItsSourceNeedsNoIndicator(t *testing.T) {
+	e := seededEngine(t)
+	measured := func(spec string) string {
+		cs, err := e.ChecksOf(context.Background(), "Gap", "seen", []byte("apiVersion: cartograph/v1\nkind: Gap\nmetadata:\n  id: seen\n  name: Seen\nspec:\n  statement: Something falls short\n  current: Half the lots are graded\n  desired: Every lot is graded\n"+spec))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range cs {
+			if c.ID == "gap-measured" {
+				return c.State
+			}
+		}
+		return ""
+	}
+	if s := measured("  source: The intake audit\n"); s != "ok" {
+		t.Errorf("a sourced observation: %s", s)
+	}
+	if s := measured(""); s != "warn" {
+		t.Errorf("an unsourced gap: %s", s)
+	}
+}
