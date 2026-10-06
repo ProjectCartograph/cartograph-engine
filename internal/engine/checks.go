@@ -137,7 +137,7 @@ func (e *Engine) gapsClosing(ctx context.Context, id string) ([]string, error) {
 			}
 		}
 	}
-	refs, err := e.manifests.ListReferencing(ctx, "Goal", id)
+	refs, err := e.referencing(ctx, "Goal", id)
 	if err != nil {
 		return nil, err
 	}

@@ -96,7 +96,7 @@ func (e *Engine) addServiceStatus(ctx context.Context, id string, spec map[strin
 		add("service-status", "service", programmeCheckOK, "Retired.")
 		return nil
 	}
-	naming, err := e.manifests.ListReferencing(ctx, "Operation", id)
+	naming, err := e.referencing(ctx, "Operation", id)
 	if err != nil {
 		return err
 	}

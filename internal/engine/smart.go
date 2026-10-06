@@ -147,12 +147,8 @@ type goalReader struct {
 func (e *Engine) storedGoals(ctx context.Context) goalReader {
 	return goalReader{
 		spec: func(id string) (map[string]any, bool) {
-			v, found, err := e.manifests.GetCurrent(ctx, "Goal", id)
+			doc, found, err := e.currentDoc(ctx, "Goal", id)
 			if err != nil || !found {
-				return nil, false
-			}
-			var doc map[string]any
-			if e.codec.DecodeInto(v.YAML, &doc) != nil {
 				return nil, false
 			}
 			sp, _ := doc["spec"].(map[string]any)
@@ -344,7 +340,7 @@ func (e *Engine) goalSmart(read goalReader, spec map[string]any, kpis []map[stri
 
 // alignedKPISpecs returns the spec of every indicator aligned to a goal.
 func (e *Engine) alignedKPISpecs(ctx context.Context, id string) ([]map[string]any, error) {
-	refs, err := e.manifests.ListReferencing(ctx, "Goal", id)
+	refs, err := e.referencing(ctx, "Goal", id)
 	if err != nil {
 		return nil, err
 	}
@@ -353,12 +349,8 @@ func (e *Engine) alignedKPISpecs(ctx context.Context, id string) ([]map[string]a
 		if r.Kind != "KPI" {
 			continue
 		}
-		v, found, err := e.manifests.GetCurrent(ctx, "KPI", r.ID)
+		doc, found, err := e.currentDoc(ctx, "KPI", r.ID)
 		if err != nil || !found {
-			continue
-		}
-		var doc map[string]any
-		if e.codec.DecodeInto(v.YAML, &doc) != nil {
 			continue
 		}
 		if sp, ok := doc["spec"].(map[string]any); ok {

@@ -549,20 +549,18 @@ func (e *Engine) alignedToOutcome(ctx context.Context, goals []any) (hasFunction
 		if !ok || id == "" {
 			continue
 		}
-		v, found, err := e.manifests.GetCurrent(ctx, "Goal", id)
+		doc, found, err := e.currentDoc(ctx, "Goal", id)
 		if err != nil {
 			return false, false, err
 		}
 		if !found {
 			continue
 		}
-		var doc goalDoc
-		if e.codec.DecodeInto(v.YAML, &doc) == nil {
-			if doc.Spec.Level == "outcome" {
-				hasFunctional = true
-			} else {
-				hasNonFunctional = true
-			}
+		spec, _ := doc["spec"].(map[string]any)
+		if level, _ := spec["level"].(string); level == "outcome" {
+			hasFunctional = true
+		} else {
+			hasNonFunctional = true
 		}
 	}
 	return
@@ -769,7 +767,7 @@ func (e *Engine) programmesWithoutSharedGoal(ctx context.Context, programmes []a
 		if !ok || id == "" {
 			continue
 		}
-		v, found, err := e.manifests.GetCurrent(ctx, "Programme", id)
+		m, found, err := e.currentDoc(ctx, "Programme", id)
 		if err != nil {
 			return nil, err
 		}
@@ -777,15 +775,17 @@ func (e *Engine) programmesWithoutSharedGoal(ctx context.Context, programmes []a
 			continue
 		}
 		var doc struct {
-			Metadata struct {
-				Name string `yaml:"name"`
-			} `yaml:"metadata"`
-			Spec struct {
-				Goals []string `yaml:"goals"`
-			} `yaml:"spec"`
+			Metadata struct{ Name string }
+			Spec     struct{ Goals []string }
 		}
-		if e.codec.DecodeInto(v.YAML, &doc) != nil {
-			continue
+		meta, _ := m["metadata"].(map[string]any)
+		doc.Metadata.Name, _ = meta["name"].(string)
+		spec, _ := m["spec"].(map[string]any)
+		goals, _ := spec["goals"].([]any)
+		for _, g := range goals {
+			if s, ok := g.(string); ok {
+				doc.Spec.Goals = append(doc.Spec.Goals, s)
+			}
 		}
 		// Shared when one of the project's goals is one of the programme's
 		// or beneath it: the programme may be judged at any level.
@@ -1246,12 +1246,8 @@ func (e *Engine) operationStatus(ctx context.Context, id string) string {
 	if id == "" || id == "new" {
 		return ""
 	}
-	v, found, err := e.manifests.GetCurrent(ctx, "Operation", id)
+	doc, found, err := e.currentDoc(ctx, "Operation", id)
 	if err != nil || !found {
-		return ""
-	}
-	var doc map[string]any
-	if e.codec.DecodeInto(v.YAML, &doc) != nil {
 		return ""
 	}
 	spec, _ := doc["spec"].(map[string]any)
@@ -1267,12 +1263,8 @@ func (e *Engine) operationFunded(ctx context.Context, id string) bool {
 	if id == "" || id == "new" {
 		return false
 	}
-	v, found, err := e.manifests.GetCurrent(ctx, "Operation", id)
+	doc, found, err := e.currentDoc(ctx, "Operation", id)
 	if err != nil || !found {
-		return false
-	}
-	var doc map[string]any
-	if e.codec.DecodeInto(v.YAML, &doc) != nil {
 		return false
 	}
 	spec, _ := doc["spec"].(map[string]any)
