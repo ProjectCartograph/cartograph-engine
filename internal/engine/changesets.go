@@ -86,7 +86,9 @@ func (e *Engine) WorkingChangeSet(ctx context.Context, id string) (store.ChangeS
 		if err != nil {
 			return store.ChangeSet{}, err
 		}
-		if !e.mayWorkIn(p, cs) {
+		// Live like every draft: any person may work in an open change
+		// set; an agent only in its own (docs/adr/0024).
+		if !e.mayWorkIn(p, cs) && !(p.Agent == "" && cs.Status == store.ChangeSetOpen) {
 			return store.ChangeSet{}, ErrNotTheirChangeSet
 		}
 		if cs.Status != store.ChangeSetOpen {
@@ -228,6 +230,9 @@ func (e *Engine) writeItem(ctx context.Context, set, kind, id string, change fun
 	it.Text, it.By, it.At = text, p.Actor(e.operator(ctx)), timeNow().UTC()
 	if err := s.PutChangeItem(ctx, it); err != nil {
 		return err
+	}
+	if e.shared != nil {
+		e.shared.reconcileItem(ctx, cs.ID, kind, id, text)
 	}
 	cs.Updated = it.At
 	return s.PutChangeSet(ctx, cs)

@@ -520,10 +520,13 @@ func (c *conn) open(ctx context.Context, docID string) (*peerDoc, error) {
 	if ok {
 		return pd, nil
 	}
-	kind, id, err := c.s.shared.ManifestFor(ctx, docID)
+	stored, id, err := c.s.shared.ManifestFor(ctx, docID)
 	if err != nil {
 		return nil, errUnavailable
 	}
+	// A change set's draft is asked about as its manifest, and written
+	// only by who may work in the change set (docs/adr/0024).
+	set, kind := engine.SetOf(stored)
 	read := auth.Action{Verb: auth.VerbRead, Kind: kind, ID: id}
 	write := auth.Action{Verb: auth.VerbWrite, Kind: kind, ID: id}
 	if engine.IsPresence(kind, id) {
@@ -544,7 +547,11 @@ func (c *conn) open(ctx context.Context, docID string) (*peerDoc, error) {
 	if err != nil {
 		return nil, err
 	}
-	pd = &peerDoc{state: st, canWrite: c.s.authz.Authorize(ctx, c.principal, write) == nil}
+	canWrite := c.s.authz.Authorize(ctx, c.principal, write) == nil
+	if set != "" && canWrite {
+		canWrite = c.s.shared.MayWorkInSet(auth.WithPrincipal(ctx, c.principal), set)
+	}
+	pd = &peerDoc{state: st, canWrite: canWrite}
 	c.mu.Lock()
 	c.docs[docID] = pd
 	c.mu.Unlock()

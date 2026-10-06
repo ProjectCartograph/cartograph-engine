@@ -55,6 +55,18 @@ Saving a version reads the draft. It does not reset it. The draft
 carries on across versions, so an edit made offline before a version
 was saved still merges after it.
 
+A *change set's draft* of a manifest (docs/adr/0024) is a third thing:
+an Automerge document of its own, one per change set and manifest,
+which everyone working in the change set edits at once. It is kept in
+the same document store under the kind `set/<change set>/<Kind>`, and
+the engine materialises it into the change set's item, not the working
+copy, so nothing reaches the record until the change set is rolled in.
+`GET /changesets/{set}/items/{kind}/{id}/document` names it; the sync
+socket asks the authorizer about the manifest it drafts, and lets a
+peer write only when it may work in the change set. An edit made to the
+item by other means (an agent's, a whole save) is folded into the
+document, as a changed working copy is into a shared draft.
+
 ## 3. The CRDT, and the standard patterns it uses
 
 An Automerge document is a JSON-like tree of maps, lists, text and

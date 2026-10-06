@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/api/gen"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
@@ -86,4 +87,24 @@ func (s *Server) GetSession(ctx context.Context, _ apigen.GetSessionRequestObjec
 // handler (cmd/cartograph).
 func (s *Server) Sync(_ context.Context, _ apigen.SyncRequestObject) (apigen.SyncResponseObject, error) {
 	return apigen.Sync426Response{}, nil
+}
+
+// GetChangeSetDocument names a change set's live draft of a manifest,
+// creating it on first use (docs/adr/0024).
+func (s *Server) GetChangeSetDocument(ctx context.Context, req apigen.GetChangeSetDocumentRequestObject) (apigen.GetChangeSetDocumentResponseObject, error) {
+	shared := s.Engine.Shared()
+	if shared == nil {
+		return nil, engine.ErrNoShared
+	}
+	docID, err := shared.DocumentInSet(ctx, req.Set, req.Kind, req.Id)
+	if errors.Is(err, engine.ErrUnknownKind) || errors.Is(err, engine.ErrNotFound) {
+		return apigen.GetChangeSetDocument404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+	}
+	if errors.Is(err, engine.ErrNotTheirChangeSet) {
+		return nil, fmt.Errorf("%w: %v", auth.ErrForbidden, err)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return apigen.GetChangeSetDocument200JSONResponse(sharedDocument(docID)), nil
 }

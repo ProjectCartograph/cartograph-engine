@@ -88,10 +88,13 @@ type Shared struct {
 type sharedDoc struct {
 	mu       sync.Mutex
 	kind, id string
-	doc      crdt.Doc
-	seq      int64 // the last chunk folded in
-	chunks   int   // chunks stored since the snapshot this replica last saw
-	used     uint64
+	// set is the change set this is a draft in; "" for a manifest's own
+	// shared draft (setdrafts.go).
+	set    string
+	doc    crdt.Doc
+	seq    int64 // the last chunk folded in
+	chunks int   // chunks stored since the snapshot this replica last saw
+	used   uint64
 }
 
 // defaultDocCache is how many documents a replica keeps when not told.
@@ -292,6 +295,7 @@ func (s *Shared) refresh(ctx context.Context, docID string, sd *sharedDoc) error
 		if err != nil {
 			return err
 		}
+		sd.set, kind = SetOf(kind)
 		sd.kind, sd.id, sd.doc, sd.chunks = kind, id, doc, len(chunks)
 		return s.fold(sd, chunks)
 	}
@@ -511,6 +515,9 @@ func (s *Shared) materialise(ctx context.Context, sd *sharedDoc) error {
 	text, err := s.e.codec.Encode(doc)
 	if err != nil {
 		return err
+	}
+	if sd.set != "" {
+		return s.e.putItemText(ctx, sd.set, sd.kind, sd.id, text)
 	}
 	return s.e.PutWorking(ctx, sd.kind, sd.id, text)
 }

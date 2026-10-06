@@ -1470,6 +1470,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/ChangeSet"
 
+  /changesets/{set}/items/{kind}/{id}/document:
+    get:
+      operationId: getChangeSetDocument
+      summary: A change set's live draft of a manifest, as an Automerge document id
+      description: >-
+        A change set's draft of a manifest is a shared document of its own
+        (docs/adr/0024), made on first use from the change set's item,
+        else from the record, which then starts the item. Everyone who may
+        work in the change set edits it together over the sync socket, and
+        each edit lands in the change set, never the working copy.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedDocument"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /changesets/{set}/items/{kind}/{id}/removal:
     put:
       operationId: removeInChangeSet

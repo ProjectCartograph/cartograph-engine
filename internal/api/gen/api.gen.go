@@ -2128,6 +2128,9 @@ type ServerInterface interface {
 	// PutChangeSetItem Keep a manifest's draft in a change set. With previous (the text the editor last had), only the fields that changed since are applied, so what someone else changed in other fields meanwhile is kept.
 	// (PUT /changesets/{set}/items/{kind}/{id})
 	PutChangeSetItem(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam)
+	// GetChangeSetDocument A change set's live draft of a manifest, as an Automerge document id
+	// (GET /changesets/{set}/items/{kind}/{id}/document)
+	GetChangeSetDocument(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam)
 	// RemoveInChangeSet Make the change set delete this record when it is rolled in (docs/adr/0024). The item starts from the record as it stands; rolling in deletes it after the change set's saves, refused then if something still references it. Dropping the item takes the delete back.
 	// (PUT /changesets/{set}/items/{kind}/{id}/removal)
 	RemoveInChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam)
@@ -2866,6 +2869,50 @@ func (siw *ServerInterfaceWrapper) PutChangeSetItem(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PutChangeSetItem(w, r, set, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetChangeSetDocument operation middleware
+func (siw *ServerInterfaceWrapper) GetChangeSetDocument(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetChangeSetDocument(w, r, set, kind, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4968,6 +5015,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/changesets", wrapper.StartChangeSet)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/changesets/{set}", wrapper.GetChangeSet)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/changesets/{set}", wrapper.RetitleChangeSet)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}/document", wrapper.GetChangeSetDocument)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}/removal", wrapper.RemoveInChangeSet)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/changesets/{set}/items/Project/{id}/state", wrapper.MoveInChangeSet)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}", wrapper.DropChangeSetItem)
@@ -6277,6 +6325,72 @@ func (response PutChangeSetItem422JSONResponse) VisitPutChangeSetItemResponse(w 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetDocumentRequestObject struct {
+	Set  ChangeSetParam `json:"set"`
+	Kind KindParam      `json:"kind"`
+	Id   IdParam        `json:"id"`
+}
+
+type GetChangeSetDocumentResponseObject interface {
+	VisitGetChangeSetDocumentResponse(w http.ResponseWriter) error
+}
+
+type GetChangeSetDocument200JSONResponse SharedDocument
+
+func (response GetChangeSetDocument200JSONResponse) VisitGetChangeSetDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetDocument401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetChangeSetDocument401JSONResponse) VisitGetChangeSetDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetDocument403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetChangeSetDocument403JSONResponse) VisitGetChangeSetDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetDocument404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetChangeSetDocument404JSONResponse) VisitGetChangeSetDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -10510,6 +10624,9 @@ type StrictServerInterface interface {
 	// PutChangeSetItem Keep a manifest's draft in a change set. With previous (the text the editor last had), only the fields that changed since are applied, so what someone else changed in other fields meanwhile is kept.
 	// (PUT /changesets/{set}/items/{kind}/{id})
 	PutChangeSetItem(ctx context.Context, request PutChangeSetItemRequestObject) (PutChangeSetItemResponseObject, error)
+	// GetChangeSetDocument A change set's live draft of a manifest, as an Automerge document id
+	// (GET /changesets/{set}/items/{kind}/{id}/document)
+	GetChangeSetDocument(ctx context.Context, request GetChangeSetDocumentRequestObject) (GetChangeSetDocumentResponseObject, error)
 	// RemoveInChangeSet Make the change set delete this record when it is rolled in (docs/adr/0024). The item starts from the record as it stands; rolling in deletes it after the change set's saves, refused then if something still references it. Dropping the item takes the delete back.
 	// (PUT /changesets/{set}/items/{kind}/{id}/removal)
 	RemoveInChangeSet(ctx context.Context, request RemoveInChangeSetRequestObject) (RemoveInChangeSetResponseObject, error)
@@ -11273,6 +11390,34 @@ func (sh *strictHandler) PutChangeSetItem(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PutChangeSetItemResponseObject); ok {
 		if err := validResponse.VisitPutChangeSetItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetChangeSetDocument operation middleware
+func (sh *strictHandler) GetChangeSetDocument(w http.ResponseWriter, r *http.Request, set ChangeSetParam, kind KindParam, id IdParam) {
+	var request GetChangeSetDocumentRequestObject
+
+	request.Set = set
+	request.Kind = kind
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetChangeSetDocument(ctx, request.(GetChangeSetDocumentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetChangeSetDocument")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetChangeSetDocumentResponseObject); ok {
+		if err := validResponse.VisitGetChangeSetDocumentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

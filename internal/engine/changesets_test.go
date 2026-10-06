@@ -52,9 +52,14 @@ func TestChangeSetsKeepWorkApartAndMergeWhole(t *testing.T) {
 	if v, _ := e.Get(seed, "Team", "t1"); !strings.Contains(string(v.YAML), "first\n") {
 		t.Fatalf("the record changed before anyone accepted: %s", v.YAML)
 	}
-	// Nobody else works in it.
-	if _, err := e.EditInChangeSet(actingAs(sam), mine.ID, "Team", "t1", map[string]any{"/spec/description": "x"}, nil); !errors.Is(err, engine.ErrNotTheirChangeSet) {
-		t.Fatalf("someone else edited it: %v", err)
+	// Another person's agent does not work in it; a person may join it
+	// while it is open, as on any draft (docs/adr/0024).
+	samsAgent := actingAs(identity.Principal{Subject: "sam@example.org", Email: "sam@example.org", Name: "Sam", Agent: "Claude", Grant: "g9"})
+	if _, err := e.EditInChangeSet(samsAgent, mine.ID, "Team", "t1", map[string]any{"/spec/description": "x"}, nil); !errors.Is(err, engine.ErrNotTheirChangeSet) {
+		t.Fatalf("another person's agent edited it: %v", err)
+	}
+	if _, err := e.EditInChangeSet(actingAs(sam), mine.ID, "Team", "t1", map[string]any{"/spec/description": "from the first agent, with Sam"}, nil); err != nil {
+		t.Fatalf("a person joining an open change set: %v", err)
 	}
 
 	view, err := e.ViewChangeSet(seed, mine.ID)
