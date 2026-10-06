@@ -1419,7 +1419,7 @@ func allMet(ctx context.Context, e *engine.Engine) string {
 	if err == nil && o.Next != "" {
 		stage, _ := workspaceNext(ctx, e)
 		if m, ok := stage.(map[string]any); ok {
-			return "Nothing is open in what you have drafted. " + fmt.Sprint(m["next"]) +
+			return "Nothing in what you have drafted can be settled before this stage. " + fmt.Sprint(m["next"]) +
 				" Propose the change set with propose once the work your person asked for is drafted."
 		}
 	}
