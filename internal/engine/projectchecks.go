@@ -424,7 +424,9 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 				if blank("standard") {
 					noStandard, missing = noStandard+1, true
 				}
-				if blank("source") {
+				// On time, on budget, to scope is read from the project's
+				// own schedule and spend, which no data source holds.
+				if blank("source") && metric != "efficiency" {
 					noSource, missing = noSource+1, true
 				}
 				if when == "postClosingCycle" && blank("cycle") {

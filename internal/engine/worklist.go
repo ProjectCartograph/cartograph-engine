@@ -232,8 +232,9 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 			placed[len(out.Tasks)] = placeOf(r.Kind, rec.level, pl)
 			own[len(out.Tasks)] = rank(r.Kind, rec.level)
 			if r.Kind == "Goal" && (pl.field == "link:KPI" && aimMeasureChecks[c.ID] || c.ID == "outcomes-close-gaps") {
-				// After the KPIs' own tasks, once one can be aligned.
-				own[len(out.Tasks)] = 1 << 20
+				// After the KPIs' own tasks, once one can be aligned, and
+				// among themselves from the top of the tree down.
+				own[len(out.Tasks)] = 1<<20 + rank(r.Kind, rec.level)
 			}
 			stepOrder[len(out.Tasks)] = pl.order
 			by, _ := strings.CutPrefix(pl.field, "link:")
@@ -381,4 +382,43 @@ func (e *Engine) hasKeyResults(ctx context.Context, r Ref) bool {
 	spec, _ := doc["spec"].(map[string]any)
 	krs, _ := spec["keyResults"].([]any)
 	return len(krs) > 0
+}
+
+// OpenNow is what is open across a change set that can be settled now:
+// what propose would refuse, less what is left for the person and what
+// waits on a stage not written yet (an aim's measures before any KPI, an
+// outcome's gap before any gap).
+func (e *Engine) OpenNow(ctx context.Context, set string) ([]OpenCheck, error) {
+	open, err := e.OpenInChangeSet(ctx, set)
+	if err != nil {
+		return nil, err
+	}
+	places, err := e.checkPlaces()
+	if err != nil {
+		return nil, err
+	}
+	var out []OpenCheck
+	for _, oc := range open {
+		if oc.Left != "" {
+			continue
+		}
+		waitsOn := ""
+		if pl, ok := places[oc.Kind][oc.ID]; ok {
+			waitsOn, _ = strings.CutPrefix(pl.field, "link:")
+			if waitsOn == pl.field {
+				waitsOn = ""
+			}
+		}
+		switch {
+		case oc.Kind == "Goal" && aimMeasureChecks[oc.ID]:
+			waitsOn = "KPI"
+		case oc.Kind == "Goal" && oc.ID == "outcomes-close-gaps":
+			waitsOn = "Gap"
+		}
+		if waitsOn != "" && waitsOn != oc.Kind && !e.HasAny(ctx, waitsOn) {
+			continue
+		}
+		out = append(out, oc)
+	}
+	return out, nil
 }

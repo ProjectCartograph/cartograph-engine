@@ -467,7 +467,7 @@
       ]
     },
     "/spec/successCriteria/-/source": {
-      "guide": "The data source the measurement is read from, named once in the register. A compliance criterion takes none."
+      "guide": "The data source the measurement is read from, named once in the register. A compliance criterion takes none, nor does an efficiency one, read from the project's own schedule and spend."
     },
     "/spec/successCriteria/-/cycle": {
       "guide": "How often it is read, a reporting cycle from the register. Needed only for a criterion judged after handover, which is read again and again; one read once, at closure or at handover, takes none. A compliance criterion takes none.",
@@ -691,7 +691,7 @@
     "risks-dependency-cycle": "Break the loop: one end of it must not wait on the other.",
     "risks-dependency-schedule": "Move the needed-by phase, or agree an earlier finish with the other end.",
     "success-criteria": "Add at least one success criterion.",
-    "success-measured": "Give every measured criterion its standard and data source, and a reporting cycle when it is judged after handover.",
+    "success-measured": "Give every measured criterion its standard and data source (an efficiency criterion is read from the project's own schedule and spend, so needs no source), and a reporting cycle when it is judged after handover.",
     "success-owner": "Name the role that tracks every criterion.",
     "closing-criteria": "Give every deliverable a test it is accepted against.",
     "landing-operation": "Name the operation the result is handed over to, or a new one.",

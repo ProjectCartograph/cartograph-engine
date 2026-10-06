@@ -255,6 +255,19 @@ func wordsOf(s string) map[string]bool {
 	return out
 }
 
+// foldedWords are wordsOf with a plural's s folded away, so
+// "manufacturers" and "manufacturer" count as one word.
+func foldedWords(s string) map[string]bool {
+	out := map[string]bool{}
+	for w := range wordsOf(s) {
+		if len(w) > 4 && strings.HasSuffix(w, "s") && !strings.HasSuffix(w, "ss") {
+			w = w[:len(w)-1]
+		}
+		out[w] = true
+	}
+	return out
+}
+
 // overlap scores how many words two texts share, from 0 to 1.
 func overlap(a, b map[string]bool) float64 {
 	if len(a) == 0 || len(b) == 0 {
@@ -610,8 +623,17 @@ func (e *Engine) Relevant(ctx context.Context, text string, kinds []string, leve
 	}
 	if ok {
 		out.Available = true
-		for i := range pool {
-			pool[i].Likelihood = answers[fmt.Sprintf("r%d", i)].Probabilities["relevant"]
+		// The model alone ranks unrelated records above the obvious ones
+		// (measured on a ported charter: the gap the work is about at
+		// 0.22, an unrelated outcome at 0.69), and shows a dozen records
+		// for work the workspace does not touch. Half of each record's
+		// likelihood is the words it shares with the work, plurals folded
+		// and doubled to a scale where a clear match is near 1 (docs/adr/
+		// 0023).
+		want := foldedWords(text)
+		for i, m := range pool {
+			words := math.Min(1, 2*overlap(want, foldedWords(m.Name+" "+m.Detail)))
+			pool[i].Likelihood = (answers[fmt.Sprintf("r%d", i)].Probabilities["relevant"] + words) / 2
 			pool[i].By = "model"
 		}
 	}

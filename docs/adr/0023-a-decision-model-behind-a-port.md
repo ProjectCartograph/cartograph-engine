@@ -159,6 +159,18 @@ a ranking to put first, as a shortlist, and never a filter: everything
 else stays searchable, and the person chooses. Its limits stay what they
 are: no reasons, about 512 tokens of context, two-way questions only.
 
+On a real charter ported by an agent (32 records of five kinds), the
+model alone put an unrelated outcome first (0.69) and the gap the work
+was about far down (0.22), and showed 13 records at the floor for an
+unrelated brief. Weighing its answer evenly with the words a record
+shares with the work (plurals folded, doubled and capped at 1) put the
+records the work was about first on three briefs, and showed 2 and 0 on
+two unrelated ones. It was not measured again on the ten labelled
+briefs above. Relevance is that blend.
+The pool is asked in batches of 30: one question takes about 40ms, and
+120 in one call outran the five-second timeout, so every match fell
+back to words while the model said it was ready.
+
 Agents are told to ask `decision_model` first (MCP), whatever is behind
 the port, and when it is ready to call `relevant` with what the work is
 about before choosing what a draft names; the port gained `Ready` for

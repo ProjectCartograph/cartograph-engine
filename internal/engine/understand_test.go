@@ -158,9 +158,10 @@ func TestUnderstandingWhatAPersonTyped(t *testing.T) {
 }
 
 // What in the workspace is relevant to a piece of work: each record asked
-// on its own whether the work is about the same thing, the likeliest few
-// of each kind at an even chance or more, and nothing below it; without a
-// model, by shared words.
+// on its own whether the work is about the same thing, that answer and
+// the words it shares with the work weighed evenly, the likeliest few of
+// each kind at an even chance or more, and nothing below it; without a
+// model, by shared words alone.
 func TestRelevantRanksTheWorkspace(t *testing.T) {
 	ctx := context.Background()
 	m := &model{answer: func(state string, q decide.Question) decide.Answer {

@@ -144,4 +144,10 @@ func TestOnlyACriterionReadAfterClosingNeedsACycle(t *testing.T) {
 	if c := measured(strings.Replace(criterion("atLanding", ""), "      source: d1\n", "", 1)); c.State != "block" || !strings.Contains(c.Message, "1 needs a data source") {
 		t.Fatalf("no source: %+v", c)
 	}
+	// On time and on budget is read from the project's own schedule and
+	// spend: no data source is asked for.
+	efficiency := strings.Replace(strings.Replace(criterion("atClosing", ""), "      source: d1\n", "", 1), "metric: team", "metric: efficiency", 1)
+	if c := measured(efficiency); c.State != "ok" {
+		t.Fatalf("an efficiency criterion asked for a source: %+v", c)
+	}
 }

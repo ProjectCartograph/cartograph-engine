@@ -1042,6 +1042,14 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			// The whole draft, as everyone in the change set now has it:
 			// what the person changed is in here to build on.
 			out["saved"], out["problems"], out["draft"], out["changeSet"] = "draft", problems, string(text), cs.ID
+			if len(text) > draftEcho {
+				// A large draft echoed whole on every edit buries the answer;
+				// get reads it when the agent needs to build on it.
+				out["draft"] = fmt.Sprintf("%d bytes, not repeated here: read it whole with get (kind %s, id %s) before building on what others changed", len(text), in.Kind, in.ID)
+			}
+			if len(problems) > 0 {
+				out["saved"] = "draft, not valid yet: kept as you sent it, and propose refuses it until each problem is fixed with edit_draft"
+			}
 			return out, nil
 		})
 
@@ -1316,7 +1324,7 @@ func checkReport(checks []engine.Check) map[string]any {
 	}
 	next := "Every check is met. Propose it when your person is ready."
 	if len(open) > 0 {
-		next = "Not ready to propose. Meet each open check: ask your person for what only they know, never invent it, then save the draft again."
+		next = "Not ready to propose. Meet each open check: ask your person for what only they know, never invent it, and change the draft with edit_draft; when your person is not there, leave_open what only they can answer."
 	}
 	return map[string]any{"open": open, "met": met, "next": next}
 }
@@ -1396,26 +1404,23 @@ func workspaceNext(ctx context.Context, e *engine.Engine) (any, error) {
 // checks still open on the change set's other drafts; else the optional
 // stages with no record yet; else propose.
 func allMet(ctx context.Context, e *engine.Engine) string {
+	// What is still open on the change set's other drafts comes before
+	// any new stage: the work drafted so far is not finished.
+	if sets, err := e.ChangeSets(ctx, "open", false); err == nil && len(sets) > 0 {
+		if open, err := e.OpenNow(ctx, sets[0].ID); err == nil {
+			n := len(open)
+			if n > 0 {
+				return fmt.Sprintf("Nothing is open in this draft, but %d check%s still open on other drafts in this change set: "+
+					"call next with work naming them, or checks without kind and id, and settle each before you go on.", n, map[bool]string{true: " is", false: "s are"}[n == 1])
+			}
+		}
+	}
 	o, err := e.WorkspaceOrder(ctx)
 	if err == nil && o.Next != "" {
 		stage, _ := workspaceNext(ctx, e)
 		if m, ok := stage.(map[string]any); ok {
 			return "Nothing is open in what you have drafted. " + fmt.Sprint(m["next"]) +
 				" Propose the change set with propose once the work your person asked for is drafted."
-		}
-	}
-	if sets, err := e.ChangeSets(ctx, "open", false); err == nil && len(sets) > 0 {
-		if open, err := e.OpenInChangeSet(ctx, sets[0].ID); err == nil {
-			n := 0
-			for _, oc := range open {
-				if oc.Left == "" {
-					n++
-				}
-			}
-			if n > 0 {
-				return fmt.Sprintf("Nothing is open in this work, but %d check%s still open on other drafts in this change set: "+
-					"call checks without kind and id to list them, and settle each before you propose.", n, map[bool]string{true: " is", false: "s are"}[n == 1])
-			}
 		}
 	}
 	var optional []string
@@ -1489,6 +1494,9 @@ func nextLine(t engine.Task) string {
 
 // guided is a guide as an agent reads it: the guide, then what to do with
 // it, where a small model reads it last and remembers it best.
+// draftEcho is the largest draft edit_draft repeats whole.
+const draftEcho = 8000
+
 type guided struct {
 	engine.Guide
 	// Prepare is what must exist before a kind nothing names (a project)
