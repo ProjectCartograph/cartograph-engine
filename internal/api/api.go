@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 
@@ -24,6 +25,8 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/render"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/reporting"
+
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Server implements apigen.StrictServerInterface over an *engine.Engine.
@@ -352,6 +355,37 @@ func (s *Server) GetGapCoverage(ctx context.Context, req apigen.GetGapCoverageRe
 	}
 	body.Whole = claims(coverage.Whole)
 	return apigen.GetGapCoverage200JSONResponse(body), nil
+}
+
+// GetCyclePeriods lays out a reporting cycle's periods between two
+// months, as the engine derives them (TAXONOMY.md D40).
+func (s *Server) GetCyclePeriods(ctx context.Context, req apigen.GetCyclePeriodsRequestObject) (apigen.GetCyclePeriodsResponseObject, error) {
+	periods, err := s.Engine.CyclePeriods(ctx, req.Id, req.Params.From, req.Params.To)
+	if err != nil {
+		var ve *engine.ValidationError
+		switch {
+		case errors.Is(err, engine.ErrNotFound):
+			return apigen.GetCyclePeriods404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+		case errors.As(err, &ve):
+			return apigen.GetCyclePeriods422JSONResponse{UnprocessableJSONResponse: apigen.UnprocessableJSONResponse(toProblemList(ve.Problems))}, nil
+		}
+		return nil, err
+	}
+	optional := func(s string) *string {
+		if s == "" {
+			return nil
+		}
+		return &s
+	}
+	body := make(apigen.GetCyclePeriods200JSONResponse, len(periods))
+	for i, p := range periods {
+		due, err := time.Parse("2006-01-02", p.Due)
+		if err != nil {
+			return nil, err
+		}
+		body[i] = apigen.CyclePeriod{End: p.End, Start: p.Start, Name: optional(p.Name), Label: optional(p.Label), Due: openapi_types.Date{Time: due}}
+	}
+	return body, nil
 }
 
 // GetOperationChecks: the same flat, advisory shape as a programme's.

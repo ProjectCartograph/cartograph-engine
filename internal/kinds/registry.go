@@ -14,6 +14,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/programme"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/project"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/purpose"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/reportingcycle"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/segment"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/settings"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/stakeholdermap"
@@ -35,7 +36,7 @@ type Spec struct {
 // All is every registered kind, in the fixed order used for listing.
 var All = []Spec{
 	{Name: "Team", SchemaFile: "team.schema.json", Rules: team.Rules},
-	{Name: "ReportingCycle", SchemaFile: "reportingcycle.schema.json"},
+	{Name: "ReportingCycle", SchemaFile: "reportingcycle.schema.json", Rules: reportingcycle.Rules},
 	{Name: "DataSource", SchemaFile: "datasource.schema.json"},
 	{Name: "BeneficiaryGroup", SchemaFile: "beneficiarygroup.schema.json"},
 	{Name: "Resource", SchemaFile: "resource.schema.json"},

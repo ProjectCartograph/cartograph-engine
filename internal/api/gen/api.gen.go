@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Defines values for ChangeOp.
@@ -607,6 +608,24 @@ type ConflictResponse struct {
 
 	// Theirs The YAML text currently on disk (vault only)
 	Theirs string `json:"theirs"`
+}
+
+// CyclePeriod One period of a reporting cycle.
+type CyclePeriod struct {
+	// Due The day the period's reading is due.
+	Due openapi_types.Date `json:"due"`
+
+	// End The month the period ends, YYYY-MM; the key its reading is filed under.
+	End string `json:"end"`
+
+	// Label What a person reads, where the cycle names its periods: the name with its year for a yearly period (Term I 2026/27), the name alone for a dated one. Absent for equal periods, which are named by month.
+	Label *string `json:"label,omitempty"`
+
+	// Name The period's name, where the cycle names its periods.
+	Name *string `json:"name,omitempty"`
+
+	// Start The month it starts, YYYY-MM.
+	Start string `json:"start"`
 }
 
 // DecisionModel defines model for DecisionModel.
@@ -1614,6 +1633,15 @@ type GetProjectCharterHtmlParams struct {
 	Working *bool `form:"working,omitempty" json:"working,omitempty"`
 }
 
+// GetCyclePeriodsParams defines parameters for GetCyclePeriods.
+type GetCyclePeriodsParams struct {
+	// From The first month, YYYY-MM.
+	From string `form:"from" json:"from"`
+
+	// To The last month, YYYY-MM; at most 1,200 months after from.
+	To string `form:"to" json:"to"`
+}
+
 // ListManifestsParams defines parameters for ListManifests.
 type ListManifestsParams struct {
 	// Q Case-insensitive substring filter over id and name.
@@ -1995,6 +2023,9 @@ type ServerInterface interface {
 	// TransitionProjectState Move a project to a new state. draft to in review is refused with 422 (the blocking checks as problems) unless every blocking check currently passes; cancelled requires a reason; every other move must be the next state in the fixed sequence.
 	// (POST /manifests/Project/{id}/state)
 	TransitionProjectState(w http.ResponseWriter, r *http.Request, id IdParam)
+	// GetCyclePeriods A reporting cycle's periods that overlap two months, derived from the cycle and never stored (TAXONOMY.md D8, D40): equal periods from its start month, or its named periods (terms each year, survey waves once). Each is keyed by the month it ends, which is what a reading is filed under, with its label and the day its reading is due. Derived in one place so every interface lays out a KPI's readings the same way.
+	// (GET /manifests/ReportingCycle/{id}/periods)
+	GetCyclePeriods(w http.ResponseWriter, r *http.Request, id IdParam, params GetCyclePeriodsParams)
 	// ListManifests Summaries of every manifest of a kind
 	// (GET /manifests/{kind})
 	ListManifests(w http.ResponseWriter, r *http.Request, kind KindParam, params ListManifestsParams)
@@ -3263,6 +3294,61 @@ func (siw *ServerInterfaceWrapper) TransitionProjectState(w http.ResponseWriter,
 	handler.ServeHTTP(w, r)
 }
 
+// GetCyclePeriods operation middleware
+func (siw *ServerInterfaceWrapper) GetCyclePeriods(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetCyclePeriodsParams
+
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCyclePeriods(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListManifests operation middleware
 func (siw *ServerInterfaceWrapper) ListManifests(w http.ResponseWriter, r *http.Request) {
 
@@ -4495,6 +4581,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Goal/{id}/checks", wrapper.GetGoalChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Gap/{id}/checks", wrapper.GetGapChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Gap/{id}/coverage", wrapper.GetGapCoverage)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/ReportingCycle/{id}/periods", wrapper.GetCyclePeriods)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Operation/{id}/checks", wrapper.GetOperationChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Programme/{id}/checks", wrapper.GetProgrammeChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Portfolio/{id}/checks", wrapper.GetPortfolioChecks)
@@ -7345,6 +7432,85 @@ func (response TransitionProjectState422JSONResponse) VisitTransitionProjectStat
 	return err
 }
 
+type GetCyclePeriodsRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetCyclePeriodsParams
+}
+
+type GetCyclePeriodsResponseObject interface {
+	VisitGetCyclePeriodsResponse(w http.ResponseWriter) error
+}
+
+type GetCyclePeriods200JSONResponse []CyclePeriod
+
+func (response GetCyclePeriods200JSONResponse) VisitGetCyclePeriodsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCyclePeriods401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetCyclePeriods401JSONResponse) VisitGetCyclePeriodsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCyclePeriods403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetCyclePeriods403JSONResponse) VisitGetCyclePeriodsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCyclePeriods404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetCyclePeriods404JSONResponse) VisitGetCyclePeriodsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCyclePeriods422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response GetCyclePeriods422JSONResponse) VisitGetCyclePeriodsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListManifestsRequestObject struct {
 	Kind   KindParam `json:"kind"`
 	Params ListManifestsParams
@@ -9891,6 +10057,9 @@ type StrictServerInterface interface {
 	// TransitionProjectState Move a project to a new state. draft to in review is refused with 422 (the blocking checks as problems) unless every blocking check currently passes; cancelled requires a reason; every other move must be the next state in the fixed sequence.
 	// (POST /manifests/Project/{id}/state)
 	TransitionProjectState(ctx context.Context, request TransitionProjectStateRequestObject) (TransitionProjectStateResponseObject, error)
+	// GetCyclePeriods A reporting cycle's periods that overlap two months, derived from the cycle and never stored (TAXONOMY.md D8, D40): equal periods from its start month, or its named periods (terms each year, survey waves once). Each is keyed by the month it ends, which is what a reading is filed under, with its label and the day its reading is due. Derived in one place so every interface lays out a KPI's readings the same way.
+	// (GET /manifests/ReportingCycle/{id}/periods)
+	GetCyclePeriods(ctx context.Context, request GetCyclePeriodsRequestObject) (GetCyclePeriodsResponseObject, error)
 	// ListManifests Summaries of every manifest of a kind
 	// (GET /manifests/{kind})
 	ListManifests(ctx context.Context, request ListManifestsRequestObject) (ListManifestsResponseObject, error)
@@ -11220,6 +11389,33 @@ func (sh *strictHandler) TransitionProjectState(w http.ResponseWriter, r *http.R
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(TransitionProjectStateResponseObject); ok {
 		if err := validResponse.VisitTransitionProjectStateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCyclePeriods operation middleware
+func (sh *strictHandler) GetCyclePeriods(w http.ResponseWriter, r *http.Request, id IdParam, params GetCyclePeriodsParams) {
+	var request GetCyclePeriodsRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCyclePeriods(ctx, request.(GetCyclePeriodsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCyclePeriods")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCyclePeriodsResponseObject); ok {
+		if err := validResponse.VisitGetCyclePeriodsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

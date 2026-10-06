@@ -1215,3 +1215,26 @@ service is not asked; it is recorded as it stands. The service's
 document prints its running costs, each labelled with its period. An
 uncosted need is not a line with no amount; it is an issue on the
 project's risks until it is costed.
+
+### D40. A reporting cycle may be made of named periods. *(resolved)*
+
+**The problem.** A cycle was 1, 3, 6 or 12 equal months. School terms
+run four, four and three months, so a quarterly cycle expected readings
+in March, June, September and December, none of which is a term's end.
+Survey waves follow a protocol, not a calendar; calling them irregular
+gave no expected readings at all, so a missed wave could not show.
+
+**What Cartograph does.** A cycle has equal periods (`periodMonths`
+from `startMonth`, as before) or named periods (`periods`), one or the
+other. A named period is `{name, endMonth}`, repeating every year, or
+`{name, end}`, a year and month that happens once; a cycle's list is all
+one form. Yearly periods are listed in the order the year runs, so the
+year starts the month after the last ends: terms ending December, April
+and July make a year from August, labelled 2026/27. Both rules of the
+record hold: readings are still filed by the month their period ends,
+and the periods are still derived, never stored. A reading for a KPI on
+named periods must fall on one of their ends; a KPI on equal periods is
+held to nothing new. `dueOffsetDays` applies to every period. The
+engine derives the periods (`GET
+/manifests/ReportingCycle/{id}/periods`), each with its label ("Term I
+2026/27") and due day, so every interface lays them out the same way.

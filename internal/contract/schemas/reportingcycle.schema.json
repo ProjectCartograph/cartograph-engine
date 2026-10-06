@@ -11,14 +11,33 @@
     "metadata": { "$ref": "common.schema.json#/$defs/Metadata" },
     "spec": {
       "type": "object",
-      "description": "How often the indicators on it are read: the length of a period and when the cycle's year starts. The periods themselves are derived, never stored.",
+      "description": "How often the indicators on it are read: either equal periods (periodMonths from startMonth) or named periods listed by the month each ends (periods), one or the other (a kind rule; TAXONOMY.md D40). The periods themselves are derived, never stored, and a reading is filed by the month its period ends either way.",
       "additionalProperties": false,
-      "required": ["periodMonths", "startMonth"],
       "properties": {
         "name": { "description": "Deprecated: the name is metadata.name, as Kubernetes keeps it. Read from a manifest saved before 2.6.0 and folded into metadata.name; never written.", "type": "string", "minLength": 1 },
         "periodMonths": { "type": "integer", "enum": [1, 3, 6, 12], "description": "How long one period is, in months: monthly, quarterly, half-yearly or yearly. A KPI read on this cycle has one reading per period (TAXONOMY.md D8)." },
-        "startMonth": { "type": "integer", "minimum": 1, "maximum": 12, "description": "The month the cycle's year starts in, 1 to 12, so periods line up with it (a financial year from April is 4). A period is named by the month it ends." },
-        "dueOffsetDays": { "type": "integer", "minimum": 0, "default": 0, "description": "How many days after a period ends its reading is due." }
+        "startMonth": { "type": "integer", "minimum": 1, "maximum": 12, "description": "The month the cycle's year starts in, 1 to 12, so periods line up with it (a financial year from April is 4). A period is named by the month it ends. Required with periodMonths (a kind rule)." },
+        "periods": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 24,
+          "description": "Named periods, for a cycle whose periods are not equal months: terms that repeat each year ({name, endMonth}), or survey waves dated once ({name, end}). All one form or all the other (a kind rule). Yearly periods are listed in the order the year runs, so the year starts the month after the last one ends; terms ending in December, April and July make a year from August. An alternative to periodMonths, which stays for regular cycles. See TAXONOMY.md D40.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 40, "description": "What the period is called, such as Term I or Baseline wave. Unique in the cycle." },
+              "endMonth": { "type": "integer", "minimum": 1, "maximum": 12, "description": "For a period that repeats each year: the month it ends, 1 to 12." },
+              "end": { "$ref": "common.schema.json#/$defs/YearMonth", "description": "For a period that happens once: the year and month it ends." }
+            },
+            "oneOf": [
+              { "required": ["endMonth"] },
+              { "required": ["end"] }
+            ]
+          }
+        },
+        "dueOffsetDays": { "type": "integer", "minimum": 0, "default": 0, "description": "How many days after a period ends its reading is due. The same for every period, equal or named." }
       }
     }
   }

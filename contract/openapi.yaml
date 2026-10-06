@@ -151,6 +151,51 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /manifests/ReportingCycle/{id}/periods:
+    get:
+      operationId: getCyclePeriods
+      summary: >-
+        A reporting cycle's periods that overlap two months, derived from
+        the cycle and never stored (TAXONOMY.md D8, D40): equal periods
+        from its start month, or its named periods (terms each year,
+        survey waves once). Each is keyed by the month it ends, which is
+        what a reading is filed under, with its label and the day its
+        reading is due. Derived in one place so every interface lays out
+        a KPI's readings the same way.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: from
+          in: query
+          required: true
+          description: The first month, YYYY-MM.
+          schema:
+            type: string
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+        - name: to
+          in: query
+          required: true
+          description: The last month, YYYY-MM; at most 1,200 months after from.
+          schema:
+            type: string
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CyclePeriod"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
   /manifests/Operation/{id}/checks:
     get:
       operationId: getOperationChecks
@@ -3787,6 +3832,31 @@ components:
           items:
             $ref: "#/components/schemas/GapClaim"
 
+    CyclePeriod:
+      type: object
+      description: One period of a reporting cycle.
+      required: [end, start, due]
+      properties:
+        end:
+          type: string
+          description: The month the period ends, YYYY-MM; the key its reading is filed under.
+        start:
+          type: string
+          description: The month it starts, YYYY-MM.
+        name:
+          type: string
+          description: The period's name, where the cycle names its periods.
+        label:
+          type: string
+          description: >-
+            What a person reads, where the cycle names its periods: the
+            name with its year for a yearly period (Term I 2026/27), the
+            name alone for a dated one. Absent for equal periods, which are
+            named by month.
+        due:
+          type: string
+          format: date
+          description: The day the period's reading is due.
     GapCoverage:
       type: object
       required: [gap, segments]

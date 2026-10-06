@@ -20,12 +20,35 @@
           {
             "path": "/spec/periodMonths",
             "control": "choice",
-            "hint": "How many months one period covers."
+            "hint": "How many months one period covers. Leave it empty for named periods."
           },
           {
             "path": "/spec/startMonth",
             "control": "number",
             "hint": "The month of the year the first period opens, from 1 to 12."
+          },
+          {
+            "path": "/spec/periods",
+            "control": "list",
+            "key": "name",
+            "title": "Named periods",
+            "hint": "Instead of equal periods: terms that repeat each year, or survey waves dated once. Each by the month it ends.",
+            "fields": [
+              {
+                "path": "/name",
+                "control": "text"
+              },
+              {
+                "path": "/endMonth",
+                "control": "number",
+                "title": "Ends each year in month"
+              },
+              {
+                "path": "/end",
+                "control": "date",
+                "title": "Ends once, in"
+              }
+            ]
           },
           {
             "path": "/spec/dueOffsetDays",
