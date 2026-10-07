@@ -20,11 +20,17 @@ services:
   cartograph:
     image: ${CARTOGRAPH_IMAGE:-cartograph:local}
     ports:
-      - "8080:8080"
+      - "${CARTOGRAPH_PORT:-8080}:8080"
     volumes:
       - cartograph-vault:/vault
     environment:
       CARTOGRAPH_LOG_FORMAT: json
+      # Agents over MCP at /api/v1/mcp (ADR 0016): CARTOGRAPH_MCP=on.
+      CARTOGRAPH_MCP: ${CARTOGRAPH_MCP:-off}
+      # The decision model (ADR 0023): CARTOGRAPH_DECIDE=laya with the
+      # decide profile below.
+      CARTOGRAPH_DECIDE: ${CARTOGRAPH_DECIDE:-off}
+      CARTOGRAPH_DECIDE_URL: ${CARTOGRAPH_DECIDE_URL:-http://laya:8411}
       # CARTOGRAPH_AUTH: proxy   # only behind an authenticating proxy; see docs/DEPLOYMENT.md
     # The image has no shell, so the binary checks itself. /bin/cartograph
     # is the image's link to the binary in the Nix store.
@@ -35,9 +41,10 @@ services:
       retries: 3
       start_period: 5s
 
-  # The decision model, off unless asked for: `docker compose --profile
-  # decide up -d`, and set CARTOGRAPH_DECIDE=laya on cartograph with
-  # CARTOGRAPH_DECIDE_URL=http://laya:8411 (deploy/laya, docs/adr/0023).
+  # The decision model, off unless asked for (deploy/laya, docs/adr/0023):
+  #
+  #   CARTOGRAPH_DECIDE=laya docker compose --profile decide up -d
+  #
   # The first start downloads the model, about 1.7 GB, into its volume.
   laya:
     profiles: ["decide"]
