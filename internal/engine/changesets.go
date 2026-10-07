@@ -285,6 +285,14 @@ func (e *Engine) ViewChangeSet(ctx context.Context, id string) (ChangeSetView, e
 	}
 	checkCtx := withProposed(ctx, docs)
 	view := ChangeSetView{ChangeSet: cs, Items: []ChangeSetItem{}}
+	overlay := map[string]map[string]map[string]any{}
+	for key, doc := range docs {
+		kind, id, _ := strings.Cut(key, "/")
+		if overlay[kind] == nil {
+			overlay[kind] = map[string]map[string]any{}
+		}
+		overlay[kind][id] = doc
+	}
 	for _, it := range items {
 		doc := docs[it.Kind+"/"+it.ID]
 		item := ChangeSetItem{Item: it, Changes: []Change{}, Checks: []Check{}, Proposed: "new"}
@@ -314,7 +322,7 @@ func (e *Engine) ViewChangeSet(ctx context.Context, id string) (ChangeSetView, e
 			// What the schema requires is not advice: the record cannot
 			// be merged without it, so the review says so before anyone
 			// tries.
-			item.Checks = append(item.Checks, e.requiredChecks(ctx, it.Kind, it.Text)...)
+			item.Checks = append(item.Checks, e.requiredChecks(ctx, it.Kind, it.Text, overlay)...)
 		}
 		if latest, err := latestNumber(ctx, e.manifests, it.Kind, it.ID); err == nil && latest != it.Base {
 			item.Stale = latest
@@ -1023,12 +1031,21 @@ func (e *Engine) InChangeSet(ctx context.Context, set string) (context.Context, 
 	// numbered version, so a base of 0 does not mean the change set
 	// creates it.
 	exists := make(map[string]bool, len(items))
+	removed := map[string]bool{}
 	for _, it := range items {
+		// A record the change set removes reads as gone, not as its text.
+		if it.Op == store.ItemDelete {
+			if it.Included {
+				removed[it.Kind+"/"+it.ID] = true
+			}
+			continue
+		}
 		texts[it.Kind+"/"+it.ID] = it.Text
 		_, found, err := e.manifests.GetCurrent(ctx, it.Kind, it.ID)
 		exists[it.Kind+"/"+it.ID] = err == nil && found
 	}
 	ctx = context.WithValue(ctx, basesKey{}, exists)
+	ctx = context.WithValue(ctx, removedKey{}, removed)
 	// What it leaves for its person, so the order of work passes it by.
 	left := map[string]string{}
 	if cs, err := s.GetChangeSet(ctx, set); err == nil {
@@ -1078,6 +1095,15 @@ func Proposed(ctx context.Context, kind, id string) string {
 	default:
 		return "changed"
 	}
+}
+
+// removedKey carries the records the change set on ctx removes.
+type removedKey struct{}
+
+// removedInPlay reports whether the change set on ctx removes kind/id.
+func removedInPlay(ctx context.Context, kind, id string) bool {
+	removed, _ := ctx.Value(removedKey{}).(map[string]bool)
+	return removed[kind+"/"+id]
 }
 
 // inPlay is a manifest's text in the change set on ctx, if it has one.
@@ -1222,8 +1248,10 @@ func roleRefProblems(doc map[string]any, rules []refRule) []Problem {
 // requiredChecks turns what stops a record being saved as a version into
 // blocking checks, one per field, so a change set's review names them
 // before it is merged rather than refusing the merge.
-func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte) []Check {
-	problems, err := e.Validate(ctx, kind, text)
+func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte, overlay map[string]map[string]map[string]any) []Check {
+	// The change set's own records count as there: a link to a record it
+	// creates is not a link to nothing.
+	_, problems, err := e.validate(ctx, kind, text, overlay)
 	if err != nil {
 		return nil
 	}

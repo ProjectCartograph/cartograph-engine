@@ -222,8 +222,10 @@ func (e *Engine) gapChecksOf(ctx context.Context, id string, doc map[string]any)
 	text := func(k string) bool { s, _ := spec[k].(string); return strings.TrimSpace(s) != "" }
 	measured := text("measure")
 	switch {
-	case measured || (text("current") && text("desired")):
+	case text("current") && text("desired"):
 		add("gap-states", "shortfall", programmeCheckOK, "Current and desired states are stated.")
+	case measured:
+		add("gap-states", "shortfall", programmeCheckOK, "The indicator's baseline and target are its current and desired states.")
 	case !text("current"):
 		add("gap-states", "shortfall", programmeCheckWarn, "No current state yet.")
 	default:

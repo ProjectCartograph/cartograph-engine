@@ -162,8 +162,15 @@ func (e *Engine) GetMany(ctx context.Context, kind string, ids []string) ([]Vers
 		}
 	}
 	// Read as the change set on ctx would leave them, as Get reads one
-	// (docs/adr/0024): its drafts over the saved versions, and the
-	// records it creates.
+	// (docs/adr/0024): its drafts over the saved versions, the records
+	// it creates, and none it removes.
+	kept := out[:0]
+	for _, v := range out {
+		if !removedInPlay(ctx, kind, v.ID) {
+			kept = append(kept, v)
+		}
+	}
+	out = kept
 	at := make(map[string]int, len(out))
 	for i, v := range out {
 		at[v.ID] = i

@@ -137,6 +137,9 @@ func (e *Engine) putItemText(ctx context.Context, set, kind, id string, text []b
 // change set read on ctx, where it has one (docs/adr/0024), else the
 // current version.
 func (e *Engine) currentInPlay(ctx context.Context, kind, id string) (Version, bool, error) {
+	if removedInPlay(ctx, kind, id) {
+		return Version{}, false, nil
+	}
 	if text, ok := inPlay(ctx, kind, id); ok {
 		return Version{Kind: kind, ID: id, YAML: text}, true, nil
 	}

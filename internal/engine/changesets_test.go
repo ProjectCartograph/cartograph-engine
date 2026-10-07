@@ -203,3 +203,66 @@ func TestAReviewNamesWhatARecordNeedsToMerge(t *testing.T) {
 		t.Fatalf("the review names nothing the team needs: %+v", view.Items[0].Checks)
 	}
 }
+
+// A link to a record the same change set creates is not a link to
+// nothing: its review raises no block for it.
+func TestAReviewKnowsTheRecordsItsChangeSetCreates(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	seed := actingAs(ada)
+	if _, err := e.EditInChangeSet(seed, "", "Goal", "g-new", map[string]any{"/metadata/name": "New goal", "/spec/level": "goal", "/spec/objective": "Grade alike"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, _ := e.WorkingChangeSet(seed, "")
+	if _, err := e.EditInChangeSet(seed, cs.ID, "Goal", "o-new", map[string]any{"/metadata/name": "New objective", "/spec/level": "objective", "/spec/parent": "g-new", "/spec/objective": "Every depot grades alike"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	view, err := e.ViewChangeSet(seed, cs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range view.Items {
+		for _, c := range it.Checks {
+			if strings.HasPrefix(c.ID, "required:") && strings.Contains(c.Message, "does not exist") {
+				t.Fatalf("%s/%s: %s", it.Item.Kind, it.Item.ID, c.Message)
+			}
+		}
+	}
+}
+
+// A record a change set removes reads as gone through it: not found,
+// not listed.
+func TestAChangeSetReadsItsRemovalsAsGone(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	seed := actingAs(ada)
+	if _, err := e.Commit(seed, "Team", "t-gone", []byte("apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t-gone\n  name: Going\nspec:\n  description: going\n"), "ada@example.org", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.EditInChangeSet(seed, "", "Team", "t-other", map[string]any{"/metadata/name": "Other", "/spec/description": "x"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, _ := e.WorkingChangeSet(seed, "")
+	if err := e.MarkInChangeSet(seed, cs.ID, "Team", "t-gone", store.ItemDelete, ""); err != nil {
+		t.Fatal(err)
+	}
+	ctx, err := e.Preview(seed, cs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Get(ctx, "Team", "t-gone"); !errors.Is(err, engine.ErrNotFound) {
+		t.Fatalf("a removed record read through its change set: %v", err)
+	}
+	list, err := e.List(ctx, "Team", engine.Filter{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range list {
+		if s.ID == "t-gone" {
+			t.Fatal("a removed record is listed through its change set")
+		}
+	}
+	if _, err := e.Get(seed, "Team", "t-gone"); err != nil {
+		t.Fatalf("the record itself, read without the change set: %v", err)
+	}
+}

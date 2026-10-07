@@ -649,6 +649,9 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 	// plainly; any other placeholder is listed as everywhere else.
 	if parent, _ := spec["parent"].(string); level != "goal" && parent == "" {
 		above := map[string]string{"objective": "a goal", "outcome": "an objective"}[level]
+		if above == "" {
+			above = "the aim above it"
+		}
 		checks = append(checks, GoalCheck{ID: "placed", State: goalCheckWarn, Message: fmt.Sprintf("Not placed yet: place it under %s.", above), Fix: &GoalCheckFix{Section: "aim"}})
 	}
 	if pc, ok := pendingCheck(withoutPending(doc, "/spec/parent")); ok {

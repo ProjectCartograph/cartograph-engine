@@ -324,6 +324,9 @@ func (e *Engine) goalSmart(read goalReader, spec map[string]any, kpis []map[stri
 				placed = level == want
 			}
 		}
+		if want == "" {
+			want = "aim"
+		}
 		relevantWarn = fmt.Sprintf("Relevant: no %s above it yet.", want)
 	}
 	s.Relevant = placed && strings.TrimSpace(why) != ""

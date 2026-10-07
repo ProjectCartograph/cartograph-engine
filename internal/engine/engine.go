@@ -466,6 +466,9 @@ func (e *Engine) Get(ctx context.Context, kind, id string) (Version, error) {
 	if _, ok := kinds.ByName(kind); !ok {
 		return Version{}, fmt.Errorf("%w: %s", ErrUnknownKind, kind)
 	}
+	if removedInPlay(ctx, kind, id) {
+		return Version{}, fmt.Errorf("%w: %s/%s", ErrNotFound, kind, id)
+	}
 	v, found, err := e.manifests.GetCurrent(ctx, kind, id)
 	if err != nil {
 		return Version{}, err
@@ -503,7 +506,14 @@ func (e *Engine) List(ctx context.Context, kind string, f Filter, includeDrafts 
 	if err != nil {
 		return nil, err
 	}
-	return e.withProposedSummaries(ctx, kind, f, out), nil
+	// A record the change set removes is not listed.
+	kept := out[:0]
+	for _, s := range out {
+		if !removedInPlay(ctx, kind, s.ID) {
+			kept = append(kept, s)
+		}
+	}
+	return e.withProposedSummaries(ctx, kind, f, kept), nil
 }
 
 // withProposedSummaries lays a change set's drafts of a kind over a list,
