@@ -62,7 +62,6 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 		Sponsor:        strings.Join(roleNames(n, resources, "sponsor"), ", "),
 		Status:         readinessWord(checks.Items),
 	})
-	d.contents()
 
 	// A brief, not the definition retyped (TAXONOMY.md D55): what a
 	// sponsor approves, in the order they ask it. Every register prints
@@ -115,7 +114,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 		}
 	}
 
-	d.problems(n, list(summary["problems"]), "/spec/summary/problems")
+	d.problemsBrief(n, list(summary["problems"]))
 	if in, out := strs(summary["scopeIn"]), strs(summary["scopeOut"]); len(in)+len(out) > 0 {
 		d.h2("Scope")
 		d.scopeColumns(in, out)
@@ -157,15 +156,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 		}
 	}
 	d.table([]string{"Role", "Post"}, roles)
-	var groups []string
-	for _, b := range list(summary["beneficiaries"]) {
-		groups = append(groups, n.of("BeneficiaryGroup", str(b["group"])))
-	}
-	d.fields(
-		field{"Beneficiaries", strings.Join(groups, ", ")},
-		field{"Escalation route", escalation(p, spec)},
-	)
-	d.raciBrief(p)
+	d.fields(field{"Escalation route", escalation(p, spec)})
 
 	if len(fundingRows)+len(list(spec["costs"])) > 0 {
 		d.h2("Budget")
@@ -191,12 +182,10 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 				judged = "atClosing"
 			}
 			rows = append(rows, []string{
-				str(c["statement"]), str(c["standard"]), label("when", judged),
-				n.ref(c["source"], "DataSource", spec), p.who(c["confirmedBy"]),
-				p.status("successCriteria", str(c["id"])),
+				str(c["statement"]), str(c["standard"]), label("when", judged), p.who(c["confirmedBy"]),
 			})
 		}
-		d.table([]string{"Criterion", "Target", "Judged", "Data source", "Signed off by", "Result"}, rows)
+		d.table([]string{"Criterion", "Target", "Judged", "Signed off by"}, rows)
 	}
 	var kpiNames []string
 	for _, k := range list(spec["kpis"]) {
@@ -210,7 +199,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 	// Approval: the conditions and sign-off lines the definition names,
 	// or, for one that names none, the roles the standards expect to sign
 	// (GovS 002 6.4.8).
-	if !d.approval(p) {
+	if !d.approvalBrief(p) {
 		var approvers []string
 		for _, role := range []string{"sponsor", "manager", "serviceOwner"} {
 			names := roleNames(n, resources, role)

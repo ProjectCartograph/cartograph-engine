@@ -150,7 +150,7 @@ func (p plan) timing(v any) string {
 		if e := when(str(t["expectedBy"])); e != "" {
 			out += ", expected by " + e
 		}
-		if by := p.item(t["decidedBy"]); by != "" {
+		if by := p.who(t["decidedBy"]); by != "" {
 			out += "; set by " + by
 		}
 	}

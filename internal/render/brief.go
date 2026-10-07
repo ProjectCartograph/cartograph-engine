@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
@@ -155,20 +156,6 @@ func (d *doc) deliverablesBrief(p plan) {
 	d.table([]string{"No.", "Deliverable", "Owner", "Due", "Accepted by", "Status"}, rows)
 }
 
-// raciBrief prints the responsibilities with parties named by role.
-func (d *doc) raciBrief(p plan) {
-	rs := list(p.spec["responsibilities"])
-	if len(rs) == 0 {
-		return
-	}
-	var rows [][]string
-	for _, r := range rs {
-		rows = append(rows, []string{str(r["item"]), p.whoAll(r["responsible"]), p.who(r["accountable"]), p.whoAll(r["consulted"]), p.whoAll(r["informed"])})
-	}
-	d.h3("Responsibilities")
-	d.table([]string{"Decision or deliverable", "Responsible", "Accountable", "Consulted", "Informed"}, rows)
-}
-
 // costsBrief prints the cost lines; a funding source every line shares is
 // said once.
 func (d *doc) costsBrief(p plan) {
@@ -209,8 +196,22 @@ func (d *doc) costsBrief(p plan) {
 // risksBrief prints the risks a sponsor must know: high impact, issues
 // already happening, and anything escalated. The rest are counted.
 func (d *doc) risksBrief(p plan, items []map[string]any) {
+	// Highest impact first, then likelihood; at most five, as a charter
+	// names the few risks that shape the decision.
+	order := map[string]int{"high": 0, "medium": 1, "low": 2}
+	sorted := append([]map[string]any(nil), items...)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		ri, rj := order[str(sorted[i]["impact"])], order[str(sorted[j]["impact"])]
+		if ri != rj {
+			return ri < rj
+		}
+		return order[str(sorted[i]["likelihood"])] < order[str(sorted[j]["likelihood"])]
+	})
 	var rows [][]string
-	for _, r := range items {
+	for _, r := range sorted {
+		if len(rows) == 5 {
+			break
+		}
 		escalated := false
 		if e, ok := r["escalate"].(map[string]any); ok {
 			escalated, _ = e["flag"].(bool)
@@ -253,6 +254,7 @@ func (d *doc) heldInCartograph(spec map[string]any, stakeholders int) {
 		tasks += len(list(dv["tasks"]))
 	}
 	counts := []count{
+		{len(list(spec["responsibilities"])), "responsibility (RACI)", "responsibilities (RACI)"},
 		{tasks, "task", "tasks"},
 		{len(list(spec["procurement"])), "procurement item", "procurement items"},
 		{len(list(obj(spec["data"])["produces"])) + len(list(obj(spec["data"])["consumes"])), "data set", "data sets"},
@@ -290,4 +292,71 @@ func (d *doc) criticalLine(n names, g engine.ComponentGraph) {
 		}
 		d.p("Loop to resolve: " + strings.Join(chain, " depends on ") + ".")
 	}
+}
+
+// problemsBrief prints each problem as three lines: what is wrong, why,
+// and the change the project makes, each still naming its field so an
+// interface can open it in place.
+func (d *doc) problemsBrief(n names, items []map[string]any) {
+	if len(items) == 0 {
+		return
+	}
+	d.h2("Problem statement")
+	for i, pm := range items {
+		problem, change := obj(pm["problem"]), obj(pm["change"])
+		at := fmt.Sprintf("/spec/summary/problems/%d", i)
+		d.fieldsAt(
+			pathed{"Problem", capital(str(problem["situation"])), at + "/problem/situation"},
+			pathed{"Cause", capital(str(problem["cause"])), at + "/problem/cause"},
+			pathed{"Change", capital(str(change["what"])), at + "/change/what"},
+			pathed{"Affects", strings.Join(n.all("BeneficiaryGroup", strs(pm["groups"])), ", "), ""},
+		)
+	}
+}
+
+// approvalBrief prints the conditions approval carries and the sign-off
+// lines, parties named by role.
+func (d *doc) approvalBrief(p plan) bool {
+	cds, sos := list(p.spec["conditions"]), list(p.spec["signOffs"])
+	if len(cds)+len(sos) == 0 {
+		return false
+	}
+	d.h2("Approval")
+	if len(cds) > 0 {
+		var rows [][]string
+		for i, c := range cds {
+			holds := ""
+			if on := obj(obj(c["gates"])["on"]); str(on["local"]) == "milestones" {
+				for j, m := range list(p.spec["milestones"]) {
+					if str(m["id"]) == str(on["id"]) {
+						holds = itemNumber("M", str(m["id"]), j)
+					}
+				}
+			}
+			rows = append(rows, []string{fmt.Sprintf("%d", i+1), str(c["action"]), p.who(c["owner"]), p.timing(c["due"]), holds, p.status("conditions", str(c["id"]))})
+		}
+		d.h3("Conditions")
+		d.table([]string{"No.", "Condition", "Owner", "Due", "Holds back", "Status"}, rows)
+	}
+	if len(sos) > 0 {
+		// Blank cells stay for a wet signature (TAXONOMY.md D52); a line
+		// signed in Cartograph shows the decision, who and when.
+		d.h3("Sign-off")
+		d.flush()
+		d.b.WriteString("<table class=\"signoff\">\n<tr><th>Stage</th><th>Signs</th><th>Signature</th><th>Date</th></tr>\n")
+		for _, so := range sos {
+			signs := p.who(so["role"])
+			if l := str(so["label"]); l != "" {
+				signs = l + " (" + signs + ")"
+			}
+			var signed, date string
+			if evs := p.events["signOffs/"+str(so["id"])]; len(evs) > 0 {
+				last := evs[len(evs)-1]
+				signed, date = label("decision", str(last["decision"]))+": "+str(last["recordedBy"]), when(str(last["date"]))
+			}
+			d.b.WriteString("<tr><td>" + esc(label("stage", str(so["stage"]))) + "</td><td>" + esc(signs) + "</td><td>" + esc(signed) + "</td><td>" + esc(date) + "</td></tr>\n")
+		}
+		d.b.WriteString("</table>\n")
+	}
+	return true
 }

@@ -488,8 +488,8 @@ dl.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem,
 dl.facts div { display: flex; flex-direction: column; gap: .15rem; }
 dl.facts dt { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; }
 dl.facts dd { font-weight: 600; }
-table.signoff td { height: 2.9rem; }
-table.signoff td:nth-child(2) { width: 34%; }
+table.signoff td { height: 2.2rem; }
+table.signoff td:nth-child(2) { width: 38%; } table.signoff td:nth-child(3) { width: 30%; }
 .chip { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; border: 1px solid var(--line);
   border-radius: 999px; padding: .08rem .55rem .08rem .45rem; font-size: .78rem; line-height: 1.5; background: var(--paper); }
 .chip svg { flex: none; }
@@ -510,7 +510,13 @@ nav.contents ol { columns: 2; column-gap: 2.5rem; }
   body { margin: 0; padding: 0; max-width: none; box-shadow: none; font-size: 9.5pt; color: #000; }
   :root { --fg: #000; --muted: #444; --line: #c4c9cf; --soft: #f3f5f6; --paper: #fff; --accent: #1e5b52; --accent-soft: #e9f1ef; }
   nav.contents { break-after: page; }
-  h2 { break-after: avoid; } h3 { break-after: avoid; } tr, dl, .facts { break-inside: avoid; }
+  h2 { break-after: avoid; margin: 1.5rem 0 .55rem; font-size: 1.2rem; padding-bottom: .25rem; }
+  h3 { break-after: avoid; margin: 1rem 0 .4rem; } h3.named { font-size: 1rem; }
+  tr, .facts, figure { break-inside: avoid; }
+  th, td { padding: .3rem .45rem; }
+  header.cover { gap: 1rem 2rem; padding-bottom: 1rem; margin-bottom: 1rem; }
+  h1 { font-size: 1.75rem; } .lead { font-size: 1.02rem; margin-bottom: .6rem; }
+  p.note { margin: .25rem 0 .7rem; }
   a { color: inherit; text-decoration: none; }
 }
 ` + diagramCSS + `</style>
