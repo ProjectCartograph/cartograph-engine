@@ -1274,6 +1274,11 @@ func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte, o
 			message = "This is longer than allowed; shorten it."
 		case strings.HasPrefix(p.Message, "minLength:"):
 			message = "Needed before this can be merged."
+		case strings.Contains(p.Message, "is not written as asked: "):
+			// The value is quoted first, which says nothing when it is
+			// blank; what to write is the part a person needs.
+			_, how, _ := strings.Cut(p.Message, "is not written as asked: ")
+			message = capitalFirst(strings.TrimSuffix(how, ".")) + "."
 		}
 		if i := strings.Index(p.Message, "missing property '"); i >= 0 {
 			message = "Needed before this can be merged."
