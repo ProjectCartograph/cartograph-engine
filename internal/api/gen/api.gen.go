@@ -124,6 +124,42 @@ func (e GuidePlanItemWhen) Valid() bool {
 	}
 }
 
+// Defines values for LinkKind.
+const (
+	GapGroup        LinkKind = "gap-group"
+	GapOutcome      LinkKind = "gap-outcome"
+	GoalContributes LinkKind = "goal-contributes"
+	GoalParent      LinkKind = "goal-parent"
+	KpiGap          LinkKind = "kpi-gap"
+	ProblemGap      LinkKind = "problem-gap"
+	ProblemGroup    LinkKind = "problem-group"
+	ProjectOutcome  LinkKind = "project-outcome"
+)
+
+// Valid indicates whether the value is a known member of the LinkKind enum.
+func (e LinkKind) Valid() bool {
+	switch e {
+	case GapGroup:
+		return true
+	case GapOutcome:
+		return true
+	case GoalContributes:
+		return true
+	case GoalParent:
+		return true
+	case KpiGap:
+		return true
+	case ProblemGap:
+		return true
+	case ProblemGroup:
+		return true
+	case ProjectOutcome:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ManifestCheckState.
 const (
 	ManifestCheckStateBlock ManifestCheckState = "block"
@@ -1090,6 +1126,23 @@ type KindCount struct {
 	Summary *string `json:"summary,omitempty"`
 }
 
+// LinkCandidate defines model for LinkCandidate.
+type LinkCandidate struct {
+	Allowed bool   `json:"allowed"`
+	Id      string `json:"id"`
+	Kind    string `json:"kind"`
+
+	// Linked Already linked; removing it is the way to change it.
+	Linked *bool  `json:"linked,omitempty"`
+	Name   string `json:"name"`
+
+	// Reason Why the link may not be made, in a sentence a person reads.
+	Reason *string `json:"reason,omitempty"`
+}
+
+// LinkKind A kind of link between two records: problem-gap (a project's problem cites a gap), problem-group (a problem affects a beneficiary group), gap-group (a gap affects a group), gap-outcome (a gap closes into an outcome), goal-parent (an aim sits under another), goal-contributes (an outcome also leads to another aim), kpi-gap (an indicator measures a gap), project-outcome (a project serves an outcome).
+type LinkKind string
+
 // Manifest The generic manifest envelope, mirroring contract/schemas/manifest.schema.json (kept in sync by hand: the authoritative shape and every kind-specific spec shape live under contract/schemas/, since the code generator cannot follow that file's further reference into common.schema.json without a hand-written import mapping). Runtime validation always uses the JSON Schema files directly, never this generated type.
 type Manifest struct {
 	ApiVersion string `json:"apiVersion"`
@@ -1794,6 +1847,18 @@ type GetGuideParams struct {
 	Locale *string `form:"locale,omitempty" json:"locale,omitempty"`
 }
 
+// GetLinkCandidatesParams defines parameters for GetLinkCandidates.
+type GetLinkCandidatesParams struct {
+	// From The id of the record the link starts from.
+	From string `form:"from" json:"from"`
+
+	// Problem For a link from a project's problem, the problem's id.
+	Problem *string `form:"problem,omitempty" json:"problem,omitempty"`
+
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetGapChecksParams defines parameters for GetGapChecks.
 type GetGapChecksParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -2214,6 +2279,9 @@ type ServerInterface interface {
 	// ListKinds Every registered kind and how many manifests exist for it
 	// (GET /kinds)
 	ListKinds(w http.ResponseWriter, r *http.Request)
+	// GetLinkCandidates What a link may join from one record, and why not the rest
+	// (GET /links/{link}/candidates)
+	GetLinkCandidates(w http.ResponseWriter, r *http.Request, link LinkKind, params GetLinkCandidatesParams)
 	// GetGapChecks Whether a gap can be used for what a gap register is for. Advisory only, like a programme's: every one of these reads a manifest other than the gap.
 	// (GET /manifests/Gap/{id}/checks)
 	GetGapChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetGapChecksParams)
@@ -3316,6 +3384,74 @@ func (siw *ServerInterfaceWrapper) ListKinds(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListKinds(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLinkCandidates operation middleware
+func (siw *ServerInterfaceWrapper) GetLinkCandidates(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "link" -------------
+	var link LinkKind
+
+	err = runtime.BindStyledParameterWithOptions("simple", "link", r.PathValue("link"), &link, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "link", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetLinkCandidatesParams
+
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "problem" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "problem", r.URL.Query(), &params.Problem, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "problem"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "problem", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLinkCandidates(w, r, link, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5106,6 +5242,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/settings", wrapper.GetSettings)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/goals/tree", wrapper.GetGoalTree)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/links/{link}/candidates", wrapper.GetLinkCandidates)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/graph", wrapper.GetGraph)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Goal/{id}/checks", wrapper.GetGoalChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Gap/{id}/checks", wrapper.GetGapChecks)
@@ -7274,6 +7411,71 @@ func (response ListKinds403JSONResponse) VisitListKindsResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLinkCandidatesRequestObject struct {
+	Link   LinkKind `json:"link"`
+	Params GetLinkCandidatesParams
+}
+
+type GetLinkCandidatesResponseObject interface {
+	VisitGetLinkCandidatesResponse(w http.ResponseWriter) error
+}
+
+type GetLinkCandidates200JSONResponse []LinkCandidate
+
+func (response GetLinkCandidates200JSONResponse) VisitGetLinkCandidatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLinkCandidates401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetLinkCandidates401JSONResponse) VisitGetLinkCandidatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLinkCandidates403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetLinkCandidates403JSONResponse) VisitGetLinkCandidatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLinkCandidates404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetLinkCandidates404JSONResponse) VisitGetLinkCandidatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -10812,6 +11014,9 @@ type StrictServerInterface interface {
 	// ListKinds Every registered kind and how many manifests exist for it
 	// (GET /kinds)
 	ListKinds(ctx context.Context, request ListKindsRequestObject) (ListKindsResponseObject, error)
+	// GetLinkCandidates What a link may join from one record, and why not the rest
+	// (GET /links/{link}/candidates)
+	GetLinkCandidates(ctx context.Context, request GetLinkCandidatesRequestObject) (GetLinkCandidatesResponseObject, error)
 	// GetGapChecks Whether a gap can be used for what a gap register is for. Advisory only, like a programme's: every one of these reads a manifest other than the gap.
 	// (GET /manifests/Gap/{id}/checks)
 	GetGapChecks(ctx context.Context, request GetGapChecksRequestObject) (GetGapChecksResponseObject, error)
@@ -11922,6 +12127,33 @@ func (sh *strictHandler) ListKinds(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListKindsResponseObject); ok {
 		if err := validResponse.VisitListKindsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetLinkCandidates operation middleware
+func (sh *strictHandler) GetLinkCandidates(w http.ResponseWriter, r *http.Request, link LinkKind, params GetLinkCandidatesParams) {
+	var request GetLinkCandidatesRequestObject
+
+	request.Link = link
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLinkCandidates(ctx, request.(GetLinkCandidatesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLinkCandidates")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetLinkCandidatesResponseObject); ok {
+		if err := validResponse.VisitGetLinkCandidatesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

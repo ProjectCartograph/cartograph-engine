@@ -47,6 +47,53 @@ paths:
               schema:
                 $ref: "#/components/schemas/GoalTree"
 
+  /links/{link}/candidates:
+    get:
+      operationId: getLinkCandidates
+      summary: What a link may join from one record, and why not the rest
+      description: >-
+        For a kind of link and the record it starts from, every record it
+        could reach, each marked whether the link may be made and, where it
+        may not, why: the wrong kind or level, already linked, a loop, or a
+        problem and its gaps about different people (TAXONOMY.md D24, D28,
+        D45). An interface lets a person connect only to the records marked
+        allowed. The engine checks the link again when the change set is
+        merged.
+      parameters:
+        - name: link
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/LinkKind"
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The id of the record the link starts from.
+        - name: problem
+          in: query
+          required: false
+          schema:
+            type: string
+          description: For a link from a project's problem, the problem's id.
+        - $ref: "#/components/parameters/PreviewParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LinkCandidate"
+
   /graph:
     get:
       operationId: getGraph
@@ -4025,6 +4072,35 @@ components:
           description: Objectives and outcomes with no parent yet, held by a placeholder (TAXONOMY.md D35), each with what sits under it.
           items:
             $ref: "#/components/schemas/GoalNode"
+    LinkKind:
+      type: string
+      description: >-
+        A kind of link between two records: problem-gap (a project's
+        problem cites a gap), problem-group (a problem affects a beneficiary
+        group), gap-group (a gap affects a group), gap-outcome (a gap closes
+        into an outcome), goal-parent (an aim sits under another),
+        goal-contributes (an outcome also leads to another aim), kpi-gap (an
+        indicator measures a gap), project-outcome (a project serves an
+        outcome).
+      enum: [problem-gap, problem-group, gap-group, gap-outcome, goal-parent, goal-contributes, kpi-gap, project-outcome]
+    LinkCandidate:
+      type: object
+      required: [kind, id, name, allowed]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        allowed:
+          type: boolean
+        linked:
+          type: boolean
+          description: Already linked; removing it is the way to change it.
+        reason:
+          type: string
+          description: Why the link may not be made, in a sentence a person reads.
     GoalCheckFix:
       type: object
       required: [section]

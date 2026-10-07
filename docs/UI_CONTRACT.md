@@ -248,3 +248,17 @@ The interface repository imports the engine by its module path,
 `pkg/client` and `pkg/uiconformance` from it. Only `pkg/` is public;
 `internal/` stays the engine's own. The HTTP contract and the schemas
 reach it as a synced copy (`cartograph-ui/contract`).
+
+## Drawing a link
+
+An interface that lets a person connect two records by dragging from one
+node to another asks the engine first:
+`GET /links/{link}/candidates?from=<id>` (with `problem=<id>` for a
+project's problem, and `changeSet` to read the change set in hand). The
+answer lists every record that link could reach, each `allowed` or not,
+`linked` where it already is, and a `reason` a person reads where it may
+not be made: the wrong kind or level, a loop, or a problem and its gaps
+about different people (TAXONOMY.md D24, D28, D45). While dragging, only
+allowed records take the drop; the rest are dimmed and say their reason.
+The link is saved as an ordinary edit in the change set, and the checks
+hold it again when the change set is merged.
