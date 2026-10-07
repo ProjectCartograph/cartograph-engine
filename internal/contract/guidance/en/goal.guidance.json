@@ -115,7 +115,7 @@
       ]
     },
     "/spec/keyResults": {
-      "guide": "How anyone will know the aim is met: one to three key results, each a measure with today's figure (dated), a target (dated within the horizon), the direction it should move, and its unit. An aligned KPI can measure the aim instead. Measures carry the numbers, so this is where SMART starts."
+      "guide": "How you will know the aim is met, in one to three key results; more dilutes its focus. Each key result is a number with today's figure and date, a target and date, the direction it should move, and its unit. You can link a KPI instead."
     },
     "/spec/keyResults/-/metric": {
       "guide": "What is counted, precisely enough that two people would count the same thing.",
@@ -192,7 +192,7 @@
     "owner": "Name the accountable role.",
     "horizon": "Give start and end dates within the dates of the aim this one belongs to.",
     "closes-gap": "Name the gap this outcome closes, or add that gap.",
-    "key-results-count": "Keep one to three key results; more blur the focus.",
+    "key-results-count": "Keep one to three key results. More dilutes the aim's focus.",
     "contributes-to": "Link each one to a goal or objective other than the one this outcome sits under, and say how it helps.",
     "has-objectives": "Define the objectives under this goal, or place existing ones under it.",
     "has-outcomes": "Add outcomes under this objective, each saying what will be true, or move existing ones under it.",

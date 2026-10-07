@@ -111,6 +111,6 @@
   "links": {},
   "checks": {
     "stakeholders-identified": "Add everyone the work affects and everyone who can affect it.",
-    "stakeholders-placed": "Place each stakeholder by influence and interest, one to three each, so the approach to them follows from the grid."
+    "stakeholders-placed": "Give each stakeholder an influence and an interest score from 1 to 3."
   }
 }

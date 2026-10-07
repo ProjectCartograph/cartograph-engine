@@ -181,7 +181,7 @@
                 "control": "list",
                 "key": "id",
                 "title": "Key results",
-                "hint": "Add one to three, each measurable.",
+                "hint": "One to three results you can measure. More dilutes the objective's focus.",
                 "fields": [
                   {
                     "path": "/id",

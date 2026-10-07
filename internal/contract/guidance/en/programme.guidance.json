@@ -225,7 +225,7 @@
       "poor": [
         {
           "text": "Two outcomes listed because either one would do",
-          "why": "Several preconditions all have to hold; two alternative routes are two steps with the same outcome, each with its own reasoning."
+          "why": "List only outcomes that must all be true. Put either-or routes in separate steps."
         }
       ]
     },

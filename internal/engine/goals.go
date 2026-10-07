@@ -587,7 +587,7 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 	if krs, _ := spec["keyResults"].([]any); len(krs) > 3 {
 		checks = append(checks, GoalCheck{
 			ID: "key-results-count", State: goalCheckWarn,
-			Message: fmt.Sprintf("%d key results. One to three keep focus.", len(krs)),
+			Message: fmt.Sprintf("%d key results. Keep one to three; more dilutes the aim's focus.", len(krs)),
 			Fix:     &GoalCheckFix{Section: "keyResults"},
 		})
 	}

@@ -218,7 +218,7 @@
       ]
     },
     "/spec/objectives": {
-      "guide": "The change this project makes, and how, as one or more objectives, each with one to three key results. A project objective is an outcome with the means named in the same breath. Its key results measure the outcome, not the effort. The numbers go in the key results."
+      "guide": "The change this project makes and how, as one or more objectives. Each has one to three key results that measure the change, not the effort. Put numbers in the key results."
     },
     "/spec/objectives/-/objective": {
       "guide": "The change and how you will make it, such as: Catch faults at intake by checking every delivery. Put targets in the key results.",
@@ -242,7 +242,7 @@
       ]
     },
     "/spec/objectives/-/keyResults": {
-      "guide": "One to three measures that show the objective was met, each with today's figure, a dated target, the direction it should move, its unit where it has one, and the data source it is read from."
+      "guide": "One to three measures that show the objective was met. For each, give today's figure, a target with a date, which way it should move, its unit if it has one, and where the figure comes from."
     },
     "/spec/objectives/-/keyResults/-/metric": {
       "guide": "What you count, said exactly. Count the result, not the activity.",

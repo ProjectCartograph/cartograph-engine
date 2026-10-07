@@ -266,3 +266,39 @@ func TestAChangeSetReadsItsRemovalsAsGone(t *testing.T) {
 		t.Fatalf("the record itself, read without the change set: %v", err)
 	}
 }
+
+// Opening something to edit and leaving without an edit leaves no change
+// set behind: starting again reuses an empty one of theirs, and an empty
+// open change set is not listed.
+func TestAnEmptyChangeSetIsReusedAndNotListed(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	seed := actingAs(ada)
+	first, err := e.StartChangeSet(seed, "New change set", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := e.StartChangeSet(seed, "New change set", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.ID != first.ID {
+		t.Fatalf("a second empty change set was started: %s and %s", first.ID, again.ID)
+	}
+	listed, err := e.ChangeSets(seed, store.ChangeSetOpen, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed) != 0 {
+		t.Fatalf("an empty change set is listed: %+v", listed)
+	}
+	if _, err := e.EditInChangeSet(seed, first.ID, "Team", "t-x", map[string]any{"/metadata/name": "X", "/spec/description": "x"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if listed, _ := e.ChangeSets(seed, store.ChangeSetOpen, false); len(listed) != 1 {
+		t.Fatalf("a change set with an edit is not listed: %+v", listed)
+	}
+	if next, _ := e.StartChangeSet(seed, "Another", ""); next.ID == first.ID {
+		t.Fatal("a change set with work in it was reused for new work")
+	}
+}

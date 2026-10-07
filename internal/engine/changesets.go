@@ -64,6 +64,26 @@ func (e *Engine) StartChangeSet(ctx context.Context, title, description string) 
 			title = "Work by " + p.Agent
 		}
 	}
+	// An empty change set of theirs is the one they start again: opening
+	// something to edit, and leaving without an edit, must not leave a
+	// change set behind each time.
+	open, err := s.ListChangeSets(ctx, store.ChangeSetFilter{For: personKey(p), Status: store.ChangeSetOpen})
+	if err != nil {
+		return store.ChangeSet{}, err
+	}
+	for _, cs := range open {
+		if cs.Agent != p.Agent || cs.Owner != ownerOf(p) {
+			continue
+		}
+		items, err := s.ListChangeItems(ctx, cs.ID)
+		if err != nil {
+			return store.ChangeSet{}, err
+		}
+		if len(items) == 0 {
+			cs.Title, cs.Description, cs.Updated = strings.TrimSpace(title), strings.TrimSpace(description), now
+			return cs, s.PutChangeSet(ctx, cs)
+		}
+	}
 	cs := store.ChangeSet{ID: newProposalID(), Title: strings.TrimSpace(title), Description: strings.TrimSpace(description),
 		Owner: ownerOf(p), Agent: p.Agent, For: personKey(p), Status: store.ChangeSetOpen, At: now, Updated: now}
 	return cs, s.PutChangeSet(ctx, cs)
@@ -343,7 +363,22 @@ func (e *Engine) ChangeSets(ctx context.Context, status string, everyone bool) (
 	if !everyone || !e.isAdministrator(ctx) {
 		f.For = personKey(identity.PrincipalFrom(ctx))
 	}
-	return s.ListChangeSets(ctx, f)
+	sets, err := s.ListChangeSets(ctx, f)
+	if err != nil {
+		return nil, err
+	}
+	// An open change set with nothing in it is not work to list: it is
+	// where an edit would go, and nothing has.
+	kept := sets[:0]
+	for _, cs := range sets {
+		if cs.Status == store.ChangeSetOpen {
+			if items, err := s.ListChangeItems(ctx, cs.ID); err == nil && len(items) == 0 {
+				continue
+			}
+		}
+		kept = append(kept, cs)
+	}
+	return kept, nil
 }
 
 // RetitleChangeSet changes what a change set says it is.
