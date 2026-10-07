@@ -31,15 +31,6 @@ func (p plan) who(v any) string {
 	return p.item(v)
 }
 
-// whoAll names several parties briefly.
-func (p plan) whoAll(v any) string {
-	var out []string
-	for _, r := range anyList(v) {
-		out = append(out, p.who(r))
-	}
-	return strings.Join(out, ", ")
-}
-
 // readinessBrief says in one line that every part is ready, and lists
 // only the parts that are not.
 func (d *doc) readinessBrief(items []engine.ProjectCheckItem) {

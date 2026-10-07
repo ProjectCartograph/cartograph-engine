@@ -246,43 +246,6 @@ func thousands(s string) string {
 	return out
 }
 
-// approval prints the conditions approval carries and the sign-off lines,
-// each with who signed and when, or blank for a wet signature.
-func (d *doc) approval(p plan) bool {
-	cds, sos := list(p.spec["conditions"]), list(p.spec["signOffs"])
-	if len(cds)+len(sos) == 0 {
-		return false
-	}
-	d.h2("Approval")
-	if len(cds) > 0 {
-		d.h3("Conditions")
-		var rows [][]string
-		for i, c := range cds {
-			rows = append(rows, []string{fmt.Sprintf("%d", i+1), str(c["action"]), p.item(c["owner"]), p.timing(c["due"]), p.event(c["gates"]), p.status("conditions", str(c["id"]))})
-		}
-		d.table([]string{"No.", "Condition", "Owner", "Due", "Gates", "Status"}, rows)
-	}
-	if len(sos) > 0 {
-		d.h3("Sign-off")
-		d.flush()
-		d.b.WriteString("<table class=\"signoff\">\n<tr><th>Stage</th><th>Role</th><th>Decision</th><th>Signed by</th><th>Date</th></tr>\n")
-		for _, s := range sos {
-			role := p.item(s["role"])
-			if l := str(s["label"]); l != "" {
-				role = l + ": " + role
-			}
-			var decision, by, date string
-			if evs := p.events["signOffs/"+str(s["id"])]; len(evs) > 0 {
-				last := evs[len(evs)-1]
-				decision, by, date = label("decision", str(last["decision"])), str(last["recordedBy"]), when(str(last["date"]))
-			}
-			d.b.WriteString("<tr><td>" + esc(label("stage", str(s["stage"]))) + "</td><td>" + esc(role) + "</td><td>" + esc(decision) + "</td><td>" + esc(by) + "</td><td>" + esc(date) + "</td></tr>\n")
-		}
-		d.b.WriteString("</table>\n")
-	}
-	return true
-}
-
 // itemNumber is the number a charter gives an item: its own id when that
 // is already the organisation's number (m10, d4, ws3), else its place.
 func itemNumber(prefix, id string, i int) string {
