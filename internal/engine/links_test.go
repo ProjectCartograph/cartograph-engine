@@ -40,6 +40,15 @@ func TestALinkOffersOnlyWhatItMayJoin(t *testing.T) {
 		t.Fatalf("a group no cited gap affects: %+v", c)
 	}
 
+	// A problem not yet given an id is named by its position.
+	byPosition, err := e.LinkCandidates(ctx, engine.LinkProblemGroup, "quality-check-rollout", "#0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := find(byPosition, "delivering-members"); !c.Linked {
+		t.Fatalf("the first problem by position: %+v", c)
+	}
+
 	// A gap closes into an outcome, never an objective or a goal.
 	outcomes, err := e.LinkCandidates(ctx, engine.LinkGapOutcome, "no-single-quality-standard", "")
 	if err != nil {

@@ -1852,7 +1852,7 @@ type GetLinkCandidatesParams struct {
 	// From The id of the record the link starts from.
 	From string `form:"from" json:"from"`
 
-	// Problem For a link from a project's problem, the problem's id.
+	// Problem For a link from a project's problem, the problem's id, or #n for the one at position n counting from 0 when it has no id yet.
 	Problem *string `form:"problem,omitempty" json:"problem,omitempty"`
 
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.

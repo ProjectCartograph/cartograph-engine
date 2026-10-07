@@ -76,7 +76,9 @@ paths:
           required: false
           schema:
             type: string
-          description: For a link from a project's problem, the problem's id.
+          description: >-
+            For a link from a project's problem, the problem's id, or #n for
+            the one at position n counting from 0 when it has no id yet.
         - $ref: "#/components/parameters/PreviewParam"
       responses:
         "401":

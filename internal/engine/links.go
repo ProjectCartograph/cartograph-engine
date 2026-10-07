@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 // A link between two records, as a person draws it: from a node to
@@ -333,11 +335,19 @@ func specOf(doc map[string]any) map[string]any {
 	return spec
 }
 
-// problemOf is the problem with the given id in a project's spec, or the
-// first when id is empty.
+// problemOf is the problem with the given id in a project's spec, "#n"
+// for the one at position n (a problem not yet given an id), or the first
+// when id is empty.
 func problemOf(spec map[string]any, id string) map[string]any {
 	summary, _ := spec["summary"].(map[string]any)
 	problems, _ := summary["problems"].([]any)
+	if n, err := strconv.Atoi(strings.TrimPrefix(id, "#")); strings.HasPrefix(id, "#") && err == nil {
+		if n >= 0 && n < len(problems) {
+			pm, _ := problems[n].(map[string]any)
+			return pm
+		}
+		return nil
+	}
 	for _, p := range problems {
 		pm, ok := p.(map[string]any)
 		if !ok {
