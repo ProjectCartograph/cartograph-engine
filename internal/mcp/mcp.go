@@ -457,6 +457,63 @@ func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[strin
 	return changeSetOut(out, items), nil
 }
 
+// componentsOut is the components graph as an agent reads it, each
+// piece of work by name with its kind and id.
+func componentsOut(g engine.ComponentGraph) map[string]any {
+	ref := func(r engine.Ref) string { return r.Kind + "/" + r.ID }
+	nodes := []map[string]any{}
+	for _, n := range g.Nodes {
+		nodes = append(nodes, map[string]any{"work": ref(n.Ref), "name": n.Name, "months": n.Months, "dependents": n.Dependents,
+			"mostDependedOn": n.MostDependedOn, "critical": n.Critical, "inLoop": n.InLoop})
+	}
+	edges := []map[string]any{}
+	for _, ed := range g.Edges {
+		edges = append(edges, map[string]any{"from": ref(ed.From), "dependsOn": ref(ed.To), "why": ed.Why})
+	}
+	path := []string{}
+	for _, r := range g.CriticalPath {
+		path = append(path, ref(r))
+	}
+	loops := [][]string{}
+	for _, l := range g.Loops {
+		var one []string
+		for _, r := range l {
+			one = append(one, ref(r))
+		}
+		loops = append(loops, one)
+	}
+	return map[string]any{"work": nodes, "dependencies": edges, "criticalPath": path, "criticalMonths": g.CriticalMonths, "loops": loops}
+}
+
+// scheduleOut is a project's milestones placed on time, as an agent reads
+// them.
+func scheduleOut(items []engine.ScheduleItem) map[string]any {
+	out := []map[string]any{}
+	for _, it := range items {
+		m := map[string]any{"id": it.ID, "name": it.Name, "form": it.Form, "month": it.Month, "critical": it.Critical}
+		if it.NotBefore != "" {
+			m["notBefore"] = it.NotBefore
+		}
+		if it.NotAfter != "" {
+			m["notAfter"] = it.NotAfter
+		}
+		if len(it.WaitsOn) > 0 {
+			m["waitsOn"] = it.WaitsOn
+		}
+		if it.Pending {
+			m["setWhenAnEventHappens"] = true
+		}
+		if it.Late {
+			m["late"] = true
+		}
+		if it.Unplaced {
+			m["unplaced"] = true
+		}
+		out = append(out, m)
+	}
+	return map[string]any{"milestones": out}
+}
+
 // changeSetOut is a change set as an agent reads it after proposing.
 func changeSetOut(cs store.ChangeSet, items []string) map[string]any {
 	waived := make([]map[string]any, len(cs.Waivers))
@@ -563,6 +620,9 @@ type (
 		Kind  string `json:"kind"`
 		ID    string `json:"id"`
 		Check string `json:"check"`
+	}
+	readingIn struct {
+		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to read in: your own, or your person's when they ask you to help with it; your latest open one when left out"`
 	}
 	manifestRef struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
@@ -849,6 +909,31 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 
 	tool(s, o, person, &sdk.Tool{Name: "references", Description: "What a manifest references, and what references it.", Annotations: readOnly},
 		func(c call, in manifestRef) (any, error) { return e.References(c.ctx, in.Kind, in.ID) })
+
+	tool(s, o, person, &sdk.Tool{Name: "components", Description: "The graph of components across every project and programme (TAXONOMY.md D46), as your change set reads it: " +
+		"who depends on whom (edges run from the work that depends to the work it depends on), how many months each runs, how widely each is depended on, " +
+		"any loops, and the critical path, the chain that runs longest on the calendar. Ask it when your person asks what holds the work up, what a delay would move, " +
+		"or what to start first.", Annotations: readOnly},
+		func(c call, in readingIn) (any, error) {
+			c = c.reading(in.ChangeSet)
+			g, err := e.Components(c.ctx)
+			if err != nil {
+				return nil, err
+			}
+			return componentsOut(g), nil
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "schedule", Description: "A project's milestones placed on time (TAXONOMY.md D47, D48), as your change set reads it: the month each falls in, " +
+		"its window, what it waits on, whether it is still to be set by an event or late, and the chain that decides its last date (critical). " +
+		"A milestone that waits on another project's is placed from there.", Annotations: readOnly},
+		func(c call, in manifestRef) (any, error) {
+			c = c.reading(in.ChangeSet)
+			items, err := e.Schedule(c.ctx, in.ID)
+			if err != nil {
+				return nil, err
+			}
+			return scheduleOut(items), nil
+		})
 
 	tool(s, o, person, &sdk.Tool{Name: "match", Description: "Before defining anything, the existing records of a kind that already say what it would say, most likely first: " +
 		"judged by Cartograph's decision model where one is configured, else by the words they share (by says which). Work on a match instead of defining another.", Annotations: readOnly},

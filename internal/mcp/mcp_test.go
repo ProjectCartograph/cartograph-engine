@@ -740,3 +740,29 @@ func TestAnAgentHelpsInItsPersonsChangeSet(t *testing.T) {
 		t.Fatalf("the agent worked in Bob's change set: %s", text)
 	}
 }
+
+// An agent reads the components graph and a project's schedule: what
+// holds the work up and when each milestone falls.
+func TestAnAgentReadsTheComponentsAndTheSchedule(t *testing.T) {
+	t.Parallel()
+	e, _, cs := setup(t, nil)
+	ctx := identity.WithPrincipal(context.Background(), ada)
+	set, err := e.StartChangeSet(ctx, "Plan the pilot", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: pilot\n  name: Pilot\nspec:\n  team: t1\n  milestones:\n" +
+		"    - {id: m1, name: Kick-off, timing: {form: date, date: \"2026-01\"}}\n" +
+		"    - {id: m2, name: Report, timing: {form: after, event: {on: {local: milestones, id: m1}}, lagMonths: 3}}\n"
+	if err := e.SaveInChangeSet(ctx, set.ID, "Project", "pilot", []byte(project)); err != nil {
+		t.Fatal(err)
+	}
+	res, text := callTool(t, cs, "schedule", map[string]any{"changeSet": set.ID, "kind": "Project", "id": "pilot"})
+	if res.IsError || !strings.Contains(text, `"month":"2026-04"`) {
+		t.Fatalf("schedule: %s", text)
+	}
+	res, text = callTool(t, cs, "components", map[string]any{"changeSet": set.ID})
+	if res.IsError || !strings.Contains(text, `"work":"Project/pilot"`) || !strings.Contains(text, `"months":4`) {
+		t.Fatalf("components: %s", text)
+	}
+}
