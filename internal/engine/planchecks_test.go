@@ -154,3 +154,54 @@ func TestAPendingTargetIsInsideTheHorizonByItsExpectedMonth(t *testing.T) {
 		}
 	}
 }
+
+// A milestone may wait on another project's milestone: the schedule
+// places it from there, and the component's span counts from where it
+// falls rather than reading as no time at all. Two projects waiting on
+// each other leave the loop unplaced instead of placing forever.
+func TestAMilestoneWaitsOnAnotherProjects(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	// The survey first, so the app can name it; then the survey's baseline
+	// waits on the app.
+	mustCommit(t, e, "Project", "survey", "p1", projectYAML("survey", "  milestones:\n"+
+		"    - {id: s1, name: Approved, timing: {form: date, date: \"2026-08-20\"}}\n"))
+	mustCommit(t, e, "Project", "app", "p1", projectYAML("app", "  milestones:\n"+
+		"    - {id: a1, name: Digitised, timing: {form: after, event: {on: {kind: Project, id: survey}, item: s1}, lagMonths: 1}}\n"+
+		"    - {id: a2, name: Field-ready, timing: {form: after, event: {on: {local: milestones, id: a1}}, lagMonths: 2}}\n"))
+	mustCommit(t, e, "Project", "survey", "p2", projectYAML("survey", "  milestones:\n"+
+		"    - {id: s1, name: Approved, timing: {form: date, date: \"2026-08-20\"}}\n"+
+		"    - {id: s2, name: Baseline, timing: {form: after, event: {on: {kind: Project, id: app}, item: a2}}}\n"+
+		"  components:\n    - {kind: Project, id: app}\n"))
+	items, err := e.Schedule(context.Background(), "app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 2 || items[0].Month != "2026-09" || items[1].Month != "2026-11" {
+		t.Fatalf("placed %+v", items)
+	}
+	survey, err := e.Schedule(context.Background(), "survey")
+	if err != nil || survey[1].Month != "2026-11" {
+		t.Fatalf("the survey's baseline does not wait on the app: %+v (%v)", survey, err)
+	}
+	g, err := e.Components(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range g.Nodes {
+		if n.Ref.ID == "app" && n.Months != 3 {
+			t.Errorf("the app runs %d months, want 3 (September to November)", n.Months)
+		}
+	}
+
+	mustCommit(t, e, "Project", "loop2", "p1", projectYAML("loop2", "  milestones:\n"+
+		"    - {id: k1, name: Second, timing: {form: date, date: \"2026-01\"}}\n"))
+	mustCommit(t, e, "Project", "loop", "p1", projectYAML("loop", "  milestones:\n"+
+		"    - {id: l1, name: First, timing: {form: after, event: {on: {kind: Project, id: loop2}, item: k1}}}\n"))
+	mustCommit(t, e, "Project", "loop2", "p2", projectYAML("loop2", "  milestones:\n"+
+		"    - {id: k1, name: Second, timing: {form: after, event: {on: {kind: Project, id: loop}, item: l1}}}\n"))
+	looped, err := e.Schedule(context.Background(), "loop")
+	if err != nil || len(looped) != 1 || !looped[0].Unplaced {
+		t.Fatalf("a loop between projects: %+v (%v)", looped, err)
+	}
+}

@@ -1429,6 +1429,16 @@ the risks that could move it; Cartograph records the mapping and does not
 simulate it. A target or baseline that is set when an event happens meets its
 check until its expected month passes; after that it is flagged.
 
+An event may happen to an item of another project (`item`, with `on`
+naming the project): a milestone that waits on another project's
+milestone is how a dependency between projects reaches the schedule,
+and a component's span is measured where its milestones fall. A
+reference inside an event says when, not what the record is built on,
+so it is exempt from the order of work (D28) in either direction: the
+component a survey depends on may start after the survey's approval. A
+loop of waits, in one project or across several, leaves the milestones
+on it unplaced.
+
 ### D48. Milestones carry a project's schedule; phases are read as milestones. *(resolved)*
 
 **The problem.** A project's schedule was a start month and a run of phases

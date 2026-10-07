@@ -26,22 +26,23 @@ type ScheduleItem struct {
 }
 
 // Schedule places a project's milestones on time, as ctx reads it. Each
-// after-timing takes the month of what it follows plus its lag; a loop
-// leaves the milestones on it unplaced. Nothing is rescheduled: this says
-// what the definition implies.
+// after-timing takes the month of what it follows plus its lag, in this
+// project or another (TAXONOMY.md D47); a loop leaves the milestones on
+// it unplaced. Nothing is rescheduled: this says what the definition
+// implies.
 func (e *Engine) Schedule(ctx context.Context, id string) ([]ScheduleItem, error) {
-	doc, found, err := e.docInPlay(ctx, "Project", id)
+	p := &placer{e: e, ctx: ctx, specs: map[string]map[string]any{}, month: map[spot]string{}, state: map[spot]int{}, from: map[spot]string{}}
+	spec, found, err := p.spec(id)
 	if err != nil {
 		return nil, err
 	}
 	if !found {
 		return nil, fmt.Errorf("%w: Project/%s", ErrNotFound, id)
 	}
-	spec := specOf(doc)
 	ms, _ := spec["milestones"].([]any)
 	chain := readMilestones(spec)
-	byID := map[string]map[string]any{}
 	order := []string{}
+	byID := map[string]map[string]any{}
 	for _, it := range ms {
 		m, _ := it.(map[string]any)
 		mid, _ := m["id"].(string)
@@ -51,85 +52,20 @@ func (e *Engine) Schedule(ctx context.Context, id string) ([]ScheduleItem, error
 		byID[mid] = m
 		order = append(order, mid)
 	}
-	// Deliverables and conditions can be waited on too, through their own
-	// due timing when it names a month.
-	localMonth := func(list, lid string) string {
-		items, _ := spec[list].([]any)
-		for _, it := range items {
-			m, _ := it.(map[string]any)
-			if s, _ := m["id"].(string); s == lid {
-				return readTiming(m["due"]).Month
-			}
-		}
-		return ""
-	}
-	month := map[string]string{}
-	from := map[string]string{}
-	state := map[string]int{} // 0 new, 1 visiting, 2 done
-	var place func(mid string) string
-	place = func(mid string) string {
-		switch state[mid] {
-		case 1:
-			return "" // a loop: unplaced
-		case 2:
-			return month[mid]
-		}
-		state[mid] = 1
-		m := byID[mid]
-		t := readTiming(m["timing"])
-		out := t.Month
-		follow := func(ev map[string]any, lagMonths, lagDays int) {
-			on, _ := ev["on"].(map[string]any)
-			list, _ := on["local"].(string)
-			lid, _ := on["id"].(string)
-			var base string
-			switch list {
-			case "milestones":
-				base = place(lid)
-			case "deliverables", "conditions":
-				base = localMonth(list, lid)
-			}
-			if base == "" {
-				return
-			}
-			got, err := addMonths(base, lagMonths+lagDays/30)
-			if err != nil {
-				return
-			}
-			if got > out {
-				out = got
-				if list == "milestones" {
-					from[mid] = lid
-				}
-			}
-		}
-		if t.Form == "after" && t.Event != nil {
-			tm, _ := m["timing"].(map[string]any)
-			follow(t.Event, intOf(tm["lagMonths"]), intOf(tm["lagDays"]))
-		}
-		ws, _ := m["waitsOn"].([]any)
-		for _, w := range ws {
-			if ev, ok := w.(map[string]any); ok {
-				follow(ev, 0, 0)
-			}
-		}
-		month[mid] = out
-		state[mid] = 2
-		return out
-	}
 	for _, mid := range order {
-		place(mid)
+		p.place(id, mid)
 	}
+	month := func(mid string) string { return p.month[spot{id, mid}] }
 	// The chain that decides the last date: from the latest milestone back
-	// through whatever set each month.
+	// through whatever set each month, within this project.
 	critical := map[string]bool{}
 	last := ""
 	for _, mid := range order {
-		if month[mid] > month[last] || last == "" {
+		if last == "" || month(mid) > month(last) {
 			last = mid
 		}
 	}
-	for at, n := last, 0; at != "" && n <= len(order); at, n = from[at], n+1 {
+	for at, n := last, 0; at != "" && n <= len(order); at, n = p.from[spot{id, at}], n+1 {
 		critical[at] = true
 	}
 	if len(order) < 2 {
@@ -144,12 +80,133 @@ func (e *Engine) Schedule(ctx context.Context, id string) ([]ScheduleItem, error
 		na, _ := tm["notAfter"].(string)
 		name, _ := m["name"].(string)
 		out = append(out, ScheduleItem{
-			ID: mid, Name: name, Form: t.Form, Month: month[mid], NotBefore: trimMonth(nb), NotAfter: trimMonth(na),
+			ID: mid, Name: name, Form: t.Form, Month: month(mid), NotBefore: trimMonth(nb), NotAfter: trimMonth(na),
 			WaitsOn: chain.Waits[mid], Pending: t.Form == "when", Late: t.Late, Critical: critical[mid],
-			Unplaced: month[mid] == "",
+			Unplaced: month(mid) == "",
 		})
 	}
 	return out, nil
+}
+
+// spot is a milestone in a project.
+type spot struct{ project, milestone string }
+
+// placer places milestones across projects, each once, so a milestone that
+// waits on another project's is placed from there and a loop of waits,
+// in one project or across several, ends unplaced.
+type placer struct {
+	e     *Engine
+	ctx   context.Context
+	specs map[string]map[string]any
+	month map[spot]string
+	state map[spot]int // 0 new, 1 placing, 2 placed
+	// from is the milestone in the same project that set each month.
+	from map[spot]string
+}
+
+func (p *placer) spec(project string) (map[string]any, bool, error) {
+	if s, ok := p.specs[project]; ok {
+		return s, s != nil, nil
+	}
+	doc, found, err := p.e.docInPlay(p.ctx, "Project", project)
+	if err != nil {
+		return nil, false, err
+	}
+	var s map[string]any
+	if found {
+		s = specOf(doc)
+	}
+	p.specs[project] = s
+	return s, found, nil
+}
+
+// item is the named item of a project's list.
+func (p *placer) item(project, list, id string) map[string]any {
+	spec, _, _ := p.spec(project)
+	items, _ := spec[list].([]any)
+	for _, it := range items {
+		m, _ := it.(map[string]any)
+		if s, _ := m["id"].(string); s == id {
+			return m
+		}
+	}
+	return nil
+}
+
+// due is the month a deliverable or condition is due, by its timing.
+func (p *placer) due(project, list, id string) string {
+	return readTiming(p.item(project, list, id)["due"]).Month
+}
+
+// place is the month a project's milestone falls in, "" when it cannot be
+// placed.
+func (p *placer) place(project, mid string) string {
+	at := spot{project, mid}
+	switch p.state[at] {
+	case 1:
+		return "" // a loop: unplaced
+	case 2:
+		return p.month[at]
+	}
+	m := p.item(project, "milestones", mid)
+	if m == nil {
+		return ""
+	}
+	p.state[at] = 1
+	t := readTiming(m["timing"])
+	out := t.Month
+	follow := func(ev map[string]any, lagMonths, lagDays int) {
+		on, _ := ev["on"].(map[string]any)
+		list, _ := on["local"].(string)
+		lid, _ := on["id"].(string)
+		var base string
+		switch list {
+		case "milestones":
+			base = p.place(project, lid)
+		case "deliverables", "conditions":
+			base = p.due(project, list, lid)
+		}
+		if k, _ := on["kind"].(string); k == "Project" && lid != "" {
+			item, _ := ev["item"].(string)
+			switch {
+			case item == "":
+			case p.item(lid, "milestones", item) != nil:
+				base = p.place(lid, item)
+			case p.item(lid, "deliverables", item) != nil:
+				base = p.due(lid, "deliverables", item)
+			default:
+				base = p.due(lid, "conditions", item)
+			}
+		}
+		if base == "" {
+			return
+		}
+		got, err := addMonths(base, lagMonths+lagDays/30)
+		if err != nil {
+			return
+		}
+		if got > out {
+			out = got
+			if list == "milestones" {
+				p.from[at] = lid
+			} else {
+				delete(p.from, at)
+			}
+		}
+	}
+	if t.Form == "after" && t.Event != nil {
+		tm, _ := m["timing"].(map[string]any)
+		follow(t.Event, intOf(tm["lagMonths"]), intOf(tm["lagDays"]))
+	}
+	ws, _ := m["waitsOn"].([]any)
+	for _, w := range ws {
+		if ev, ok := w.(map[string]any); ok {
+			follow(ev, 0, 0)
+		}
+	}
+	p.month[at] = out
+	p.state[at] = 2
+	return out
 }
 
 func trimMonth(s string) string {

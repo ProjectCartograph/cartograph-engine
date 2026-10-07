@@ -169,7 +169,7 @@ func (e *Engine) orderProblems(kind, id string, doc map[string]any, l *lookup) [
 		// A component is a piece of work this one depends on, not a step
 		// down the strategy, so either kind of work may list either
 		// (TAXONOMY.md D46); its loops are read across both below.
-		if isComponentRef(f) || had[f.kind+"/"+f.id] {
+		if isComponentRef(f) || isEventRef(f) || had[f.kind+"/"+f.id] {
 			continue
 		}
 		if f.kind == kind {
@@ -204,14 +204,14 @@ func (e *Engine) orderProblems(kind, id string, doc map[string]any, l *lookup) [
 			d = doc
 		}
 		for _, f := range extractRefs(d, e.refRules[kind]) {
-			if f.kind == kind && !isComponentRef(f) {
+			if f.kind == kind && !isComponentRef(f) && !isEventRef(f) {
 				ids = append(ids, f.id)
 			}
 		}
 		return ids
 	}
 	for _, f := range extractRefs(doc, e.refRules[kind]) {
-		if f.kind != kind || isComponentRef(f) || f.id == id || had[f.kind+"/"+f.id] {
+		if f.kind != kind || isComponentRef(f) || isEventRef(f) || f.id == id || had[f.kind+"/"+f.id] {
 			continue
 		}
 		seen := map[string]bool{}
@@ -359,6 +359,15 @@ func (e *Engine) WorkspaceOrder(ctx context.Context) (Order, error) {
 // components (spec.components[].id).
 func isComponentRef(f foundRef) bool {
 	return strings.HasPrefix(f.path, "/spec/components/")
+}
+
+// isEventRef is a reference inside an event: when something falls, not
+// what the record is built on (TAXONOMY.md D47). A milestone may wait on
+// any record's event, before or after it in the order of work, including
+// a milestone of the project that depends on this one; the schedule
+// leaves a loop of waits unplaced and milestones-loop names it.
+func isEventRef(f foundRef) bool {
+	return strings.Contains(f.path, "/event/") || strings.Contains(f.path, "/waitsOn/")
 }
 
 // componentLoopProblems refuses a component being added that already

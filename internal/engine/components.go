@@ -67,8 +67,13 @@ func (e *Engine) Components(ctx context.Context) (ComponentGraph, error) {
 			r := Ref{Kind: kind, ID: d.id}
 			at[r] = len(g.Nodes)
 			sp := specOf(d.doc)
-			g.Nodes = append(g.Nodes, ComponentNode{Ref: r, Name: nameOf(d.doc, d.id), Months: monthsOf(sp)})
-			spanAt[r] = func() (int, int, bool) { return spanOf(sp) }
+			lo, hi, ok := e.placedSpan(ctx, kind, d.id, sp)
+			months := 0
+			if ok {
+				months = hi - lo + 1
+			}
+			g.Nodes = append(g.Nodes, ComponentNode{Ref: r, Name: nameOf(d.doc, d.id), Months: months})
+			spanAt[r] = func() (int, int, bool) { return lo, hi, ok }
 		}
 		for _, d := range docs {
 			from := Ref{Kind: kind, ID: d.id}
@@ -279,13 +284,34 @@ func spanOf(spec map[string]any) (lo, hi int, ok bool) {
 	return s, s + total - 1, true
 }
 
-// monthsOf is how many months a project runs, first to last, both counted.
-func monthsOf(spec map[string]any) int {
-	lo, hi, ok := spanOf(spec)
-	if !ok {
-		return 0
+// placedSpan is the months a project runs as its schedule places its
+// milestones, so one that follows another milestone, or another
+// project's, counts from where it falls; else as spanOf reads it.
+func (e *Engine) placedSpan(ctx context.Context, kind, id string, spec map[string]any) (lo, hi int, ok bool) {
+	if kind == "Project" {
+		if placed, err := e.Schedule(ctx, id); err == nil {
+			first := true
+			for _, it := range placed {
+				for _, v := range []string{it.Month, it.NotBefore, it.NotAfter} {
+					x, good := yearMonthIndex(v)
+					if !good {
+						continue
+					}
+					if first || x < lo {
+						lo = x
+					}
+					if first || x > hi {
+						hi = x
+					}
+					first = false
+				}
+			}
+			if !first {
+				return lo, hi, true
+			}
+		}
 	}
-	return hi - lo + 1
+	return spanOf(spec)
 }
 
 func refLess(a, b Ref) bool {

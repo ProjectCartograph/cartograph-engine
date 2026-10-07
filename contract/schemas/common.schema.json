@@ -558,12 +558,13 @@
       "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$"
     },
     "Event": {
-      "description": "Something that happens (TAXONOMY.md D47): to an item this record holds (a milestone reached, a deliverable accepted, a condition met), to another record (a KPI's first reading, a project closed), or outside the workspace, named in words through an external reference.",
+      "description": "Something that happens (TAXONOMY.md D47): to an item this record holds (a milestone reached, a deliverable accepted, a condition met), to another record (a KPI's first reading, a project closed, an item in another project such as its milestone reached), or outside the workspace, named in words through an external reference.",
       "type": "object",
       "additionalProperties": false,
       "required": ["on"],
       "properties": {
         "on": {"$ref": "#/$defs/Ref", "description": "What it happens to."},
+        "item": {"$ref": "#/$defs/Slug", "description": "With on naming another project: the item in it the event happens to, by id, a milestone first, else a deliverable or a condition. A milestone that waits on another project's milestone is how a dependency between projects reaches the schedule."},
         "happens": {"type": "string", "enum": ["reached", "accepted", "met", "firstReading", "issued", "decided", "approved", "closed", "landed", "occurred"], "description": "What happens to it. Left out, the item's own ending: a milestone reached, a deliverable accepted, a condition met."}
       }
     },
