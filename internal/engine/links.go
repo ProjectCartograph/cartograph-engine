@@ -20,6 +20,9 @@ const (
 	LinkGoalContributes = "goal-contributes"
 	LinkKPIGap          = "kpi-gap"
 	LinkProjectOutcome  = "project-outcome"
+	// A project or a programme depends on another (TAXONOMY.md D46).
+	LinkProjectComponent   = "project-component"
+	LinkProgrammeComponent = "programme-component"
 )
 
 // ErrUnknownLink is a link kind the engine does not know.
@@ -67,6 +70,12 @@ var linkSources = map[string]string{
 // (TAXONOMY.md D24, D28, D45), asked before the link is drawn rather than
 // after it is saved.
 func (e *Engine) LinkCandidates(ctx context.Context, link, from, problem string) ([]LinkCandidate, error) {
+	switch link {
+	case LinkProjectComponent:
+		return e.componentCandidates(ctx, Ref{Kind: "Project", ID: from})
+	case LinkProgrammeComponent:
+		return e.componentCandidates(ctx, Ref{Kind: "Programme", ID: from})
+	}
 	target, ok := linkTargets[link]
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrUnknownLink, link)

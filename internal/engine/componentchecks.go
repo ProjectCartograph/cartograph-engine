@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -34,8 +35,17 @@ func (e *Engine) addComponentChecks(ctx context.Context, c checkAdder, id string
 		}
 	}
 
-	children, err := e.componentsOf(ctx, id)
+	legacy, err := e.componentsOf(ctx, id)
 	if err != nil {
+		return err
+	}
+	children := declaredComponents(spec)
+	for _, l := range legacy {
+		if r := (Ref{Kind: "Project", ID: l}); !containsRef(children, r) {
+			children = append(children, r)
+		}
+	}
+	if err := e.addLoopCheck(ctx, c, Ref{Kind: "Project", ID: id}, len(children) > 0); err != nil {
 		return err
 	}
 	if len(children) == 0 {
@@ -186,4 +196,93 @@ func subset(xs, of []string) bool {
 		}
 	}
 	return true
+}
+
+// declaredComponents lists the projects and programmes spec names as its
+// components (TAXONOMY.md D46).
+func declaredComponents(spec map[string]any) []Ref {
+	var out []Ref
+	list, _ := spec["components"].([]any)
+	for _, c := range list {
+		cm, _ := c.(map[string]any)
+		k, _ := cm["kind"].(string)
+		id, _ := cm["id"].(string)
+		if r := (Ref{Kind: k, ID: id}); k != "" && id != "" && !containsRef(out, r) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func containsRef(list []Ref, r Ref) bool {
+	for _, x := range list {
+		if x == r {
+			return true
+		}
+	}
+	return false
+}
+
+// loopOf is the loop of components self lies on, by name, or nothing.
+func (e *Engine) loopOf(ctx context.Context, self Ref) ([]string, error) {
+	g, err := e.Components(ctx)
+	if err != nil {
+		return nil, err
+	}
+	names := map[Ref]string{}
+	for _, n := range g.Nodes {
+		names[n.Ref] = n.Name
+	}
+	for _, loop := range g.Loops {
+		if !containsRef(loop, self) {
+			continue
+		}
+		// Told from self round to self, so it reads as this work's loop.
+		at := 0
+		for i, r := range loop[:len(loop)-1] {
+			if r == self {
+				at = i
+			}
+		}
+		ring := loop[:len(loop)-1]
+		var out []string
+		for i := range len(ring) + 1 {
+			out = append(out, names[ring[(at+i)%len(ring)]])
+		}
+		return out, nil
+	}
+	return nil, nil
+}
+
+// addLoopCheck says whether a project's components come back round to
+// it. A loop has no order the work can be done in, so it stops a handoff.
+func (e *Engine) addLoopCheck(ctx context.Context, c checkAdder, self Ref, hasComponents bool) error {
+	loop, err := e.loopOf(ctx, self)
+	if err != nil {
+		return err
+	}
+	switch {
+	case len(loop) > 0:
+		c.add("components-loop", "goals", phaseInitiation, checkBlock,
+			fmt.Sprintf("Depends on itself: %s. Remove one of these components to break the loop.", strings.Join(loop, " depends on ")))
+	case hasComponents:
+		c.add("components-loop", "goals", phaseInitiation, checkOK, "None of its components depends back on it.")
+	}
+	return nil
+}
+
+// projectComponents is every project id is made of: the ones it lists
+// (D46) and the ones an older definition declared part of it (D15).
+func (e *Engine) projectComponents(ctx context.Context, id string, spec map[string]any) ([]string, error) {
+	out, err := e.componentsOf(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range declaredComponents(spec) {
+		if r.Kind == "Project" && !slices.Contains(out, r.ID) {
+			out = append(out, r.ID)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
 }

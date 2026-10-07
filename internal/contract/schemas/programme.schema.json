@@ -339,6 +339,13 @@
           "propertyNames": {
             "$ref": "common.schema.json#/$defs/Slug"
           }
+        },
+        "components": {
+          "type": "array",
+          "description": "The projects and programmes this work depends on: its components, each with why. Declared here, by the work that uses it, and read back on the component; a component may serve any number of others. A chain that comes back to where it started is refused (TAXONOMY.md D46).",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Component"
+          }
         }
       }
     }

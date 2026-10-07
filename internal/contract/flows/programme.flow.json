@@ -135,7 +135,32 @@
         "key": "components",
         "title": "Components",
         "guide": "The projects, smaller programmes and services this programme coordinates.",
-        "fields": [],
+        "fields": [
+          {
+            "path": "/spec/components",
+            "control": "list",
+            "key": "id",
+            "hint": "The projects and programmes this one depends on. Add one only if this work cannot finish without it.",
+            "checks": [
+              "components-loop"
+            ],
+            "fields": [
+              {
+                "path": "/kind",
+                "control": "choice"
+              },
+              {
+                "path": "/id",
+                "control": "reference"
+              },
+              {
+                "path": "/why",
+                "control": "sentence",
+                "hint": "What this work needs from it."
+              }
+            ]
+          }
+        ],
         "links": [
           {
             "kind": "Project",

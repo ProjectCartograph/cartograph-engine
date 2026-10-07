@@ -27,7 +27,7 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 	}
 	n := loadNames(ctx, e)
 
-	inside := components(ctx, e, id)
+	inside := components(ctx, e, id, spec)
 	var d doc
 	d.head(name, "Programme", vers)
 	d.facts(
@@ -120,7 +120,7 @@ func plural2(n int, one, many string) string {
 
 // components lists the projects and operations that name this programme,
 // with each project's own components beside it.
-func components(ctx context.Context, e *engine.Engine, programme string) [][]string {
+func components(ctx context.Context, e *engine.Engine, programme string, spec map[string]any) [][]string {
 	children := map[string][]string{}
 	each(ctx, e, "Project", func(_, cname string, spec map[string]any) {
 		if parent := str(obj(spec["alignment"])["partOf"]); parent != "" {
@@ -143,6 +143,23 @@ func components(ctx context.Context, e *engine.Engine, programme string) [][]str
 				}
 			}
 		})
+	}
+	// What the programme lists itself (TAXONOMY.md D46), where nothing
+	// already named it.
+	n := loadNames(ctx, e)
+	for _, cm := range list(spec["components"]) {
+		kind, cid := str(cm["kind"]), str(cm["id"])
+		if kind == "" || cid == "" {
+			continue
+		}
+		name := n.of(kind, cid)
+		listed := false
+		for _, row := range out {
+			listed = listed || row[0] == name
+		}
+		if !listed {
+			out = append(out, []string{name, kind, strings.Join(children[cid], "; ")})
+		}
 	}
 	return out
 }

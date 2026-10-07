@@ -88,6 +88,24 @@ func (e ChangeSetItemOp) Valid() bool {
 	}
 }
 
+// Defines values for ComponentNodeKind.
+const (
+	ComponentNodeKindProgramme ComponentNodeKind = "Programme"
+	ComponentNodeKindProject   ComponentNodeKind = "Project"
+)
+
+// Valid indicates whether the value is a known member of the ComponentNodeKind enum.
+func (e ComponentNodeKind) Valid() bool {
+	switch e {
+	case ComponentNodeKindProgramme:
+		return true
+	case ComponentNodeKindProject:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GoalCheckState.
 const (
 	GoalCheckStateOk   GoalCheckState = "ok"
@@ -126,14 +144,16 @@ func (e GuidePlanItemWhen) Valid() bool {
 
 // Defines values for LinkKind.
 const (
-	GapGroup        LinkKind = "gap-group"
-	GapOutcome      LinkKind = "gap-outcome"
-	GoalContributes LinkKind = "goal-contributes"
-	GoalParent      LinkKind = "goal-parent"
-	KpiGap          LinkKind = "kpi-gap"
-	ProblemGap      LinkKind = "problem-gap"
-	ProblemGroup    LinkKind = "problem-group"
-	ProjectOutcome  LinkKind = "project-outcome"
+	GapGroup           LinkKind = "gap-group"
+	GapOutcome         LinkKind = "gap-outcome"
+	GoalContributes    LinkKind = "goal-contributes"
+	GoalParent         LinkKind = "goal-parent"
+	KpiGap             LinkKind = "kpi-gap"
+	ProblemGap         LinkKind = "problem-gap"
+	ProblemGroup       LinkKind = "problem-group"
+	ProgrammeComponent LinkKind = "programme-component"
+	ProjectComponent   LinkKind = "project-component"
+	ProjectOutcome     LinkKind = "project-outcome"
 )
 
 // Valid indicates whether the value is a known member of the LinkKind enum.
@@ -152,6 +172,10 @@ func (e LinkKind) Valid() bool {
 	case ProblemGap:
 		return true
 	case ProblemGroup:
+		return true
+	case ProgrammeComponent:
+		return true
+	case ProjectComponent:
 		return true
 	case ProjectOutcome:
 		return true
@@ -454,6 +478,24 @@ func (e UseAs) Valid() bool {
 	}
 }
 
+// Defines values for WorkRefKind.
+const (
+	WorkRefKindProgramme WorkRefKind = "Programme"
+	WorkRefKindProject   WorkRefKind = "Project"
+)
+
+// Valid indicates whether the value is a known member of the WorkRefKind enum.
+func (e WorkRefKind) Valid() bool {
+	switch e {
+	case WorkRefKindProgramme:
+		return true
+	case WorkRefKindProject:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListChangeSetsParamsStatus.
 const (
 	ListChangeSetsParamsStatusClosed   ListChangeSetsParamsStatus = "closed"
@@ -726,6 +768,53 @@ type ChangeSetTitle struct {
 	Description *string `json:"description,omitempty"`
 	Title       *string `json:"title,omitempty"`
 }
+
+// ComponentEdge defines model for ComponentEdge.
+type ComponentEdge struct {
+	From WorkRef `json:"from"`
+
+	// Legacy Read from an older declaration made on the component (a project's alignment.partOf or alignment.programmes, a programme's programmes).
+	Legacy *bool   `json:"legacy,omitempty"`
+	To     WorkRef `json:"to"`
+	Why    *string `json:"why,omitempty"`
+}
+
+// ComponentGraph defines model for ComponentGraph.
+type ComponentGraph struct {
+	CriticalMonths int `json:"criticalMonths"`
+
+	// CriticalPath The longest chain of components by duration, from the work that depends to the work depended on.
+	CriticalPath []WorkRef       `json:"criticalPath"`
+	Edges        []ComponentEdge `json:"edges"`
+
+	// Loops Each loop in order, ending where it began.
+	Loops [][]WorkRef     `json:"loops"`
+	Nodes []ComponentNode `json:"nodes"`
+}
+
+// ComponentNode defines model for ComponentNode.
+type ComponentNode struct {
+	// Critical On the critical path.
+	Critical bool `json:"critical"`
+
+	// Dependents How many projects and programmes depend on it, directly or through others.
+	Dependents int    `json:"dependents"`
+	Id         string `json:"id"`
+
+	// InLoop On a loop of components.
+	InLoop bool              `json:"inLoop"`
+	Kind   ComponentNodeKind `json:"kind"`
+
+	// Months How long it takes itself; a programme takes none of its own.
+	Months int `json:"months"`
+
+	// MostDependedOn More work depends on it than on any other, and at least two.
+	MostDependedOn bool   `json:"mostDependedOn"`
+	Name           string `json:"name"`
+}
+
+// ComponentNodeKind defines model for ComponentNode.Kind.
+type ComponentNodeKind string
 
 // ConflictResponse defines model for ConflictResponse.
 type ConflictResponse struct {
@@ -1140,7 +1229,7 @@ type LinkCandidate struct {
 	Reason *string `json:"reason,omitempty"`
 }
 
-// LinkKind A kind of link between two records: problem-gap (a project's problem cites a gap), problem-group (a problem affects a beneficiary group), gap-group (a gap affects a group), gap-outcome (a gap closes into an outcome), goal-parent (an aim sits under another), goal-contributes (an outcome also leads to another aim), kpi-gap (an indicator measures a gap), project-outcome (a project serves an outcome).
+// LinkKind A kind of link between two records: problem-gap (a project's problem cites a gap), problem-group (a problem affects a beneficiary group), gap-group (a gap affects a group), gap-outcome (a gap closes into an outcome), goal-parent (an aim sits under another), goal-contributes (an outcome also leads to another aim), kpi-gap (an indicator measures a gap), project-outcome (a project serves an outcome), project-component and programme-component (a project or a programme depends on another project or programme, TAXONOMY.md D46).
 type LinkKind string
 
 // Manifest The generic manifest envelope, mirroring contract/schemas/manifest.schema.json (kept in sync by hand: the authoritative shape and every kind-specific spec shape live under contract/schemas/, since the code generator cannot follow that file's further reference into common.schema.json without a hand-written import mapping). Runtime validation always uses the JSON Schema files directly, never this generated type.
@@ -1740,6 +1829,15 @@ type Waiver struct {
 	Reason string `json:"reason"`
 }
 
+// WorkRef defines model for WorkRef.
+type WorkRef struct {
+	Id   string      `json:"id"`
+	Kind WorkRefKind `json:"kind"`
+}
+
+// WorkRefKind defines model for WorkRef.Kind.
+type WorkRefKind string
+
 // WriteRequest Exactly one of yaml or manifest must be supplied.
 type WriteRequest struct {
 	Manifest *map[string]interface{} `json:"manifest,omitempty"`
@@ -1809,6 +1907,12 @@ type ListChangeSetsParamsStatus string
 type MoveInChangeSetJSONBody struct {
 	// State The state to move to, as ProjectState names them.
 	State string `json:"state"`
+}
+
+// GetComponentsParams defines parameters for GetComponents.
+type GetComponentsParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
 // FromIdeaJSONBody defines parameters for FromIdea.
@@ -2267,6 +2371,9 @@ type ServerInterface interface {
 	// ReopenChangeSet Take a proposed change set back to work, to ask for changes or to withdraw it.
 	// (POST /changesets/{set}/reopen)
 	ReopenChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// GetComponents Every project and programme, what each depends on, and what follows
+	// (GET /components)
+	GetComponents(w http.ResponseWriter, r *http.Request, params GetComponentsParams)
 	// GetDecisionModel Whether a decision model is configured, and answering now
 	// (GET /decision-model)
 	GetDecisionModel(w http.ResponseWriter, r *http.Request)
@@ -3139,6 +3246,39 @@ func (siw *ServerInterfaceWrapper) ReopenChangeSet(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReopenChangeSet(w, r, set)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetComponents operation middleware
+func (siw *ServerInterfaceWrapper) GetComponents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetComponentsParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetComponents(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5319,6 +5459,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/settings", wrapper.GetSettings)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/goals/tree", wrapper.GetGoalTree)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/links/{link}/candidates", wrapper.GetLinkCandidates)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/components", wrapper.GetComponents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/graph", wrapper.GetGraph)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Goal/{id}/checks", wrapper.GetGoalChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Gap/{id}/checks", wrapper.GetGapChecks)
@@ -6976,6 +7117,56 @@ func (response ReopenChangeSet409JSONResponse) VisitReopenChangeSetResponse(w ht
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetComponentsRequestObject struct {
+	Params GetComponentsParams
+}
+
+type GetComponentsResponseObject interface {
+	VisitGetComponentsResponse(w http.ResponseWriter) error
+}
+
+type GetComponents200JSONResponse ComponentGraph
+
+func (response GetComponents200JSONResponse) VisitGetComponentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetComponents401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetComponents401JSONResponse) VisitGetComponentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetComponents403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetComponents403JSONResponse) VisitGetComponentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -11062,6 +11253,9 @@ type StrictServerInterface interface {
 	// ReopenChangeSet Take a proposed change set back to work, to ask for changes or to withdraw it.
 	// (POST /changesets/{set}/reopen)
 	ReopenChangeSet(ctx context.Context, request ReopenChangeSetRequestObject) (ReopenChangeSetResponseObject, error)
+	// GetComponents Every project and programme, what each depends on, and what follows
+	// (GET /components)
+	GetComponents(ctx context.Context, request GetComponentsRequestObject) (GetComponentsResponseObject, error)
 	// GetDecisionModel Whether a decision model is configured, and answering now
 	// (GET /decision-model)
 	GetDecisionModel(ctx context.Context, request GetDecisionModelRequestObject) (GetDecisionModelResponseObject, error)
@@ -11947,6 +12141,32 @@ func (sh *strictHandler) ReopenChangeSet(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ReopenChangeSetResponseObject); ok {
 		if err := validResponse.VisitReopenChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetComponents operation middleware
+func (sh *strictHandler) GetComponents(w http.ResponseWriter, r *http.Request, params GetComponentsParams) {
+	var request GetComponentsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetComponents(ctx, request.(GetComponentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetComponents")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetComponentsResponseObject); ok {
+		if err := validResponse.VisitGetComponentsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

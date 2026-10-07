@@ -110,6 +110,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 		field{"Project manager", strings.Join(roleNames(n, resources, "manager"), ", ")},
 		field{"Team", n.of("Team", str(spec["team"]))},
 		field{"Programme", partOf},
+		field{"Depends on", strings.Join(dependsOn(n, list(spec["components"])), "; ")},
 		field{"Start", month(str(timeline["start"]))},
 		field{"End", finish},
 		field{"Budget", total},
@@ -399,4 +400,16 @@ func hasTasks(wbs []WorkItem) bool {
 		}
 	}
 	return false
+}
+
+// dependsOn names the projects and programmes a piece of work lists as its
+// components (TAXONOMY.md D46).
+func dependsOn(n names, components []map[string]any) []string {
+	var out []string
+	for _, cm := range components {
+		if kind, id := str(cm["kind"]), str(cm["id"]); kind != "" && id != "" {
+			out = append(out, n.of(kind, id))
+		}
+	}
+	return out
 }

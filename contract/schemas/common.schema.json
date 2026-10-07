@@ -536,6 +536,17 @@
           "description": "What those groups can then do: \"learn of a failure the same day and can rework it\". The subject comes from `groups`. Optional: until it is written the sentence stops at what will be true, which is a smaller claim rather than an unfinished one."
         }
       }
+    },
+    "Component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "description": "One piece of work another depends on (TAXONOMY.md D46).",
+      "properties": {
+        "kind": {"type": "string", "enum": ["Project", "Programme"], "description": "Whether it is a project or a programme."},
+        "id": {"$ref": "#/$defs/Slug", "x-cartograph-ref": "*", "description": "The project or programme depended on."},
+        "why": {"type": "string", "maxLength": 240, "description": "What this work needs from it."}
+      }
     }
   }
 }

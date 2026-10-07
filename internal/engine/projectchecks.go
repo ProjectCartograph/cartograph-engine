@@ -1358,7 +1358,7 @@ func unownedMessage(n int) string {
 // beside the checks, and a test holds it to every check added as
 // checkBlock.
 var blockingChecks = map[string]bool{
-	"aim-problem-change": true, "problem-groups-match-gaps": true, "components-parent": true, "data-personal-data": true, "data-sink": true,
+	"aim-problem-change": true, "problem-groups-match-gaps": true, "components-parent": true, "components-loop": true, "data-personal-data": true, "data-sink": true,
 	"deliverables-count": true, "closing-criteria": true, "landing-criteria": true, "success-criteria": true,
 	"success-measured": true, "goals-aligned": true, "goals-functional-level": true, "goals-key-results-baseline": true,
 	"goals-key-results-count": true, "goals-key-results-source": true, "goals-key-results-target": true,
@@ -1372,7 +1372,7 @@ var blockingChecks = map[string]bool{
 // personal data or hands data on. A field they read is not marked
 // required, since most definitions leave it empty and are complete.
 var someBlocking = map[string]bool{
-	"components-parent": true, "goals-aligned": true, "goals-functional-level": true,
+	"components-parent": true, "components-loop": true, "goals-aligned": true, "goals-functional-level": true,
 	"success-measured": true, "data-personal-data": true, "data-sink": true,
 }
 

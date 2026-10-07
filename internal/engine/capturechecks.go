@@ -66,7 +66,7 @@ func (e *Engine) addCaptureChecks(ctx context.Context, c checkAdder, id string, 
 	for src := range producedInto(spec) {
 		changedBy[src] = "this project"
 	}
-	if parts, err := e.componentsOf(ctx, id); err == nil {
+	if parts, err := e.projectComponents(ctx, id, spec); err == nil {
 		for _, part := range parts {
 			doc, err := e.loadProjectDoc(ctx, part)
 			if err != nil {

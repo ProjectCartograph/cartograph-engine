@@ -423,7 +423,8 @@
                 "$ref": "common.schema.json#/$defs/Slug",
                 "x-cartograph-ref": "Programme"
               },
-              "description": "The programmes this project is part of. Belonging to one is a declaration, not a derivation: a programme coordinates the work inside it, which only means something if the work says which programme it is in. Declared here and read back on the programme, so there is one place to change it. Sharing a goal with a programme corroborates the claim and a check says so when it is missing, but it does not constitute it: an enabling component can belong to a programme and serve no goal the programme lists. That check is advisory: it shows a missing shared goal and never refuses the save. See TAXONOMY.md."
+              "description": "Deprecated (TAXONOMY.md D46): the programmes this project was declared part of. Read as each programme listing this project in its components; write components on the programme instead.",
+              "deprecated": true
             },
             "portfolios": {
               "type": "array",
@@ -436,7 +437,8 @@
             "partOf": {
               "$ref": "common.schema.json#/$defs/Slug",
               "x-cartograph-ref": "Project",
-              "description": "The project this one is a component of (PMI's subproject; the World Bank's component under one development objective). Declared here and read back on the parent, the same rule programme membership follows. One parent, one level deep. A component serves its parent's goals and belongs to its parent's programmes, so it names neither itself; it has its own lead, deliverables and key results, and shares its parent's sponsor and budget. A part that needs its own sponsor or budget is a separate project, and the pair is a programme. See TAXONOMY.md D15."
+              "description": "Deprecated (TAXONOMY.md D46): the project this one was declared part of. Read as that project listing this one in its components; write components on the project that depends on it instead.",
+              "deprecated": true
             }
           },
           "description": "What this project is part of, and what it is for. The two are separate: goals are what the work is meant to move, programmes are what it belongs to, and a project can serve a goal none of its programmes serve. See TAXONOMY.md for why membership is declared rather than derived."
@@ -843,6 +845,13 @@
           },
           "propertyNames": {
             "$ref": "common.schema.json#/$defs/Slug"
+          }
+        },
+        "components": {
+          "type": "array",
+          "description": "The projects and programmes this work depends on: its components, each with why. Declared here, by the work that uses it, and read back on the component; a component may serve any number of others. A chain that comes back to where it started is refused (TAXONOMY.md D46).",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Component"
           }
         }
       }

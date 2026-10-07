@@ -477,7 +477,7 @@ follows.
   GovS 002, PRINCE2, ITIL). Then: can one team under one sponsor and one budget
   deliver it (MSP)? "New" asks both, by picking. The reading check ends; the
   assessment service it lands in does not.
-- **D15. A project can be a component of one other project.** PMI's
+- **D15. A project can be a component of one other project.** *(Superseded by D46: work lists its components, and a component may serve many.)* PMI's
   subproject; the World Bank's component under one PDO. `Project.spec.alignment.partOf`,
   declared on the component and read back on the parent (the D1 rule), one
   parent, one level. The parent holds the results framework; components hold
@@ -487,7 +487,7 @@ follows.
   theory of change at programme level** (UNSDG, ADB, EU logframe): they are
   two levels, not two flavours of one container. Printing the check booklets
   can be a component of the reading check.
-- **D16. Shared enabling work is its own project**, used by others through a
+- **D16. Shared enabling work is its own project** *(superseded by D46: it is a component of each project that uses it)*, used by others through a
   dependency, and lands as an operation (ITIL). A component has one parent;
   a second user promotes it. Moving the learner records to a new system,
   used by both reading projects, is its own project.
@@ -1352,3 +1352,42 @@ keeps its name, so saved definitions read as before.
 **Not adopted.** Deriving a problem's groups from its gaps and storing
 none: a project may serve some of the people a gap falls on and not
 others, and saying which is the problem's to say.
+
+### D46. Work lists its components; a component may serve many. *(resolved; supersedes D1's direction, D15 and D16)*
+
+**The problem.** A component declared the one project or programme it was
+part of (D1, D15), and work used by two was to be promoted to a project of
+its own (D16). That is the wrong way round for how dependencies are kept
+everywhere else: a program names the libraries it uses; a library does not
+name its users. Shared enabling work, such as a data platform every other
+project uses, is a component of each of them, not a special case. And with
+components shared, the structure is a graph: it can have long chains,
+work that much depends on, and loops nobody meant to write.
+
+**What Cartograph does.** A project or a programme lists its `components`:
+the projects and programmes it depends on, each with why. The component
+says nothing of what uses it; that is read back. A component may serve
+any number of others. The engine resolves the whole graph and states, for
+every piece of work:
+- every path through its components, at any depth;
+- **loops**: a chain of components that comes back to where it started is
+  refused as a definition (a blocking check on each piece of work in it,
+  naming the loop in order) and drawn as such on the map;
+- the **critical path**: the longest chain of components by duration (a
+  project's timeline in months; a programme takes no time of its own), so
+  a delay anywhere on it delays the whole;
+- the **shared** components: those that the most work depends on, directly
+  or through others, so their failure reaches furthest.
+
+An older definition that says a project is part of a project
+(`alignment.partOf`) or of a programme (`alignment.programmes`) is read as
+that project or programme listing it as a component; nothing saved before
+breaks, and the editor writes only `components`. The question a person is
+asked is "Does this have any dependencies?", answered by picking the work
+it depends on.
+
+Components are exempt from the order of work (D28). D28 keeps the
+strategy written from the top down; a dependency between two pieces of
+work is not a step down it, and a programme listing a project it depends
+on is the point of this decision. D28's other half holds: a loop is
+refused, read across projects and programmes together.

@@ -262,3 +262,12 @@ about different people (TAXONOMY.md D24, D28, D45). While dragging, only
 allowed records take the drop; the rest are dimmed and say their reason.
 The link is saved as an ordinary edit in the change set, and the checks
 hold it again when the change set is merged.
+
+A project or programme's components (`project-component`,
+`programme-component`, TAXONOMY.md D46) reach every project and
+programme, marked as above: itself, and anything that already depends on
+it, would close a loop. `GET /components` is the whole graph to draw
+them on: who depends on whom, every loop in order, the critical path by
+duration, and how much work depends on each, with the one most depended
+on marked. An interface shows loops, the critical path and the most
+depended on as three distinct marks, each with its words.

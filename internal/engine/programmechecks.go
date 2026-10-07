@@ -86,11 +86,27 @@ func (e *Engine) programmeChecksOf(ctx context.Context, id string, doc map[strin
 	if err != nil {
 		return nil, err
 	}
+	// What the programme lists itself (TAXONOMY.md D46) counts with what
+	// names it.
+	for _, r := range declaredComponents(spec) {
+		switch {
+		case r.Kind == "Project" && !slices.Contains(projects, r.ID):
+			projects = append(projects, r.ID)
+		case r.Kind == "Programme" && !slices.Contains(subs, r.ID):
+			subs = append(subs, r.ID)
+		}
+	}
+	if loop, err := e.loopOf(ctx, Ref{Kind: "Programme", ID: id}); err != nil {
+		return nil, err
+	} else if len(loop) > 0 {
+		add("components-loop", "components", programmeCheckWarn,
+			fmt.Sprintf("Depends on itself: %s. Remove one of these components to break the loop.", strings.Join(loop, " depends on ")))
+	}
 	if counted := countedList([]counted{{len(projects), "project"}, {len(subs), "sub-programme"}, {len(operations), "operation"}}); counted == "" {
 		add("components-present", "components", programmeCheckWarn,
-			"No project, sub-programme or operation has named this programme yet, so it coordinates nothing.")
+			"It has no components yet, so it coordinates nothing.")
 	} else {
-		add("components-present", "components", programmeCheckOK, counted+" named.")
+		add("components-present", "components", programmeCheckOK, "Components: "+counted+".")
 	}
 
 	// A member project serves the programme by moving one of its aims,

@@ -96,6 +96,29 @@ paths:
                 items:
                   $ref: "#/components/schemas/LinkCandidate"
 
+  /components:
+    get:
+      operationId: getComponents
+      summary: Every project and programme, what each depends on, and what follows
+      description: >-
+        The graph of components across the workspace (TAXONOMY.md D46): each
+        project and programme, the ones it depends on, every loop, the
+        critical path by duration, and how much work depends on each, read
+        as the change set reads it.
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComponentGraph"
+
   /graph:
     get:
       operationId: getGraph
@@ -4087,8 +4110,83 @@ components:
         into an outcome), goal-parent (an aim sits under another),
         goal-contributes (an outcome also leads to another aim), kpi-gap (an
         indicator measures a gap), project-outcome (a project serves an
-        outcome).
-      enum: [problem-gap, problem-group, gap-group, gap-outcome, goal-parent, goal-contributes, kpi-gap, project-outcome]
+        outcome), project-component and programme-component (a project or a
+        programme depends on another project or programme, TAXONOMY.md D46).
+      enum: [problem-gap, problem-group, gap-group, gap-outcome, goal-parent, goal-contributes, kpi-gap, project-outcome, project-component, programme-component]
+    WorkRef:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [Project, Programme]
+        id:
+          type: string
+    ComponentNode:
+      type: object
+      required: [kind, id, name, months, dependents, critical, inLoop, mostDependedOn]
+      properties:
+        kind:
+          type: string
+          enum: [Project, Programme]
+        id:
+          type: string
+        name:
+          type: string
+        months:
+          type: integer
+          description: How long it takes itself; a programme takes none of its own.
+        dependents:
+          type: integer
+          description: How many projects and programmes depend on it, directly or through others.
+        critical:
+          type: boolean
+          description: On the critical path.
+        inLoop:
+          type: boolean
+          description: On a loop of components.
+        mostDependedOn:
+          type: boolean
+          description: More work depends on it than on any other, and at least two.
+    ComponentEdge:
+      type: object
+      required: [from, to]
+      properties:
+        from:
+          $ref: "#/components/schemas/WorkRef"
+        to:
+          $ref: "#/components/schemas/WorkRef"
+        why:
+          type: string
+        legacy:
+          type: boolean
+          description: Read from an older declaration made on the component (a project's alignment.partOf or alignment.programmes, a programme's programmes).
+    ComponentGraph:
+      type: object
+      required: [nodes, edges, loops, criticalPath, criticalMonths]
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComponentNode"
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComponentEdge"
+        loops:
+          type: array
+          description: Each loop in order, ending where it began.
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/WorkRef"
+        criticalPath:
+          type: array
+          description: The longest chain of components by duration, from the work that depends to the work depended on.
+          items:
+            $ref: "#/components/schemas/WorkRef"
+        criticalMonths:
+          type: integer
     LinkCandidate:
       type: object
       required: [kind, id, name, allowed]

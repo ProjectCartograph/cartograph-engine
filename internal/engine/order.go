@@ -166,7 +166,10 @@ func (e *Engine) orderProblems(kind, id string, doc map[string]any, l *lookup) [
 	var out []Problem
 	same := false
 	for _, f := range extractRefs(doc, e.refRules[kind]) {
-		if had[f.kind+"/"+f.id] {
+		// A component is a piece of work this one depends on, not a step
+		// down the strategy, so either kind of work may list either
+		// (TAXONOMY.md D46); its loops are read across both below.
+		if isComponentRef(f) || had[f.kind+"/"+f.id] {
 			continue
 		}
 		if f.kind == kind {
@@ -181,6 +184,9 @@ func (e *Engine) orderProblems(kind, id string, doc map[string]any, l *lookup) [
 				"a %s names only what comes before it in the order of work, and %s comes after it: name this %s from the %s instead",
 				kind, f.kind, kind, f.kind)})
 		}
+	}
+	if kind == "Project" || kind == "Programme" {
+		out = append(out, e.componentLoopProblems(kind, id, doc, had, l)...)
 	}
 	if !same || id == "" {
 		return out
@@ -198,14 +204,14 @@ func (e *Engine) orderProblems(kind, id string, doc map[string]any, l *lookup) [
 			d = doc
 		}
 		for _, f := range extractRefs(d, e.refRules[kind]) {
-			if f.kind == kind {
+			if f.kind == kind && !isComponentRef(f) {
 				ids = append(ids, f.id)
 			}
 		}
 		return ids
 	}
 	for _, f := range extractRefs(doc, e.refRules[kind]) {
-		if f.kind != kind || f.id == id || had[f.kind+"/"+f.id] {
+		if f.kind != kind || isComponentRef(f) || f.id == id || had[f.kind+"/"+f.id] {
 			continue
 		}
 		seen := map[string]bool{}
@@ -347,4 +353,69 @@ func (e *Engine) WorkspaceOrder(ctx context.Context) (Order, error) {
 		out.Registers = append(out.Registers, KindInfo{Kind: k, Count: counts[k]})
 	}
 	return out, nil
+}
+
+// isComponentRef reports whether a reference is one of a piece of work's
+// components (spec.components[].id).
+func isComponentRef(f foundRef) bool {
+	return strings.HasPrefix(f.path, "/spec/components/")
+}
+
+// componentLoopProblems refuses a component being added that already
+// depends on this work, at any depth, through projects and programmes
+// alike: the loop it would close is named in order (TAXONOMY.md D46).
+func (e *Engine) componentLoopProblems(kind, id string, doc map[string]any, had map[string]bool, l *lookup) []Problem {
+	self := Ref{Kind: kind, ID: id}
+	docs := map[Ref]map[string]any{}
+	for _, k := range []string{"Project", "Programme"} {
+		all, err := l.Documents(k)
+		if err != nil {
+			return nil
+		}
+		for did, d := range all {
+			docs[Ref{Kind: k, ID: did}] = d
+		}
+	}
+	docs[self] = doc
+	name := func(r Ref) string { return nameOf(docs[r], r.ID) }
+	next := func(r Ref) []Ref { return declaredComponents(specOf(docs[r])) }
+	var out []Problem
+	for _, f := range extractRefs(doc, e.refRules[kind]) {
+		if !isComponentRef(f) || had[f.kind+"/"+f.id] {
+			continue
+		}
+		to := Ref{Kind: f.kind, ID: f.id}
+		if to == self {
+			out = append(out, Problem{Path: f.path, Message: fmt.Sprintf("a %s cannot depend on itself", strings.ToLower(kind))})
+			continue
+		}
+		seen := map[Ref]bool{}
+		path := []Ref{self, to}
+		var reaches func(at Ref) bool
+		reaches = func(at Ref) bool {
+			if at == self {
+				return true
+			}
+			if seen[at] {
+				return false
+			}
+			seen[at] = true
+			for _, n := range next(at) {
+				path = append(path, n)
+				if reaches(n) {
+					return true
+				}
+				path = path[:len(path)-1]
+			}
+			return false
+		}
+		if reaches(to) {
+			names := make([]string, len(path))
+			for i, r := range path {
+				names[i] = name(r)
+			}
+			out = append(out, Problem{Path: f.path, Message: "this would make a loop: " + strings.Join(names, " depends on ")})
+		}
+	}
+	return out
 }

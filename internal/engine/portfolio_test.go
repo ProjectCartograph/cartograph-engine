@@ -105,7 +105,7 @@ func TestPortfolioAndProgrammeShapes(t *testing.T) {
 	mustCommit(t, e, "Programme", "big", "local", programmeYAML("big", ""))
 	mustCommit(t, e, "Programme", "sub", "local", programmeYAML("sub", "  programmes: [big]\n"))
 	refused("Programme", "big", programmeYAML("big", "  programmes: [sub]\n"), "part of itself")
-	if got := programmeChecksByID(t, e, "big")["components-present"]; got.State != "ok" || got.Message != "1 sub-programme named." {
+	if got := programmeChecksByID(t, e, "big")["components-present"]; got.State != "ok" || got.Message != "Components: 1 sub-programme." {
 		t.Fatalf("a sub-programme is a component: %+v", got)
 	}
 

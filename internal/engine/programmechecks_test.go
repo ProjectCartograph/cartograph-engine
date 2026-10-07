@@ -40,7 +40,7 @@ func TestProgrammeChecksMembership(t *testing.T) {
 	mustCommit(t, e, "Project", "proj", "local",
 		projectYAML("proj", "  alignment:\n    goals: [g1-f]\n    programmes: [p1]\n"))
 	got := programmeChecksByID(t, e, "p1")["components-present"]
-	if got.State != "ok" || got.Message != "1 project named." {
+	if got.State != "ok" || got.Message != "Components: 1 project." {
 		t.Fatalf("unexpected membership check: %+v", got)
 	}
 
@@ -49,7 +49,7 @@ func TestProgrammeChecksMembership(t *testing.T) {
 		"apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: op\n  name: Ops\n"+
 			"spec:\n  name: Ops\n  purpose: Keeping the lights on\n  team: t1\n  programmes: [p1]\n")
 	got = programmeChecksByID(t, e, "p1")["components-present"]
-	if got.State != "ok" || got.Message != "1 project and 1 operation named." {
+	if got.State != "ok" || got.Message != "Components: 1 project and 1 operation." {
 		t.Fatalf("unexpected membership check: %+v", got)
 	}
 
