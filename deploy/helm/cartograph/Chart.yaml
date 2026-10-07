@@ -7,8 +7,8 @@ description: >-
 type: application
 # version and appVersion are the engine's VERSION; `just helm-lint` fails
 # when they differ, and the release packages the chart at VERSION.
-version: 2.8.0
-appVersion: "2.8.0"
+version: 2.9.0
+appVersion: "2.9.0"
 kubeVersion: ">=1.27.0-0"
 home: https://github.com/ProjectCartograph/cartograph-engine
 sources:
