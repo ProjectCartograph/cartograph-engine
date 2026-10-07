@@ -1235,8 +1235,17 @@ func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte) [
 		// the field is the property.
 		// A value outside a list is said without the list, which for a
 		// currency is every code there is.
-		if strings.HasPrefix(p.Message, "value must be one of") {
+		switch {
+		case strings.HasPrefix(p.Message, "value must be one of"):
 			message = "Choose one of the values offered."
+		case strings.HasPrefix(p.Message, "minItems:"):
+			message = "Add at least one."
+		case strings.HasPrefix(p.Message, "maxItems:"):
+			message = "There are more than this allows; remove some."
+		case strings.HasPrefix(p.Message, "maxLength:"):
+			message = "This is longer than allowed; shorten it."
+		case strings.HasPrefix(p.Message, "minLength:"):
+			message = "Needed before this can be merged."
 		}
 		if i := strings.Index(p.Message, "missing property '"); i >= 0 {
 			message = "Needed before this can be merged."
