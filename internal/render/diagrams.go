@@ -142,7 +142,7 @@ func dependencyDiagram(n names, g engine.ComponentGraph, focus engine.Ref) strin
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, `<figure class="diagram"><svg viewBox="0 0 %.0f %.0f" width="100%%" role="img" aria-label="%s"><g transform="scale(%.3f)">`, width, height, esc("The work this depends on, and what depends on it"), scale)
-	b.WriteString(`<defs><marker id="dep-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 8 4 0 8Z" fill="currentColor"/></marker></defs>`)
+	b.WriteString(`<defs><marker id="dep-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0 8 4 0 8Z" fill="currentColor"/></marker></defs>`)
 	for _, e := range g.Edges {
 		if !keep[e.From] || !keep[e.To] {
 			continue

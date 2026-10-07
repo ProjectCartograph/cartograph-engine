@@ -254,7 +254,16 @@ func (d *doc) heldElsewhere(spec map[string]any) {
 	if len(list(spec["procurement"])) == 0 {
 		fs = append(fs, field{"Procurement", "Finance and procurement systems"})
 	}
-	fs = append(fs, field{"Communications and training plan", "Work management platform"},
-		field{"Change control", "Numbered versions and change sets in Cartograph"})
+	// A charter that carries its own communications and training section
+	// does not send the reader elsewhere for it.
+	held := false
+	for _, sec := range list(spec["sections"]) {
+		h := strings.ToLower(str(sec["heading"]))
+		held = held || strings.Contains(h, "communication") || strings.Contains(h, "training")
+	}
+	if !held {
+		fs = append(fs, field{"Communications and training plan", "Work management platform"})
+	}
+	fs = append(fs, field{"Change control", "Numbered versions and change sets in Cartograph"})
 	d.fields(fs...)
 }

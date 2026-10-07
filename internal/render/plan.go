@@ -79,18 +79,29 @@ var happensWords = map[string]string{
 	"landed": "is handed over", "occurred": "happens",
 }
 
-// event says an event in words: "the Handbook is accepted".
+// event says an event in words. A milestone is named by its number and
+// name, which already say it is a point reached ("M10 Technical Handbook
+// content finalised"); a deliverable is accepted and a condition met.
 func (p plan) event(v any) string {
 	ev := obj(v)
+	on := obj(ev["on"])
 	what := p.item(ev["on"])
 	if what == "" {
 		return ""
 	}
+	if l := str(on["local"]); l == "milestones" || l == "deliverables" {
+		prefix := map[string]string{"milestones": "M", "deliverables": "D"}[l]
+		for i, it := range list(p.spec[l]) {
+			if str(it["id"]) == str(on["id"]) {
+				what = itemNumber(prefix, str(it["id"]), i) + " " + what
+			}
+		}
+	}
 	verb := happensWords[str(ev["happens"])]
 	if verb == "" {
-		switch str(obj(ev["on"])["local"]) {
+		switch str(on["local"]) {
 		case "milestones":
-			verb = "is reached"
+			verb = ""
 		case "deliverables":
 			verb = "is accepted"
 		case "conditions":
@@ -101,7 +112,10 @@ func (p plan) event(v any) string {
 			verb = "happens"
 		}
 	}
-	return strings.TrimSpace(what + " " + verb)
+	if verb == "" {
+		return what
+	}
+	return what + " " + verb
 }
 
 // timing says a timing in words.
