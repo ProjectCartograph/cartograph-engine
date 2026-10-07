@@ -73,6 +73,14 @@ Everything you draft goes into your change set: your own drafts, apart
 from the record and from every other agent's work, as a branch is. Your
 person sees it as you work, may open it and work in it with you, and
 accepts it whole in Cartograph after reviewing every change in it.
+Your person may also ask you to work in one of theirs: to refine a
+piece of work they started, or to meet its checks before they merge it.
+Find it with change_sets, pass its changeSet to every tool you call for
+it, and start from checks on the whole set. Their drafts are live: they
+may be editing beside you, so change only what the work needs, with
+edit_draft, and read a draft again before you change it. It stays
+theirs: you never propose it; when nothing is open, tell them, and they
+propose and merge it.
 Recording a reading and moving a project are proposals of their own.
 
 Work this way, every time:
@@ -112,10 +120,10 @@ Work this way, every time:
    status running, recorded as it stands, whatever else exists; a new
    one is an Operation with status planned, written before the project
    that sets it up, which names it as where it lands. Work that ends:
-   one sponsor and one budget make one Project, and a part under the
-   same sponsor and budget is a component of it (partOf), even with a
-   lead of its own; work that needs its own sponsor or budget is a
-   Project of its own. Projects
+   one sponsor and one budget make one Project, even when a part of
+   it has a lead of its own; work that needs its own sponsor or budget is
+   a Project of its own, and the work that needs it lists it among its
+   components, as software names the libraries it depends on. Projects
    that each need the others to bring about one change, with a theory of
    change linking what they deliver to that change, are a Programme
    (it may hold sub-programmes). Projects and programmes grouped to
@@ -386,8 +394,33 @@ func (c call) inChangeSet(id string, open bool) (store.ChangeSet, call, bool, er
 	if err != nil {
 		return store.ChangeSet{}, c, false, err
 	}
-	c.ctx = ctx
+	c.ctx = context.WithValue(ctx, workingKey{}, working{set: cs.ID, theirs: !e.WorksIn(c.ctx, cs)})
 	return cs, c, true, nil
+}
+
+// workingKey carries the change set a call works in.
+type workingKey struct{}
+
+// working is the change set a call works in, and whether it is the
+// person's, brought into rather than the agent's own (docs/adr/0025).
+type working struct {
+	set    string
+	theirs bool
+}
+
+// workingOn is the change set the call on ctx works in, if it has one.
+func workingOn(ctx context.Context) (working, bool) {
+	w, ok := ctx.Value(workingKey{}).(working)
+	return w, ok
+}
+
+// finish is how the work ends: the agent proposes its own change set; one
+// it was brought into, its person proposes and merges.
+func finish(ctx context.Context) string {
+	if w, ok := workingOn(ctx); ok && w.theirs {
+		return "tell your person it is ready; the change set is theirs to propose and merge"
+	}
+	return "propose the change set with propose"
 }
 
 // reading joins the change set the agent works in, where it has one, so a
@@ -517,7 +550,7 @@ type (
 		Kind string `json:"kind" jsonschema:"a kind, such as Goal or Project"`
 	}
 	leaveIn struct {
-		ChangeSet string      `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out"`
+		ChangeSet string      `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out"`
 		Kind      string      `json:"kind"`
 		ID        string      `json:"id"`
 		Check     string      `json:"check,omitempty" jsonschema:"the check's id, as checks reports it"`
@@ -532,7 +565,7 @@ type (
 		Check string `json:"check"`
 	}
 	manifestRef struct {
-		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
+		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
 		Kind      string `json:"kind" jsonschema:"the manifest's kind"`
 		ID        string `json:"id" jsonschema:"the manifest's id"`
 	}
@@ -576,12 +609,12 @@ type (
 		OpenChecks map[string]map[string]string `json:"openChecks,omitempty" jsonschema:"only for checks you cannot meet without your person: Kind/id to (check id to why); every other open check refuses the proposal"`
 	}
 	nextIn struct {
-		ChangeSet string   `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
+		ChangeSet string   `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
 		Work      []string `json:"work,omitempty" jsonschema:"every manifest in this piece of work, as Kind/id; leave it out for the stage of the workspace to write now"`
 		Locale    string   `json:"locale,omitempty"`
 	}
 	editIn struct {
-		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
+		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
 		Kind      string         `json:"kind"`
 		ID        string         `json:"id"`
 		Work      []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
@@ -589,14 +622,14 @@ type (
 		Unset     []string       `json:"unset,omitempty" jsonschema:"fields or list items to remove, by JSON pointer"`
 	}
 	manifestIn struct {
-		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
+		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
 		Kind      string         `json:"kind"`
 		ID        string         `json:"id"`
 		Manifest  map[string]any `json:"manifest" jsonschema:"the whole manifest: apiVersion, kind, metadata and spec"`
 		Work      []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
 	}
 	saveIn struct {
-		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
+		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
 		Kind      string         `json:"kind"`
 		ID        string         `json:"id"`
 		Manifest  map[string]any `json:"manifest" jsonschema:"the whole manifest: apiVersion, kind, metadata and spec"`
@@ -604,7 +637,7 @@ type (
 		Work      []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
 	}
 	proposeSaveIn struct {
-		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
+		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
 		Kind      string         `json:"kind"`
 		ID        string         `json:"id"`
 		Manifest  map[string]any `json:"manifest,omitempty" jsonschema:"the manifest to save; the current draft when left out"`
@@ -614,7 +647,7 @@ type (
 		OpenChecks map[string]string `json:"openChecks,omitempty" jsonschema:"only for a check you cannot meet without your person: check id to why it is left open; every other open check refuses the proposal"`
 	}
 	proposeSetIn struct {
-		ChangeSet string        `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
+		ChangeSet string        `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
 		Manifests []setMemberIn `json:"manifests" jsonschema:"every manifest that stands or falls together, in any order; each is saved after those it references"`
 		Reason    string        `json:"reason" jsonschema:"why, in a sentence the person will read"`
 		// Checks the agent could not meet, by Kind/id, then check id.
@@ -626,7 +659,7 @@ type (
 		Manifest map[string]any `json:"manifest,omitempty" jsonschema:"the manifest; its current draft when left out"`
 	}
 	checksIn struct {
-		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
+		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
 		Kind      string         `json:"kind,omitempty" jsonschema:"the manifest's kind; leave kind and id out to check the whole change set, as propose will"`
 		ID        string         `json:"id,omitempty"`
 		Manifest  map[string]any `json:"manifest,omitempty" jsonschema:"a manifest to check without saving it; its draft or latest version when left out"`
@@ -877,6 +910,61 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				limit = 100
 			}
 			return e.Events(c.ctx, in.After, limit)
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "change_sets", Description: "The change sets open for your person, theirs and their agents', each with its title, " +
+		"who works in it, its drafts, and how many checks are still open on them, as propose would count them. When your person asks you to help with a piece of " +
+		"their work (to refine it, or to meet its checks before they merge it), find it here and pass its changeSet to every tool you call for it: checks with " +
+		"no kind and id lists what is open, and save_draft, edit_draft and leave_open work in it beside them, live. A change set you were brought into is " +
+		"theirs: you never propose it, you tell your person when nothing is open, and they propose and merge it.", Annotations: readOnly},
+		func(c call, _ none) (any, error) {
+			sets, err := e.ChangeSets(c.ctx, store.ChangeSetOpen, false)
+			if err != nil {
+				return nil, err
+			}
+			changeSets := []map[string]any{}
+			for _, cs := range sets {
+				view, err := e.ViewChangeSet(c.ctx, cs.ID)
+				if err != nil {
+					return nil, err
+				}
+				var parts []string
+				for _, it := range view.Items {
+					if it.Item.Included {
+						parts = append(parts, it.Item.Kind+"/"+it.Item.ID)
+					}
+				}
+				workedBy := "your person"
+				if cs.Agent != "" {
+					workedBy = "the agent " + cs.Agent
+				}
+				out := map[string]any{"changeSet": cs.ID, "title": cs.Title, "description": cs.Description, "workedBy": workedBy,
+					"yours": e.WorksIn(c.ctx, cs), "items": parts, "updated": cs.Updated}
+				in, err := e.InChangeSet(c.ctx, cs.ID)
+				if err != nil {
+					return nil, err
+				}
+				open, err := e.OpenInChangeSet(in, cs.ID)
+				var invalid *engine.ValidationError
+				switch {
+				case errors.As(err, &invalid):
+					out["notValid"] = len(invalid.Problems)
+				case err != nil:
+					return nil, err
+				default:
+					unmet, left := 0, 0
+					for _, oc := range open {
+						if oc.Left != "" {
+							left++
+						} else {
+							unmet++
+						}
+					}
+					out["open"], out["leftForYourPerson"] = unmet, left
+				}
+				changeSets = append(changeSets, out)
+			}
+			return map[string]any{"changeSets": changeSets}, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "my_proposals", Description: "What is waiting for your person to decide: the change sets proposed (changeSets, each with " +
@@ -1300,9 +1388,9 @@ func withSet(c call, out map[string]any, set, kind, id string) (map[string]any, 
 	}
 	if len(elsewhere) > 0 {
 		out["setNext"] = fmt.Sprintf("%d check%s still open on other drafts in this change set (openInChangeSet). "+
-			"propose refuses until each is met, or waived with a reason your person can read.", len(elsewhere), map[bool]string{true: " is", false: "s are"}[len(elsewhere) == 1])
+			"Meet each, or leave it with a reason your person can read, then %s.", len(elsewhere), map[bool]string{true: " is", false: "s are"}[len(elsewhere) == 1], finish(c.ctx))
 	} else if len(open) == len(left) {
-		out["setNext"] = "Nothing is open across the change set but what you left for your person: propose will accept it, with your reasons."
+		out["setNext"] = "Nothing is open across the change set but what you left for your person. Next, " + finish(c.ctx) + "."
 	}
 	return out, nil
 }
@@ -1382,8 +1470,8 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 	out["around"] = around
 	if unfinished > 0 {
 		out["aroundNext"] = fmt.Sprintf("%d manifest%s joined to this one still lack%s something (around, open). "+
-			"The work is not finished until they are: settle each with your person, then propose the change set with propose.",
-			unfinished, map[bool]string{true: "", false: "s"}[unfinished == 1], map[bool]string{true: "s", false: ""}[unfinished == 1])
+			"The work is not finished until they are: settle each with your person, then %s.",
+			unfinished, map[bool]string{true: "", false: "s"}[unfinished == 1], map[bool]string{true: "s", false: ""}[unfinished == 1], finish(c.ctx))
 	}
 	return out
 }
@@ -1422,8 +1510,14 @@ func workspaceNext(ctx context.Context, e *engine.Engine) (any, error) {
 func allMet(ctx context.Context, e *engine.Engine) string {
 	// What is still open on the change set's other drafts comes before
 	// any new stage: the work drafted so far is not finished.
-	if sets, err := e.ChangeSets(ctx, "open", false); err == nil && len(sets) > 0 {
-		if open, err := e.OpenNow(ctx, sets[0].ID); err == nil {
+	set := ""
+	if w, ok := workingOn(ctx); ok {
+		set = w.set
+	} else if sets, err := e.ChangeSets(ctx, "open", false); err == nil && len(sets) > 0 {
+		set = sets[0].ID
+	}
+	if set != "" {
+		if open, err := e.OpenNow(ctx, set); err == nil {
 			n := len(open)
 			if n > 0 {
 				return fmt.Sprintf("Nothing is open in this draft, but %d check%s still open on other drafts in this change set: "+
@@ -1436,7 +1530,7 @@ func allMet(ctx context.Context, e *engine.Engine) string {
 		stage, _ := workspaceNext(ctx, e)
 		if m, ok := stage.(map[string]any); ok {
 			return "Nothing in what you have drafted can be settled before this stage. " + fmt.Sprint(m["next"]) +
-				" Propose the change set with propose once the work your person asked for is drafted."
+				" Once the work your person asked for is drafted, " + finish(ctx) + "."
 		}
 	}
 	var optional []string
@@ -1450,9 +1544,9 @@ func allMet(ctx context.Context, e *engine.Engine) string {
 	}
 	if len(optional) > 0 {
 		return "Every check across this work is met. Stages a plan may have and this workspace does not yet: " + strings.Join(optional, ", ") +
-			". Port each the document gives, then propose the change set with propose."
+			". Port each the document gives, then " + finish(ctx) + "."
 	}
-	return "Every check across this work is met. Propose the change set with propose."
+	return "Every check across this work is met. Next, " + finish(ctx) + "."
 }
 
 // firstNext is the first task, unless it waits on a stage the workspace

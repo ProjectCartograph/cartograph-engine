@@ -97,7 +97,7 @@ func (s *Shared) MayWorkInSet(ctx context.Context, set string) bool {
 // MayWorkInSet reports whether the principal on ctx may edit a change
 // set's drafts: its owner, the person it is for, or any person while it
 // is open, since change sets are live like every other draft (docs/adr/
-// 0024). An agent works only in its own.
+// 0024). An agent works in its own, and in its person's (docs/adr/0025).
 func (e *Engine) MayWorkInSet(ctx context.Context, set string) bool {
 	s, err := e.changeSetStore()
 	if err != nil {

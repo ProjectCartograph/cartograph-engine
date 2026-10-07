@@ -28,6 +28,9 @@ var (
 	// ErrNotTheirChangeSet refuses work in a change set by anyone but who
 	// works in it, or its acceptance by anyone but its person.
 	ErrNotTheirChangeSet = fmt.Errorf("%w: this change set is not yours", identity.ErrForbidden)
+	// ErrTheirsToPropose refuses an agent proposing a change set it was
+	// brought into: its person proposes and accepts their own work.
+	ErrTheirsToPropose = fmt.Errorf("%w: this change set is your person's, and they propose it themselves", identity.ErrForbidden)
 )
 
 func (e *Engine) changeSetStore() (store.ChangeSetStore, error) {
@@ -107,7 +110,8 @@ func (e *Engine) WorkingChangeSet(ctx context.Context, id string) (store.ChangeS
 			return store.ChangeSet{}, err
 		}
 		// Live like every draft: any person may work in an open change
-		// set; an agent only in its own (docs/adr/0024).
+		// set; an agent in its own, or its person's when named
+		// (docs/adr/0024, 0025).
 		if !e.mayWorkIn(p, cs) && !(p.Agent == "" && cs.Status == store.ChangeSetOpen) {
 			return store.ChangeSet{}, ErrNotTheirChangeSet
 		}
@@ -127,9 +131,18 @@ func (e *Engine) WorkingChangeSet(ctx context.Context, id string) (store.ChangeS
 }
 
 // mayWorkIn says whether p may change a change set's items: who works in
-// it, or the person it is for, joining their agent's work.
+// it, or anyone acting for the person it is for: the person joining their
+// agent's work, or an agent its person brought into theirs by naming it
+// (docs/adr/0025). An agent never reaches this unasked: left to choose,
+// it works in its own (WorkingChangeSet, CurrentChangeSet).
 func (e *Engine) mayWorkIn(p identity.Principal, cs store.ChangeSet) bool {
-	return cs.Owner == ownerOf(p) || (p.Agent == "" && cs.For == personKey(p))
+	return cs.Owner == ownerOf(p) || cs.For == personKey(p)
+}
+
+// WorksIn reports whether the principal on ctx works in the change set
+// as its own: opened it, rather than was brought into it.
+func (e *Engine) WorksIn(ctx context.Context, cs store.ChangeSet) bool {
+	return cs.Owner == ownerOf(identity.PrincipalFrom(ctx))
 }
 
 // ChangeSetText is a manifest as it stands in a change set: its item, else
@@ -724,6 +737,9 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 	cs, err := e.WorkingChangeSet(ctx, id)
 	if err != nil {
 		return store.ChangeSet{}, err
+	}
+	if p := identity.PrincipalFrom(ctx); p.Agent != "" && cs.Owner != ownerOf(p) {
+		return store.ChangeSet{}, ErrTheirsToPropose
 	}
 	left := map[string]string{}
 	for _, w := range cs.Waivers {

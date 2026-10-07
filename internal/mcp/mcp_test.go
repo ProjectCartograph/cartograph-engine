@@ -680,3 +680,63 @@ func TestAGoalWaitsOnAVisionLeftOpen(t *testing.T) {
 		t.Fatalf("the goal's relevance does not wait on the vision: %s", text)
 	}
 }
+
+// A person brings their agent into a change set of theirs: the agent
+// finds it, works in it beside them, and leaves proposing it to them. It
+// never reaches another person's change set, and left to choose it keeps
+// to its own.
+func TestAnAgentHelpsInItsPersonsChangeSet(t *testing.T) {
+	t.Parallel()
+	e, _, cs := setup(t, nil)
+	ctx := context.Background()
+	adaCtx := identity.WithPrincipal(ctx, ada)
+	set, err := e.StartChangeSet(adaCtx, "Cut loss after picking", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	goal := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g9\n  name: Cut loss after picking\nspec:\n  level: goal\n  objective: Less fruit is lost\n"
+	if err := e.SaveInChangeSet(adaCtx, set.ID, "Goal", "g9", []byte(goal)); err != nil {
+		t.Fatal(err)
+	}
+	bob := identity.WithPrincipal(ctx, identity.Principal{Subject: "bob@example.org", Email: "bob@example.org", Name: "Bob"})
+	other, err := e.StartChangeSet(bob, "Bob's work", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.SaveInChangeSet(bob, other.ID, "Team", "t1", []byte(team)); err != nil {
+		t.Fatal(err)
+	}
+
+	res, text := callTool(t, cs, "change_sets", map[string]any{})
+	if res.IsError || !strings.Contains(text, set.ID) || !strings.Contains(text, `"yours":false`) || !strings.Contains(text, `"workedBy":"your person"`) ||
+		!strings.Contains(text, `"Goal/g9"`) || strings.Contains(text, other.ID) {
+		t.Fatalf("change_sets does not list Ada's work, and only hers: %s", text)
+	}
+	if strings.Contains(text, `"open":0`) {
+		t.Fatalf("change_sets counts nothing open on a goal with no measure: %s", text)
+	}
+
+	res, text = callTool(t, cs, "edit_draft", map[string]any{"changeSet": set.ID, "kind": "Goal", "id": "g9", "set": map[string]any{"/spec/whyItMatters": "Members are paid by what arrives sound"}})
+	if res.IsError {
+		t.Fatalf("edit_draft in Ada's change set: %s", text)
+	}
+	got, in, err := e.ChangeSetText(adaCtx, set.ID, "Goal", "g9")
+	if err != nil || !in || !strings.Contains(string(got), "Members are paid by what arrives sound") {
+		t.Fatalf("the agent's edit is not in Ada's change set: %s (%v)", got, err)
+	}
+	agentCtx := identity.WithPrincipal(ctx, identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude"})
+	if own, found, _ := e.CurrentChangeSet(agentCtx, ""); found {
+		t.Fatalf("working in Ada's change set opened one of the agent's own: %+v", own)
+	}
+	// Told how the work ends here: Ada proposes and merges it.
+	if res, text := callTool(t, cs, "checks", map[string]any{"changeSet": set.ID}); res.IsError || !strings.Contains(text, "openInChangeSet") ||
+		!strings.Contains(text, "theirs to propose and merge") || strings.Contains(text, "with propose") {
+		t.Fatalf("checks on Ada's change set: %s", text)
+	}
+	if res, text := callTool(t, cs, "propose", map[string]any{"changeSet": set.ID, "reason": "ready"}); !res.IsError || !strings.Contains(text, "propose it themselves") {
+		t.Fatalf("the agent proposed Ada's change set: %s", text)
+	}
+	if res, text := callTool(t, cs, "edit_draft", map[string]any{"changeSet": other.ID, "kind": "Team", "id": "t1", "set": map[string]any{"/spec/description": "x"}}); !res.IsError {
+		t.Fatalf("the agent worked in Bob's change set: %s", text)
+	}
+}
