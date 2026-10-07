@@ -1527,3 +1527,24 @@ has a field for something (personal data, a stakeholder, a cost), the field
 is used, and the section says only what the field cannot. A project also
 records the classification its document carries (for example Official),
 and its reference in the organisation's register is its alias.
+
+### D54. A project has one objective. *(resolved)*
+
+**The problem.** A charter ported by an agent listed six objectives, each a
+piece of work with its own lead and dates. A project with six objectives
+has no single change to judge it by, and the pieces that could slip
+independently are hidden inside it.
+
+**The discipline.** The Logical Framework Approach gives a project one
+purpose: the changed situation it should bring about. Where more than one
+seems necessary, the EU's Project Cycle Management guidelines divide the
+project into components, each with an objective of its own that
+contributes to the single project objective.
+
+**What Cartograph does.** A project states one objective, measured by one
+to three key results; a second objective is a blocking check. Each other
+change the document names is either a key result of the one objective or
+a project of its own, which this one lists as a component (D46), with its
+own objective, lead, schedule and risks. The `objectives` list stays a list
+in the 2.x contract, and a definition saved with several is read and
+flagged, never refused.

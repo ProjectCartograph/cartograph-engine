@@ -120,10 +120,13 @@ Work this way, every time:
    status running, recorded as it stands, whatever else exists; a new
    one is an Operation with status planned, written before the project
    that sets it up, which names it as where it lands. Work that ends:
-   one sponsor and one budget make one Project, even when a part of
-   it has a lead of its own; work that needs its own sponsor or budget is
-   a Project of its own, and the work that needs it lists it among its
-   components, as software names the libraries it depends on. Projects
+   a Project has one objective, the change it exists to make,
+   measured by one to three key results. Every other change a document
+   lists is either a key result of that objective or a Project of its
+   own that the first lists among its components, as software names the
+   libraries it depends on: a strand of work with its own lead, its own
+   dates or its own risks (a survey, a portal, an app, what a document
+   calls a workstream) is a component, never a list inside the project. Projects
    that each need the others to bring about one change, with a theory of
    change linking what they deliver to that change, are a Programme
    (it may hold sub-programmes). Projects and programmes grouped to

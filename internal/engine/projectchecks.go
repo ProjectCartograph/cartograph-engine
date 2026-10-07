@@ -623,10 +623,17 @@ func addMeasureChecks(c checkAdder, spec map[string]any, isComponent bool) {
 	// section and a fix link lands on the screen that owns the problem.
 	const section = "measures"
 	objectives, _ := spec["objectives"].([]any)
-	if len(objectives) > 0 {
-		c.add("goals-objective", section, phaseInitiation, checkOK,
-			fmt.Sprintf("%d objective%s.", len(objectives), plural(len(objectives))))
-	} else {
+	// One objective, the change the project exists to make (the
+	// Logical Framework's one project purpose; TAXONOMY.md D54): a second
+	// change is either a key result of the first or a component of its own.
+	switch {
+	case len(objectives) == 1:
+		c.add("goals-objective", section, phaseInitiation, checkOK, "One objective.")
+	case len(objectives) > 1:
+		c.add("goals-objective", section, phaseInitiation, checkBlock,
+			fmt.Sprintf("%d objectives: a project has one, the change it exists to make. Make each other one a key result of it, "+
+				"or a project of its own that this one lists as a component.", len(objectives)))
+	default:
 		c.add("goals-objective", section, phaseInitiation, checkBlock, "No objective yet.")
 	}
 
@@ -673,7 +680,7 @@ func addMeasureChecks(c checkAdder, spec map[string]any, isComponent bool) {
 		// asked for measures of its own, an agent could only restate them.
 		c.add("goals-key-results-count", section, phaseInitiation, checkOK, "Measured by the project it is part of.")
 	case badCount == 0:
-		c.add("goals-key-results-count", section, phaseInitiation, checkOK, "Every objective has one to three key results.")
+		c.add("goals-key-results-count", section, phaseInitiation, checkOK, "The objective has one to three key results.")
 	default:
 		c.add("goals-key-results-count", section, phaseInitiation, checkBlock,
 			fmt.Sprintf("%d objective%s %s not have one to three key results.", badCount, plural(badCount), map[bool]string{true: "does", false: "do"}[badCount == 1]))

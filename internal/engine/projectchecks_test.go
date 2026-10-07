@@ -858,3 +858,22 @@ func TestAnEmptyMandateRowNamesNoMandate(t *testing.T) {
 	}
 	t.Fatal("no mandate check")
 }
+
+// A project has one objective (TAXONOMY.md D54): a second is blocked, with
+// where it belongs instead.
+func TestAProjectHasOneObjective(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	y := strings.Replace(fullProjectYAML("two-aims"), "  objectives:\n", "  objectives:\n"+
+		"    - objective: Operators are trained in every region\n      keyResults:\n"+
+		"        - {id: kr-2, metric: operators trained, kind: percent, direction: increase, baseline: {value: 0, date: \"2025-09\"}, target: {value: 90, date: \"2026-03\"}, source: d1}\n", 1)
+	mustCommit(t, e, "Project", "two-aims", "p1", y)
+	checks, err := e.ProjectChecks(context.Background(), "two-aims", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := checksByID(checks.Items)["goals-objective"]
+	if got.State != "block" || !strings.Contains(got.Message, "a project has one") || !strings.Contains(got.Message, "component") {
+		t.Fatalf("goals-objective: %+v", got)
+	}
+}

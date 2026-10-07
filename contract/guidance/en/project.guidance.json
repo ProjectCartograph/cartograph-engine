@@ -665,7 +665,7 @@
     "deliverables-verifier": "Name the role that verifies every acceptance criterion.",
     "beneficiaries-named": "Name at least one beneficiary group.",
     "timeline-start-phases": "Set a start month and at least one phase.",
-    "goals-objective": "Write at least one objective.",
+    "goals-objective": "Write the project's one objective: the change it exists to make. A second change is a key result of it, or a project of its own listed as a component.",
     "goals-key-results-count": "Give every objective one to three key results.",
     "goals-key-results-baseline": "Give every key result today's figure with its date, or say why it is not known yet.",
     "goals-key-results-target": "Give every key result a dated target.",
