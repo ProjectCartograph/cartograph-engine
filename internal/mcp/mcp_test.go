@@ -570,7 +570,7 @@ func TestTheTaxonomySaysWhereEachPartOfADocumentGoes(t *testing.T) {
 	if res.IsError {
 		t.Fatal(text)
 	}
-	for _, want := range []string{`"porting":[`, "Workstreams under one sponsor", "Not ported", "governanceBody", "A measure taken once"} {
+	for _, want := range []string{`"porting":[`, "A workstream, strand or work package", "Not ported", "governanceBody", "A measure taken once"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the porting map lacks %q", want)
 		}

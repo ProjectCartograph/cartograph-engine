@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
@@ -83,11 +82,6 @@ var readinessAreas = []readinessArea{
 	{"Approval and conditions", []string{"approval"}},
 }
 
-// readiness prints the state of each part of the definition from the
-// checks Cartograph runs on it: ready, open, or blocking. A charter
-// template asks for this as a hand-filled assessment; here it is read.
-func (d *doc) readiness(items []engine.ProjectCheckItem) { d.readinessOf(items, readinessAreas) }
-
 // readinessOf is readiness over a kind's own areas.
 func (d *doc) readinessOf(items []engine.ProjectCheckItem, areas []readinessArea) {
 	if len(items) == 0 {
@@ -162,63 +156,6 @@ func (d *doc) scopeColumns(in, out []string) {
 	d.b.WriteString("</div>\n<div>")
 	d.list("Out of scope", out)
 	d.b.WriteString("</div>\n</div>\n")
-}
-
-// dependencyTable prints what this work depends on and what depends on it,
-// with the critical path and the most depended on marked (TAXONOMY.md D46).
-func (d *doc) dependencyTable(n names, g engine.ComponentGraph, self engine.Ref) {
-	nodes := map[engine.Ref]engine.ComponentNode{}
-	for _, nd := range g.Nodes {
-		nodes[nd.Ref] = nd
-	}
-	marks := func(nd engine.ComponentNode) string {
-		var m []string
-		if nd.InLoop {
-			m = append(m, "In a loop")
-		}
-		if nd.Critical {
-			m = append(m, "Critical path")
-		}
-		if nd.MostDependedOn {
-			m = append(m, "Most depended on")
-		}
-		return strings.Join(m, "; ")
-	}
-	var rows [][]string
-	for _, ed := range g.Edges {
-		var other engine.Ref
-		var rel string
-		switch {
-		case ed.From == self:
-			other, rel = ed.To, "Depends on"
-		case ed.To == self:
-			other, rel = ed.From, "Used by"
-		default:
-			continue
-		}
-		nd := nodes[other]
-		months := ""
-		if nd.Months > 0 {
-			months = fmt.Sprintf("%d", nd.Months)
-		}
-		rows = append(rows, []string{rel, n.of(other.Kind, other.ID), other.Kind, ed.Why, months, marks(nd)})
-	}
-	sort.SliceStable(rows, func(i, j int) bool { return rows[i][0] < rows[j][0] })
-	d.table([]string{"Relation", "Work", "Kind", "What it needs", "Months", "Marks"}, rows)
-	if len(g.CriticalPath) > 1 {
-		var chain []string
-		for _, r := range g.CriticalPath {
-			chain = append(chain, n.of(r.Kind, r.ID))
-		}
-		d.p(fmt.Sprintf("Critical path across the workspace: %s, %d months.", strings.Join(chain, " depends on "), g.CriticalMonths))
-	}
-	for _, loop := range g.Loops {
-		var chain []string
-		for _, r := range loop {
-			chain = append(chain, n.of(r.Kind, r.ID))
-		}
-		d.p("Loop to resolve: " + strings.Join(chain, " depends on ") + ".")
-	}
 }
 
 // history prints the numbered versions: document control as Cartograph

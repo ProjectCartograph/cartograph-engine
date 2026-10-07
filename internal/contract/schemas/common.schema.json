@@ -600,18 +600,6 @@
         {"type": "object", "additionalProperties": false, "required": ["value", "due"], "properties": {"value": {"type": "number"}, "due": {"$ref": "#/$defs/Timing"}}},
         {"type": "object", "additionalProperties": false, "required": ["setWhen"], "properties": {"setWhen": {"$ref": "#/$defs/Timing", "description": "A timing of form when: the event that sets the value, the month it is expected by and the role that sets it."}, "direction": {"type": "string", "maxLength": 160, "description": "What is known of the target before its value is set, in words: a continued decline."}}}
       ]
-    },
-    "Section": {
-      "description": "A part of the organisation's charter template that Cartograph holds as text (TAXONOMY.md D53): a heading in the template's words, its text, and the step of the walk it is printed beside.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "heading", "text"],
-      "properties": {
-        "id": {"$ref": "#/$defs/Slug"},
-        "heading": {"type": "string", "minLength": 1, "maxLength": 80},
-        "text": {"type": "string", "minLength": 1, "maxLength": 4000},
-        "step": {"$ref": "#/$defs/Slug", "description": "The walk step it belongs beside; the charter prints it at the end of that step's part."}
-      }
     }
   }
 }

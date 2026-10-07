@@ -159,18 +159,16 @@ spec:
 
 	htmlStr := string(html)
 
-	// Verify that sections held elsewhere are present
-	expectedSections := []string{
-		"Related plans",
-		"Detailed plan",
-		"Procurement",
-		"Communications and training",
-		"Approval",
-	}
-
-	for _, section := range expectedSections {
+	// A brief (TAXONOMY.md D55): what a sponsor approves, and nothing
+	// typed for the document alone.
+	for _, section := range []string{"At a glance", "Problem statement", "Schedule", "Governance", "Approval"} {
 		if !contains(htmlStr, section) {
 			t.Errorf("expected section %q not found in HTML", section)
+		}
+	}
+	for _, gone := range []string{"Related plans", "Further sections", "Record of events", "Data requirements"} {
+		if contains(htmlStr, gone) {
+			t.Errorf("the brief prints %q", gone)
 		}
 	}
 }
@@ -377,10 +375,15 @@ spec:
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Work breakdown", "D1.1", "Prepare the facilitator guide", "Trainer", "D2"} {
+	// The brief names the deliverables and counts their tasks; the work
+	// breakdown itself is in the JSON and in Cartograph.
+	for _, want := range []string{"Training pack", "D2", "2 tasks"} {
 		if !contains(string(html), want) {
 			t.Errorf("charter HTML lacks %q", want)
 		}
+	}
+	if contains(string(html), "Prepare the facilitator guide") {
+		t.Error("the brief prints a task")
 	}
 	for _, want := range []string{`"workBreakdown"`, `"code": "D1.2"`, `"note": "Use the sign-in sheet"`, `"code": "D2"`} {
 		if !contains(string(js), want) {
@@ -407,6 +410,7 @@ spec:
   risks:
     - {id: r1, description: Depots skip training, type: risk, impact: high, owner: {external: Delivery lead}}
     - {id: r2, description: Slides arrive late, type: risk, impact: low}
+    - {id: r3, description: Scales fail calibration, type: issue, impact: medium}
 `
 	if err := e.PutWorking(ctx, "Project", "test-project", []byte(projectYAML)); err != nil {
 		t.Fatal(err)
@@ -415,9 +419,14 @@ spec:
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"<th>Owner</th>", "Delivery lead", "Manager (by default)"} {
+	// The brief prints high-impact risks and issues, each with its owner
+	// or the project manager, and counts the rest.
+	for _, want := range []string{"<th>Owner</th>", "Delivery lead", "Project manager", "1 more risk"} {
 		if !contains(string(html), want) {
 			t.Errorf("charter lacks %q", want)
 		}
+	}
+	if contains(string(html), "Slides arrive late") {
+		t.Error("the brief prints a low-impact risk")
 	}
 }

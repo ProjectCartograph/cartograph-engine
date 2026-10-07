@@ -571,41 +571,6 @@
         "guide": "What the project produces, and how each one is checked before it is accepted.",
         "fields": [
           {
-            "path": "/spec/workstreams",
-            "control": "list",
-            "key": "id",
-            "hint": "Group the deliverables under a lead role. A workstream that needs its own sponsor or budget is a component project.",
-            "fields": [
-              {
-                "path": "/id",
-                "control": "readonly"
-              },
-              {
-                "path": "/name",
-                "control": "text"
-              },
-              {
-                "path": "/purpose",
-                "control": "sentence"
-              },
-              {
-                "path": "/lead",
-                "control": "reference",
-                "title": "Lead"
-              },
-              {
-                "path": "/supporting",
-                "control": "references",
-                "title": "Supported by"
-              },
-              {
-                "path": "/dependsOn",
-                "control": "sentence",
-                "title": "Needs from outside"
-              }
-            ]
-          },
-          {
             "path": "/spec/deliverables",
             "control": "list",
             "key": "id",
@@ -638,11 +603,6 @@
                 "path": "/due",
                 "control": "timing",
                 "title": "Due"
-              },
-              {
-                "path": "/workstream",
-                "control": "choice",
-                "title": "Workstream"
               },
               {
                 "path": "/evidence",
@@ -1203,30 +1163,6 @@
               {
                 "path": "/recordedBy",
                 "control": "readonly"
-              }
-            ]
-          },
-          {
-            "path": "/spec/sections",
-            "control": "list",
-            "key": "id",
-            "hint": "A part of your charter template Cartograph does not hold as a field, in the template's words.",
-            "fields": [
-              {
-                "path": "/id",
-                "control": "readonly"
-              },
-              {
-                "path": "/heading",
-                "control": "text"
-              },
-              {
-                "path": "/text",
-                "control": "sentence"
-              },
-              {
-                "path": "/step",
-                "control": "choice"
               }
             ]
           }

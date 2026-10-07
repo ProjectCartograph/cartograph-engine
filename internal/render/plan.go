@@ -8,7 +8,7 @@ import (
 )
 
 // The plan parts of a charter (TAXONOMY.md D47 to D53): timings in words,
-// milestones and what each waits on, the deliverable register, workstreams,
+// milestones and what each waits on, the deliverable register,
 // responsibilities, costs, procurement, conditions, sign-off and what has
 // happened. Each prints only when the definition has it.
 
@@ -206,16 +206,6 @@ func (p plan) status(listName, id string) string {
 	return label("happened", str(last["happened"])) + ", " + when(str(last["date"]))
 }
 
-func (p plan) evidence(listName, id, planned string) string {
-	evs := p.events[listName+"/"+id]
-	for i := len(evs) - 1; i >= 0; i-- {
-		if e := str(evs[i]["evidence"]); e != "" {
-			return e
-		}
-	}
-	return planned
-}
-
 func init() {
 	labels["happened"] = map[string]string{
 		"reached": "Reached", "slipped": "Slipped", "accepted": "Accepted", "rejected": "Rejected",
@@ -229,153 +219,9 @@ func init() {
 	labels["decision"] = map[string]string{"approve": "Approved", "approveWithConditions": "Approved with conditions", "reject": "Not approved"}
 }
 
-// milestones prints the schedule: each milestone, when it falls, what it
-// waits on, its owner and what has happened.
-func (d *doc) milestonePlan(p plan) {
-	ms := list(p.spec["milestones"])
-	if len(ms) == 0 {
-		return
-	}
-	var rows [][]string
-	for i, m := range ms {
-		var waits []string
-		for _, w := range list(m["waitsOn"]) {
-			waits = append(waits, p.event(w))
-		}
-		var marks []string
-		for _, did := range strs(m["deliverables"]) {
-			marks = append(marks, p.local("deliverables", did))
-		}
-		name := str(m["name"])
-		if len(marks) > 0 {
-			name += " (" + strings.Join(marks, "; ") + ")"
-		}
-		rows = append(rows, []string{
-			itemNumber("M", str(m["id"]), i), name, p.timing(m["timing"]), strings.Join(waits, "; "),
-			p.item(m["owner"]), p.evidence("milestones", str(m["id"]), str(m["evidence"])), p.status("milestones", str(m["id"])),
-		})
-	}
-	d.table([]string{"No.", "Milestone", "When", "Also waits on", "Owner", "Evidence", "Status"}, rows)
-}
-
-// register prints the deliverable register (TAXONOMY.md D49).
-func (d *doc) register(p plan) {
-	var rows [][]string
-	for i, dv := range list(p.spec["deliverables"]) {
-		var tests []string
-		for _, a := range list(dv["acceptance"]) {
-			who := p.n.ref(a["by"], "Resource", p.spec)
-			test := str(a["outcome"])
-			if test == "" {
-				continue
-			}
-			if who != "" {
-				test = who + ": " + test
-			}
-			tests = append(tests, capital(test))
-		}
-		name := str(dv["name"])
-		if desc := str(dv["description"]); desc != "" {
-			name += ". " + desc
-		}
-		rows = append(rows, []string{
-			itemNumber("D", str(dv["id"]), i), name, p.item(dv["owner"]), p.timing(dv["due"]),
-			strings.Join(tests, "; "), p.evidence("deliverables", str(dv["id"]), str(dv["evidence"])),
-			p.status("deliverables", str(dv["id"])),
-		})
-	}
-	d.table([]string{"No.", "Deliverable", "Owner", "Due", "Accepted when", "Evidence", "Status"}, rows)
-}
-
-func (d *doc) workstreams(p plan) {
-	ws := list(p.spec["workstreams"])
-	if len(ws) == 0 {
-		return
-	}
-	d.h3("Workstreams")
-	var rows [][]string
-	for i, w := range ws {
-		var sup []string
-		for _, s := range list(w["supporting"]) {
-			sup = append(sup, p.item(s))
-		}
-		var ds []string
-		for _, dv := range list(p.spec["deliverables"]) {
-			if str(dv["workstream"]) == str(w["id"]) {
-				ds = append(ds, str(dv["name"]))
-			}
-		}
-		purpose := str(w["purpose"])
-		if len(ds) > 0 {
-			purpose = strings.TrimSpace(purpose + " Delivers: " + strings.Join(ds, "; ") + ".")
-		}
-		rows = append(rows, []string{itemNumber("WS", str(w["id"]), i), str(w["name"]), purpose, p.item(w["lead"]), strings.Join(sup, ", "), str(w["dependsOn"])})
-	}
-	d.table([]string{"No.", "Workstream", "Purpose", "Lead", "Supported by", "Needs from outside"}, rows)
-}
-
-// raci prints responsibilities as a matrix: one row per decision or
-// deliverable (TAXONOMY.md D50).
-func (d *doc) raci(p plan) {
-	rs := list(p.spec["responsibilities"])
-	if len(rs) == 0 {
-		return
-	}
-	d.h3("Responsibilities (RACI)")
-	refs := func(v any) string {
-		var out []string
-		for _, r := range anyList(v) {
-			out = append(out, p.item(r))
-		}
-		return strings.Join(out, "; ")
-	}
-	var rows [][]string
-	for _, r := range rs {
-		item := str(r["item"])
-		if b, _ := r["decision"].(bool); b {
-			item += " (decision)"
-		}
-		rows = append(rows, []string{item, refs(r["responsible"]), p.item(r["accountable"]), refs(r["consulted"]), refs(r["informed"])})
-	}
-	d.table([]string{"Decision or deliverable", "Responsible", "Accountable", "Consulted", "Informed"}, rows)
-}
-
 func anyList(v any) []any {
 	l, _ := v.([]any)
 	return l
-}
-
-// costs prints the cost lines and procurement (TAXONOMY.md D51).
-func (d *doc) costs(p plan) {
-	cs := list(p.spec["costs"])
-	if len(cs) > 0 {
-		d.h3("Cost plan")
-		var rows [][]string
-		for _, c := range cs {
-			amount := number(c["amount"])
-			if amount != "" {
-				amount = strings.TrimSpace(str(c["currency"]) + " " + thousands(amount))
-			}
-			rows = append(rows, []string{str(c["category"]), str(c["basis"]), amount, str(c["period"]),
-				p.n.of("FundingSource", str(c["source"])), label("costStatus", str(c["status"])), str(c["recurrent"])})
-		}
-		d.table([]string{"Category", "Basis", "Amount", "Period", "Funding source", "Status", "After the project"}, rows)
-	}
-	ps := list(p.spec["procurement"])
-	if len(ps) > 0 {
-		d.h3("Procurement plan")
-		var rows [][]string
-		for _, pr := range ps {
-			value := number(pr["value"])
-			if value != "" {
-				value = strings.TrimSpace(str(pr["currency"]) + " " + thousands(value))
-			} else {
-				value = str(pr["valueNote"])
-			}
-			rows = append(rows, []string{str(pr["requirement"]), value, str(pr["method"]), str(pr["leadTime"]), p.timing(pr["requiredBy"]), p.item(pr["owner"])})
-		}
-		d.table([]string{"Requirement", "Estimated value", "Method", "Lead time", "Required by", "Owner"}, rows)
-	}
 }
 
 // thousands groups digits: 171600 reads 171,600.
@@ -435,60 +281,6 @@ func (d *doc) approval(p plan) bool {
 		d.b.WriteString("</table>\n")
 	}
 	return true
-}
-
-// record prints what has happened, newest first (TAXONOMY.md D52).
-func (d *doc) record(p plan) {
-	evs := list(p.spec["events"])
-	if len(evs) == 0 {
-		return
-	}
-	sort.SliceStable(evs, func(i, j int) bool { return str(evs[i]["date"]) > str(evs[j]["date"]) })
-	d.h2("Record of events")
-	var rows [][]string
-	for _, ev := range evs {
-		what := p.item(ev["on"])
-		if v := number(ev["value"]); v != "" {
-			what += " (measured " + v + ")"
-		}
-		rows = append(rows, []string{when(str(ev["date"])), what, label("happened", str(ev["happened"])), str(ev["note"]), str(ev["evidence"]), str(ev["recordedBy"])})
-	}
-	d.table([]string{"Date", "Item", "What happened", "Note", "Evidence", "Recorded by"}, rows)
-}
-
-// sections prints the template's own sections that belong beside a step
-// (TAXONOMY.md D53).
-func (d *doc) sections(spec map[string]any, step string) {
-	for _, s := range list(spec["sections"]) {
-		if str(s["step"]) != step {
-			continue
-		}
-		d.h3(str(s["heading"]))
-		for _, para := range strings.Split(str(s["text"]), "\n") {
-			d.p(para)
-		}
-	}
-}
-
-// otherSections prints sections with no step, or a step the charter does
-// not print, together at the end.
-func (d *doc) otherSections(spec map[string]any, printed map[string]bool) {
-	var rest []map[string]any
-	for _, s := range list(spec["sections"]) {
-		if !printed[str(s["step"])] {
-			rest = append(rest, s)
-		}
-	}
-	if len(rest) == 0 {
-		return
-	}
-	d.h2("Further sections")
-	for _, s := range rest {
-		d.h3(str(s["heading"]))
-		for _, para := range strings.Split(str(s["text"]), "\n") {
-			d.p(para)
-		}
-	}
 }
 
 // itemNumber is the number a charter gives an item: its own id when that

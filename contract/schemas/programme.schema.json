@@ -346,13 +346,6 @@
           "items": {
             "$ref": "common.schema.json#/$defs/Component"
           }
-        },
-        "sections": {
-          "type": "array",
-          "items": {
-            "$ref": "common.schema.json#/$defs/Section"
-          },
-          "description": "Parts of the organisation's charter template Cartograph holds as text (TAXONOMY.md D53)."
         }
       }
     }

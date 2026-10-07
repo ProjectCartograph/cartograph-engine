@@ -561,10 +561,6 @@
                 "type": "string",
                 "maxLength": 240,
                 "description": "What shows it was accepted: the record someone else could check."
-              },
-              "workstream": {
-                "$ref": "common.schema.json#/$defs/Slug",
-                "description": "The id of the workstream it belongs to (spec.workstreams)."
               }
             }
           }
@@ -869,46 +865,6 @@
           "description": "The projects and programmes this work depends on: its components, each with why. Declared here, by the work that uses it, and read back on the component; a component may serve any number of others. A chain that comes back to where it started is refused (TAXONOMY.md D46).",
           "items": {
             "$ref": "common.schema.json#/$defs/Component"
-          }
-        },
-        "workstreams": {
-          "type": "array",
-          "description": "The project's workstreams: deliverables grouped under a lead role, with the roles that support it (TAXONOMY.md D49). A workstream that needs its own sponsor or budget is a component project instead (D46).",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "id",
-              "name"
-            ],
-            "properties": {
-              "id": {
-                "$ref": "common.schema.json#/$defs/Slug"
-              },
-              "name": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 80
-              },
-              "purpose": {
-                "type": "string",
-                "maxLength": 400
-              },
-              "lead": {
-                "$ref": "common.schema.json#/$defs/Ref"
-              },
-              "supporting": {
-                "type": "array",
-                "items": {
-                  "$ref": "common.schema.json#/$defs/Ref"
-                }
-              },
-              "dependsOn": {
-                "type": "string",
-                "maxLength": 240,
-                "description": "What the workstream needs from outside it, in words."
-              }
-            }
           }
         },
         "milestones": {
@@ -1255,13 +1211,6 @@
               }
             }
           }
-        },
-        "sections": {
-          "type": "array",
-          "items": {
-            "$ref": "common.schema.json#/$defs/Section"
-          },
-          "description": "Parts of the organisation's charter template Cartograph holds as text (TAXONOMY.md D53)."
         },
         "classification": {
           "type": "string",

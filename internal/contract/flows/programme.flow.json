@@ -365,30 +365,6 @@
           {
             "path": "/spec/notes",
             "control": "sentence"
-          },
-          {
-            "path": "/spec/sections",
-            "control": "list",
-            "key": "id",
-            "hint": "A part of your charter template Cartograph does not hold as a field, in the template's words.",
-            "fields": [
-              {
-                "path": "/id",
-                "control": "readonly"
-              },
-              {
-                "path": "/heading",
-                "control": "text"
-              },
-              {
-                "path": "/text",
-                "control": "sentence"
-              },
-              {
-                "path": "/step",
-                "control": "choice"
-              }
-            ]
           }
         ]
       }

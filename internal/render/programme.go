@@ -72,9 +72,7 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 			field{"Benefit", capital(str(aim["gain"]))},
 		)
 	}
-	d.sections(spec, "aim")
 	d.problems(n, list(spec["problems"]), "/spec/problems")
-	d.sections(spec, "problems")
 
 	// The benefits it is judged on (MSP): the goals, and the measures with
 	// where they start and where they should get to.
@@ -82,7 +80,6 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 	d.list("Goals", n.all("Goal", strs(spec["goals"])))
 	d.table([]string{"Indicator", "Baseline", "Target", "Data source", "Frequency"},
 		measures(ctx, e, n, strs(spec["kpis"])))
-	d.sections(spec, "alignment")
 
 	// The pathway, read the way it is authored: the outcome first, then
 	// what has to hold before it.
@@ -99,7 +96,6 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 			)
 		}
 	}
-	d.sections(spec, "pathway")
 
 	// What it is made of: the work it lists and the work that names it
 	// (TAXONOMY.md D46), drawn with what each depends on in turn.
@@ -115,10 +111,8 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 			d.p(fmt.Sprintf("Critical path: %s, %d months.", strings.Join(chain, " depends on "), graph.CriticalMonths))
 		}
 	}
-	d.sections(spec, "components")
 
 	d.risks(n, spec, list(spec["risks"]))
-	d.sections(spec, "risks")
 
 	d.h2("Governance")
 	p := newPlan(n, spec)
@@ -129,7 +123,6 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 	)
 	d.mandate(n, spec, list(spec["mandate"]))
 	d.stakeholders(stakeholders(ctx, e, n, "Programme", id))
-	d.sections(spec, "governance")
 
 	sponsor := "Sponsor"
 	if s := str(spec["sponsor"]); s != "" {
@@ -142,8 +135,6 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 		}
 	}
 	d.signOff(append(roles, "Lead team: "+n.of("Team", str(spec["leadTeam"]))))
-	printed := map[string]bool{"aim": true, "problems": true, "alignment": true, "pathway": true, "components": true, "risks": true, "governance": true}
-	d.otherSections(spec, printed)
 	d.history(ctx, e, "Programme", id)
 	d.heldElsewhere(spec)
 	return d.end(), nil

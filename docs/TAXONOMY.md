@@ -1462,11 +1462,12 @@ deliverable, its owner, its due date, its acceptance criteria and the
 evidence of acceptance. Cartograph had the acceptance criteria.
 
 **What Cartograph does.** A deliverable may name its owner (a role), when it
-is due (a timing), the workstream it belongs to and the evidence that shows
-it was accepted. **Workstreams** group a project's deliverables under a
-lead role with supporting roles (PRINCE2's work packages at a level above
-tasks); a workstream large enough to need its own sponsor or budget is a
-component project instead (D46).
+is due (a timing) and the evidence that shows it was accepted. Cartograph
+has no workstreams: what a document calls a workstream is either the
+project's own work (its deliverables) or, where it has its own lead, dates
+or risks, a project of its own that this one lists as a component (D46,
+D54). A list of workstreams inside a project hid exactly the work that
+can slip on its own.
 
 ### D50. Who is responsible, accountable, consulted and informed. *(resolved)*
 
@@ -1512,21 +1513,23 @@ signs. A sign-off is an event on that line; the rendered charter shows who
 signed and when, and an unsigned line stays blank for a wet signature.
 Definitions still name roles; the signer is recorded the way an author is.
 
-### D53. What a template asks for and Cartograph does not check is a section in the template's words. *(resolved)*
+### D53. A charter template's prose is not held as text; its classification is. *(resolved)*
 
-**The problem.** Organisations charter to their own templates. Beyond what
-Cartograph holds as shapes, a template asks for prose: the delivery model,
-legal and safeguarding considerations, the training plan, status rules.
-With nowhere to put it, a port either dropped it or squeezed it into a note.
+**The problem.** Organisations charter to their own templates, and a
+template asks for prose: the delivery model, legal and safeguarding
+considerations, the training plan, status rules. Held as free-text
+sections and printed in the charter, that prose made the rendered charter
+as long as the document it came from, and gave an agent a place to retype
+the document instead of structuring it.
 
-**What Cartograph does.** A project or programme may carry **sections**:
-each a heading in the template's words, its text, and the step of the walk
-it belongs beside, so the charter prints it where a reader of that template
-expects it. A section is never a substitute for a shape: where Cartograph
-has a field for something (personal data, a stakeholder, a cost), the field
-is used, and the section says only what the field cannot. A project also
-records the classification its document carries (for example Official),
-and its reference in the organisation's register is its alias.
+**What Cartograph does.** Where a field holds part of what the prose says
+(personal data, a stakeholder, a cost, a risk, a success criterion), the
+field is used. What no field holds goes in the definition's notes under
+the nearest step, a sentence or two, and is not printed in the charter.
+Parts a template asks to be typed that Cartograph computes (readiness, the
+critical path, the change log) are never typed. A project records the
+classification its document carries (for example Official), and its
+reference in the organisation's register is its alias.
 
 ### D54. A project has one objective. *(resolved)*
 
@@ -1548,3 +1551,28 @@ a project of its own, which this one lists as a component (D46), with its
 own objective, lead, schedule and risks. The `objectives` list stays a list
 in the 2.x contract, and a definition saved with several is read and
 flagged, never refused.
+
+### D55. The charter is a brief. *(resolved)*
+
+**The problem.** A charter generated from a full definition printed every
+register in full: 26 milestones, every risk, every cost line with its
+funding source repeated, and paragraphs inside table cells. At 26 pages it
+was the same document in a different format, which is no reason to use
+Cartograph.
+
+**The discipline.** A project charter is short: one to three pages that
+authorise the project and say what it will achieve, for whom, by when, for
+how much and under whose authority. The detail is the project management
+plan's.
+
+**What Cartograph does.** The charter prints what a sponsor approves, in
+the order they ask it: the project at a glance (sponsor, manager, dates,
+budget, outcomes served, authority, readiness in one line), the one
+objective and its key results, the problem, the scope, the components and
+the critical path, the schedule chart with only the milestones that set
+the end date, wait on an event or are held by a condition, the
+deliverables by name, governance with parties named by their role, the
+budget, the high-impact risks and issues, the success criteria, approval
+and the version history. Everything else is counted and stays in
+Cartograph, where it is kept current. Names are printed, never
+descriptions.

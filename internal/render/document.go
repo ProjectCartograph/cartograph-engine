@@ -498,6 +498,8 @@ table.signoff td:nth-child(2) { width: 34%; }
 .chip-open { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
 .chip-blocking { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
 td.fit { width: 1%; white-space: nowrap; }
+p.note { color: var(--muted); font-size: .85rem; margin: .35rem 0 1.1rem; }
+p.ready-line { display: flex; align-items: center; gap: .6rem; margin: .5rem 0 1rem; }
 footer.doc { margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .78rem; }
 table.control tr:nth-child(even) td { background: none; }
 nav.contents > p { margin-bottom: .6rem; }

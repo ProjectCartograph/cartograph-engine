@@ -64,12 +64,16 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 	})
 	d.contents()
 
-	// At a glance: what anybody opening a charter looks for first (PMI:
-	// sponsor, manager, summary schedule and budget), and how ready each
-	// part of the definition is.
+	// A brief, not the definition retyped (TAXONOMY.md D55): what a
+	// sponsor approves, in the order they ask it. Every register prints
+	// the rows a decision turns on; the rest stay in Cartograph.
 	d.h2("At a glance")
 	if about := str(summary["about"]); about != "" {
 		d.lead(capital(about))
+	}
+	var authority []string
+	for _, m := range list(spec["mandate"]) {
+		authority = append(authority, str(m["title"]))
 	}
 	d.facts(
 		field{"Sponsor", strings.Join(roleNames(n, resources, "sponsor"), ", ")},
@@ -81,194 +85,129 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 		field{"Budget", total},
 		field{"Handover to", operation},
 	)
-	d.readiness(checks.Items)
+	d.fields(
+		field{"Outcomes served", strings.Join(n.all("Goal", strs(alignment["goals"])), "; ")},
+		field{"Authority", strings.Join(authority, "; ")},
+	)
+	d.readinessBrief(checks.Items)
 
-	// 1. The problem, and what is in and out.
-	d.problems(n, list(summary["problems"]), "/spec/summary/problems")
-	d.sections(spec, "aim")
-	if in, out := strs(summary["scopeIn"]), strs(summary["scopeOut"]); len(in)+len(out) > 0 {
-		d.h2("Scope")
-		d.scopeColumns(in, out)
-	}
-	d.sections(spec, "scope")
-
-	// 2. What it will achieve (the results framework) and what it produces.
+	// The one objective (TAXONOMY.md D54) and how it is measured.
 	objectives := list(spec["objectives"])
 	if len(objectives) > 0 {
-		d.h2("Objectives and key results")
+		d.h2("Objective and key results")
 		for i, o := range objectives {
-			d.h3named(fmt.Sprintf("Objective %d. %s", i+1, capital(str(o["objective"]))))
+			title := capital(str(o["objective"]))
+			if len(objectives) > 1 {
+				title = fmt.Sprintf("Objective %d. %s", i+1, title)
+			}
+			d.h3named(title)
 			var rows [][]string
 			for _, kr := range list(o["keyResults"]) {
 				unit := func(v string) string { return withUnit(kr, v) }
 				rows = append(rows, []string{
 					capital(str(kr["metric"])),
-					chip("direction", str(kr["direction"])),
 					baselineWords(p, kr, obj(kr["baseline"])),
 					p.target(kr["target"], unit),
 					n.of("DataSource", str(kr["source"])),
 				})
 			}
-			d.table([]string{"Key result", "Direction", "Baseline", "Target", "Data source"}, rows)
+			d.table([]string{"Key result", "Baseline", "Target", "Data source"}, rows)
 		}
 	}
-	d.sections(spec, "measures")
 
-	if len(list(spec["deliverables"])) > 0 {
-		d.h2("Deliverables")
-		d.register(p)
-		d.workstreams(p)
-		if wbs := workBreakdown(n, spec); hasTasks(wbs) {
-			d.h3("Work breakdown")
-			var rows [][]string
-			for _, w := range wbs {
-				rows = append(rows, []string{w.Code, w.Name, w.Role, w.Note})
-			}
-			d.table([]string{"Code", "Deliverable or task", "Done by", "Note"}, rows)
-		}
+	d.problems(n, list(summary["problems"]), "/spec/summary/problems")
+	if in, out := strs(summary["scopeIn"]), strs(summary["scopeOut"]); len(in)+len(out) > 0 {
+		d.h2("Scope")
+		d.scopeColumns(in, out)
 	}
-	d.sections(spec, "deliverables")
 
-	// 3. When: milestones, or phases from before 2.9.
+	// The work it depends on, and the chain that sets the end date
+	// (TAXONOMY.md D46).
+	if len(dependsOnRows)+len(usedBy) > 0 {
+		d.h2("Components and critical path")
+		d.raw(dependencyDiagram(n, graph, self))
+		d.criticalLine(n, graph)
+	}
+
 	if len(list(spec["milestones"])) > 0 {
-		d.h2("Schedule and milestones")
+		d.h2("Schedule")
 		if items, err := e.Schedule(ctx, id); err == nil {
 			labels := map[string]string{}
 			for i, m := range list(spec["milestones"]) {
 				labels[str(m["id"])] = itemNumber("M", str(m["id"]), i) + "  " + str(m["name"])
 			}
 			d.raw(scheduleChart(items, labels))
+			d.keyMilestones(p, items)
 		}
-		d.milestonePlan(p)
 	} else if len(phaseRows) > 0 {
-		d.h2("Milestones")
+		d.h2("Schedule")
 		d.table([]string{"Phase", "Start", "End", "Months"}, phaseRows)
 	}
-	d.sections(spec, "timeline")
 
-	// 4. What it depends on and what depends on it (TAXONOMY.md D46).
-	if len(dependsOnRows)+len(usedBy) > 0 {
-		d.h2("Components and dependencies")
-		d.raw(dependencyDiagram(n, graph, self))
-		d.dependencyTable(n, graph, self)
+	if len(list(spec["deliverables"])) > 0 {
+		d.h2("Deliverables")
+		d.deliverablesBrief(p)
 	}
 
-	// 5. Why: what it serves, its authority.
-	d.h2("Strategic alignment")
-	d.fields(
-		field{"Outcomes served", strings.Join(n.all("Goal", strs(alignment["goals"])), "; ")},
-		field{"Programme", strings.Join(programmes, "; ")},
-		field{"Part of", n.of("Project", parent)},
-	)
-	d.mandate(n, spec, list(spec["mandate"]))
-	d.sections(spec, "goals")
-
-	// 6. Who decides, who is involved, who it is for.
-	d.h2("Governance and roles")
+	d.h2("Governance")
+	var roles [][]string
+	for _, r := range resources {
+		if uniqueRoles[str(r["role"])] {
+			roles = append(roles, []string{label("role", str(r["role"])), n.of("Resource", str(r["resource"]))})
+		}
+	}
+	d.table([]string{"Role", "Post"}, roles)
 	var groups []string
 	for _, b := range list(summary["beneficiaries"]) {
 		groups = append(groups, n.of("BeneficiaryGroup", str(b["group"])))
 	}
 	d.fields(
-		field{"Lead team", n.of("Team", str(spec["team"]))},
 		field{"Beneficiaries", strings.Join(groups, ", ")},
 		field{"Escalation route", escalation(p, spec)},
 	)
-	var roles [][]string
-	for _, r := range resources {
-		roles = append(roles, []string{label("role", str(r["role"])), n.of("Resource", str(r["resource"])), str(r["note"])})
-	}
-	d.table([]string{"Role", "Post", "Note"}, roles)
-	d.raci(p)
-	d.sections(spec, "resources")
-	d.stakeholders(stakeholders(ctx, e, n, "Project", id))
-	d.sections(spec, "stakeholders")
-	d.sections(spec, "beneficiaries")
+	d.raciBrief(p)
 
-	// 7. Money.
-	if len(fundingRows)+len(list(spec["costs"]))+len(list(spec["procurement"])) > 0 {
-		d.h2("Resources and budget")
+	if len(fundingRows)+len(list(spec["costs"])) > 0 {
+		d.h2("Budget")
 		if len(fundingRows) > 0 {
 			if strings.Contains(total, ";") || len(fundingRows) > 1 {
 				fundingRows = append(fundingRows, []string{total, "Total", ""})
 			}
-			d.h3("Funding")
 			d.table([]string{"Amount", "Funding source", "Status"}, fundingRows)
 		}
-		d.costs(p)
+		d.costsBrief(p)
 	}
 
-	d.data(n, obj(spec["data"]))
-	d.sections(spec, "data")
-	d.risks(n, spec, list(spec["risks"]))
-	d.sections(spec, "risks")
+	d.risksBrief(p, list(spec["risks"]))
 
-	// 8. How anyone will know it worked, and who runs it afterwards.
+	// How anyone will know it worked, and who runs it afterwards.
 	criteria := list(spec["successCriteria"])
-	kpis := list(spec["kpis"])
-	if len(criteria)+len(kpis) > 0 {
+	if len(criteria) > 0 {
 		d.h2("Success criteria and handover")
-	}
-	for _, w := range []string{"atClosing", "atLanding", "postClosingCycle"} {
 		var rows [][]string
 		for _, c := range criteria {
-			cw := str(c["when"])
-			if cw == "" {
-				cw = "atClosing"
-			}
-			if cw != w {
-				continue
+			judged := str(c["when"])
+			if judged == "" {
+				judged = "atClosing"
 			}
 			rows = append(rows, []string{
-				str(c["statement"]), str(c["standard"]),
-				n.ref(c["source"], "DataSource", spec), n.ref(c["cycle"], "ReportingCycle", spec),
-				n.ref(c["owner"], "Resource", spec), n.ref(c["confirmedBy"], "Resource", spec),
+				str(c["statement"]), str(c["standard"]), label("when", judged),
+				n.ref(c["source"], "DataSource", spec), p.who(c["confirmedBy"]),
 				p.status("successCriteria", str(c["id"])),
 			})
 		}
-		if len(rows) == 0 {
-			continue
-		}
-		d.h3(label("when", w))
-		d.table([]string{"Criterion", "Target", "Data source", "Frequency", "Measured by", "Signed off by", "Result"}, rows)
+		d.table([]string{"Criterion", "Target", "Judged", "Data source", "Signed off by", "Result"}, rows)
 	}
-	var measures [][]string
-	for _, k := range kpis {
-		measures = append(measures, []string{n.of("KPI", str(k["kpi"])), str(k["reason"])})
+	var kpiNames []string
+	for _, k := range list(spec["kpis"]) {
+		kpiNames = append(kpiNames, n.of("KPI", str(k["kpi"])))
 	}
-	if len(measures) > 0 {
-		d.h3("Performance indicators")
-		d.table([]string{"Indicator", "Rationale"}, measures)
-	}
-	d.fields(field{"Handover to", operation})
-	d.sections(spec, "success")
-	d.sections(spec, "landing")
+	d.fields(
+		field{"Performance indicators", strings.Join(kpiNames, "; ")},
+		field{"Handover to", operation},
+	)
 
-	var assumed []string
-	seen := map[string]bool{}
-	for _, c := range criteria {
-		for _, a := range strs(c["assumes"]) {
-			if !seen[a] {
-				seen[a] = true
-				assumed = append(assumed, n.of("Assumption", a))
-			}
-		}
-	}
-	if len(assumed) > 0 {
-		d.h2("Assumptions")
-		d.list("", assumed)
-	}
-
-	var obligations [][]string
-	for _, c := range list(spec["compliance"]) {
-		obligations = append(obligations, []string{str(c["item"]), chip("status", str(c["status"]))})
-	}
-	if len(obligations) > 0 {
-		d.h2("Compliance")
-		d.table([]string{"Requirement", "Status"}, obligations)
-	}
-
-	// 9. Approval: the conditions and sign-off lines the definition names,
+	// Approval: the conditions and sign-off lines the definition names,
 	// or, for one that names none, the roles the standards expect to sign
 	// (GovS 002 6.4.8).
 	if !d.approval(p) {
@@ -287,15 +226,8 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 		}
 		d.signOff(approvers)
 	}
-	d.sections(spec, "approval")
-	d.record(p)
-	printed := map[string]bool{}
-	for _, s := range []string{"aim", "scope", "measures", "deliverables", "timeline", "goals", "resources", "stakeholders", "beneficiaries", "data", "risks", "success", "landing", "approval"} {
-		printed[s] = true
-	}
-	d.otherSections(spec, printed)
 	d.history(ctx, e, "Project", id)
-	d.heldElsewhere(spec)
+	d.heldInCartograph(spec, len(stakeholders(ctx, e, n, "Project", id)))
 	return d.end(), nil
 }
 
