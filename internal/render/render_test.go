@@ -175,6 +175,30 @@ spec:
 	}
 }
 
+// TestCharterSaysWhereEachPartIsDefined: a section names the step of the
+// walk that defines it, and a value written as one field names that field,
+// so an interface beside the walk can open or edit it in place.
+func TestCharterSaysWhereEachPartIsDefined(t *testing.T) {
+	ctx := context.Background()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	y := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p\n  name: P\nspec:\n  team: t\n  summary:\n    problems:\n      - problem: {situation: wait a season, cause: checks come late}\n        change: {what: check at intake}\n"
+	if err := e.PutWorking(ctx, "Project", "p", []byte(y)); err != nil {
+		t.Fatal(err)
+	}
+	html, _, err := Charter(ctx, e, "p", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`<h2 data-step="aim">Problem statement</h2>`, `data-field="/spec/summary/problems/0/problem/situation"`, `data-field="/spec/summary/problems/0/change/what"`} {
+		if !contains(string(html), want) {
+			t.Errorf("the charter lacks %s", want)
+		}
+	}
+}
+
 // TestCharterWithSnapshot verifies that rendering a snapshot works.
 func TestCharterWithSnapshot(t *testing.T) {
 	ctx := context.Background()

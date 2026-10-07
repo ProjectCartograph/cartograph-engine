@@ -50,7 +50,7 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 		)
 	}
 
-	d.problems(n, list(spec["problems"]))
+	d.problems(n, list(spec["problems"]), "/spec/problems")
 
 	// The benefits it is judged on (MSP): the goals, and the measures with
 	// where they start and where they should get to.

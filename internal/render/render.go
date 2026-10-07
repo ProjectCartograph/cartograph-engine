@@ -117,7 +117,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 	)
 
 	// 1. The problem, and what is in and out.
-	d.problems(n, list(summary["problems"]))
+	d.problems(n, list(summary["problems"]), "/spec/summary/problems")
 	if in, out := strs(summary["scopeIn"]), strs(summary["scopeOut"]); len(in)+len(out) > 0 {
 		d.h2("Scope")
 		d.list("In scope", in)

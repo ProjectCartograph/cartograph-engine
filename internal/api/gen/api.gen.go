@@ -1871,6 +1871,12 @@ type GetGoalChecksParams struct {
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
+// GetOperationCharterHtmlParams defines parameters for GetOperationCharterHtml.
+type GetOperationCharterHtmlParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetOperationChecksParams defines parameters for GetOperationChecks.
 type GetOperationChecksParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -1883,6 +1889,12 @@ type GetPortfolioChecksParams struct {
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
+// GetProgrammeCharterHtmlParams defines parameters for GetProgrammeCharterHtml.
+type GetProgrammeCharterHtmlParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetProgrammeChecksParams defines parameters for GetProgrammeChecks.
 type GetProgrammeChecksParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -1891,6 +1903,9 @@ type GetProgrammeChecksParams struct {
 
 // GetProjectCharterHtmlParams defines parameters for GetProjectCharterHtml.
 type GetProjectCharterHtmlParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+
 	// Working Use working copy instead of latest snapshot
 	Working *bool `form:"working,omitempty" json:"working,omitempty"`
 }
@@ -1950,6 +1965,9 @@ type GetManifestParams struct {
 
 // GetCharterPdfParams defines parameters for GetCharterPdf.
 type GetCharterPdfParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+
 	// Working For a project, use the working copy instead of the latest snapshot.
 	Working *bool `form:"working,omitempty" json:"working,omitempty"`
 }
@@ -2296,7 +2314,7 @@ type ServerInterface interface {
 	GetGoalChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetGoalChecksParams)
 	// GetOperationCharterHtml Operation charter rendered as HTML from the working copy: what the service does and when, who runs it, what it is part of, how it is measured, what it uses and produces, and which projects will hand over to it. Derived, like every other view.
 	// (GET /manifests/Operation/{id}/charter.html)
-	GetOperationCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam)
+	GetOperationCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetOperationCharterHtmlParams)
 	// GetOperationChecks Whether an operation is described well enough to be run and measured, step by step. Advisory only.
 	// (GET /manifests/Operation/{id}/checks)
 	GetOperationChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetOperationChecksParams)
@@ -2305,7 +2323,7 @@ type ServerInterface interface {
 	GetPortfolioChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetPortfolioChecksParams)
 	// GetProgrammeCharterHtml Programme charter rendered as HTML from the working copy: what it is for, what is wrong, what it serves, how it believes the change happens, what is inside it and who runs it. Derived, like every other view, so there is nothing to keep in step.
 	// (GET /manifests/Programme/{id}/charter.html)
-	GetProgrammeCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam)
+	GetProgrammeCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetProgrammeCharterHtmlParams)
 	// GetProgrammeChecks Whether a programme can be judged on what a programme is judged on. Advisory only: none of these has a state that stops anything, because most of them can change when somebody edits a different manifest.
 	// (GET /manifests/Programme/{id}/checks)
 	GetProgrammeChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProgrammeChecksParams)
@@ -3612,8 +3630,24 @@ func (siw *ServerInterfaceWrapper) GetOperationCharterHtml(w http.ResponseWriter
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetOperationCharterHtmlParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetOperationCharterHtml(w, r, id)
+		siw.Handler.GetOperationCharterHtml(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3722,8 +3756,24 @@ func (siw *ServerInterfaceWrapper) GetProgrammeCharterHtml(w http.ResponseWriter
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProgrammeCharterHtmlParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetProgrammeCharterHtml(w, r, id)
+		siw.Handler.GetProgrammeCharterHtml(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3792,6 +3842,19 @@ func (siw *ServerInterfaceWrapper) GetProjectCharterHtml(w http.ResponseWriter, 
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetProjectCharterHtmlParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
 
 	// ------------- Optional query parameter "working" -------------
 
@@ -4220,6 +4283,19 @@ func (siw *ServerInterfaceWrapper) GetCharterPdf(w http.ResponseWriter, r *http.
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetCharterPdfParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
 
 	// ------------- Optional query parameter "working" -------------
 
@@ -7762,7 +7838,8 @@ func (response GetGoalChecks404JSONResponse) VisitGetGoalChecksResponse(w http.R
 }
 
 type GetOperationCharterHtmlRequestObject struct {
-	Id IdParam `json:"id"`
+	Id     IdParam `json:"id"`
+	Params GetOperationCharterHtmlParams
 }
 
 type GetOperationCharterHtmlResponseObject interface {
@@ -7962,7 +8039,8 @@ func (response GetPortfolioChecks404JSONResponse) VisitGetPortfolioChecksRespons
 }
 
 type GetProgrammeCharterHtmlRequestObject struct {
-	Id IdParam `json:"id"`
+	Id     IdParam `json:"id"`
+	Params GetProgrammeCharterHtmlParams
 }
 
 type GetProgrammeCharterHtmlResponseObject interface {
@@ -12275,10 +12353,11 @@ func (sh *strictHandler) GetGoalChecks(w http.ResponseWriter, r *http.Request, i
 }
 
 // GetOperationCharterHtml operation middleware
-func (sh *strictHandler) GetOperationCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam) {
+func (sh *strictHandler) GetOperationCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetOperationCharterHtmlParams) {
 	var request GetOperationCharterHtmlRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetOperationCharterHtml(ctx, request.(GetOperationCharterHtmlRequestObject))
@@ -12355,10 +12434,11 @@ func (sh *strictHandler) GetPortfolioChecks(w http.ResponseWriter, r *http.Reque
 }
 
 // GetProgrammeCharterHtml operation middleware
-func (sh *strictHandler) GetProgrammeCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam) {
+func (sh *strictHandler) GetProgrammeCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetProgrammeCharterHtmlParams) {
 	var request GetProgrammeCharterHtmlRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetProgrammeCharterHtml(ctx, request.(GetProgrammeCharterHtmlRequestObject))

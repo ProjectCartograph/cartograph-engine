@@ -200,9 +200,33 @@ type doc struct {
 
 func (d *doc) flush() {
 	if d.pending != "" {
-		d.b.WriteString("<h2>" + esc(d.pending) + "</h2>\n")
+		// The step of a project's walk that defines the section, so an
+		// interface showing the charter beside the walk can open it there.
+		if step := sectionSteps[d.pending]; step != "" {
+			d.b.WriteString(`<h2 data-step="` + step + `">` + esc(d.pending) + "</h2>\n")
+		} else {
+			d.b.WriteString("<h2>" + esc(d.pending) + "</h2>\n")
+		}
 		d.pending = ""
 	}
+}
+
+// sectionSteps is the step of a project's walk each charter section is
+// written in.
+var sectionSteps = map[string]string{
+	"Problem statement":              "aim",
+	"Scope":                          "scope",
+	"Objectives and key results":     "measures",
+	"Deliverables":                   "deliverables",
+	"Strategic alignment":            "goals",
+	"Components":                     "goals",
+	"Governance and roles":           "resources",
+	"Budget":                         "resources",
+	"Stakeholders":                   "stakeholders",
+	"Success criteria":               "success",
+	"Milestones":                     "timeline",
+	"Risks, issues and dependencies": "risks",
+	"Data requirements":              "data",
 }
 
 func esc(s string) string { return html.EscapeString(strings.TrimSpace(s)) }
@@ -224,6 +248,11 @@ func (d *doc) p(s string) {
 // field is one labelled value. A field with no value is not printed.
 type field struct{ label, value string }
 
+// pathed is a field whose value is one field's text as written, with that
+// field's JSON pointer, so an interface showing the charter can edit it in
+// place.
+type pathed struct{ label, value, path string }
+
 func (d *doc) fields(fs ...field) {
 	var kept []field
 	for _, f := range fs {
@@ -238,6 +267,29 @@ func (d *doc) fields(fs ...field) {
 	d.b.WriteString("<dl>\n")
 	for _, f := range kept {
 		d.b.WriteString("<dt>" + esc(f.label) + "</dt><dd>" + esc(f.value) + "</dd>\n")
+	}
+	d.b.WriteString("</dl>\n")
+}
+
+// fieldsAt is fields with each value's pointer on it.
+func (d *doc) fieldsAt(fs ...pathed) {
+	var kept []pathed
+	for _, f := range fs {
+		if strings.TrimSpace(f.value) != "" {
+			kept = append(kept, f)
+		}
+	}
+	if len(kept) == 0 {
+		return
+	}
+	d.flush()
+	d.b.WriteString("<dl>\n")
+	for _, f := range kept {
+		if f.path == "" {
+			d.b.WriteString("<dt>" + esc(f.label) + "</dt><dd>" + esc(f.value) + "</dd>\n")
+			continue
+		}
+		d.b.WriteString("<dt>" + esc(f.label) + `</dt><dd data-field="` + esc(f.path) + `">` + esc(f.value) + "</dd>\n")
 	}
 	d.b.WriteString("</dl>\n")
 }
@@ -407,7 +459,7 @@ func (d *doc) end() []byte {
 // problems prints the problems a project or a programme answers, each as
 // its parts: who, what is wrong, why, what will be different, and what
 // they will then be able to do.
-func (d *doc) problems(n names, items []map[string]any) {
+func (d *doc) problems(n names, items []map[string]any, base string) {
 	if len(items) == 0 {
 		return
 	}
@@ -418,13 +470,14 @@ func (d *doc) problems(n names, items []map[string]any) {
 		}
 		problem, _ := pm["problem"].(map[string]any)
 		change, _ := pm["change"].(map[string]any)
-		d.fields(
-			field{"Affected groups", strings.Join(n.all("BeneficiaryGroup", strs(pm["groups"])), ", ")},
-			field{"Problem", capital(str(problem["situation"]))},
-			field{"Cause", capital(str(problem["cause"]))},
-			field{"Intended change", capital(str(change["what"]))},
-			field{"Benefit", capital(str(change["gain"]))},
-			field{"Evidence", strings.Join(n.all("Gap", gapIDs(pm["gaps"])), "; ")},
+		at := fmt.Sprintf("%s/%d", base, i)
+		d.fieldsAt(
+			pathed{"Affected groups", strings.Join(n.all("BeneficiaryGroup", strs(pm["groups"])), ", "), ""},
+			pathed{"Problem", capital(str(problem["situation"])), at + "/problem/situation"},
+			pathed{"Potential cause", capital(str(problem["cause"])), at + "/problem/cause"},
+			pathed{"Intended change", capital(str(change["what"])), at + "/change/what"},
+			pathed{"Benefit", capital(str(change["gain"])), at + "/change/gain"},
+			pathed{"Evidence", strings.Join(n.all("Gap", gapIDs(pm["gaps"])), "; "), ""},
 		)
 	}
 }

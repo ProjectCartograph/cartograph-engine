@@ -447,6 +447,7 @@ paths:
         Project charter rendered as HTML from the latest snapshot (or working
         copy with ?working=true).
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/IdParam"
         - name: working
           in: query
@@ -477,6 +478,7 @@ paths:
         vault's spec.chromium, the CHROMIUM environment variable, or one on
         the PATH.
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/KindParam"
         - $ref: "#/components/parameters/IdParam"
         - name: working
@@ -511,6 +513,7 @@ paths:
         happens, what is inside it and who runs it. Derived, like every
         other view, so there is nothing to keep in step.
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/IdParam"
       responses:
         "401":
@@ -535,6 +538,7 @@ paths:
         measured, what it uses and produces, and which projects will hand
         over to it. Derived, like every other view.
       parameters:
+        - $ref: "#/components/parameters/PreviewParam"
         - $ref: "#/components/parameters/IdParam"
       responses:
         "401":

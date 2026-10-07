@@ -695,6 +695,10 @@ func (s *Server) TransitionProjectState(ctx context.Context, req apigen.Transiti
 }
 
 func (s *Server) GetProjectCharterHtml(ctx context.Context, req apigen.GetProjectCharterHtmlRequestObject) (apigen.GetProjectCharterHtmlResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	// Determine snapshot: 0 for working copy, otherwise get latest
 	snapshot := 0
 	if req.Params.Working == nil || !*req.Params.Working {
@@ -737,6 +741,10 @@ func (s *Server) GetProgrammeCharterHtml(
 	ctx context.Context,
 	req apigen.GetProgrammeCharterHtmlRequestObject,
 ) (apigen.GetProgrammeCharterHtmlResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	htmlBytes, err := render.ProgrammeCharter(ctx, s.Engine, req.Id)
 	if err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
@@ -755,6 +763,10 @@ func (s *Server) GetOperationCharterHtml(
 	ctx context.Context,
 	req apigen.GetOperationCharterHtmlRequestObject,
 ) (apigen.GetOperationCharterHtmlResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
 	htmlBytes, err := render.OperationCharter(ctx, s.Engine, req.Id)
 	if err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
@@ -773,10 +785,11 @@ func (s *Server) GetOperationCharterHtml(
 // version, and its working copy when it has no version yet: somebody
 // exporting a draft wants the draft, not a refusal.
 func (s *Server) GetCharterPdf(ctx context.Context, req apigen.GetCharterPdfRequestObject) (apigen.GetCharterPdfResponseObject, error) {
-	var (
-		html []byte
-		err  error
-	)
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
+	var html []byte
 	switch req.Kind {
 	case "Project":
 		snapshot := 0
