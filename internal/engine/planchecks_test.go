@@ -168,17 +168,22 @@ func TestAMilestoneWaitsOnAnotherProjects(t *testing.T) {
 		"    - {id: s1, name: Approved, timing: {form: date, date: \"2026-08-20\"}}\n"))
 	mustCommit(t, e, "Project", "app", "p1", projectYAML("app", "  milestones:\n"+
 		"    - {id: a1, name: Digitised, timing: {form: after, event: {on: {kind: Project, id: survey}, item: s1}, lagMonths: 1}}\n"+
-		"    - {id: a2, name: Field-ready, timing: {form: after, event: {on: {local: milestones, id: a1}}, lagMonths: 2}}\n"))
+		"    - {id: a2, name: Piloted, timing: {form: after, event: {on: {local: milestones, id: a1}}, lagMonths: 2}}\n"+
+		"    - {id: a3, name: Field-ready, timing: {form: after, event: {on: {local: milestones, id: a2}}}}\n"))
 	mustCommit(t, e, "Project", "survey", "p2", projectYAML("survey", "  milestones:\n"+
 		"    - {id: s1, name: Approved, timing: {form: date, date: \"2026-08-20\"}}\n"+
-		"    - {id: s2, name: Baseline, timing: {form: after, event: {on: {kind: Project, id: app}, item: a2}}}\n"+
+		"    - {id: s2, name: Baseline, timing: {form: after, event: {on: {kind: Project, id: app}, item: a3}}}\n"+
 		"  components:\n    - {kind: Project, id: app}\n"))
 	items, err := e.Schedule(context.Background(), "app")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 2 || items[0].Month != "2026-09" || items[1].Month != "2026-11" {
+	if len(items) != 3 || items[0].Month != "2026-09" || items[1].Month != "2026-11" || items[2].Month != "2026-11" {
 		t.Fatalf("placed %+v", items)
+	}
+	// The chain ends at the last milestone of the latest month.
+	if !items[2].Critical || !items[1].Critical || !items[0].Critical {
+		t.Errorf("critical chain %+v", items)
 	}
 	survey, err := e.Schedule(context.Background(), "survey")
 	if err != nil || survey[1].Month != "2026-11" {

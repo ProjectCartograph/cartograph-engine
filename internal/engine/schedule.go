@@ -60,8 +60,17 @@ func (e *Engine) Schedule(ctx context.Context, id string) ([]ScheduleItem, error
 	// through whatever set each month, within this project.
 	critical := map[string]bool{}
 	last := ""
+	// Of milestones in the latest month, the one with the longest chain
+	// behind it ends the chain, then the later one listed.
+	depth := func(mid string) int {
+		n := 0
+		for at := p.from[spot{id, mid}]; at != "" && n <= len(order); at = p.from[spot{id, at}] {
+			n++
+		}
+		return n
+	}
 	for _, mid := range order {
-		if last == "" || month(mid) > month(last) {
+		if last == "" || month(mid) > month(last) || (month(mid) == month(last) && depth(mid) >= depth(last)) {
 			last = mid
 		}
 	}
