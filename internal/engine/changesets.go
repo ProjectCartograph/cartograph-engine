@@ -1233,6 +1233,11 @@ func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte) [
 		message := p.Message
 		// A missing property is reported on the object that lacks it;
 		// the field is the property.
+		// A value outside a list is said without the list, which for a
+		// currency is every code there is.
+		if strings.HasPrefix(p.Message, "value must be one of") {
+			message = "Choose one of the values offered."
+		}
 		if i := strings.Index(p.Message, "missing property '"); i >= 0 {
 			message = "Needed before this can be merged."
 			name := strings.TrimSuffix(p.Message[i+len("missing property '"):], "'")

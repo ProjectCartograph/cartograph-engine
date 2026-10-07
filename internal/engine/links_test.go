@@ -81,3 +81,22 @@ func TestALinkOffersOnlyWhatItMayJoin(t *testing.T) {
 		t.Fatalf("an objective offered its own outcome as a parent: %+v", c)
 	}
 }
+
+// A refusal reads as a sentence: an outcome, not a outcome.
+func TestALinkRefusalReadsAsASentence(t *testing.T) {
+	t.Parallel()
+	e := newTestEngine(t)
+	ctx := actingAs(ada)
+	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	parents, err := e.LinkCandidates(ctx, engine.LinkGoalParent, "depot-downtime-is-planned", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range parents {
+		if c.ID == "raise-produce-quality" && c.Reason != "An outcome sits under an objective, not a goal." {
+			t.Fatalf("reason = %q", c.Reason)
+		}
+	}
+}

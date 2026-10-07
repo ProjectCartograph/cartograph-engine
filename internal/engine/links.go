@@ -128,7 +128,7 @@ func (e *Engine) LinkCandidates(ctx context.Context, link, from, problem string)
 				return true, ""
 			}
 			if level, _ := specOf(doc)["level"].(string); level != "outcome" {
-				return false, "A gap closes into an outcome, not a " + levelWord(level) + "."
+				return false, "A gap closes into an outcome, not " + aWord(levelWord(level)) + "."
 			}
 			return false, ""
 		}
@@ -140,7 +140,7 @@ func (e *Engine) LinkCandidates(ctx context.Context, link, from, problem string)
 				return true, ""
 			}
 			if level, _ := specOf(doc)["level"].(string); level != "outcome" {
-				return false, "A project serves an outcome, not a " + levelWord(level) + "."
+				return false, "A project serves an outcome, not " + aWord(levelWord(level)) + "."
 			}
 			return false, ""
 		}
@@ -171,7 +171,7 @@ func (e *Engine) LinkCandidates(ctx context.Context, link, from, problem string)
 					if want == "" {
 						return false, "A goal sits at the top: it has no aim above it."
 					}
-					return false, "A " + levelWord(level) + " sits under a " + levelWord(want) + ", not a " + levelWord(theirs) + "."
+					return false, capitalFirst(aWord(levelWord(level))) + " sits under " + aWord(levelWord(want)) + ", not " + aWord(levelWord(theirs)) + "."
 				}
 			} else {
 				if contains(contributes, id) {
@@ -317,6 +317,22 @@ func parentLevel(level string) string {
 		return "goal"
 	}
 	return ""
+}
+
+// aWord is a word with its article: an outcome, a goal.
+func aWord(w string) string {
+	if w != "" && strings.ContainsRune("aeiou", rune(w[0])) {
+		return "an " + w
+	}
+	return "a " + w
+}
+
+// capitalFirst starts a phrase with a capital, as a sentence does.
+func capitalFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 // levelWord is a level as a sentence says it.
