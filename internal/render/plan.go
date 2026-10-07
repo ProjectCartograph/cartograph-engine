@@ -115,7 +115,7 @@ func (p plan) timing(v any) string {
 		from, to := when(str(t["notBefore"])), when(str(t["notAfter"]))
 		switch {
 		case from != "" && to != "":
-			out = "Between " + from + " and " + to
+			out = span2(str(t["notBefore"]), str(t["notAfter"]))
 		case from != "":
 			out = "Not before " + from
 		default:
@@ -237,7 +237,7 @@ func (d *doc) milestonePlan(p plan) {
 			name += " (" + strings.Join(marks, "; ") + ")"
 		}
 		rows = append(rows, []string{
-			fmt.Sprintf("M%d", i+1), name, p.timing(m["timing"]), strings.Join(waits, "; "),
+			itemNumber("M", str(m["id"]), i), name, p.timing(m["timing"]), strings.Join(waits, "; "),
 			p.item(m["owner"]), p.evidence("milestones", str(m["id"]), str(m["evidence"])), p.status("milestones", str(m["id"])),
 		})
 	}
@@ -265,7 +265,7 @@ func (d *doc) register(p plan) {
 			name += ". " + desc
 		}
 		rows = append(rows, []string{
-			fmt.Sprintf("D%d", i+1), name, p.item(dv["owner"]), p.timing(dv["due"]),
+			itemNumber("D", str(dv["id"]), i), name, p.item(dv["owner"]), p.timing(dv["due"]),
 			strings.Join(tests, "; "), p.evidence("deliverables", str(dv["id"]), str(dv["evidence"])),
 			p.status("deliverables", str(dv["id"])),
 		})
@@ -295,7 +295,7 @@ func (d *doc) workstreams(p plan) {
 		if len(ds) > 0 {
 			purpose = strings.TrimSpace(purpose + " Delivers: " + strings.Join(ds, "; ") + ".")
 		}
-		rows = append(rows, []string{fmt.Sprintf("WS%d", i+1), str(w["name"]), purpose, p.item(w["lead"]), strings.Join(sup, ", "), str(w["dependsOn"])})
+		rows = append(rows, []string{itemNumber("WS", str(w["id"]), i), str(w["name"]), purpose, p.item(w["lead"]), strings.Join(sup, ", "), str(w["dependsOn"])})
 	}
 	d.table([]string{"No.", "Workstream", "Purpose", "Lead", "Supported by", "Needs from outside"}, rows)
 }
@@ -475,4 +475,36 @@ func (d *doc) otherSections(spec map[string]any, printed map[string]bool) {
 			d.p(para)
 		}
 	}
+}
+
+// itemNumber is the number a charter gives an item: its own id when that
+// is already the organisation's number (m10, d4, ws3), else its place.
+func itemNumber(prefix, id string, i int) string {
+	low := strings.ToLower(prefix)
+	if rest, ok := strings.CutPrefix(strings.ToLower(id), low); ok && rest != "" && rest[0] >= '0' && rest[0] <= '9' && len(rest) <= 4 {
+		return prefix + strings.ToUpper(rest)
+	}
+	return fmt.Sprintf("%s%d", prefix, i+1)
+}
+
+// span2 prints a window as people write it: "25 to 26 February 2026",
+// "April to July 2027", or in full when the years differ.
+func span2(a, b string) string {
+	ta, ea := time.Parse("2006-01-02", a)
+	tb, eb := time.Parse("2006-01-02", b)
+	if ea == nil && eb == nil {
+		switch {
+		case ta.Year() == tb.Year() && ta.Month() == tb.Month():
+			return fmt.Sprintf("%d to %s", ta.Day(), tb.Format("2 January 2006"))
+		case ta.Year() == tb.Year():
+			return ta.Format("2 January") + " to " + tb.Format("2 January 2006")
+		}
+		return ta.Format("2 January 2006") + " to " + tb.Format("2 January 2006")
+	}
+	ma, ea := time.Parse("2006-01", a)
+	mb, eb := time.Parse("2006-01", b)
+	if ea == nil && eb == nil && ma.Year() == mb.Year() {
+		return ma.Format("January") + " to " + mb.Format("January 2006")
+	}
+	return when(a) + " to " + when(b)
 }

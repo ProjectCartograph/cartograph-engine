@@ -26,31 +26,54 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 		return nil, err
 	}
 	n := loadNames(ctx, e)
-
 	inside := components(ctx, e, id, spec)
+	graph, _ := e.Components(ctx)
+	self := engine.Ref{Kind: "Programme", ID: id}
+
+	// The programme's checks, read as the readiness of each part.
+	var items []engine.ProjectCheckItem
+	if pcs, err := e.ProgrammeChecks(ctx, id); err == nil {
+		for _, c := range pcs {
+			items = append(items, engine.ProjectCheckItem{ID: c.ID, Section: c.Section, State: c.State, Message: c.Message})
+		}
+	}
+
 	var d doc
-	d.head(name, "Programme", vers)
+	d.head(name, "Programme charter", vers)
+	d.control(vers, docControl{
+		Reference: aliasOf(e, vers),
+		Sponsor:   n.of("Resource", str(spec["sponsor"])),
+		Owner:     n.of("Resource", str(spec["manager"])),
+		Status:    readinessWord(items),
+	})
+	d.contents()
+
+	aim := obj(spec["aim"])
+	d.h2("At a glance")
+	if c := str(aim["change"]); c != "" {
+		d.lead(capital(c))
+	}
 	d.facts(
 		field{"Sponsor", n.of("Resource", str(spec["sponsor"]))},
 		field{"Programme manager", n.of("Resource", str(spec["manager"]))},
 		field{"Business change manager", n.of("Resource", str(spec["businessChangeManager"]))},
 		field{"Lead team", n.of("Team", str(spec["leadTeam"]))},
-		field{"Supporting teams", strings.Join(n.all("Team", strs(spec["supportingTeams"])), ", ")},
 		field{"Components", plural2(len(inside), "component", "components")},
-		field{"Goals", plural2(len(strs(spec["goals"])), "goal", "goals")},
+		field{"Goals", strings.Join(n.all("Goal", strs(spec["goals"])), "; ")},
 		field{"Source", str(spec["source"])},
 	)
+	d.readinessOf(items, programmeAreas)
 
-	aim := obj(spec["aim"])
-	if str(aim["change"])+str(aim["gain"])+str(spec["source"]) != "" {
+	if str(aim["change"])+str(aim["gain"]) != "" {
 		d.h2("Aim")
 		d.fields(
 			field{"Intended change", capital(str(aim["change"]))},
 			field{"Benefit", capital(str(aim["gain"]))},
 		)
 	}
-
+	d.sections(spec, "aim")
 	d.problems(n, list(spec["problems"]), "/spec/problems")
+	d.sections(spec, "problems")
 
 	// The benefits it is judged on (MSP): the goals, and the measures with
 	// where they start and where they should get to.
@@ -58,16 +81,16 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 	d.list("Goals", n.all("Goal", strs(spec["goals"])))
 	d.table([]string{"Indicator", "Baseline", "Target", "Data source", "Frequency"},
 		measures(ctx, e, n, strs(spec["kpis"])))
+	d.sections(spec, "alignment")
 
 	// The pathway, read the way it is authored: the outcome first, then
-	// what has to hold before it. The file's order is causal, so this walks
-	// it backwards.
+	// what has to hold before it.
 	steps := list(spec["pathway"])
 	if len(steps) > 0 {
 		d.h2("Theory of change")
 		for i := len(steps) - 1; i >= 0; i-- {
 			sm := steps[i]
-			d.h3(n.of("Goal", str(sm["outcome"])))
+			d.h3named(n.of("Goal", str(sm["outcome"])))
 			d.p(str(sm["because"]))
 			d.fields(
 				field{"Preconditions", strings.Join(n.all("Goal", strs(sm["from"])), "; ")},
@@ -75,23 +98,37 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 			)
 		}
 	}
+	d.sections(spec, "pathway")
 
-	// What is inside it, read back from the work that names it rather than
-	// from anything the programme stores (TAXONOMY.md D1, D2). A project that
-	// is a component of another project appears under its parent.
+	// What it is made of: the work it lists and the work that names it
+	// (TAXONOMY.md D46), drawn with what each depends on in turn.
 	if len(inside) > 0 {
-		d.h2("Components")
+		d.h2("Components and dependencies")
+		d.raw(dependencyDiagram(n, graph, self))
 		d.table([]string{"Component", "Type", "Sub-components"}, inside)
+		if len(graph.CriticalPath) > 1 {
+			var chain []string
+			for _, r := range graph.CriticalPath {
+				chain = append(chain, n.of(r.Kind, r.ID))
+			}
+			d.p(fmt.Sprintf("Critical path: %s, %d months.", strings.Join(chain, " depends on "), graph.CriticalMonths))
+		}
 	}
+	d.sections(spec, "components")
 
 	d.risks(n, spec, list(spec["risks"]))
+	d.sections(spec, "risks")
 
 	d.h2("Governance")
+	p := newPlan(n, spec)
 	d.fields(
 		field{"Lead team", n.of("Team", str(spec["leadTeam"]))},
 		field{"Supporting teams", strings.Join(n.all("Team", strs(spec["supportingTeams"])), ", ")},
+		field{"Escalation route", escalation(p, spec)},
 	)
+	d.mandate(n, spec, list(spec["mandate"]))
 	d.stakeholders(stakeholders(ctx, e, n, "Programme", id))
+	d.sections(spec, "governance")
 
 	sponsor := "Sponsor"
 	if s := str(spec["sponsor"]); s != "" {
@@ -104,8 +141,21 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 		}
 	}
 	d.signOff(append(roles, "Lead team: "+n.of("Team", str(spec["leadTeam"]))))
+	printed := map[string]bool{"aim": true, "problems": true, "alignment": true, "pathway": true, "components": true, "risks": true, "governance": true}
+	d.otherSections(spec, printed)
+	d.history(ctx, e, "Programme", id)
 	d.heldElsewhere(spec)
 	return d.end(), nil
+}
+
+// programmeAreas group a programme's checks the way its walk does.
+var programmeAreas = []readinessArea{
+	{"Aim and problems", []string{"aim", "problems"}},
+	{"Outcomes and measures", []string{"alignment", "measures", "evidence"}},
+	{"Components", []string{"components"}},
+	{"Theory of change", []string{"pathway"}},
+	{"Risks", []string{"risks"}},
+	{"Governance", []string{"governance"}},
 }
 
 func plural2(n int, one, many string) string {

@@ -69,8 +69,9 @@ func readTiming(v any) timingOf {
 type targetOf struct {
 	Value    float64
 	HasValue bool
-	// Month is the month it is due by; empty for one that follows an
-	// event or waits to be set.
+	// Month is the month it is due by, or for one set when an event
+	// happens the month that is expected by; empty for one that follows
+	// an event with no date of its own.
 	Month string
 	// Pending is a target set when an event happens.
 	Pending bool
@@ -101,6 +102,9 @@ func readTarget(v any) targetOf {
 	if sw, ok := t["setWhen"]; ok {
 		out.Pending = true
 		out.Timing = readTiming(sw)
+		// It is set by the month it is expected by, which is the month a
+		// horizon is held to.
+		out.Month = out.Timing.Month
 		out.Set = out.Timing.Complete
 		out.Dated = out.Timing.Complete
 	}

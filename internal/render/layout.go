@@ -65,10 +65,12 @@ func (d *doc) lead(s string) {
 
 // readinessAreas group the walk's steps the way a charter template's
 // readiness assessment does.
-var readinessAreas = []struct {
+type readinessArea struct {
 	label string
 	steps []string
-}{
+}
+
+var readinessAreas = []readinessArea{
 	{"Authority and alignment", []string{"goals"}},
 	{"Problem and beneficiaries", []string{"beneficiaries", "aim"}},
 	{"Objectives and measures", []string{"measures"}},
@@ -84,12 +86,15 @@ var readinessAreas = []struct {
 // readiness prints the state of each part of the definition from the
 // checks Cartograph runs on it: ready, open, or blocking. A charter
 // template asks for this as a hand-filled assessment; here it is read.
-func (d *doc) readiness(items []engine.ProjectCheckItem) {
+func (d *doc) readiness(items []engine.ProjectCheckItem) { d.readinessOf(items, readinessAreas) }
+
+// readinessOf is readiness over a kind's own areas.
+func (d *doc) readinessOf(items []engine.ProjectCheckItem, areas []readinessArea) {
 	if len(items) == 0 {
 		return
 	}
 	var rows [][]string
-	for _, a := range readinessAreas {
+	for _, a := range areas {
 		state, ok := "ready", 0
 		var open []string
 		for _, it := range items {

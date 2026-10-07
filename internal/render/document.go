@@ -255,6 +255,15 @@ func (d *doc) h3named(s string) {
 	d.b.WriteString("<h3 class=\"named\">" + esc(s) + "</h3>\n")
 }
 
+// raw writes markup the renderer made itself, such as a diagram.
+func (d *doc) raw(html string) {
+	if html == "" {
+		return
+	}
+	d.flush()
+	d.b.WriteString(html + "\n")
+}
+
 func (d *doc) p(s string) {
 	if strings.TrimSpace(s) == "" {
 		return
@@ -430,8 +439,8 @@ table.control { margin: 0; font-size: .8rem; border-collapse: collapse; width: 1
 table.control th, table.control td { border: 0; border-bottom: 1px solid var(--line); padding: .3rem .1rem; background: none; text-transform: none; letter-spacing: 0; }
 table.control th { color: var(--muted); font-weight: 500; width: 42%; font-size: .8rem; }
 table.control td { font-weight: 600; }
-nav.contents { columns: 2; column-gap: 2.5rem; font-size: .9rem; margin: 0 0 2rem; padding: 1rem 1.25rem; background: var(--soft); border-radius: 8px; }
-nav.contents p { column-span: all; margin: 0 0 .5rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+nav.contents { font-size: .9rem; margin: 0 0 2rem; padding: 1rem 1.25rem; background: var(--soft); border-radius: 8px; }
+nav.contents p { margin: 0 0 .5rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
 nav.contents ol { margin: 0; padding-left: 1.5rem; }
 nav.contents li { margin: .15rem 0; break-inside: avoid; }
 nav.contents a { color: inherit; text-decoration: none; }
@@ -451,7 +460,7 @@ p.lead { font-family: var(--serif); font-size: 1.15rem; line-height: 1.5; margin
 dl { display: grid; grid-template-columns: minmax(10rem, 13rem) 1fr; gap: .4rem 1.25rem; margin: .6rem 0 1.1rem; }
 dt { color: var(--muted); font-size: .9rem; }
 dd { margin: 0; }
-@media (max-width: 640px) { body { padding: 1.5rem 1.1rem 3rem; margin: 0; border-radius: 0; }
+@media (max-width: 640px) { nav.contents ol { columns: 1; } body { padding: 1.5rem 1.1rem 3rem; margin: 0; border-radius: 0; }
   header.cover { grid-template-columns: 1fr; } dl { grid-template-columns: 1fr; } dd { margin-bottom: .5rem; }
   nav.contents { columns: 1; } .columns { grid-template-columns: 1fr; } }
 table { width: 100%; border-collapse: collapse; margin: .6rem 0 1.4rem; font-size: .86rem; }
@@ -478,6 +487,9 @@ table.signoff td:nth-child(2) { width: 34%; }
 .chip-blocking { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
 td.fit { width: 1%; white-space: nowrap; }
 footer.doc { margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .78rem; }
+table.control tr:nth-child(even) td { background: none; }
+nav.contents > p { margin-bottom: .6rem; }
+nav.contents ol { columns: 2; column-gap: 2.5rem; }
 @page { size: A4; margin: 18mm 15mm 16mm; @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt var(--sans); color: #555; } }
 @media print {
   html, body { background: #fff; }
@@ -487,7 +499,7 @@ footer.doc { margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--
   h2 { break-after: avoid; } h3 { break-after: avoid; } tr, dl, .facts { break-inside: avoid; }
   a { color: inherit; text-decoration: none; }
 }
-</style>
+` + diagramCSS + `</style>
 </head>
 <body>
 <header class="cover">

@@ -134,3 +134,23 @@ func TestTheScheduleFollowsWhatEachMilestoneWaitsOn(t *testing.T) {
 		t.Errorf("pending %+v", got["m4"])
 	}
 }
+
+// A target set when an event happens is held to the aim's horizon at the
+// month it is expected by, like any dated target.
+func TestAPendingTargetIsInsideTheHorizonByItsExpectedMonth(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	ctx := context.Background()
+	mustCommit(t, e, "Goal", "o-pending", "local", "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: o-pending\n  name: Operators apply the rules\nspec:\n  level: goal\n  objective: Operators apply the rules.\n  horizon: {start: \"2026-09\", end: \"2027-07\"}\n"+
+		"  keyResults:\n    - {id: kr1, metric: operators trained, kind: percent, direction: increase, baseline: {value: 0, date: \"2026-08\"},"+
+		" target: {setWhen: {form: when, event: {on: {external: calendar confirmed}}, expectedBy: \"2026-11\"}}}\n")
+	checks, err := e.GoalChecks(ctx, "o-pending")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range checks {
+		if c.ID == "smart-time-bound" && c.State != "ok" {
+			t.Errorf("a pending target inside the horizon: %+v", c)
+		}
+	}
+}

@@ -131,6 +131,13 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 	// 3. When: milestones, or phases from before 2.9.
 	if len(list(spec["milestones"])) > 0 {
 		d.h2("Schedule and milestones")
+		if items, err := e.Schedule(ctx, id); err == nil {
+			labels := map[string]string{}
+			for i, m := range list(spec["milestones"]) {
+				labels[str(m["id"])] = itemNumber("M", str(m["id"]), i) + "  " + str(m["name"])
+			}
+			d.raw(scheduleChart(items, labels))
+		}
 		d.milestonePlan(p)
 	} else if len(phaseRows) > 0 {
 		d.h2("Milestones")
@@ -141,6 +148,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 	// 4. What it depends on and what depends on it (TAXONOMY.md D46).
 	if len(dependsOnRows)+len(usedBy) > 0 {
 		d.h2("Components and dependencies")
+		d.raw(dependencyDiagram(n, graph, self))
 		d.dependencyTable(n, graph, self)
 	}
 

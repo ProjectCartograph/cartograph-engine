@@ -202,8 +202,36 @@ func (e *Engine) Components(ctx context.Context) (ComponentGraph, error) {
 	return g, nil
 }
 
-// monthsOf is a project's own duration: its timeline's phases, summed.
+// monthsOf is a project's own duration: its timeline's phases, summed, or
+// for one scheduled by milestones (TAXONOMY.md D48) the months from its
+// first milestone to its last, both counted.
 func monthsOf(spec map[string]any) int {
+	if ms, _ := spec["milestones"].([]any); len(ms) > 0 {
+		lo, hi := "", ""
+		for _, it := range ms {
+			m, _ := it.(map[string]any)
+			t, _ := m["timing"].(map[string]any)
+			for _, k := range []string{"date", "notBefore", "notAfter", "expectedBy"} {
+				v, _ := t[k].(string)
+				if len(v) < 7 {
+					continue
+				}
+				v = v[:7]
+				if lo == "" || v < lo {
+					lo = v
+				}
+				if v > hi {
+					hi = v
+				}
+			}
+		}
+		if a, ok := yearMonthIndex(lo); ok {
+			if b, ok := yearMonthIndex(hi); ok {
+				return b - a + 1
+			}
+		}
+		return 0
+	}
 	timeline, _ := spec["timeline"].(map[string]any)
 	phases, _ := timeline["phases"].([]any)
 	total := 0
@@ -416,4 +444,10 @@ func reachesRef(out map[Ref][]Ref, from, to Ref) bool {
 		}
 	}
 	return false
+}
+
+// yearMonthIndex counts months from year zero, for "YYYY-MM".
+func yearMonthIndex(m string) (int, bool) {
+	y, mo, ok := splitYearMonth(m)
+	return y*12 + mo - 1, ok
 }
