@@ -39,6 +39,7 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 	}
 
 	var d doc
+	d.brand(ctx, e)
 	d.head(name, "Programme charter", vers)
 	d.control(vers, docControl{
 		Reference: aliasOf(e, vers),

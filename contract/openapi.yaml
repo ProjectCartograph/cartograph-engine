@@ -3931,6 +3931,9 @@ components:
               type: string
             source:
               type: string
+            logo:
+              type: string
+              description: The organisation's logo as a data URL (TAXONOMY.md D37).
         examples:
           type: object
           description: >-

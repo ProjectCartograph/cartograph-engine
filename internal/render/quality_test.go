@@ -106,3 +106,20 @@ func TestCharterEscapesText(t *testing.T) {
 		t.Fatalf("unescaped text in charter: %s", out)
 	}
 }
+
+// The cover names the organisation, with its logo where the purpose has
+// one (TAXONOMY.md D37).
+func TestTheCoverCarriesTheOrganisationsLogo(t *testing.T) {
+	logo := "data:image/png;base64,iVBORw0KGgo="
+	d := doc{org: "Northwind Co-operative", logo: logo}
+	d.head("A project", "Project charter", engine.Version{})
+	out := d.b.String()
+	if !strings.Contains(out, `<p class="org"><img src="`+logo+`" alt="">Northwind Co-operative</p>`) {
+		t.Fatalf("the cover has no organisation and logo: %s", out)
+	}
+	var none doc
+	none.head("A project", "Project charter", engine.Version{})
+	if strings.Contains(none.b.String(), `class="org"`) {
+		t.Fatalf("a cover with no organisation prints one: %s", none.b.String())
+	}
+}

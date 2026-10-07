@@ -117,6 +117,7 @@ func (s *Server) GetSettings(ctx context.Context, _ apigen.GetSettingsRequestObj
 // purposeOf maps the vault's vision, mission and organisation's name,
 // absent when unset.
 func purposeOf(p *engine.Purpose) *struct {
+	Logo         *string `json:"logo,omitempty"`
 	Mission      *string `json:"mission,omitempty"`
 	Organisation *string `json:"organisation,omitempty"`
 	Source       *string `json:"source,omitempty"`
@@ -132,11 +133,12 @@ func purposeOf(p *engine.Purpose) *struct {
 		return &v
 	}
 	return &struct {
+		Logo         *string `json:"logo,omitempty"`
 		Mission      *string `json:"mission,omitempty"`
 		Organisation *string `json:"organisation,omitempty"`
 		Source       *string `json:"source,omitempty"`
 		Vision       *string `json:"vision,omitempty"`
-	}{Mission: s(p.Mission), Organisation: s(p.Organisation), Source: s(p.Source), Vision: s(p.Vision)}
+	}{Logo: s(p.Logo), Mission: s(p.Mission), Organisation: s(p.Organisation), Source: s(p.Source), Vision: s(p.Vision)}
 }
 
 // examplesOrNil keeps an absent map absent in the response rather than an

@@ -1733,6 +1733,8 @@ type Settings struct {
 
 	// Purpose The vault's vision and mission, stated once above every goal (TAXONOMY.md D24), and the organisation's name (D37).
 	Purpose *struct {
+		// Logo The organisation's logo as a data URL (TAXONOMY.md D37).
+		Logo         *string `json:"logo,omitempty"`
 		Mission      *string `json:"mission,omitempty"`
 		Organisation *string `json:"organisation,omitempty"`
 		Source       *string `json:"source,omitempty"`

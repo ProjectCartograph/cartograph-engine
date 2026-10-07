@@ -28,6 +28,7 @@ func OperationCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 	n := loadNames(ctx, e)
 
 	var d doc
+	d.brand(ctx, e)
 	d.head(name, "Operation", vers)
 	d.facts(
 		field{"Status", serviceStatus(spec)},

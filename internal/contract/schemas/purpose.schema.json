@@ -45,6 +45,12 @@
           "type": "string",
           "maxLength": 160,
           "description": "Where the vision and mission are published, so a reader can check them: a plan and its section."
+        },
+        "logo": {
+          "type": "string",
+          "maxLength": 400000,
+          "pattern": "^data:image/(png|jpeg|webp|svg\\+xml);base64,[A-Za-z0-9+/]+={0,2}$",
+          "description": "The organisation's logo, as a data URL of a PNG, JPEG, WebP or SVG image (at most about 300 KB), shown beside its name in the interface and on every charter's cover. Held in the record, not a file beside it, so it travels with the workspace on every store. See TAXONOMY.md D37."
         }
       }
     }

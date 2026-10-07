@@ -27,6 +27,12 @@
             ]
           },
           {
+            "path": "/spec/logo",
+            "control": "image",
+            "title": "Logo",
+            "hint": "Shown beside the name and on every charter's cover."
+          },
+          {
             "path": "/spec/vision",
             "control": "sentence",
             "title": "Vision",

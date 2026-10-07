@@ -238,3 +238,17 @@ func TestATeamCannotBeItsOwnAncestor(t *testing.T) {
 		{name: "its own parent", kind: "Team", wantProblem: true, wantSubstr: "its own parent", yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t1\n  name: Team One\nspec:\n  parent: t1\n"},
 	})
 }
+
+func TestPurposeLogoSchema(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	purpose := func(logo string) string {
+		return "apiVersion: cartograph/v1\nkind: Purpose\nmetadata:\n  id: default\n  name: Purpose\nspec:\n  organisation: Northwind\n  logo: \"" + logo + "\"\n"
+	}
+	runSchemaCases(t, e, []schemaCase{
+		{name: "png data url", kind: "Purpose", yaml: purpose("data:image/png;base64,iVBORw0KGgo=")},
+		{name: "svg data url", kind: "Purpose", yaml: purpose("data:image/svg+xml;base64,PHN2Zy8+")},
+		{name: "a link elsewhere", kind: "Purpose", yaml: purpose("https://example.org/logo.png"), wantProblem: true, wantSubstr: "logo"},
+		{name: "not an image", kind: "Purpose", yaml: purpose("data:text/html;base64,PGI+"), wantProblem: true, wantSubstr: "logo"},
+	})
+}

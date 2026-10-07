@@ -52,6 +52,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 	}
 
 	var d doc
+	d.brand(ctx, e)
 	d.head(name, kindLine, vers)
 	checks, _ := e.ProjectChecks(ctx, id, false)
 	d.control(vers, docControl{

@@ -1168,6 +1168,13 @@ not an identifier: nothing references it. A new workspace asks for it
 first, then the vision and the mission, then the goals: the strategy
 top-down, in the order of work (D28).
 
+The Purpose may also carry the organisation's logo (`spec.logo`), as a
+data URL of a PNG, JPEG, WebP or SVG image of at most about 300 KB. It
+is shown beside the name in the interface and on every charter's
+cover. It is held in the record rather than as a file beside it, so it
+travels with the workspace on every store and changes, like the name,
+through a version.
+
 ### D38. A deliverable may list the tasks that produce it; their order and dates are the planning tool's. *(resolved)*
 
 **The problem.** Both standards split breaking work down from

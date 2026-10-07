@@ -199,6 +199,16 @@ type doc struct {
 	pending string
 	// toc is every section written, in order, for the contents.
 	toc []string
+	// org and logo are the organisation the workspace is about and its
+	// logo, a data URL, for the cover (TAXONOMY.md D37).
+	org, logo string
+}
+
+// brand reads the organisation's name and logo for the cover.
+func (d *doc) brand(ctx context.Context, e *engine.Engine) {
+	if s, err := e.GetSettings(ctx); err == nil && s.Purpose != nil {
+		d.org, d.logo = s.Purpose.Organisation, s.Purpose.Logo
+	}
 }
 
 func (d *doc) flush() {
@@ -432,6 +442,8 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.55; color: var(
   box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 8px 28px rgb(0 0 0 / .06); counter-reset: section; }
 header.cover { display: grid; grid-template-columns: 1fr minmax(15rem, 19rem); gap: 1.5rem 2.5rem; align-items: start;
   border-bottom: 3px solid var(--accent); padding-bottom: 1.5rem; margin-bottom: 1.75rem; }
+.org { display: flex; align-items: center; gap: .75rem; margin: 0 0 1.1rem; font-weight: 600; font-size: .95rem; }
+.org img { height: 3.25rem; width: auto; max-width: 9rem; object-fit: contain; }
 .kind { font-family: var(--sans); text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; color: var(--accent); font-weight: 700; margin: 0 0 .6rem; }
 h1 { font-family: var(--serif); font-size: 2.35rem; font-weight: 600; line-height: 1.15; margin: 0; letter-spacing: -.01em; }
 .subtitle { color: var(--muted); margin: .6rem 0 0; font-size: 1rem; }
@@ -505,6 +517,13 @@ nav.contents ol { columns: 2; column-gap: 2.5rem; }
 <header class="cover">
 <div>
 `)
+	if d.org != "" || d.logo != "" {
+		d.b.WriteString("<p class=\"org\">")
+		if d.logo != "" {
+			d.b.WriteString("<img src=\"" + esc(d.logo) + "\" alt=\"\">")
+		}
+		d.b.WriteString(esc(d.org) + "</p>\n")
+	}
 	if kindLine != "" {
 		d.b.WriteString("<p class=\"kind\">" + esc(kindLine) + "</p>\n")
 	}

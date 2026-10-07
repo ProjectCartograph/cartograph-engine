@@ -50,6 +50,8 @@ type Purpose struct {
 	Vision       string `json:"vision,omitempty" yaml:"vision"`
 	Mission      string `json:"mission,omitempty" yaml:"mission"`
 	Source       string `json:"source,omitempty" yaml:"source"`
+	// Logo is the organisation's logo as a data URL (D37).
+	Logo string `json:"logo,omitempty" yaml:"logo"`
 }
 
 // defaultSettings is what applies when no Settings manifest exists.
@@ -97,7 +99,7 @@ func (e *Engine) statedPurpose(ctx context.Context) (*Purpose, bool, error) {
 		s, _ := spec[k].(string)
 		return s
 	}
-	return &Purpose{Organisation: text("organisation"), Vision: text("vision"), Mission: text("mission"), Source: text("source")}, true, nil
+	return &Purpose{Organisation: text("organisation"), Vision: text("vision"), Mission: text("mission"), Source: text("source"), Logo: text("logo")}, true, nil
 }
 
 func (e *Engine) settingsOnly(ctx context.Context) (Settings, error) {
