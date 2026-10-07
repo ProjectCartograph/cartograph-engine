@@ -126,16 +126,16 @@ func (e GoalCheckState) Valid() bool {
 
 // Defines values for GuidePlanItemWhen.
 const (
-	After  GuidePlanItemWhen = "after"
-	Before GuidePlanItemWhen = "before"
+	GuidePlanItemWhenAfter  GuidePlanItemWhen = "after"
+	GuidePlanItemWhenBefore GuidePlanItemWhen = "before"
 )
 
 // Valid indicates whether the value is a known member of the GuidePlanItemWhen enum.
 func (e GuidePlanItemWhen) Valid() bool {
 	switch e {
-	case After:
+	case GuidePlanItemWhenAfter:
 		return true
-	case Before:
+	case GuidePlanItemWhenBefore:
 		return true
 	default:
 		return false
@@ -430,6 +430,30 @@ func (e Role) Valid() bool {
 	case Reader:
 		return true
 	case StrategyEditor:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ScheduleItemForm.
+const (
+	ScheduleItemFormAfter  ScheduleItemForm = "after"
+	ScheduleItemFormDate   ScheduleItemForm = "date"
+	ScheduleItemFormWhen   ScheduleItemForm = "when"
+	ScheduleItemFormWindow ScheduleItemForm = "window"
+)
+
+// Valid indicates whether the value is a known member of the ScheduleItemForm enum.
+func (e ScheduleItemForm) Valid() bool {
+	switch e {
+	case ScheduleItemFormAfter:
+		return true
+	case ScheduleItemFormDate:
+		return true
+	case ScheduleItemFormWhen:
+		return true
+	case ScheduleItemFormWindow:
 		return true
 	default:
 		return false
@@ -1617,6 +1641,30 @@ type Route struct {
 	Likelihood float32 `json:"likelihood"`
 }
 
+// ScheduleItem defines model for ScheduleItem.
+type ScheduleItem struct {
+	Critical bool              `json:"critical"`
+	Form     *ScheduleItemForm `json:"form,omitempty"`
+	Id       string            `json:"id"`
+	Late     bool              `json:"late"`
+
+	// Month The month it falls in as far as its timing says, YYYY-MM.
+	Month     *string `json:"month,omitempty"`
+	Name      string  `json:"name"`
+	NotAfter  *string `json:"notAfter,omitempty"`
+	NotBefore *string `json:"notBefore,omitempty"`
+	Pending   bool    `json:"pending"`
+
+	// Unplaced It follows something outside the project, or a loop, so no month can be worked out.
+	Unplaced bool `json:"unplaced"`
+
+	// WaitsOn The ids of the milestones it waits on.
+	WaitsOn []string `json:"waitsOn"`
+}
+
+// ScheduleItemForm defines model for ScheduleItem.Form.
+type ScheduleItemForm string
+
 // SeriesAppend defines model for SeriesAppend.
 type SeriesAppend struct {
 	// Item The item, as the series' schema has it: for a reading, period and value, and provisional and note when they apply.
@@ -2016,6 +2064,12 @@ type GetProjectCharterHtmlParams struct {
 
 // GetProjectChecksParams defines parameters for GetProjectChecks.
 type GetProjectChecksParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
+// GetProjectScheduleParams defines parameters for GetProjectSchedule.
+type GetProjectScheduleParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
@@ -2440,6 +2494,9 @@ type ServerInterface interface {
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
 	GetProjectChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectChecksParams)
+	// GetProjectSchedule A project's milestones placed on time
+	// (GET /manifests/Project/{id}/schedule)
+	GetProjectSchedule(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectScheduleParams)
 	// GetProjectState A project's current state and its full transition history
 	// (GET /manifests/Project/{id}/state)
 	GetProjectState(w http.ResponseWriter, r *http.Request, id IdParam)
@@ -4062,6 +4119,48 @@ func (siw *ServerInterfaceWrapper) GetProjectChecks(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// GetProjectSchedule operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectSchedule(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectScheduleParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProjectSchedule(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetProjectState operation middleware
 func (siw *ServerInterfaceWrapper) GetProjectState(w http.ResponseWriter, r *http.Request) {
 
@@ -5459,6 +5558,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/settings", wrapper.GetSettings)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/goals/tree", wrapper.GetGoalTree)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/links/{link}/candidates", wrapper.GetLinkCandidates)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/schedule", wrapper.GetProjectSchedule)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/components", wrapper.GetComponents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/graph", wrapper.GetGraph)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Goal/{id}/checks", wrapper.GetGoalChecks)
@@ -8501,6 +8601,71 @@ func (response GetProjectChecks404JSONResponse) VisitGetProjectChecksResponse(w 
 	return err
 }
 
+type GetProjectScheduleRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetProjectScheduleParams
+}
+
+type GetProjectScheduleResponseObject interface {
+	VisitGetProjectScheduleResponse(w http.ResponseWriter) error
+}
+
+type GetProjectSchedule200JSONResponse []ScheduleItem
+
+func (response GetProjectSchedule200JSONResponse) VisitGetProjectScheduleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectSchedule401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetProjectSchedule401JSONResponse) VisitGetProjectScheduleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectSchedule403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProjectSchedule403JSONResponse) VisitGetProjectScheduleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectSchedule404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProjectSchedule404JSONResponse) VisitGetProjectScheduleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetProjectStateRequestObject struct {
 	Id IdParam `json:"id"`
 }
@@ -11322,6 +11487,9 @@ type StrictServerInterface interface {
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
 	GetProjectChecks(ctx context.Context, request GetProjectChecksRequestObject) (GetProjectChecksResponseObject, error)
+	// GetProjectSchedule A project's milestones placed on time
+	// (GET /manifests/Project/{id}/schedule)
+	GetProjectSchedule(ctx context.Context, request GetProjectScheduleRequestObject) (GetProjectScheduleResponseObject, error)
 	// GetProjectState A project's current state and its full transition history
 	// (GET /manifests/Project/{id}/state)
 	GetProjectState(ctx context.Context, request GetProjectStateRequestObject) (GetProjectStateResponseObject, error)
@@ -12754,6 +12922,33 @@ func (sh *strictHandler) GetProjectChecks(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProjectChecksResponseObject); ok {
 		if err := validResponse.VisitGetProjectChecksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProjectSchedule operation middleware
+func (sh *strictHandler) GetProjectSchedule(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectScheduleParams) {
+	var request GetProjectScheduleRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProjectSchedule(ctx, request.(GetProjectScheduleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProjectSchedule")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProjectScheduleResponseObject); ok {
+		if err := validResponse.VisitGetProjectScheduleResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

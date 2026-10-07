@@ -96,6 +96,35 @@ paths:
                 items:
                   $ref: "#/components/schemas/LinkCandidate"
 
+  /manifests/Project/{id}/schedule:
+    get:
+      operationId: getProjectSchedule
+      summary: A project's milestones placed on time
+      description: >-
+        Each milestone with the month its timing implies (a date, a window,
+        or what it follows plus its lag), what it waits on, whether it is
+        set once something happens, and whether it is on the chain that
+        decides the last date (TAXONOMY.md D48). Nothing is rescheduled:
+        this is what the definition says, read as the change set has it.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - $ref: "#/components/parameters/PreviewParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleItem"
+
   /components:
     get:
       operationId: getComponents
@@ -4113,6 +4142,38 @@ components:
         outcome), project-component and programme-component (a project or a
         programme depends on another project or programme, TAXONOMY.md D46).
       enum: [problem-gap, problem-group, gap-group, gap-outcome, goal-parent, goal-contributes, kpi-gap, project-outcome, project-component, programme-component]
+    ScheduleItem:
+      type: object
+      required: [id, name, waitsOn, pending, late, critical, unplaced]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        form:
+          type: string
+          enum: [date, window, after, when]
+        month:
+          type: string
+          description: The month it falls in as far as its timing says, YYYY-MM.
+        notBefore:
+          type: string
+        notAfter:
+          type: string
+        waitsOn:
+          type: array
+          items:
+            type: string
+          description: The ids of the milestones it waits on.
+        pending:
+          type: boolean
+        late:
+          type: boolean
+        critical:
+          type: boolean
+        unplaced:
+          type: boolean
+          description: It follows something outside the project, or a loop, so no month can be worked out.
     WorkRef:
       type: object
       required: [kind, id]

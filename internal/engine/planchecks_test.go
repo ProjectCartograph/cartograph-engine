@@ -105,3 +105,32 @@ func TestAnEventRecordsWhoEnteredIt(t *testing.T) {
 	}
 	_ = engine.Version{}
 }
+
+// The schedule places each milestone from its timing: an after takes what
+// it follows plus its lag, and the chain to the last date is marked.
+func TestTheScheduleFollowsWhatEachMilestoneWaitsOn(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	mustCommit(t, e, "Project", "sched", "p1", projectYAML("sched", "  milestones:\n"+
+		"    - {id: m1, name: Issued, timing: {form: date, date: \"2025-12-31\"}}\n"+
+		"    - {id: m2, name: Sensitised, timing: {form: after, event: {on: {local: milestones, id: m1}}, lagMonths: 2}}\n"+
+		"    - {id: m3, name: Trained, timing: {form: after, event: {on: {local: milestones, id: m2}}, lagMonths: 4}}\n"+
+		"    - {id: m4, name: Survey, timing: {form: when, event: {on: {external: ethics approval}}, expectedBy: \"2026-06\"}}\n"))
+	items, err := e.Schedule(context.Background(), "sched")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]engine.ScheduleItem{}
+	for _, it := range items {
+		got[it.ID] = it
+	}
+	if got["m2"].Month != "2026-02" || got["m3"].Month != "2026-06" {
+		t.Fatalf("placed %+v", items)
+	}
+	if !got["m1"].Critical || !got["m2"].Critical || !got["m3"].Critical || got["m4"].Critical {
+		t.Errorf("critical chain %+v", items)
+	}
+	if !got["m4"].Pending || got["m4"].Month != "2026-06" {
+		t.Errorf("pending %+v", got["m4"])
+	}
+}

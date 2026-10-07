@@ -85,3 +85,39 @@ func (s *Server) GetComponents(ctx context.Context, req apigen.GetComponentsRequ
 	}
 	return out, nil
 }
+
+// GetProjectSchedule is a project's milestones placed on time, read as the
+// change set named would leave it.
+func (s *Server) GetProjectSchedule(ctx context.Context, req apigen.GetProjectScheduleRequestObject) (apigen.GetProjectScheduleResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.Engine.Schedule(ctx, string(req.Id))
+	if err != nil {
+		return nil, err
+	}
+	out := make(apigen.GetProjectSchedule200JSONResponse, len(items))
+	for i, it := range items {
+		waits := it.WaitsOn
+		if waits == nil {
+			waits = []string{}
+		}
+		o := apigen.ScheduleItem{Id: it.ID, Name: it.Name, WaitsOn: waits, Pending: it.Pending, Late: it.Late, Critical: it.Critical, Unplaced: it.Unplaced}
+		if it.Form != "" {
+			f := apigen.ScheduleItemForm(it.Form)
+			o.Form = &f
+		}
+		for _, p := range []struct {
+			v   string
+			dst **string
+		}{{it.Month, &o.Month}, {it.NotBefore, &o.NotBefore}, {it.NotAfter, &o.NotAfter}} {
+			if p.v != "" {
+				v := p.v
+				*p.dst = &v
+			}
+		}
+		out[i] = o
+	}
+	return out, nil
+}
