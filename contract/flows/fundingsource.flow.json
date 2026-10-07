@@ -11,7 +11,7 @@
       {
         "key": "identity",
         "title": "Budget",
-        "guide": "Which budget this is, as its holders name it and as their ledger codes it.",
+        "guide": "The budget's name and its code in the accounts.",
         "fields": [
           {
             "path": "/metadata/name",
@@ -26,7 +26,7 @@
       {
         "key": "holder",
         "title": "Holder and period",
-        "guide": "Who holds the budget and answers for it, and what span it covers.",
+        "guide": "Who controls the budget, and the period it covers.",
         "fields": [
           {
             "path": "/spec/heldBy",
@@ -41,7 +41,7 @@
       {
         "key": "note",
         "title": "Note",
-        "guide": "Anything about this budget the fields above cannot hold.",
+        "guide": "Anything else to know about this budget.",
         "optional": true,
         "fields": [
           {

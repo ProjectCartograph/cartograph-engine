@@ -42,7 +42,7 @@
       {
         "key": "measures",
         "title": "Measures",
-        "guide": "How anyone will know it happened.",
+        "guide": "How you will know it happened.",
         "fields": [
           {
             "path": "/spec/keyResults",
@@ -154,7 +154,7 @@
       {
         "key": "rationale",
         "title": "Rationale",
-        "guide": "Why this aim, in one line, and where it comes from.",
+        "guide": "Why this aim matters and where it comes from.",
         "fields": [
           {
             "path": "/spec/whyItMatters",
@@ -176,7 +176,7 @@
       {
         "key": "contributes",
         "title": "Also leads to",
-        "guide": "Other aims this one moves, besides its parent.",
+        "guide": "Other aims this one helps reach, besides the one it sits under.",
         "optional": true,
         "fields": [
           {

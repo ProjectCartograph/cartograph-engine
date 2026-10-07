@@ -11,11 +11,11 @@
     "database",
     "report"
   ],
-  "definition": "A data source is somewhere a number actually comes from: a register, a system, a survey, a record or a document store that an indicator, a key result, a gap or a success criterion is read from. It is the means of verification, named once in the register so every measure that reads from it points at the same place. It says what form it takes (category) and, separately, who runs it (provenance), the way DCAT keeps a dataset apart from its publisher (TAXONOMY.md D25). It says how records get into it, because that decides how soon anything read from it can be known (TAXONOMY.md D18). A data source is not an indicator: the indicator is the measure, and the source is where its readings come from. It is not a report, which is made from sources, and it is not the team that keeps it, which it names.",
+  "definition": "A place a number comes from: a register, a system, a survey, a record or a set of documents. KPIs, key results, gaps and success criteria name the data source they take numbers from. It says what type of source it is, who runs it, and how records get into it, which decides how soon a number can be known. It is not a KPI (the measure itself), not a report made from sources, and not the team that keeps it.",
   "steps": {},
   "fields": {
     "/metadata/name": {
-      "guide": "The name the source goes by where it is kept, so someone could ask for it by that name.",
+      "guide": "The name people use for this source.",
       "good": [
         "Collection Log",
         "Member Register",
@@ -24,16 +24,16 @@
       "poor": [
         {
           "text": "Spreadsheet",
-          "why": "A form, not a source: that is the category. Name which spreadsheet, such as the Collection Log."
+          "why": "That is the type of source. Name the spreadsheet itself, such as the Collection Log."
         },
         {
           "text": "Share of deliveries checked at intake",
-          "why": "An indicator, not a source: the measure is a KPI, which names the source its readings come from."
+          "why": "That is a measure, so it is a KPI. Name where its numbers come from."
         }
       ]
     },
     "/spec/category": {
-      "guide": "What form the source takes: a database, a spreadsheet, a paper record, a form or survey, an operational system, an API or feed, or a document store. Who runs it is provenance, a separate question.",
+      "guide": "What type of source this is: a database, a spreadsheet, a paper record, a form or survey, a system used to run the work, an API or feed, or a set of documents.",
       "good": [
         "spreadsheet",
         "paperRecord",
@@ -47,19 +47,19 @@
       ]
     },
     "/spec/provenance": {
-      "guide": "Whether the organisation runs this source (internal) or a third party does (external). It is not the same question as the category: a spreadsheet can be either.",
+      "guide": "Internal if your organisation runs this source, external if someone outside it does.",
       "good": [
         "internal"
       ],
       "poor": [
         {
           "text": "external",
-          "why": "Chosen because the Sales Ledger is kept by the finance team, not the team asking. Another team in the organisation is still internal; external means a third party runs it."
+          "why": "The finance team is part of your organisation, so the Sales Ledger is internal. External means someone outside your organisation runs it."
         }
       ]
     },
     "/spec/team": {
-      "guide": "The team that keeps the source, from the teams in the organisation. Required. A team, never a person or a role: the role that looks after the content and quality is the data steward, named in a project's resources.",
+      "guide": "The team in your organisation that keeps this source. Choose a team, not a person or role.",
       "good": [
         "depot-network-team",
         "quality-team"
@@ -67,7 +67,7 @@
       "poor": [
         {
           "text": "Depot supervisor",
-          "why": "A role, not a team: the source names the team that keeps it, and a role is named in a project's resources."
+          "why": "A role, not a team. Choose the team that keeps the source."
         }
       ]
     },
@@ -80,7 +80,7 @@
       "poor": [
         {
           "text": "Ask Ada.",
-          "why": "Names a person, who will move on, and does not say what access is given or how."
+          "why": "Names a person. Say which role or team to ask, and how access is given."
         },
         {
           "text": "Yes",
@@ -89,7 +89,7 @@
       ]
     },
     "/spec/refresh": {
-      "guide": "How often the contents change: daily, weekly, monthly, quarterly, annual, or irregular when there is no rhythm. It bounds how often a measure read from it can move. termly for one that changes once each term the organisation keeps.",
+      "guide": "How often the contents change: daily, weekly, monthly, termly, quarterly, annual, or irregular when there is no set rhythm. A number from this source cannot change more often than this.",
       "good": [
         "weekly",
         "annual"
@@ -102,7 +102,7 @@
       ]
     },
     "/spec/capture": {
-      "guide": "How each record gets into the source: typed in by hand, scanned from paper forms, filled in online, fed from another system, or not decided yet. A source filled from paper has to say how the paper becomes data, because that decides how soon anything read from it is known. Not decided is an honest answer, and a time-bound target read from a source captured by hand or not decided is advised (TAXONOMY.md D18).",
+      "guide": "How records get into the source: typed in by hand, scanned from paper, filled in online, fed from another system, or not decided yet. This decides how soon a number from it can be known.",
       "good": [
         "byHand",
         "notDecided"
@@ -110,12 +110,12 @@
       "poor": [
         {
           "text": "onlineForm",
-          "why": "Chosen for the Quality Check Tool because the forms end up in a shared spreadsheet. They start on paper and are transcribed, so they are typed in by hand, and late forms are transcribed after the season closes."
+          "why": "Chosen for the Quality Check Tool. Its forms start on paper and are typed into a spreadsheet later, so they are typed in by hand."
         }
       ]
     },
     "/spec/classification": {
-      "guide": "How sensitive the contents are, from a fixed scheme: public, internal, confidential or restricted (ISO/IEC 27002, 5.12). Leave it unset rather than guess; a guessed classification is worse than none.",
+      "guide": "How sensitive the contents are: public, internal, confidential or restricted. Leave it empty if you are not sure.",
       "good": [
         "internal",
         "restricted"
@@ -123,12 +123,12 @@
       "poor": [
         {
           "text": "Internal use only, but some fields are sensitive",
-          "why": "Not a level of the scheme: pick one level, the highest that applies to any of the contents."
+          "why": "Pick one level: the highest that applies to anything in the source."
         }
       ]
     },
     "/spec/qualityIssues": {
-      "guide": "What is already known to be wrong with the source, specifically enough that a reader can judge a number read from it: what is missing, late, rounded or skewed, and since when.",
+      "guide": "What is known to be wrong with the source: what is missing, late, rounded or skewed, and since when.",
       "good": [
         "Collection times are entered by hand and are sometimes rounded to the hour.",
         "Answered by roughly half the membership, weighted towards larger holdings.",
@@ -137,16 +137,16 @@
       "poor": [
         {
           "text": "Data quality could be better.",
-          "why": "True of every source and says nothing a reader can allow for."
+          "why": "Too vague. Say what is wrong and since when."
         },
         {
           "text": "None",
-          "why": "Rarely true, and it reads as checked when it was not. Leave it empty when nothing is known yet."
+          "why": "Leave it empty if no problems are known yet."
         }
       ]
     },
     "/spec/keptBy": {
-      "guide": "Who keeps the source, where that is outside the organisation: another public body, an agency, a partner. The team field stays your own team that reads it. Left out, your team keeps it.",
+      "guide": "The outside body that keeps this source, such as an agency or a partner. Leave it empty if your own team keeps it.",
       "good": [
         "{\"kind\":\"Resource\",\"id\":\"national-statistics-office\"}",
         "{\"external\":\"The regional health authority\"}"
@@ -154,15 +154,15 @@
       "poor": [
         {
           "text": "The team field set to an outside body",
-          "why": "The team is one of your own teams; who keeps it outside goes here."
+          "why": "Team must be one of your own teams. Name the outside body as the keeper instead."
         }
       ]
     }
   },
   "links": {
     "KPI:/spec/sources": {
-      "ask": "Which indicator is read from this source? An indicator names the source its readings come from, as its means of verification.",
-      "ifNone": "Leave it. A source may be read by a gap, a key result, a success criterion or a project's data use instead, or be recorded before anything reads from it. When an indicator should read from it, the indicator names it."
+      "ask": "Which KPIs take their numbers from this source?",
+      "ifNone": "None yet is fine. Gaps, key results and success criteria can also use a source, and a KPI names this source when it uses it."
     }
   }
 }

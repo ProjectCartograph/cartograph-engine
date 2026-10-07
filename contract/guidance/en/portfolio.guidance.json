@@ -9,7 +9,7 @@
     "investment plan",
     "pipeline"
   ],
-  "definition": "A portfolio is a strategic investment and prioritisation construct: the projects, programmes and other portfolios an organisation selects, prioritises and oversees together against its strategic objectives (PMI, The Standard for Portfolio Management; MoP). What it holds need not depend on one another or share a benefit; what they share is the decision about which to fund. So it holds what is its own: the strategic objectives it is prioritised against, the budgets it allocates, the team that governs it, and its decisions (invest, hold or stop, in order), kept in a file beside it. What is in it says so itself. A portfolio is not a programme (related work coordinated to bring about one change, with a theory of change), not a project (work with a start and an end that produces outputs), and not a collection (a person's own grouping, which decides nothing). TAXONOMY.md D32.",
+  "definition": "A set of projects, programmes and other portfolios that your organisation ranks and decides whether to fund, based on its goals and objectives. The work in it need not be related. A portfolio records the goals and objectives it ranks against, the budgets it hands out, the team that decides, and each decision: invest, hold or stop. It is not a programme (related work toward one change), not a project (work with a start and an end), and not a collection (your own grouping, which decides nothing).",
   "cues": {
     "portfolio": "a set of projects ranked and funded against the strategy"
   },
@@ -23,12 +23,12 @@
       "poor": [
         {
           "text": "Quality projects",
-          "why": "Names what is in it today, not the investment decision it exists for."
+          "why": "Names what is in it today, not what it decides to fund."
         }
       ]
     },
     "/spec/aim": {
-      "guide": "What the portfolio invests in and to what end: the purpose its choices serve, in one sentence.",
+      "guide": "What the portfolio funds and why.",
       "good": [
         "Fund the work that most raises what members earn from each season's produce."
       ],
@@ -40,7 +40,7 @@
       ]
     },
     "/spec/objectives": {
-      "guide": "The strategic objectives the portfolio is prioritised against: goals and objectives, never outcomes. Each thing it holds is judged by how far it advances these.",
+      "guide": "The goals and objectives the portfolio ranks its work against. Outcomes cannot be chosen.",
       "good": [
         "raise-produce-quality",
         "widen-access-to-buyers"
@@ -48,7 +48,7 @@
       "poor": [
         {
           "text": "depot-staff-apply-the-standard-alike",
-          "why": "An outcome: what is true once an objective is met. A portfolio serves what the organisation sets out to do."
+          "why": "This is an outcome. Choose a goal or objective."
         }
       ]
     },
@@ -56,7 +56,7 @@
       "guide": "The team that governs the portfolio: it selects what goes in, sets the order, and decides what to invest in, hold or stop. A team, never a person."
     },
     "/spec/funding": {
-      "guide": "The budgets the portfolio allocates. What it holds may also draw on budgets of its own."
+      "guide": "The budgets the portfolio hands out. Projects and programmes in it can also have their own budgets."
     },
     "/spec/reviewCycle": {
       "guide": "How often the portfolio's decisions are reviewed, if on a fixed cycle."
@@ -68,20 +68,20 @@
   "links": {
     "Programme:/spec/portfolios": {
       "ask": "Which programmes does this portfolio fund and prioritise? A programme names the portfolios it is in, so open each programme and choose this portfolio.",
-      "ifNone": "Define the portfolio first, then have each programme it funds name it. A programme it does not choose between stays outside it."
+      "ifNone": "Open each programme this portfolio funds and choose this portfolio there."
     },
     "Project:/spec/alignment/portfolios": {
       "ask": "Which projects does this portfolio fund and prioritise, outside any programme it holds? A project names the portfolios it is in, so open the project and choose this portfolio.",
-      "ifNone": "Define the portfolio first, then have each project it chooses between name it."
+      "ifNone": "Open each project this portfolio funds and choose this portfolio there."
     },
     "Portfolio:/spec/portfolios": {
       "ask": "Which portfolios sit inside this one? A portfolio names the portfolios it is part of.",
-      "ifNone": "Most portfolios hold no other portfolio. Nest one only when it is governed and decided on its own, inside this one."
+      "ifNone": "Put a portfolio inside this one only when it has its own team making its own decisions."
     }
   },
   "checks": {
     "portfolio-objectives": "Name the strategic objectives the portfolio is prioritised against.",
-    "portfolio-holds": "Have each project, programme or portfolio in it name this portfolio, from its own definition.",
-    "portfolio-decided": "Record a decision for each thing it holds, and only for those: invest, hold or stop, with a priority and a reason."
+    "portfolio-holds": "Open each project, programme or portfolio in it and choose this portfolio.",
+    "portfolio-decided": "Record a decision for each project, programme or portfolio in it: invest, hold or stop, with a priority and a reason."
   }
 }

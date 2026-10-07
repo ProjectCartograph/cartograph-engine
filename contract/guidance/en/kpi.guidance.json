@@ -12,13 +12,13 @@
     "benchmark",
     "success measure"
   ],
-  "definition": "A key performance indicator, shown as Indicator: a measure written once that says what is counted, in which declared unit, which way is good, where the number is read from and how often (the means of verification). Its dated baseline and target are where things stand and where they should get to; for a measured gap they are the gap's two states. Aligned to an aim, it makes the aim measurable, and with the aim and the group who perceives the change it is how Cartograph holds a benefit. What it read in each period is not part of it: readings arrive every cycle and live in the KPI's own KPIReadings, so the definition changes only when the measure does. A KPI is not a key result (a measure that belongs to one aim and is written on it), not an aim or a target sentence (Raise the pass rate to 75 percent), not a reading (this season's 66), and not a data source (where the number comes from).",
+  "definition": "A KPI (key performance indicator) is a number you track over time to see whether an aim is being met. It says what is counted, in what unit, which way is better, where the number comes from and how often it is read. Its baseline is today's figure and its target is the figure to reach, each with a date. The figure for each period is kept separately, as a reading. A KPI is not a key result (a number written on one aim), not an aim, not a single reading, and not a data source (where the number comes from).",
   "cues": {
     "kpi": "the name of a number to measure, such as a rate, a share, an average or a count"
   },
   "fields": {
     "/spec/definition": {
-      "guide": "Exactly what gets counted, over what, where and when, precisely enough that two people would get the same number from the same records. No target and no direction.",
+      "guide": "Exactly what is counted, where and when. Leave out the target.",
       "good": [
         "Share of deliveries meeting the quality standard at intake.",
         "Median hours between a delivery being taken in and being collected from the depot.",
@@ -40,7 +40,7 @@
       ]
     },
     "/spec/unit": {
-      "guide": "The declared unit the number is counted in. Pick a shipped one first (percent, count, hours, days); add a unit only when none says what this is, such as a currency or a scale the cooperative defined.",
+      "guide": "The unit the number is counted in, such as percent, count, hours or days. Add a new unit only if none fits.",
       "good": [
         "percent, for Quality pass rate",
         "hours, for Collection turnaround",
@@ -49,7 +49,7 @@
       "poor": [
         {
           "text": "A new unit called Percentage",
-          "why": "Percent already ships: a second spelling of one quantity is what the Unit kind exists to prevent."
+          "why": "Percent already exists. Pick it."
         },
         {
           "text": "A new unit called Deliveries",
@@ -58,10 +58,10 @@
       ]
     },
     "/spec/direction": {
-      "guide": "Which way is good: increase, decrease, or maintain for a level to hold steady. The target must move from the baseline the way this says."
+      "guide": "Whether the number should go up, go down or stay the same."
     },
     "/spec/goals": {
-      "guide": "The aims this KPI tells you about, most often outcomes: the changed state the number would show has happened. Aligning a KPI with a target to an aim is one way to make the aim Measurable. Align only where the number answers whether that aim is met.",
+      "guide": "The aims this number shows progress on, most often outcomes. Link only aims this number shows are met.",
       "good": [
         "faults-found-before-dispatch, for Quality pass rate",
         "produce-reaches-a-depot-the-same-day, for Collection turnaround"
@@ -73,12 +73,12 @@
         },
         {
           "text": "Every goal the measure might touch",
-          "why": "A long alignment list dilutes what the KPI answers for: align where it is the evidence, not where it is related."
+          "why": "Link only the aims this number shows are met, not every related one."
         }
       ]
     },
     "/spec/resultLevel": {
-      "guide": "Where the measure sits in the results framework: output (something the work produced), outcome (something that changed because of it), or impact (the longer-term change it aims at).",
+      "guide": "What this number shows: an output (something the work produced), an outcome (something that changed because of it), or an impact (the longer-term change).",
       "good": [
         "output, for Collection turnaround",
         "outcome, for Depot availability",
@@ -87,19 +87,19 @@
       "poor": [
         {
           "text": "impact, for Collection turnaround",
-          "why": "Turnaround is a product of how the collection service runs; the longer-term change it serves is less harvest lost and what members earn."
+          "why": "Turnaround is what the collection service produces, an output. Less harvest lost is the longer-term change."
         }
       ]
     },
     "/spec/baseline/value": {
-      "guide": "Today's figure, in the KPI's unit, from the source it is read from. If it has not been measured yet, admit it: give the reason instead, and when it will be known; never invent one.",
+      "guide": "Today's figure. If it has not been measured yet, say why and when it will be, instead of guessing.",
       "good": [
         "41 hours, for Collection turnaround"
       ],
       "poor": [
         {
           "text": "0, because nobody has measured it",
-          "why": "Zero is a reading; an unmeasured baseline is unknown, and saying so is what makes the gap honest."
+          "why": "Zero is a real figure. If it has not been measured, mark it unknown and say why."
         }
       ]
     },
@@ -110,7 +110,7 @@
       ]
     },
     "/spec/target/value": {
-      "guide": "The figure to reach, in the KPI's unit, moving from the baseline the way the direction says.",
+      "guide": "The figure you want to reach.",
       "good": [
         "20 hours, for Collection turnaround, whose direction is decrease"
       ],
@@ -122,13 +122,13 @@
       ]
     },
     "/spec/target/date": {
-      "guide": "The month the target is due by, after the baseline and inside the horizon of the aims it is aligned to.",
+      "guide": "The month you want to reach the target by.",
       "good": [
         "2027-06"
       ]
     },
     "/spec/cycle": {
-      "guide": "The reporting cycle the KPI is read on. It sets the periods its readings are recorded for, so pick the one the source can actually supply.",
+      "guide": "How often the number is read, such as monthly or each season. Pick one your data source can keep up with.",
       "good": [
         "seasonal-cycle, for Quality pass rate, read from forms transcribed each season",
         "monthly-cycle, for Collection turnaround, read from a log kept weekly"
@@ -141,7 +141,7 @@
       ]
     },
     "/spec/disaggregations": {
-      "guide": "The dimensions the number is broken down by, as Segments with no parent, such as depot, region or product line. The same segments a gap is observed in, so a split measure can show where a shortfall sits. Leave empty if only the total is reported.",
+      "guide": "What the number is split by, such as depot, region or product line. Leave it empty if you report only the total.",
       "good": [
         "depot, for Collection turnaround",
         "region and product-line, for Quality pass rate"
@@ -149,34 +149,34 @@
       "poor": [
         {
           "text": "delivering-members",
-          "why": "A beneficiary group, people the work is for, not a dimension the number is split by."
+          "why": "A group of people the work is for, not a way to split the number."
         },
         {
           "text": "By month",
-          "why": "Time is the reporting cycle's periods, not a segment."
+          "why": "Time is already covered by how often the number is read."
         }
       ]
     },
     "/metadata/name": {
-      "guide": "The name, as people say it and as lists show it."
+      "guide": "The name people use for this number."
     },
     "/spec/baseline/unknownReason": {
-      "guide": "Why today's figure is not known yet, in a sentence a reader can check. An admitted unknown still meets Achievable; a guessed number does not.",
+      "guide": "Why today's figure is not known yet.",
       "good": [
         "The loss survey has never been run at the northern depots; the first one closes in March."
       ],
       "poor": [
         {
           "text": "TBD",
-          "why": "Says nothing about why or when; a reader cannot tell a gap in the evidence from a gap in the work."
+          "why": "Does not say why the figure is missing or when it will be known."
         }
       ]
     },
     "/spec/baseline/expectedBy": {
-      "guide": "The month the figure will be known, when there is one."
+      "guide": "The month you expect to know the figure."
     },
     "/spec/sources": {
-      "guide": "Every data source the number is read from, so anyone can go and check it: one, or several when it is computed from them jointly, such as a count from one and the total from another. A dated target read from a source captured only once is a guess.",
+      "guide": "Where the number comes from. Add more than one if it is worked out from several.",
       "good": [
         "collection-log, for Collection turnaround",
         "quality-check-tool, for Quality pass rate"
@@ -189,7 +189,7 @@
       ]
     },
     "/spec/owner": {
-      "guide": "The role that answers for the indicator: it keeps the readings coming and says what they mean. A role or unit from the Resource catalogue, or a party outside the workspace; never a person. Where a document names several units, the one that leads, with the others in the note.",
+      "guide": "The role or team responsible for this number: it collects the readings and explains them. Name a role, not a person.",
       "good": [
         "{\"kind\":\"Resource\",\"id\":\"data-analyst\"}",
         "{\"kind\":\"Resource\",\"id\":\"quality-team-unit\"}, a unit answering as a whole"
@@ -204,18 +204,18 @@
   },
   "links": {
     "Gap:/spec/measure": {
-      "ask": "Which gap does this KPI measure? Its baseline and target would then be the gap's current and desired states.",
-      "ifNone": "Leave it: not every KPI measures a recorded gap. If the shortfall it tracks is not in the register yet, record the gap, naming its outcome and its source, and choose this KPI as its measure."
+      "ask": "Which gap does this KPI track?",
+      "ifNone": "Leave it empty if this KPI does not track a known gap. If it tracks one not yet recorded, add that gap and pick this KPI for it."
     },
     "KPIReadings:/spec/kpi": {
-      "ask": "Where are this KPI's readings kept? One series per KPI holds what it read, period by period.",
-      "ifNone": "Name a reporting cycle first, so the KPI has periods to read; then start its readings with the first period that has closed."
+      "ask": "Where are this KPI's readings kept? Each KPI has one list of readings, one per period.",
+      "ifNone": "Choose how often the KPI is read first, then add a reading for the first period that has ended."
     }
   },
   "checks": {
-    "kpi-baseline": "Record today's figure with the date it was taken, from the source your person gave you or the data source itself; when nobody knows it yet, say why and when it will be known.",
-    "kpi-target": "Set the figure to reach and the date to reach it by. Take both from the plan or document at hand, quoting where; ask your person only for what it does not say.",
-    "kpi-cycle": "Choose the reporting cycle it is read on, from the cycles that exist.",
-    "kpi-aligned": "Name the aims it measures: the outcome it tells you about, and any objective or goal above it it also evidences."
+    "kpi-baseline": "Record today's figure and the date it was measured. If nobody knows it yet, say why and when it will be known.",
+    "kpi-target": "Set the figure to reach and the date to reach it by.",
+    "kpi-cycle": "Choose how often it is read.",
+    "kpi-aligned": "Name the aims this number shows progress on."
   }
 }

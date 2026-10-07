@@ -72,7 +72,7 @@ func TestAStatementIsJudgedByWhatItSays(t *testing.T) {
 	for _, c := range checks {
 		byID[c.ID] = c
 	}
-	if c := byID["statement-state"]; c.State != "warn" || !strings.Contains(c.Message, "action") {
+	if c := byID["statement-state"]; c.State != "warn" || !strings.Contains(c.Message, "something to do") {
 		t.Fatalf("an outcome written as an action: %+v", c)
 	}
 	if strings.Join(order, " ") != "state action" {

@@ -8,14 +8,14 @@
     "precondition",
     "dependency on context"
   ],
-  "definition": "Something that has to be true for a step of the reasoning to hold: the logframe's assumptions column, and the condition on an arrow in a theory of change (TAXONOMY.md D12). It sits on the link between two levels of the work, so it is named where that link is: a programme's pathway step, or a project's success criterion that rests on deliverables. It is stated once and named by every step it conditions. An assumption is not a risk: a risk is something that might go wrong and is mitigated; an assumption is tested, and if it turns out false the answer is a different theory, not a contingency. It is not a constraint (a fixed limit on the work), not a dependency (something the work waits on), and not a hope about the work's own effort.",
+  "definition": "Something that has to be true for one step of your plan to lead to the next, which you have not proved. You name it on the step that depends on it: a step in a programme's pathway, or a project's success criterion. If it turns out false, you change the plan. It is not a risk (something that might go wrong, which you reduce), not a fixed limit on the work, and not something the work waits on.",
   "cues": {
-    "assumption": "something we expect or hope will hold, but have not proved"
+    "assumption": "something you expect to be true but have not proved"
   },
   "steps": {},
   "fields": {
     "/metadata/name": {
-      "guide": "A short title for the assumption, as a reader would scan it in a list: the condition in a few words.",
+      "guide": "A short title that names the condition in a few words.",
       "good": [
         "Depots release staff for training during the season",
         "A fault found at intake can still be put right"
@@ -23,12 +23,12 @@
       "poor": [
         {
           "text": "Training assumption",
-          "why": "Names a topic, not the condition; a reader cannot tell what is assumed."
+          "why": "Names a topic, not what has to be true."
         }
       ]
     },
     "/spec/statement": {
-      "guide": "What has to be true, in one sentence, present tense, about the world rather than about the work, stated so somebody could find out whether it is.",
+      "guide": "What has to be true, in one sentence about the world, not about your own work.",
       "good": [
         "Depots let checkers off the floor for a training day while produce is still coming in.",
         "Produce failing a check at intake can be sorted, repacked or cooled on the same day rather than written off.",
@@ -41,20 +41,20 @@
         },
         {
           "text": "The scanners might break during the pilot.",
-          "why": "Something that might go wrong is a risk, mitigated on the project's register, not an assumption."
+          "why": "Something that might go wrong is a risk. Add it to the project's risks instead."
         },
         {
           "text": "Training will be successful.",
-          "why": "Assumes the result it is meant to explain, and nobody could test it before the fact. Name the condition the step rests on."
+          "why": "This is the result you want, not a condition. Say what has to be true for the training to work."
         },
         {
           "text": "Depots release staff and buyers pay more for consistent produce.",
-          "why": "Two assumptions in one sentence; each conditions a different step and may fail on its own."
+          "why": "Two assumptions in one sentence. Write each one separately."
         }
       ]
     },
     "/spec/ifFalse": {
-      "guide": "What happens to the reasoning if this does not hold: which step stops working, and what that does to the change. An assumption nobody can say the consequence of is one nobody will act on.",
+      "guide": "Which step stops working if this is not true, and what that does to the result you want.",
       "good": [
         "Training waits for the closed season, so the shared standard arrives a season after the produce it was meant to grade.",
         "Checking earlier finds the same faults sooner and loses the same produce, so the programme moves the paperwork and not the outcome."
@@ -66,15 +66,15 @@
         },
         {
           "text": "Hire temporary checkers to cover.",
-          "why": "A mitigation, which belongs to a risk. This field says what the falsehood does to the reasoning."
+          "why": "That is a response to a risk. Say what goes wrong in the plan if this is false."
         }
       ]
     },
     "/spec/confidence": {
-      "guide": "How sure anybody is that it holds: high, medium or low. A mark for a reader to weigh, never a number to multiply. Say in the note what the confidence rests on."
+      "guide": "How sure you are that it is true: high, medium or low. Say why in the note."
     },
     "/spec/testedBy": {
-      "guide": "How anybody would find out, where there is a way: a KPI that would move, or a data source somebody could look in. An assumption is tested, where a risk is mitigated. Leave it empty when nothing Cartograph holds would show it, and say so in the note.",
+      "guide": "How you would find out if it is true: a KPI that would change, or a data source you could check. Leave it empty if there is none, and say so in the note.",
       "good": [
         "KPI quality-pass-rate",
         "DataSource sales-ledger"
@@ -82,12 +82,12 @@
       "poor": [
         {
           "text": "Ask around",
-          "why": "Not a source anyone could look in again. Name the indicator or the data source that would show it."
+          "why": "Not a source you can check. Name the KPI or data source that would show it."
         }
       ]
     },
     "/spec/note": {
-      "guide": "Anything else worth knowing, including where the assumption came from, who doubted it and why. Name roles or bodies, never persons.",
+      "guide": "Where the assumption came from, and who doubts it and why. Name roles or teams, not people.",
       "good": [
         "The two pilot depots agreed; the rest were not asked.",
         "Held by the market access team from two buyer conversations, not from a price schedule."
@@ -102,12 +102,12 @@
   },
   "links": {
     "Programme:/spec/pathway/-/assumes": {
-      "ask": "Which step of a programme's pathway does this have to hold for: which outcome would not follow from its preconditions if this were false?",
-      "ifNone": "Write the pathway step first, on the programme: the outcome it reaches, the outcomes it rests on and why they produce it. Then name this assumption on that step."
+      "ask": "Which step in a programme's pathway depends on this being true?",
+      "ifNone": "Add the step to the programme's pathway first, then name this assumption on it."
     },
     "Project:/spec/successCriteria/-/assumes": {
-      "ask": "Which project success criterion rests on this: which state would the deliverables fail to produce if this were false?",
-      "ifNone": "Write the success criterion first, on the project, with the deliverables it comes from. Then name this assumption on that criterion."
+      "ask": "Which success criterion of a project depends on this being true?",
+      "ifNone": "Add the success criterion to the project first, then name this assumption on it."
     }
   },
   "checks": {}

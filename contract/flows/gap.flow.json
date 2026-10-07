@@ -11,7 +11,7 @@
       {
         "key": "shortfall",
         "title": "Shortfall",
-        "guide": "Where things are now, where they should be, and the outcome that would close the distance.",
+        "guide": "Where things are now, where they should be, and the outcome that closes the gap.",
         "fields": [
           {
             "path": "/metadata/name",
@@ -24,7 +24,7 @@
           {
             "path": "/spec/measure",
             "control": "reference",
-            "hint": "If a KPI tracks this, its baseline and target are the current and desired states.",
+            "hint": "If a KPI measures this, its baseline is where things are now and its target is where they should be.",
             "checks": [
               "gap-states",
               "gap-measured"
@@ -66,12 +66,12 @@
       {
         "key": "scope",
         "title": "Scope",
-        "guide": "The segments the shortfall was observed in, and who is addressing each.",
+        "guide": "Where the gap shows up, such as a region or product line, and who is working on each.",
         "fields": [
           {
             "path": "/spec/segments",
             "control": "references",
-            "hint": "Add each slice the evidence covers, such as a region or a product line.",
+            "hint": "Each region, product line or other group the evidence covers.",
             "checks": [
               "gap-segments",
               "gap-covered"
@@ -101,7 +101,7 @@
           {
             "path": "/spec/source",
             "control": "text",
-            "hint": "The document and section, precisely enough to find again.",
+            "hint": "The document and section where this is written.",
             "checks": [
               "gap-source"
             ]
@@ -114,7 +114,7 @@
           {
             "path": "/spec/dataSources",
             "control": "reference",
-            "hint": "Where this gap can be watched, if anywhere."
+            "hint": "The data sources that show this gap, if any."
           },
           {
             "path": "/spec/note",

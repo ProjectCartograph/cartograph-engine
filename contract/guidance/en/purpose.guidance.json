@@ -10,36 +10,36 @@
     "mandate statement",
     "raison d'être"
   ],
-  "definition": "The purpose is why everything in the strategy exists, stated once at its top: the vision, a future state of the world the organisation serves, and the mission, what the organisation does and for whom to get there. It is not an aim: goals say what the organisation sets out to do, and each is judged Relevant against this. Quote a published plan's words verbatim, with the plan and section as the source.",
+  "definition": "Why your organisation exists. The vision is the future your organisation wants for the people it serves. The mission is what your organisation does, and for whom, to get there. If they are already published, copy the words exactly and say where they come from.",
   "cues": {
     "purpose": "a vision or mission: the reason an organisation exists"
   },
   "fields": {
     "/spec/organisation": {
-      "guide": "The name your organisation goes by, as its own people say it: the short name, not the registered one, unless that is what they use.",
+      "guide": "The name your organisation's own people use for it.",
       "good": [
         "Riverside Growers Cooperative"
       ],
       "poor": [
         {
           "text": "Our organisation",
-          "why": "Not a name: a reader elsewhere could not tell which organisation it is."
+          "why": "Not a name. Give the name people use for your organisation."
         }
       ]
     },
     "/spec/vision": {
-      "guide": "The future the organisation is working towards, in one or two sentences: the state of the world it wants, not what it does. No figures: those belong to the goals' measures.",
+      "guide": "The future your organisation wants for the people it serves, not what it does. Leave out figures; they go in your goals' measures.",
       "good": [
         "Every member can make a dependable living from what they grow."
       ],
       "poor": [
         {
           "text": "Raise member earnings by 15% by 2028.",
-          "why": "A target, not a vision: the figure and the date belong in a key result under a goal."
+          "why": "A target, not a vision. Put the figure and the date in a goal's measures."
         },
         {
           "text": "To be the best cooperative.",
-          "why": "Says nothing a goal could be judged against: best at what, for whom?"
+          "why": "Too vague. Say what the future looks like, and for whom."
         },
         {
           "text": "We collect, check and sell our members' produce.",
@@ -48,14 +48,14 @@
       ]
     },
     "/spec/mission": {
-      "guide": "What the organisation does to get there, and for whom, in one or two sentences. It names the standing work, not a list of projects.",
+      "guide": "What your organisation does, and for whom, to reach the vision. Describe its ongoing work, not a list of projects.",
       "good": [
         "We collect, check and sell our members' produce together, so each member gets a fair and dependable price for a season's work."
       ],
       "poor": [
         {
           "text": "Roll out quality checks at every depot and open two new depots.",
-          "why": "A list of pieces of work that end, which are projects; the mission is what the organisation does all the time."
+          "why": "This lists projects, which end. The mission is the work your organisation always does."
         },
         {
           "text": "Excellence, integrity and teamwork.",
@@ -64,19 +64,19 @@
       ]
     },
     "/spec/source": {
-      "guide": "Where the vision and mission are published, precisely enough to find again: the document, and the section or page. Leave it empty when they are written here first.",
+      "guide": "The document where the vision and mission are published, with the section or page. Leave it empty if they are not published anywhere.",
       "good": [
         "Cooperative plan for 2025 to 2028, foreword"
       ],
       "poor": [
         {
           "text": "The website",
-          "why": "Not precise enough to find again, and a page that changes is not a source."
+          "why": "Too vague to find again. Name the document and the section or page."
         }
       ]
     },
     "/metadata/name": {
-      "guide": "What to call it on screen, such as Purpose, or the plan's own word for its vision and mission.",
+      "guide": "The name for this record, such as Purpose, or the word your plan uses for its vision and mission.",
       "good": [
         "Purpose",
         "Our purpose"
@@ -85,7 +85,7 @@
   },
   "checks": {
     "purpose-organisation": "Name the organisation, as its own people say it.",
-    "purpose-vision": "State the future the organisation works towards, from its own documents; ask your person when none says it.",
-    "purpose-mission": "State what the organisation does to get there, from its own documents; ask your person when none says it."
+    "purpose-vision": "Write the future your organisation is working towards, using its own documents where they say it.",
+    "purpose-mission": "Write what your organisation does to reach its vision, using its own documents where they say it."
   }
 }

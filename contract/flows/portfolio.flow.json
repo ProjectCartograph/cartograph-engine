@@ -26,7 +26,7 @@
       {
         "key": "strategy",
         "title": "Strategy",
-        "guide": "The strategic objectives it is prioritised against.",
+        "guide": "The goals and objectives used to rank what it funds.",
         "fields": [
           {
             "path": "/spec/objectives",
@@ -40,8 +40,8 @@
       },
       {
         "key": "holds",
-        "title": "Holds",
-        "guide": "The projects, programmes and portfolios it holds, each of which names it.",
+        "title": "Contents",
+        "guide": "The projects, programmes and portfolios that belong to this portfolio.",
         "fields": [],
         "links": [
           {
@@ -96,7 +96,7 @@
       {
         "kind": "Goal",
         "needed": true,
-        "guide": "The goals and objectives it is prioritised against."
+        "guide": "The goals and objectives used to rank what it funds."
       },
       {
         "kind": "FundingSource",

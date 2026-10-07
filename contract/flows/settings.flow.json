@@ -11,7 +11,7 @@
       {
         "key": "terms",
         "title": "Level names",
-        "guide": "The words this vault uses for the levels of the strategy and for a project, where they differ from the standard ones.",
+        "guide": "Your own words for the strategy levels and for a project, if you use different ones.",
         "optional": true,
         "fields": [
           {
@@ -33,7 +33,7 @@
       {
         "key": "configuration",
         "title": "Configuration",
-        "guide": "How this vault records versions and renders documents.",
+        "guide": "The name changes are saved under when no one is signed in, and the browser used to make PDFs.",
         "optional": true,
         "fields": [
           {
@@ -51,7 +51,7 @@
       {
         "key": "change-control",
         "title": "Change control",
-        "guide": "How the record may change: whether every change goes through a change set, and what a change set needs before it is rolled in.",
+        "guide": "Whether every change goes through a change set, and what a change set needs before it is rolled in.",
         "optional": true,
         "fields": [
           {

@@ -8,38 +8,38 @@
     "stakeholder register",
     "power-interest grid"
   ],
-  "definition": "The stakeholders of one project, programme or operation, and how much power each holds over it: a stakeholder is anyone who can affect the work or is affected by it. A map is scoped to one project, programme or operation (TAXONOMY.md, what a programme carries), and each entry names either a Resource from the catalogue or one of the work's beneficiary groups (group), exactly one, so a party is declared once and scored separately on every project, programme or operation it touches. Each stakeholder is identified first, as primary (directly affected) or secondary (indirectly affected, Clarkson), and placed later by influence and interest, whose grid gives the engagement approach (Mendelow): manage closely, keep satisfied, keep informed, monitor. A stakeholder map is not the list of roles a project staffs (those are its resources), not the beneficiary groups (who gains value), and not a list of persons.",
+  "definition": "The people and organisations who affect or are affected by one project, programme or operation, and how much say each has. Each entry is a resource or one of the work's beneficiary groups. You first mark each as primary (directly affected) or secondary (indirectly affected), then place them by influence and interest, which sets how to work with them: manage closely, keep satisfied, keep informed, or monitor. It is not the list of roles the work needs, and not a list of named people.",
   "steps": {},
   "fields": {
     "/spec/scope": {
-      "guide": "The project, programme or operation this map is about, by kind and id. Nothing else can be a scope: a stakeholder has a stake in a project, programme or operation. Define the work first.",
+      "guide": "The project, programme or operation this map is about. Add it first if it does not exist.",
       "good": [
         "Project quality-check-rollout"
       ],
       "poor": [
         {
           "text": "Team quality-team",
-          "why": "A team is not a project, programme or operation, and a map scoped to one is refused. Scope it to the project, programme or operation the team runs."
+          "why": "A team cannot have a stakeholder map. Choose the project, programme or operation the team runs."
         }
       ]
     },
     "/metadata/name": {
-      "guide": "The work's name followed by \"stakeholders\", so the map is found beside the work.",
+      "guide": "The name of the project, programme or operation followed by \"stakeholders\".",
       "good": [
         "Quality Check Rollout stakeholders"
       ],
       "poor": [
         {
           "text": "Stakeholders",
-          "why": "Every map would be called this; name the work it is about."
+          "why": "Too general. Add the name of the project, programme or operation."
         }
       ]
     },
     "/spec/entries": {
-      "guide": "One entry per stakeholder, each a Resource from the catalogue, scored at most once. A party need not be one the work draws on: a party with power over a project is often not part of it. An entry with no score is a stakeholder named and not yet placed, which is a real state."
+      "guide": "One entry for each stakeholder, chosen from your resources or the work's beneficiary groups. A stakeholder does not have to be part of the work. You can add one now and place it on the grid later."
     },
     "/spec/entries/-/group": {
-      "guide": "A beneficiary group of the work, when the stakeholder is the people it is for. Pick one of the groups the work already names; there is no need to record them again as a Resource. An entry names a group or a resource, not both.",
+      "guide": "A beneficiary group of the work, when the stakeholder is the people it helps. Choose a group the work already names. Choose a group or a resource, not both.",
       "good": [
         "depot-staff",
         "delivering-members"
@@ -47,12 +47,12 @@
       "poor": [
         {
           "text": "delivering-members, also added as a Resource",
-          "why": "The same people recorded twice. Name the group here."
+          "why": "The same people added twice. Choose the group only."
         }
       ]
     },
     "/spec/entries/-/resource": {
-      "guide": "The catalogue entry for the stakeholder: a role, unit, party, system or facility. External bodies count. When the party is not in the catalogue, declare it there first. A group of the people the work is for goes in group instead.",
+      "guide": "The stakeholder, chosen from your resources: a role, unit, partner, system or place, inside or outside your organisation. Add it as a resource first if it is missing. For the people the work helps, choose a beneficiary group instead.",
       "good": [
         "analytics-partner",
         "transport-contractor",
@@ -61,16 +61,16 @@
       "poor": [
         {
           "text": "Ada Okafor",
-          "why": "A person, not a role or a party. Cartograph names roles, and people hold them (D27)."
+          "why": "A person. Choose the role or organisation instead."
         },
         {
           "text": "Everyone at the depots",
-          "why": "Not a catalogue entry, and too broad to place on the grid. Name the unit or the role."
+          "why": "Too broad. Choose a unit or role from your resources."
         }
       ]
     },
     "/spec/entries/-/stake": {
-      "guide": "What this party cares about in this work, in one sentence. Influence and interest say how much; this says what. It is about this work, not about who they are.",
+      "guide": "What this stakeholder cares about in this work, in one sentence.",
       "good": [
         "Wants fewer rejected loads, and no slower intake at busy depots.",
         "Must sign off any change to how member delivery records are kept."
@@ -78,31 +78,31 @@
       "poor": [
         {
           "text": "The regional transport contractor.",
-          "why": "Who they are, which the catalogue entry already says. Say what they care about here."
+          "why": "Says who they are, not what they care about."
         },
         {
           "text": "High interest.",
-          "why": "How much, which interest already scores. Say what the interest is in."
+          "why": "Says how much, not what they care about."
         }
       ]
     },
     "/spec/entries/-/owner": {
-      "guide": "The role that manages the relationship with this stakeholder, from the Resource catalogue. Never a person. How and when to engage them belongs to the communications plan.",
+      "guide": "The role that manages the relationship with this stakeholder, chosen from your resources. Not a person.",
       "good": [
         "operations-lead"
       ],
       "poor": [
         {
           "text": "Ada Okafor",
-          "why": "A person, not a role: Cartograph names roles, and people hold them."
+          "why": "A person. Choose their role instead."
         }
       ]
     },
     "/spec/entries/-/tier": {
-      "guide": "Primary if the work affects them directly, secondary if indirectly (Clarkson). A separate question from influence and interest: a secondary stakeholder can still hold a great deal of power."
+      "guide": "Primary if the work affects them directly, secondary if indirectly. A secondary stakeholder can still have a lot of influence."
     },
     "/spec/entries/-/influence": {
-      "guide": "How much this stakeholder can change what happens, from 1 (little) to 3 (a great deal). Leave it blank until it is assessed; a guess placed as fact misleads the grid."
+      "guide": "How much this stakeholder can change what happens, from 1 (little) to 3 (a great deal). Leave it empty until you have assessed it."
     },
     "/spec/entries/-/interest": {
       "guide": "How much this stakeholder cares what happens, from 1 (little) to 3 (a great deal). Leave it blank until it is assessed."
@@ -110,7 +110,7 @@
   },
   "links": {},
   "checks": {
-    "stakeholders-identified": "Name each party with a stake in the work, from the Resource catalogue: those it affects and those who can affect it.",
+    "stakeholders-identified": "Add everyone the work affects and everyone who can affect it.",
     "stakeholders-placed": "Place each stakeholder by influence and interest, one to three each, so the approach to them follows from the grid."
   }
 }

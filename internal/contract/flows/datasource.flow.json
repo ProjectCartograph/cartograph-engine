@@ -25,7 +25,7 @@
           {
             "path": "/spec/provenance",
             "control": "choice",
-            "hint": "Whether we run it or a third party does."
+            "hint": "Whether your organisation runs it or someone outside does."
           },
           {
             "path": "/spec/team",
@@ -36,7 +36,7 @@
             "path": "/spec/keptBy",
             "control": "reference",
             "title": "Kept by",
-            "hint": "Who keeps it, where that is outside the organisation."
+            "hint": "Who keeps it, if it is kept outside your organisation."
           }
         ],
         "links": [
@@ -50,12 +50,12 @@
       {
         "key": "access-quality",
         "title": "Access and quality",
-        "guide": "How someone reads it, how often it changes, how records get in, and what is wrong with it today.",
+        "guide": "How to get access, how often it changes, how records get in, and its known problems.",
         "fields": [
           {
             "path": "/spec/access",
             "control": "text",
-            "hint": "How someone gets access, and what they need first."
+            "hint": "How to get access, and what you need first."
           },
           {
             "path": "/spec/refresh",

@@ -11,12 +11,12 @@
       {
         "key": "definition",
         "title": "Definition",
-        "guide": "Which dimension this slice belongs to, what it is called, and what falls inside it.",
+        "guide": "A way of splitting numbers, such as by region, or one part of it, such as the north: its name and what it includes.",
         "fields": [
           {
             "path": "/spec/parent",
             "control": "reference",
-            "hint": "The dimension this is a value of, such as Region for the northern region. Leave empty for a dimension."
+            "hint": "The wider grouping this belongs to, such as Region for North. Leave empty if this is itself a grouping."
           },
           {
             "path": "/metadata/name",

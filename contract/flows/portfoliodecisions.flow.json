@@ -26,13 +26,13 @@
       {
         "key": "decisions",
         "title": "Decisions",
-        "guide": "For each thing the portfolio holds: its priority, and whether to invest in it, hold it or stop it.",
+        "guide": "For each project, programme or portfolio in this portfolio: its priority, and whether to invest in it, hold it or stop it.",
         "fields": [
           {
             "path": "/spec/decisions",
             "control": "list",
             "key": "id",
-            "hint": "One row for each thing the portfolio holds.",
+            "hint": "Add a decision for each project, programme or portfolio in this portfolio.",
             "checks": [
               "portfolio-decided"
             ],

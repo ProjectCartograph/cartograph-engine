@@ -2,24 +2,24 @@
   "locale": "en",
   "kind": "Settings",
   "summary": "How this workspace is set up, such as what it calls each level of aim.",
-  "definition": "Settings is the vault's one configuration manifest; there is only ever one, and its id is always default. Its first purpose is the purpose: the vision and mission every goal serves, stated once above the whole strategy (TAXONOMY.md D24; the balanced scorecard's mission and vision, Kaufman's ideal vision). The strategy reads top-down from it: the purpose, then goals, objectives and outcomes, and a gap is measured against it. A goal with no vision or mission above it cannot be judged Relevant. Its other fields are configuration: the vault's own words for the levels of the strategy and for a project, the author recorded when no one is signed in, the browser used to render documents, and examples in the vault's own words. Settings is not a goal (the purpose sits above the goals and has no measures of its own), not a programme or a project, and not a place for any one team's aims.",
+  "definition": "How this workspace is set up. It records your vision and mission, which every goal serves, and the words your organisation uses for each level of aim and for a project. It also sets the author name used when no one is signed in, the browser used to make PDFs, and your own examples for fields. There is only one.",
   "steps": {},
   "fields": {
     "/metadata/id": {
-      "guide": "Always default: Settings is a singleton, and a save refuses any other id."
+      "guide": "Always default. There is only one settings record."
     },
     "/spec/purpose": {
-      "guide": "The vision and mission, with where they are published. When they come from a published plan, quote them word for word and give the plan's section as the source."
+      "guide": "Your vision and mission, and where they are published. If they come from a published plan, copy them word for word and name the section."
     },
     "/spec/goalLevels": {
-      "guide": "The names this vault shows for the three levels of the strategy, in order: goal, objective, outcome. Change them only to use the words of the organisation's own plan; the meaning of each level stays the same. Leave it empty to keep Goal, Objective and Outcome.",
+      "guide": "Your organisation's words for the three levels of aim: goal, objective, outcome. Each level keeps its meaning. Leave it empty to keep Goal, Objective and Outcome.",
       "good": [
         "Priority, Objective, Outcome"
       ],
       "poor": [
         {
           "text": "Pillar, Strategic, Functional",
-          "why": "Functional names part of an organisation, not a result; the third level is a changed state."
+          "why": "Functional names part of an organisation. The third level is what is true once a change is made."
         },
         {
           "text": "Goal, Objective, Output",
@@ -28,7 +28,7 @@
       ]
     },
     "/spec/projectLevelName": {
-      "guide": "The word this vault shows for a project, when the organisation's plan uses its own, such as Initiative. A project is still work that ends.",
+      "guide": "Your organisation's word for a project, such as Initiative. It still means work that ends.",
       "good": [
         "Initiative"
       ],
@@ -40,7 +40,7 @@
       ]
     },
     "/spec/operator": {
-      "guide": "The author recorded on a saved version when no one is signed in, such as a change made from the command line. It defaults to local. Name the deployment or the role that runs it, never a person.",
+      "guide": "The author name used for changes saved when no one is signed in, such as from the command line. It is local by default. Name the setup or the role that runs it, not a person.",
       "good": [
         "local",
         "nightly import"
@@ -48,7 +48,7 @@
       "poor": [
         {
           "text": "Ada Okafor",
-          "why": "A person: Cartograph records people only as signed-in principals, never in a definition."
+          "why": "A person. Name a role or setup instead."
         }
       ]
     },
@@ -56,19 +56,19 @@
       "guide": "The path to a Chromium browser used to render documents as PDF. Leave it empty to use the CHROMIUM environment variable, or the first Chromium on the path."
     },
     "/spec/examples": {
-      "guide": "Examples this vault shows behind the question mark on a field, in its own people's words, keyed by field (such as aim.change, objective or gap.current), up to five each. A field without an entry shows the product's own generic examples.",
+      "guide": "Your own examples for a field, in your organisation's words, up to five per field, keyed by field name such as aim.change, objective or gap.current. Fields without any show the built-in examples.",
       "good": [
         "aim.change: Every depot checks produce against one published standard."
       ],
       "poor": [
         {
           "text": "objective: Increase sales by 20%.",
-          "why": "An example teaches by being copied, so it must be written as the discipline would: the figure belongs in a key result."
+          "why": "Leave the number out of the objective. Numbers go in key results."
         }
       ]
     },
     "/metadata/name": {
-      "guide": "The title shown in lists, kept the same as the name: both are required, and they should never differ."
+      "guide": "A name for these settings."
     }
   },
   "links": {}

@@ -38,12 +38,12 @@
                 "path": "/group",
                 "control": "reference",
                 "title": "Beneficiary group",
-                "hint": "The people the work is for, offered first."
+                "hint": "The people the work is for."
               },
               {
                 "path": "/resource",
                 "control": "reference",
-                "hint": "Or a party, role or unit from the catalogue."
+                "hint": "Or another organisation, role or team already in Cartograph."
               },
               {
                 "path": "/stake",

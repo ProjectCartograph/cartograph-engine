@@ -30,7 +30,7 @@
           {
             "path": "/spec/description",
             "control": "sentence",
-            "hint": "What exactly is counted, where the name alone could be read two ways."
+            "hint": "What exactly is counted, if the name could mean more than one thing."
           }
         ],
         "links": [

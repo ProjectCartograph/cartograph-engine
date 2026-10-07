@@ -11,7 +11,7 @@
       {
         "key": "indicator",
         "title": "Indicator",
-        "guide": "The KPI these readings are of; its unit and cycle are read from there.",
+        "guide": "The KPI these readings are for. Its unit and reporting cycle come from the KPI.",
         "fields": [
           {
             "path": "/spec/kpi",
@@ -25,14 +25,14 @@
       },
       {
         "key": "actuals",
-        "title": "Actuals",
-        "guide": "One reading for each period that has been read, and nothing for a period that has not.",
+        "title": "Readings",
+        "guide": "The value measured in each period so far.",
         "fields": [
           {
             "path": "/spec/readings",
             "control": "list",
             "key": "period",
-            "hint": "One row for each period. Leave a period out if it has not been read yet. Blank is not zero.",
+            "hint": "Add a reading for each period you have measured. Leave out any period not measured yet.",
             "fields": [
               {
                 "path": "/period",

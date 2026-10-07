@@ -1,7 +1,7 @@
 {
   "locale": "en",
   "kind": "Programme",
-  "summary": "Related projects coordinated together to bring about one change and the benefits it brings, each one a step the change needs.",
+  "summary": "Projects run together to bring about one change.",
   "example": "Quality Improvement Programme, which runs its projects, such as the Quality Check Rollout, together towards one quality standard.",
   "terms": {
     "theory of change": {
@@ -14,14 +14,14 @@
     "flagship",
     "strategic programme"
   ],
-  "definition": "A programme coordinates related projects, and sub-programmes, to realise outcomes and benefits they share (MSP; PMI, The Standard for Program Management). What makes it a programme is causal coherence: a theory of change linking what its projects deliver to the outcomes and the change it seeks, so each project is a step the change needs. It holds only what is its own: the change it seeks (aim), the problems that change answers (citing gaps), the outcomes and indicators it is judged on, its theory of change, its programme-level risks and its governance. What is in it says so itself: its components, the projects, sub-programmes and operations that each name it (TAXONOMY.md D1, D2, D32). A programme is not a portfolio (work grouped to decide what to fund, which need not depend on one another), not a project (work with a start and an end that produces outputs, under one person in charge and one budget), not an operation (work that keeps running), and not a goal (an aim in the strategy).",
+  "definition": "A programme is a set of related projects, and smaller programmes, run together to bring about one change and the benefits it brings. Each project is a step that change needs, and the programme says how the steps lead to it. The programme records the change it wants, the problems it solves, the outcomes and measures it is judged on, how its steps lead to the change, its own risks and who runs it. Each project, smaller programme or operation in it names the programme itself. A programme is not a portfolio (work grouped to decide what to fund, which need not depend on one another), not a project (work with a start and an end, one person in charge and one budget), not an operation (work that keeps running), and not a goal (an aim in your strategy).",
   "cues": {
     "programme": "related projects coordinated together towards one shared change"
   },
   "steps": {},
   "fields": {
     "/metadata/name": {
-      "guide": "The name people use for the programme, as a reader would scan it in a list. It names the programme, not the work inside it.",
+      "guide": "The name people use for the programme, not for the work inside it.",
       "good": [
         "Quality Improvement Programme",
         "Market Access Programme"
@@ -29,16 +29,16 @@
       "poor": [
         {
           "text": "Quality check rollout and training",
-          "why": "Names two pieces of work, which are components, not the programme that coordinates them."
+          "why": "Names two projects, not the programme that runs them."
         },
         {
           "text": "QIP-2025",
-          "why": "A code, not a name: a code people quote goes in the alias, and Cartograph names things in words."
+          "why": "A code, not a name. Put the code in the alias."
         }
       ]
     },
     "/spec/aim/change": {
-      "guide": "How things will stand once the programme has worked, said as a state, not as the work that gets there. The doing belongs to the components. No numbers: they belong to the indicators. When the aim is quoted from a published document, this part holds the whole of it, word for word, and the source says where it came from.",
+      "guide": "What is true once the programme succeeds, not the work that gets there. Leave numbers to the measures. If you quote the aim from a published document, copy all of it here word for word.",
       "good": [
         "Every depot checks produce against one published standard.",
         "A larger share of each season reaches retail buyers directly, on terms the cooperative sets."
@@ -46,11 +46,11 @@
       "poor": [
         {
           "text": "Run training for depot staff and roll out the quality check tool to every depot.",
-          "why": "Describes the work, which is what the components do; the aim says what will be different once that work has landed."
+          "why": "Describes the work. Say what will be different once the work is done."
         },
         {
           "text": "Raise the quality pass rate to 90% by 2027.",
-          "why": "A target, not a change: the figure and the date belong to the indicator the programme is judged by."
+          "why": "A target, not a change. Put the figure and date on a measure."
         },
         {
           "text": "Quality.",
@@ -59,7 +59,7 @@
       ]
     },
     "/spec/aim/gain": {
-      "guide": "Who is better off once the change has happened, and how, in one sentence about them. Optional: an aim quoted from a published document usually has none, and the aim then stops at the change.",
+      "guide": "Who is better off once the change happens, and how. Optional.",
       "good": [
         "Buyers get one quality from the cooperative whichever depot filled the order.",
         "Members are paid a price they can plan around."
@@ -67,7 +67,7 @@
       "poor": [
         {
           "text": "Everyone benefits from better quality.",
-          "why": "Names nobody in particular: a benefit is an advantage perceived by a stakeholder, so say which group gains."
+          "why": "Names nobody. Say which group gains."
         },
         {
           "text": "The quality team meets its targets.",
@@ -76,7 +76,7 @@
       ]
     },
     "/spec/source": {
-      "guide": "Where the programme is set out, precisely enough to find again: the document, and the section or page. Leave it empty when the programme is the organisation's own and written nowhere else.",
+      "guide": "The document that sets out the programme, with the section or page. Leave empty if it is written nowhere else.",
       "good": [
         "Cooperative plan for 2025 to 2028, section 3"
       ],
@@ -88,10 +88,10 @@
       ]
     },
     "/spec/problems": {
-      "guide": "The problems the programme answers, each with the change that answers it, the beneficiary groups that feel it, and the gaps that are the evidence for it. The name says what the programme is; this says what it is for, at the level the programme sits."
+      "guide": "The problems the programme solves. For each one: who it affects, the change that solves it, and the gaps that show it."
     },
     "/spec/problems/-/groups": {
-      "guide": "The beneficiary groups this problem lands on, from the register. They are the subject of the problem and of the change, so they are not repeated in the sentences. When no group fits, define the group first.",
+      "guide": "The groups of people this problem affects. If none fits, add the group first.",
       "good": [
         "delivering-members",
         "retail-partners"
@@ -99,12 +99,12 @@
       "poor": [
         {
           "text": "quality-team",
-          "why": "A team that does the work, not a group of people the problem lands on."
+          "why": "A team doing the work, not people the problem affects."
         }
       ]
     },
     "/spec/problems/-/problem/situation": {
-      "guide": "What the groups cannot do today, said about them and without repeating them: it is read as the groups followed by this text. A situation of people, not a state of the system; a shortfall in the system is a gap, which the problem cites.",
+      "guide": "What the affected groups cannot do today.",
       "good": [
         "get a different verdict on the same delivery depending on which depot checks it",
         "learn of a failed delivery a season late"
@@ -112,40 +112,40 @@
       "poor": [
         {
           "text": "There is no single quality standard.",
-          "why": "A state of the system, which is what a gap records; say what that does to the groups named."
+          "why": "Describes a system, not people. Say what it stops the groups from doing."
         },
         {
           "text": "need a new quality check tool",
-          "why": "A solution dressed as a problem: it names what to build, not what the groups cannot do."
+          "why": "Names a solution. Say what the groups cannot do."
         }
       ]
     },
     "/spec/problems/-/problem/cause": {
-      "guide": "The one thing behind the situation, read after \"because\". Optional: a situation nobody has traced to a cause is still a situation.",
+      "guide": "Why the problem happens. Fix the cause and the problem goes away.",
       "good": [
         "each depot checks against its own checklist and none of them agree"
       ],
       "poor": [
         {
           "text": "poor management, old equipment and a lack of training",
-          "why": "Three causes in one: name the one that this change answers, and state any other as its own problem."
+          "why": "Three causes in one. Name the one this change fixes, and add the others as separate problems."
         }
       ]
     },
     "/spec/problems/-/change/what": {
-      "guide": "How things stand once this problem is answered, as a state rather than the work that gets there.",
+      "guide": "What is true once this problem is solved, not the work to get there.",
       "good": [
         "Every depot checks against one published standard"
       ],
       "poor": [
         {
           "text": "Train depot staff on the new standard",
-          "why": "An activity, which belongs to a project inside the programme; say what will be true once it is done."
+          "why": "A task for a project. Say what will be true once it is done."
         }
       ]
     },
     "/spec/problems/-/change/gain": {
-      "guide": "What the groups can then do, said about them without repeating them. Optional: until it is written, the change stops at what will be true.",
+      "guide": "What the affected groups can do once the change happens.",
       "good": [
         "get the same verdict on a delivery whichever depot checks it"
       ],
@@ -157,26 +157,26 @@
       ]
     },
     "/spec/problems/-/gaps": {
-      "guide": "The gaps this problem answers, from the gap register, and which of each gap's segments the programme reaches. A citation, not a restatement: the gap says what is wrong and how it is known; the problem says what that does to these groups."
+      "guide": "The gaps that show this problem exists, and which parts of each gap the programme covers."
     },
     "/spec/problems/-/gaps/-/gap": {
-      "guide": "The entry in the gap register this problem answers. When the evidence is not in the register yet, define the gap first.",
+      "guide": "The gap that shows this problem. If it is not listed yet, add the gap first.",
       "good": [
         "no-single-quality-standard",
         "faults-found-after-dispatch"
       ]
     },
     "/spec/problems/-/gaps/-/segments": {
-      "guide": "Which of the gap's own segments this programme reaches: each one, all of them when it reaches every one. Leave it empty only for a gap that names none. Only segments the gap names are accepted: a gap never observed somewhere cannot be answered there on its authority.",
+      "guide": "Which parts of the gap this programme covers, such as places or groups. You can only pick parts the gap lists.",
       "poor": [
         {
           "text": "A segment the gap does not name, such as a product line when the gap was observed by depot",
-          "why": "The evidence never covered that slice; a save refuses a segment the cited gap does not have."
+          "why": "The gap has no evidence for that part, so Cartograph will not save it."
         }
       ]
     },
     "/spec/goals": {
-      "guide": "The outcomes in the strategy this programme is judged on: the changed states its components together bring about. Align to outcomes, not to goals or objectives; the outcome already sits under its objective and goal. When no outcome fits, define the outcome first, top-down.",
+      "guide": "The outcomes this programme is judged on: what is true once its projects succeed. Pick outcomes, not goals or objectives. If none fits, add the outcome first.",
       "good": [
         "depot-staff-apply-the-standard-alike",
         "faults-found-before-dispatch"
@@ -184,41 +184,41 @@
       "poor": [
         {
           "text": "raise-produce-quality",
-          "why": "A goal, not an outcome: a programme aligns to the changed states it brings about, and the goal is reached through them."
+          "why": "A goal, not an outcome. Pick the outcomes that lead to the goal."
         },
         {
           "text": "Every outcome its projects serve, added to look complete",
-          "why": "Alignment says what the programme is judged on; an outcome only one enabling project touches is that project's, not the programme's."
+          "why": "Pick only outcomes the whole programme is judged on. An outcome that one project serves belongs to that project."
         }
       ]
     },
     "/spec/kpis": {
-      "guide": "The indicators the programme is judged by over time: how the benefit of its outcomes is measured. Name the indicators that measure the change in the aim, from the KPI register; when none exists, define the KPI first.",
+      "guide": "The measures that show whether the programme's change is happening. If none fits, add the KPI first.",
       "good": [
         "quality-pass-rate"
       ],
       "poor": [
         {
           "text": "depot-availability",
-          "why": "Measures whether depots stay open, not the quality change this programme seeks; an indicator must measure the programme's own outcomes."
+          "why": "Measures whether depots stay open, not the quality change this programme wants."
         },
         {
           "text": "Number of training sessions held",
-          "why": "Counts an output of the work, not the benefit of the change; outputs belong to the projects."
+          "why": "Counts the work done, not the benefit. Put it on the project."
         }
       ]
     },
     "/spec/pathway": {
-      "guide": "The theory of change: one step per intermediate outcome, each naming what must hold before it and why that produces it. Work backwards from the aim, asking what has to be true first, until the answer is something the components do. It is a separate thing from the goal tree: the tree says where an aim files, the pathway says what produces what."
+      "guide": "How the programme's work leads to its change, step by step. Start from the change and ask what must be true first, until you reach work the projects do."
     },
     "/spec/pathway/-/outcome": {
-      "guide": "The outcome reached at this step, from the strategy. One step per outcome: a save refuses an outcome reached twice.",
+      "guide": "The outcome reached at this step. Each outcome can be in one step only.",
       "good": [
         "faults-found-before-dispatch"
       ]
     },
     "/spec/pathway/-/from": {
-      "guide": "The outcomes that must all hold before this one. Several are an \"and\", never an \"or\". Leave it empty where the components' own work produces the outcome directly: that is where the pathway starts. A save refuses a pathway that loops back on itself.",
+      "guide": "The outcomes that must all be true before this one. Leave empty if the projects' work leads straight to it.",
       "good": [
         "depot-staff-apply-the-standard-alike"
       ],
@@ -230,7 +230,7 @@
       ]
     },
     "/spec/pathway/-/because": {
-      "guide": "Why those preconditions produce this outcome, in a sentence someone could argue with. An arrow with no reason on it is a picture, not a theory.",
+      "guide": "Why those outcomes lead to this one.",
       "good": [
         "A checker who applies the standard the same way each time catches the fault at intake instead of passing it down the line.",
         "One published standard, and training run against it, is what makes two checkers give the same delivery the same verdict."
@@ -238,7 +238,7 @@
       "poor": [
         {
           "text": "Training leads to better quality.",
-          "why": "Restates the arrow without the mechanism: say how one produces the other, so it can be found wrong."
+          "why": "Does not say how. Say how training improves quality."
         },
         {
           "text": "Agreed at the board.",
@@ -247,7 +247,7 @@
       ]
     },
     "/spec/pathway/-/assumes": {
-      "guide": "What has to be true, outside the programme's control, for this step to hold, from the assumption register. Things the programme will manage go under Risks.",
+      "guide": "What must be true, outside the programme's control, for this step to work. Things the programme can manage go under Risks.",
       "good": [
         "depots-release-staff-for-training",
         "faults-found-at-intake-can-be-reworked"
@@ -260,7 +260,7 @@
       ]
     },
     "/spec/risks": {
-      "guide": "What is exposed at programme level: risks, issues, dependencies and constraints that no one component holds, including dependencies on other programmes. A risk inside one project belongs on that project."
+      "guide": "Risks, issues, dependencies and limits that affect the whole programme, not just one project. Add a risk to one project on that project."
     },
     "/spec/risks/-/type": {
       "guide": "Risk (may happen), issue (is happening), dependency (waits on something else), or constraint (a limit that is fixed)."
@@ -301,7 +301,7 @@
       ]
     },
     "/spec/risks/-/owner": {
-      "guide": "The role that manages this risk day to day: the role best placed to watch it and act on it, picked from the roles already named here. Never a person. Not who it escalates to, which is the escalation's role. Name one for every high-impact risk; a lower one left unowned is the manager's.",
+      "guide": "The role that watches this risk and acts on it day to day. A role, not a person. A lower-impact risk with no owner falls to the programme manager.",
       "good": [
         "delivery-lead",
         "quality-reviewer"
@@ -309,19 +309,19 @@
       "poor": [
         {
           "text": "Ada Okafor",
-          "why": "A person, not a role: Cartograph names roles, and people hold them."
+          "why": "A person, not a role. Pick the role the person has."
         },
         {
           "text": "The sponsor, for every risk",
-          "why": "The sponsor is who a risk escalates to beyond tolerance. The owner is whoever manages it day to day."
+          "why": "The sponsor is who you go to when a risk gets too big. The owner manages it day to day."
         }
       ]
     },
     "/spec/risks/-/depends/direction": {
-      "guide": "For a dependency: whether this programme needs the other thing, or the other thing needs this programme. Declare the edge at one end only; the other end is derived."
+      "guide": "Whether this programme needs the other work, or the other work needs this programme. Record it on one side only."
     },
     "/spec/risks/-/depends/on": {
-      "guide": "What the dependency waits on: another manifest (a programme, project, operation or data source), or an external party Cartograph does not hold, named as written.",
+      "guide": "What this waits on: a programme, project, operation or data source in Cartograph, or an outside party by name.",
       "good": [
         "Operation member-register-service",
         "External: Cooperative Board"
@@ -329,12 +329,12 @@
       "poor": [
         {
           "text": "Market Access Programme, when that programme already declares that it needs this one",
-          "why": "Declared twice and in a loop: one end declares, and a loop between programmes means neither can start."
+          "why": "Recorded twice, and makes a loop where neither programme can start."
         }
       ]
     },
     "/spec/risks/-/depends/needBy": {
-      "guide": "Leave it empty. A programme schedules nothing, so there is no phase to name, and a save refuses one."
+      "guide": "Leave empty. A programme has no phases."
     },
     "/spec/risks/-/escalate/flag": {
       "guide": "Whether this needs a decision from above the programme. Turn it on only when the programme cannot settle it itself."
@@ -352,7 +352,7 @@
       ]
     },
     "/spec/risks/-/escalate/to": {
-      "guide": "Whose decision is needed: a role from the Resource catalogue, or an external body named as written. Never a person.",
+      "guide": "Who must decide: a role in Cartograph, or an outside body by name. Never a person.",
       "good": [
         "Resource operations-lead",
         "External: Cooperative Board"
@@ -360,76 +360,76 @@
       "poor": [
         {
           "text": "External: Ada Okafor",
-          "why": "A person, not a role: Cartograph names roles, and people hold them."
+          "why": "A person, not a role. Pick the role the person has."
         }
       ]
     },
     "/spec/sponsor": {
-      "guide": "The role accountable for the programme and its benefits (MSP's senior responsible owner, PMI's programme sponsor), from the Resource catalogue. A role, never a person; when no role fits, define the role first.",
+      "guide": "The role responsible for the programme and its benefits. A role, not a person. If none fits, add the role first.",
       "good": [
         "operations-lead"
       ],
       "poor": [
         {
           "text": "Ada Okafor",
-          "why": "A person, not a role: Cartograph names roles, and people hold them."
+          "why": "A person, not a role. Pick the role the person has."
         },
         {
           "text": "quality-team",
-          "why": "A team runs the programme and goes in the lead team; the sponsor is one accountable role."
+          "why": "A team, not a role. The sponsor is one role."
         }
       ]
     },
     "/spec/manager": {
-      "guide": "The role that runs the programme day to day and coordinates its projects (MSP's programme manager), from the Resource catalogue. A role, never a person.",
+      "guide": "The role that runs the programme day to day and coordinates its projects. A role, not a person.",
       "good": [
         "quality-reviewer"
       ],
       "poor": [
         {
           "text": "depot-supervisor, because the supervisor of the pilot project also runs it",
-          "why": "That is the project's manager; the programme manager coordinates across all the components, so name the role that does."
+          "why": "That role runs one project. Name the role that coordinates all of them."
         }
       ]
     },
     "/spec/businessChangeManager": {
-      "guide": "The role that makes the change stick in the business and realises the benefits once projects hand over (MSP's business change manager). Separate from the programme manager, because delivering outputs and realising benefits are separate accountabilities.",
+      "guide": "The role that makes the change last in daily work and gets the benefits once projects finish. Not the programme manager.",
       "good": [
         "depot-supervisor"
       ],
       "poor": [
         {
           "text": "The same role as the programme manager, because no one else was thought of",
-          "why": "Hides the second accountability: say who in the business makes the change stick, or leave it empty until someone can."
+          "why": "Name who makes the change last in daily work, or leave empty until you know."
         }
       ]
     },
     "/spec/leadTeam": {
-      "guide": "The team that leads the programme and owns its definition, from the team tree. A team, not a role and not a person. When no team fits, define the team first.",
+      "guide": "The team that leads the programme. If none fits, add the team first.",
       "good": [
         "quality-team"
       ],
       "poor": [
         {
           "text": "operations-lead",
-          "why": "A role, which goes in the sponsor or manager; the lead team is a unit in the organisation's structure."
+          "why": "A role, not a team."
         }
       ]
     },
     "/spec/supportingTeams": {
-      "guide": "Other teams that carry part of the programme's work. Not everyone with an interest in it: those belong in its stakeholder map.",
+      "guide": "Other teams that do part of the programme's work.",
       "good": [
         "operations-team"
       ],
       "poor": [
         {
           "text": "Every team in the cooperative",
-          "why": "A list of everyone with an interest is a stakeholder map; name only the teams that do part of the work."
+          "why": "Name only the teams that do part of the work."
         }
       ]
     },
     "/spec/mandate": {
-      "guide": "What authorises the programme: a decision, policy, law or regulation, contract, business case or request, each with its title and, where there is one, its reference, date and issuing body."
+      "guide": "What allows or requires the programme, such as a decision, policy, law, contract or request."
     },
     "/spec/mandate/-/title": {
       "guide": "The title of the decision or document, as it is written.",
@@ -444,68 +444,68 @@
       ]
     },
     "/spec/mandate/-/issuer": {
-      "guide": "The governance body or role that issued it, picked from the Resource catalogue, so the body's page lists what it decided. When the body is not there yet, add it as a governance body first. Written as a reference, never a bare id.",
+      "guide": "The board, committee or role in Cartograph that issued it. If it is not there yet, add it first.",
       "good": [
-        "{\"kind\":\"Resource\",\"id\":\"steering-committee\"}, a governance body in the catalogue",
-        "{\"local\":\"resources\",\"id\":\"sponsor\"}, one of this work's roles"
+        "Steering committee",
+        "Sponsor, one of this work's roles"
       ],
       "poor": [
         {
           "text": "Steering Committee, typed as text",
-          "why": "A body the workspace holds is named once and referenced. Typed text gives it a second spelling no check can read."
+          "why": "Pick the body from the list instead of typing it."
         }
       ]
     },
     "/spec/mandate/-/issuedBy": {
-      "guide": "The body that issued it, as written, only when it is outside the workspace: a government, a regulator, a funder. A body the workspace holds goes in the issuer instead.",
+      "guide": "The outside body that issued it, such as a government, regulator or funder.",
       "good": [
         "Cooperative Board"
       ]
     },
     "/spec/notes": {
-      "guide": "Anything a reader needs that has no field of its own. Not a place for what a field already holds."
+      "guide": "Anything else people should know about this programme."
     },
     "/spec/programmes": {
-      "guide": "The programmes this one is a sub-programme of: a larger change it shares outcomes and benefits with. Leave empty for a programme that stands on its own."
+      "guide": "The larger programmes this one is part of. Leave empty if it is not part of another."
     },
     "/spec/portfolios": {
       "guide": "The portfolios that select and fund this programme, if any."
     },
     "/spec/escalationRoute": {
-      "guide": "The bodies and roles a matter goes up through when it cannot be settled at this level, in order, the nearest first, as the document's escalation route gives them. Governance bodies and roles in the workspace by reference; a body outside it, such as a government, as external. A body that only receives reports or notes changes is not on the route.",
+      "guide": "Who decides when the programme cannot, in order, nearest first. Leave out anyone who only receives reports.",
       "good": [
-        "[{\"kind\":\"Resource\",\"id\":\"project-board\"}, {\"kind\":\"Resource\",\"id\":\"steering-committee\"}, {\"external\":\"The national government\"}]"
+        "Project board, then steering committee, then the national government"
       ]
     }
   },
   "links": {
     "Project:/spec/alignment/programmes": {
       "ask": "Which projects does this programme coordinate? A project names the programmes it belongs to, so open each project and choose this programme under Part of.",
-      "ifNone": "A new programme often coordinates nothing yet, and that is not a reason to stop. Define the programme first, then start as a project each part that has an end and that one team can deliver, and have it name this programme."
+      "ifNone": "Add the programme first. Then add each part that has an end as a project, and choose this programme on it."
     },
     "Operation:/spec/programmes": {
-      "ask": "Which operations sit inside this programme? Business as usual is inside the programme boundary, and an operation names the programmes it is part of, so open the operation and choose this programme.",
-      "ifNone": "Define the programme first, then define each service that keeps running as an operation and have it name this programme. A service that runs without the programme stays outside it."
+      "ask": "Which ongoing services are part of this programme? Open each one and choose this programme.",
+      "ifNone": "Add the programme first. Then add each ongoing service as an operation and choose this programme on it."
     },
     "Programme:/spec/programmes": {
-      "ask": "Which sub-programmes does this programme coordinate? A sub-programme names the programmes it is part of, so open it and choose this programme.",
-      "ifNone": "Most programmes have none. A sub-programme shares this programme's outcomes and its theory of change; work that does not is better its own programme, or a portfolio's."
+      "ask": "Which smaller programmes are part of this one? Open each one and choose this programme.",
+      "ifNone": "A smaller programme belongs here only if it works towards the same outcomes. If not, make it a separate programme."
     }
   },
   "checks": {
-    "components-present": "Have at least one project, sub-programme or operation name this programme, from its own definition; the programme never lists them itself.",
-    "problems-stated": "State at least one problem the programme answers, with the change that answers it.",
-    "problems-groups": "Name the beneficiary groups each problem lands on.",
-    "problems-gaps": "Cite the gap each problem answers from the gap register, or define the gap first.",
-    "alignment-goals": "Align the programme to at least one outcome in the strategy.",
+    "components-present": "Open a project, programme or operation and choose this programme on it.",
+    "problems-stated": "State at least one problem the programme solves, and the change that solves it.",
+    "problems-groups": "Name the groups each problem affects.",
+    "problems-gaps": "Link each problem to the gap that shows it, or add the gap first.",
+    "alignment-goals": "Pick at least one outcome this programme works towards.",
     "alignment-kpis": "Name at least one indicator the programme is judged by.",
     "risks-mitigation": "Give every risk a mitigation.",
     "risks-owned": "Name the role that owns every high-impact risk.",
-    "risks-dependency-edges": "Say what every dependency waits on: a manifest, or an external party named as written.",
+    "risks-dependency-edges": "Say what each dependency waits on: something in Cartograph, or an outside party.",
     "risks-dependency-cycle": "Break the loop by removing or redirecting one of the dependencies, so nothing this programme waits on is waiting on it.",
-    "components-serve-outcomes": "Each project that names this programme aligns to one of its outcomes; if it serves none, it belongs elsewhere or the programme is missing an outcome.",
-    "aim-change": "State the change the programme exists to bring about, as how things will stand once it has worked.",
-    "pathway-steps": "Write the theory of change: each intermediate outcome, what must hold before it, and why that produces it. If the work does not need one another to bring about one change, it may be a portfolio.",
+    "components-serve-outcomes": "Each project in this programme should work towards one of its outcomes. If one does not, move it or add the missing outcome.",
+    "aim-change": "Say what will be true once the programme succeeds.",
+    "pathway-steps": "Add the steps from the work to the change: each outcome, what must be true first, and why it follows.",
     "governance-lead": "Name the team that leads the programme."
   }
 }

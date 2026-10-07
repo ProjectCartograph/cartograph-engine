@@ -10,32 +10,32 @@
     "performance data",
     "monitoring data"
   ],
-  "definition": "The actuals of one KPI: what it read, period by period, kept as one series beside the KPI rather than inside it. The KPI says what is measured, in what unit, which way is good and how often, and is written once; a reading says what the number was in one period, and a new one arrives every cycle. Keeping them apart means a new reading never looks like a change to the definition. Which periods exist is derived from the KPI's reporting cycle, never stored here, and a period is named by the month it ends. A period with no reading is one nobody has read yet, which is not a zero. Readings are not a KPI (the definition), not a baseline or a target (the two dated figures on the KPI), and not one file per reading: the series is one thing that grows.",
+  "definition": "The figures a KPI recorded, one for each period, such as each month or season. The KPI says what is measured; the readings say what the number was. A period with no reading has not been read yet; it is not zero. Readings are not the KPI, its baseline or its target.",
   "fields": {
     "/spec/kpi": {
-      "guide": "The KPI these are readings of. Its unit, direction and cycle are read from there and never restated here. One series per KPI.",
+      "guide": "The KPI these figures belong to.",
       "good": [
         "quality-pass-rate",
         "collection-turnaround"
       ]
     },
     "/metadata/name": {
-      "guide": "The KPI's name followed by readings, so the series is found beside its measure.",
+      "guide": "The KPI's name followed by the word readings.",
       "good": [
         "Quality pass rate readings"
       ],
       "poor": [
         {
           "text": "Quality pass rate 2026",
-          "why": "A series is not cut by year: it is one series for the life of the KPI."
+          "why": "Keep all years in one list; do not split it by year."
         }
       ]
     },
     "/spec/readings": {
-      "guide": "One entry for each period that has been read, in period order. One reading per period: two numbers for the same period is a disagreement, not data, and is refused on save. Leave out a period nobody has read; restate a number by changing its entry, not by adding a second one."
+      "guide": "One figure for each period that has been read. Skip periods nobody has read. To correct a figure, edit it; do not add a second one."
     },
     "/spec/readings/-/period": {
-      "guide": "The period the reading is for, as the month it ends (YYYY-MM), one of the periods the KPI's cycle lays out. On the seasonal cycle starting in September, periods end in November, February, May and August.",
+      "guide": "The month the period ends, as YYYY-MM. For a season from December to February, enter February.",
       "good": [
         "2026-02, for the season from December to February",
         "2026-03, for March on the monthly cycle"
@@ -43,16 +43,16 @@
       "poor": [
         {
           "text": "2025-12, for the season from December to February",
-          "why": "The month the period starts: a period is named by the month it ends, when its number exists."
+          "why": "That is the month the period starts. Use the month it ends."
         },
         {
           "text": "2026-02, entered a second time with a corrected value",
-          "why": "Two readings for one period are refused: correct the existing entry, and mark it provisional while it may still change."
+          "why": "Each period has one figure. Correct the existing one, and mark it provisional if it may still change."
         }
       ]
     },
     "/spec/readings/-/value": {
-      "guide": "The number read for the period, in the unit the KPI names, as a plain number.",
+      "guide": "The figure for this period, as a plain number.",
       "good": [
         "64.5",
         "33"
@@ -60,30 +60,30 @@
       "poor": [
         {
           "text": "64.5%",
-          "why": "The unit lives on the KPI, in one place; a reading is the number alone."
+          "why": "Leave out the unit; the KPI already has it."
         },
         {
           "text": "0, for a period nobody collected",
-          "why": "Zero is a reading. Leave the period out, and explain in the note of the next reading if the missing period needs saying."
+          "why": "Zero is a real figure. Leave out a period with no figure."
         }
       ]
     },
     "/spec/readings/-/provisional": {
-      "guide": "Mark the reading provisional while the number may still be restated, such as when late forms are still being transcribed. Clear the mark once it is final."
+      "guide": "Mark this if the figure may still change. Clear it once the figure is final."
     },
     "/spec/readings/-/note": {
-      "guide": "Why this number is what it is, when that needs saying: a change of method, a season unlike the others, a period that was only partly collected.",
+      "guide": "Anything that explains this figure, such as a change in how it was counted or a period only partly collected.",
       "good": [
         "The wet season brought more bruising than the standard allows for; the method did not change."
       ],
       "poor": [
         {
           "text": "Provisional",
-          "why": "That is the provisional mark's job, which a chart can show and a roll-up can act on."
+          "why": "Use the provisional mark instead."
         },
         {
           "text": "Bad season.",
-          "why": "Says nothing a reader can use: say what made it different and whether the method changed."
+          "why": "Say what made it different and whether the way it was counted changed."
         }
       ]
     }

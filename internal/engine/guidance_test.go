@@ -31,7 +31,7 @@ func TestTheGuideForAnOutcome(t *testing.T) {
 			fields[f.Path] = true
 			switch f.Path {
 			case "/spec/objective":
-				if !strings.Contains(f.Guide, "state") || len(f.Poor) == 0 || !strings.Contains(f.Poor[0].Text, "Reduce delivery time") {
+				if !strings.Contains(f.Guide, "true") || len(f.Poor) == 0 || !strings.Contains(f.Poor[0].Text, "Reduce delivery time") {
 					t.Errorf("the outcome statement's words: %+v", f)
 				}
 			case "/spec/parent":

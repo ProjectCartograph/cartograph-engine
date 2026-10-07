@@ -13,13 +13,13 @@
     "shortfall",
     "pain point"
   ],
-  "definition": "A shortfall in results: the distance between a current state (what is) and a desired state (what should be), measured against the purpose and the goals above it (Kaufman's needs assessment). A need is a gap in results, not in resources or methods, and it is named as a noun, not a verb. A gap closes into one or more outcomes, named on the gap's side, since a goal never points below itself. Where a KPI measures it, the KPI's dated baseline and target are its two states and are not restated. It lists the segments it was observed in, so work that cites it can say which part it addresses and the register can show which part nobody is working on. It is written once in the gap register and cited by the problems of the projects and programmes that address it. A gap is not a problem (what the shortfall does to a named group, in one project, programme or operation, which cites the gap), not an outcome (the state that will be true once it closes), not a missing resource or a method (no scanners, train the staff), and not a KPI (the measure it may be read on).",
+  "definition": "A gap is the difference between how things are now and how they should be, in results. It names a result that falls short, not a missing tool, budget or method. A KPI can track it: its baseline is how things are now and its target is how they should be. A gap lists where it was seen, such as which regions. Projects and programmes that work on it name it in their problems, and one or more outcomes say what will be true once it is closed. A gap is not a problem (what the gap does to a group of people), not an outcome, not a missing resource, and not a KPI.",
   "cues": {
     "gap": "a problem today compared with where it should be"
   },
   "fields": {
     "/metadata/name": {
-      "guide": "A few words naming the shortfall as a reader would scan it in the register: a noun phrase or a short statement of what is wrong, never the work that would fix it.",
+      "guide": "A short name for what is wrong, not the work that would fix it.",
       "good": [
         "Faults are found after dispatch",
         "No single quality standard"
@@ -27,7 +27,7 @@
       "poor": [
         {
           "text": "Improve intake checks",
-          "why": "A verb and a method: it names the remedy, not the shortfall in results."
+          "why": "Names the fix, not what is wrong."
         },
         {
           "text": "Quality",
@@ -40,23 +40,23 @@
       ]
     },
     "/spec/measure": {
-      "guide": "The KPI whose baseline and target already are this gap's two states, when one tracks it. Choose it first: with a measure, the current and desired states are read from the KPI and need not be written. Leave it empty when no KPI tracks the shortfall yet; the gap is then an observation, and that is said, not hidden with an invented number.",
+      "guide": "The KPI that tracks this gap. Its baseline is how things are now and its target is how they should be. Leave it empty if no KPI tracks it yet; do not make up a number.",
       "good": [
         "post-harvest-loss-rate, for the gap Too much harvest is lost after picking: its baseline of 18 percent is where things are, its target of 9 percent is where they should be."
       ],
       "poor": [
         {
           "text": "member-season-earnings, for the gap Faults are found after dispatch",
-          "why": "Earnings move for many reasons; the measure of a gap is the KPI whose baseline and target are this shortfall's two states, not one it might eventually touch."
+          "why": "Earnings change for many reasons, so this KPI does not track this gap."
         },
         {
           "text": "quality-pass-rate, while also writing 62 and 75 into the current and desired states",
-          "why": "The numbers then live in two places and can come to disagree; with a measure, the KPI holds them."
+          "why": "The KPI already has these numbers. Do not write them twice."
         }
       ]
     },
     "/spec/current": {
-      "guide": "Where things are now, in one short sentence, as a result someone could observe: the what is half of the gap. When a KPI measures the gap, its baseline is the current state and this may be left empty.",
+      "guide": "How things are now, as something you can see happening. Leave it empty if a KPI tracks this gap.",
       "good": [
         "One fault in five is found at intake; buyers find the rest.",
         "Each depot checks against its own checklist."
@@ -68,12 +68,12 @@
         },
         {
           "text": "Depots lack trained staff and scanners.",
-          "why": "Missing means, not a result: say the result they produce, such as faults reaching buyers."
+          "why": "Names what is missing, not the result. Say what happens, such as faults reaching buyers."
         }
       ]
     },
     "/spec/desired": {
-      "guide": "Where things should be, in one short sentence, as a state that will be true: the what should be half. It may be an ideal that a dated target approaches over several periods. When a KPI measures the gap, its target is the desired state.",
+      "guide": "How things should be, as something you will be able to see. Leave it empty if a KPI tracks this gap.",
       "good": [
         "Most faults are found at intake, before produce leaves the depot.",
         "Every depot checks against one published standard."
@@ -81,11 +81,11 @@
       "poor": [
         {
           "text": "Train every depot supervisor in the standard.",
-          "why": "An action, which is a method: say the result that would be true once the training worked."
+          "why": "This is something to do. Say what would be true once it worked."
         },
         {
           "text": "The current state is fixed.",
-          "why": "Says nothing a reader can check: state the result itself."
+          "why": "Does not say how things should be. Describe it."
         }
       ]
     },
@@ -96,7 +96,7 @@
       ]
     },
     "/spec/outcomes": {
-      "guide": "The outcome or outcomes that would be true once this gap is closed: where the desired state is reached. Outcome-level goals only. This is how the gap connects to the strategy above it; one outcome can close several gaps. When no outcome fits, define it first under its objective.",
+      "guide": "The outcomes that will be true once this gap is closed. If none fits, add one under its objective first.",
       "good": [
         "faults-found-before-dispatch, for the gap Faults are found after dispatch",
         "depot-staff-apply-the-standard-alike, for the gap No single quality standard"
@@ -104,16 +104,16 @@
       "poor": [
         {
           "text": "raise-produce-quality",
-          "why": "A goal, not an outcome: a gap closes into a changed state, which sits two levels below it."
+          "why": "A goal, not an outcome. Pick an outcome."
         },
         {
           "text": "produce-meets-one-standard",
-          "why": "An objective, an aim to act on; name the outcome under it that says what will be true."
+          "why": "An objective, not an outcome. Pick the outcome under it that says what will be true."
         }
       ]
     },
     "/spec/segments": {
-      "guide": "The slices the shortfall was observed in, as declared Segments: the parts the evidence covers, at the level work will be divided by, so a project can address one of them and be recorded as addressing that part and no more. Name the values (the northern region, the southern region), not only the dimension. These say where the shortfall was observed; who the work is for belongs to the problem's beneficiary groups.",
+      "guide": "Where the gap was seen, such as which regions or product lines. Pick the specific ones, not just the category.",
       "good": [
         "northern-region and southern-region, for a review that found faults reaching buyers in both",
         "fresh-produce and dried-produce, as values of product-line"
@@ -121,16 +121,16 @@
       "poor": [
         {
           "text": "region",
-          "why": "Only the dimension: work could then claim every region or none. Name the regions the evidence covers."
+          "why": "Names the category, not which regions. Pick the regions where the gap was seen."
         },
         {
           "text": "delivering-members",
-          "why": "A beneficiary group, a group of people the work is for, not a slice the shortfall was observed in."
+          "why": "A group of people the work is for, not a part where the gap was seen."
         }
       ]
     },
     "/spec/source": {
-      "guide": "Where the finding was written down, precisely enough that someone else could find the page: the document and its section. Provenance, not a link.",
+      "guide": "The document and section where this gap was written down.",
       "good": [
         "Quality review of the 2025 spring season, section 2",
         "Quality review of the 2025 spring season, section 4"
@@ -142,12 +142,12 @@
         },
         {
           "text": "Depot supervisors",
-          "why": "A role, not a record: name the document that holds what they reported."
+          "why": "A role, not a document. Name the document with what they reported."
         }
       ]
     },
     "/spec/statement": {
-      "guide": "The finding in the source's own words, quoted as written. Never edited to fit the register: where a quote covers more than one segment, the quote stands and the segments carry the precision.",
+      "guide": "The finding word for word from the source. Do not change it.",
       "good": [
         "Four in five quality faults are found by a buyer rather than at intake.",
         "Each depot keeps its own checklist and none of them agree."
@@ -159,43 +159,43 @@
         },
         {
           "text": "Four in five quality faults in the northern region are found by a buyer.",
-          "why": "The quote was edited to fit one segment; quote it as written and name the segment in Segments."
+          "why": "The quote was changed. Copy it word for word."
         }
       ]
     },
     "/spec/note": {
-      "guide": "Anything the quote cannot carry without ceasing to be the source's own words: how it was counted, or why it cannot be watched yet.",
+      "guide": "Anything else to know about the finding, such as how it was counted.",
       "good": [
         "Counted by hand during the review; no system holds the checklists, so this cannot be watched yet."
       ],
       "poor": [
         {
           "text": "The quality check rollout is fixing this.",
-          "why": "Work addressing the gap is recorded on the work's side, where its problem cites the gap, so the register can count it."
+          "why": "Record the work on the project or programme instead, by naming this gap in its problem."
         }
       ]
     },
     "/spec/dataSources": {
-      "guide": "Every data source this gap can be watched in, when it can be: name each one the evidence comes from, since a finding is often read from several at once. Leave it empty for a finding nothing records live."
+      "guide": "Where the data on this gap comes from. Leave it empty if nothing records it."
     }
   },
   "links": {
     "Project:/spec/summary/problems/-/gaps/-/gap": {
-      "ask": "Which project addresses this gap, and which of its segments does that work reach? The project's problem cites the gap and names each segment it reaches, all of them when it reaches every one; it names none only when the gap names none.",
-      "ifNone": "Nothing has to be defined first: a gap nobody addresses is the finding a register exists to show. When a project takes it on, its problem cites this gap and names the segments it reaches."
+      "ask": "Which project works on this gap, and in which parts? Its problem names this gap and the parts it covers.",
+      "ifNone": "Nothing to add now. When a project takes on this gap, name the gap in its problem."
     },
     "Programme:/spec/problems/-/gaps/-/gap": {
-      "ask": "Which programme answers this gap, and which of its segments does it reach? The programme's problem cites the gap and names each segment it reaches, all of them when it reaches every one; it names none only when the gap names none.",
-      "ifNone": "Nothing has to be defined first: leave the gap unaddressed and the check says so. When a programme takes it on, its problem cites this gap and names the segments it reaches."
+      "ask": "Which programme works on this gap, and in which parts? Its problem names this gap and the parts it covers.",
+      "ifNone": "Nothing to add now. When a programme takes on this gap, name the gap in its problem."
     }
   },
   "checks": {
-    "gap-states": "State both the current and the desired state, or choose the KPI whose baseline and target are them.",
+    "gap-states": "Say how things are now and how they should be, or pick a KPI that tracks this gap.",
     "gap-outcome": "Name the outcome that would be true once the gap is closed, defining it under its objective first if there is none.",
-    "gap-measured": "Choose the KPI that tracks this shortfall. Until one exists, state the current and desired states in words and name the source: the gap is then an observation, and this check is met.",
+    "gap-measured": "Pick the KPI that tracks this gap. If there is none yet, describe how things are now and how they should be, and name the source.",
     "gap-source": "Name the document and section the finding was written down in.",
-    "gap-segments": "Name the segments the evidence covers, as values rather than only their dimension.",
-    "gap-covered": "Have the work that addresses this gap cite it and name the segments it reaches, so no segment is left with nobody and no citation hides one by claiming the whole.",
+    "gap-segments": "Name the specific parts where the gap was seen, such as which regions.",
+    "gap-covered": "Name this gap in the problem of each project or programme that works on it, with the parts it covers.",
     "gap-results": "Say which result falls short, not which resource or method is missing."
   },
   "judgements": {

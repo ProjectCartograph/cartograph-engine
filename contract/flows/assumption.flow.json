@@ -11,7 +11,7 @@
       {
         "key": "statement",
         "title": "Assumption",
-        "guide": "What has to be true for a step of the reasoning to hold, and which step it conditions.",
+        "guide": "Something you expect to be true but have not proved, and the part of the plan that depends on it.",
         "fields": [
           {
             "path": "/metadata/name",
@@ -36,7 +36,7 @@
       {
         "key": "consequence",
         "title": "If false",
-        "guide": "What happens to the reasoning if this does not hold.",
+        "guide": "What goes wrong if this turns out to be false.",
         "fields": [
           {
             "path": "/spec/ifFalse",
@@ -47,7 +47,7 @@
       {
         "key": "confidence",
         "title": "Confidence",
-        "guide": "How sure anybody is that it holds.",
+        "guide": "How sure you are that it is true.",
         "fields": [
           {
             "path": "/spec/confidence",
@@ -57,8 +57,8 @@
       },
       {
         "key": "verification",
-        "title": "Means of verification",
-        "guide": "How anybody would find out whether it holds.",
+        "title": "How to check",
+        "guide": "How you would find out whether it is true.",
         "fields": [
           {
             "path": "/spec/testedBy",

@@ -11,7 +11,7 @@
       {
         "key": "definition",
         "title": "Definition",
-        "guide": "Who the work is for, defined once so every project names the same group.",
+        "guide": "The people the work is for.",
         "fields": [
           {
             "path": "/metadata/name",
@@ -20,7 +20,7 @@
           {
             "path": "/spec/description",
             "control": "sentence",
-            "hint": "Who is in this group, clearly enough that someone else would agree."
+            "hint": "Who belongs to this group and who does not."
           },
           {
             "path": "/spec/source",

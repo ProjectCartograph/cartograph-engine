@@ -20,7 +20,7 @@
           {
             "path": "/spec/definition",
             "control": "sentence",
-            "hint": "Exactly what gets counted, so two people would get the same number."
+            "hint": "Exactly what gets counted."
           },
           {
             "path": "/spec/unit",
@@ -36,12 +36,12 @@
       {
         "key": "result",
         "title": "Result",
-        "guide": "The aims this KPI tells you about, and where it sits in the results framework.",
+        "guide": "The aims this KPI measures progress on.",
         "fields": [
           {
             "path": "/spec/goals",
             "control": "references",
-            "hint": "The aims this KPI tells you about, most often outcomes.",
+            "hint": "The aims this KPI measures progress on.",
             "checks": [
               "kpi-aligned"
             ]
@@ -65,12 +65,12 @@
       {
         "key": "baseline-target",
         "title": "Baseline and target",
-        "guide": "Where it stands today and where it needs to get to, each with its month.",
+        "guide": "The value today and the value to reach, each with its month.",
         "fields": [
           {
             "path": "/spec/baseline/value",
             "control": "number",
-            "hint": "Where it stands today.",
+            "hint": "The value today.",
             "checks": [
               "kpi-baseline"
             ]
@@ -110,18 +110,18 @@
       },
       {
         "key": "verification",
-        "title": "Means of verification",
+        "title": "How to check",
         "guide": "Where the number is read from, and how often.",
         "fields": [
           {
             "path": "/spec/sources",
             "control": "reference",
-            "hint": "Which system or record this number is read from, so anyone can go and check it."
+            "hint": "The system or record this number comes from."
           },
           {
             "path": "/spec/cycle",
             "control": "reference",
-            "hint": "How often it is read. This sets the periods its readings are recorded for.",
+            "hint": "How often it is read, which sets the periods you record readings for.",
             "checks": [
               "kpi-cycle"
             ]
@@ -130,7 +130,7 @@
             "path": "/spec/owner",
             "control": "reference",
             "title": "Owned by",
-            "hint": "The role that answers for the indicator."
+            "hint": "The role responsible for this KPI."
           }
         ],
         "links": [
@@ -143,8 +143,8 @@
       },
       {
         "key": "disaggregation",
-        "title": "Disaggregation",
-        "guide": "The segments this number is broken down by, if any.",
+        "title": "Breakdown",
+        "guide": "How this number is split, such as by region, if at all.",
         "optional": true,
         "fields": [
           {

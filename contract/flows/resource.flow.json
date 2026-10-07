@@ -11,7 +11,7 @@
       {
         "key": "definition",
         "title": "Definition",
-        "guide": "What the work can draw on, named as a role or a thing, never a person.",
+        "guide": "A role, team, outside party, system or facility the work can draw on. Name a role, not a person.",
         "fields": [
           {
             "path": "/metadata/name",

@@ -32,7 +32,7 @@
             "control": "list",
             "key": "name",
             "title": "Named periods",
-            "hint": "Instead of equal periods: terms that repeat each year, or survey waves dated once. Each by the month it ends.",
+            "hint": "Periods with their own names, such as terms each year or one-off survey rounds. Give each the month it ends.",
             "fields": [
               {
                 "path": "/name",

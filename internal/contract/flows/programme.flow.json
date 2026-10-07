@@ -11,7 +11,7 @@
       {
         "key": "aim",
         "title": "Aim",
-        "guide": "The change this programme exists to bring about, and who is better off for it.",
+        "guide": "The change this programme makes, and who gains from it.",
         "fields": [
           {
             "path": "/metadata/name",
@@ -21,13 +21,13 @@
             "path": "/spec/aim/change",
             "control": "sentence",
             "title": "Intended change",
-            "hint": "How things will be once this has worked."
+            "hint": "How things will be after the change."
           },
           {
             "path": "/spec/aim/gain",
             "control": "sentence",
             "title": "Benefit",
-            "hint": "One sentence about the people who gain."
+            "hint": "What the people who gain will be able to do that they cannot do now."
           },
           {
             "path": "/spec/source",
@@ -38,7 +38,7 @@
       {
         "key": "problems",
         "title": "Problems",
-        "guide": "What is wrong today that the change answers, who feels it, and the evidence for it.",
+        "guide": "What is going wrong now, for whom, and the evidence for it.",
         "fields": [
           {
             "path": "/spec/problems",
@@ -134,7 +134,7 @@
       {
         "key": "components",
         "title": "Components",
-        "guide": "The projects, sub-programmes and operations the programme coordinates, each of which names it.",
+        "guide": "The projects, smaller programmes and services this programme coordinates.",
         "fields": [],
         "links": [
           {
@@ -159,8 +159,8 @@
       },
       {
         "key": "pathway",
-        "title": "Theory of change",
-        "guide": "How the change is expected to happen: each outcome, what must hold before it, and why.",
+        "title": "How the change happens",
+        "guide": "How the change is expected to happen: each outcome, what must be true first, and why.",
         "fields": [
           {
             "path": "/spec/pathway",
@@ -321,13 +321,13 @@
                 "path": "/issuer",
                 "control": "reference",
                 "title": "Issued by",
-                "hint": "A governance body or a role in the catalogue."
+                "hint": "A board, committee or role already in Cartograph."
               },
               {
                 "path": "/issuedBy",
                 "control": "text",
-                "title": "Or, outside the workspace",
-                "hint": "A body Cartograph does not hold, such as a regulator."
+                "title": "Or someone not in Cartograph",
+                "hint": "An organisation not listed in Cartograph, such as a regulator."
               }
             ]
           },
@@ -335,7 +335,7 @@
             "path": "/spec/escalationRoute",
             "control": "references",
             "title": "Escalation route",
-            "hint": "Where a matter goes when it cannot be settled here, nearest first."
+            "hint": "Who decides when it cannot be decided here, closest first."
           },
           {
             "path": "/spec/notes",
@@ -359,17 +359,17 @@
         "kind": "Goal",
         "level": "outcome",
         "needed": true,
-        "guide": "The outcomes it is judged on, and the steps of its theory of change."
+        "guide": "The outcomes it aims for, and the steps that lead to them."
       },
       {
         "kind": "Segment",
         "needed": false,
-        "guide": "The slices its problems are seen in, when a gap names them."
+        "guide": "The places or groups where its problems show up, such as a region."
       },
       {
         "kind": "BeneficiaryGroup",
         "needed": false,
-        "guide": "Who its problems land on."
+        "guide": "Who its problems affect."
       },
       {
         "kind": "KPI",
@@ -379,12 +379,12 @@
       {
         "kind": "Gap",
         "needed": false,
-        "guide": "The shortfalls its problems answer."
+        "guide": "The gaps behind its problems."
       },
       {
         "kind": "Assumption",
         "needed": false,
-        "guide": "What its theory of change rests on but is not proved."
+        "guide": "What it assumes to be true but has not proved."
       },
       {
         "kind": "Portfolio",

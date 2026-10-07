@@ -14,7 +14,7 @@
     "intended outcome",
     "impact"
   ],
-  "definition": "An aim in the organisation's strategy, at one of three levels. A goal is a broad direction, never finished: raise produce quality. An objective is one concrete change made for a goal, done once it is made: hold every depot to one standard. An outcome is not something to do but what is then true of people or things: depot staff apply the standard alike. The strategy reads top-down from the purpose (the vision and mission, kept as the Purpose with id default): goals under the purpose, objectives under goals, outcomes under objectives. A gap is measured against the purpose and closes into an outcome. Numbers belong to the measures (key results and aligned KPIs), never to the statement. A goal is not a project (work that ends), not an operation (work that continues), and not a KPI (a measure).",
+  "definition": "An aim is something your organisation sets out to achieve, at one of three levels. A goal is a broad direction you keep working towards, such as raise produce quality. An objective is one concrete change made for a goal, such as hold every depot to one standard; it is done once it is made. An outcome is what is then true of people or things, such as depot staff apply the standard alike. Goals sit under your purpose, objectives under goals, and outcomes under objectives. An outcome closes a gap: the difference between how things are and how they should be. Numbers go in the measures, not in the aim itself. An aim is not a project (work that ends), an operation (work that continues) or a KPI (a number you track).",
   "levels": {
     "goal": "A broad direction your organisation keeps working towards.",
     "objective": "One concrete change your organisation sets out to make.",
@@ -28,18 +28,18 @@
   "steps": {},
   "fields": {
     "/spec/level": {
-      "guide": "Which rung of the strategy this is: goal, objective or outcome. Decide it first: it sets what the statement must say and what the aim sits under."
+      "guide": "Goal, objective or outcome. Choose this first: it decides what the aim says and what it sits under."
     },
     "/spec/parent": {
-      "guide": "The aim this one sits under: an objective sits under a goal, an outcome under an objective. A goal has no parent; it sits under the purpose. Choose from the existing tree; when none fits, define the parent first, top-down.",
+      "guide": "The aim this one belongs to: a goal for an objective, an objective for an outcome. A goal sits directly under your purpose. If the aim you need does not exist yet, add it first.",
       "levels": {
         "outcome": {
-          "guide": "The objective this outcome is the changed state of. Read the objectives' statements and pick the one this state would show has been met."
+          "guide": "The objective that is met once this outcome is true."
         }
       }
     },
     "/metadata/name": {
-      "guide": "A short title for the aim, as a reader would scan it in the tree. For an outcome, the state in a few words.",
+      "guide": "A short name for the aim. For an outcome, say what will be true in a few words.",
       "good": [
         "Season results reach members on time",
         "Faults found before dispatch"
@@ -52,10 +52,10 @@
       ]
     },
     "/spec/objective": {
-      "guide": "The aim in one sentence. A goal or objective starts with an action and says the result it is for; an outcome says what will be true. No numbers: they go in the measures. One aim per sentence.",
+      "guide": "The aim in one sentence. For a goal or objective, say what you will do and the result it is for. For an outcome, say what will be true. Leave numbers out.",
       "levels": {
         "goal": {
-          "guide": "An action and the long-term result it is for, broad enough to hold several objectives.",
+          "guide": "What you will do and the long-term result it is for.",
           "good": [
             "Raise what a member earns from a season of deliveries, by selling more of what they grow at a better price."
           ],
@@ -71,7 +71,7 @@
           ]
         },
         "objective": {
-          "guide": "An action and the specific result it is for, narrow enough to be met within the goal's horizon.",
+          "guide": "What you will do and the specific result it is for, reachable before the goal's end date.",
           "good": [
             "Hold every depot to one quality standard, so a buyer gets the same quality from any of them."
           ],
@@ -87,7 +87,7 @@
           ]
         },
         "outcome": {
-          "guide": "The state that will be true: what a person would observe, in the present tense, once the objective is met. Not an action, not the work that leads there.",
+          "guide": "What people will see is true once the objective is met, in the present tense. Not an action.",
           "good": [
             "A fault is caught at intake, where it can still be put right, instead of at the buyer, where it cannot.",
             "Produce spends its first day in a depot, not in a field or on a truck."
@@ -95,7 +95,7 @@
           "poor": [
             {
               "text": "Reduce delivery time to customers so produce arrives fresh and service is dependable.",
-              "why": "An action, not a state, and two results bundled into one: say what will be true (produce arrives fresh), and make dependable service its own outcome if it is one."
+              "why": "This is an action with two results. Say what will be true, such as produce arrives fresh, and make dependable service its own outcome."
             },
             {
               "text": "Deliver 90% of produce within 24 hours.",
@@ -106,10 +106,10 @@
       }
     },
     "/spec/statedAs": {
-      "guide": "The aim exactly as a published plan words it, unaltered, when it comes from one. Leave it empty when the aim is the organisation's own."
+      "guide": "The aim word for word from the published plan it comes from. Leave it empty if the aim is your own."
     },
     "/spec/source": {
-      "guide": "Where the plan's wording was taken from, precisely enough to find again: the document, and the section or page.",
+      "guide": "The document and the section or page the wording comes from.",
       "good": [
         "Quality review of the 2025 spring season, section 4"
       ]
@@ -133,16 +133,16 @@
       "guide": "What sort of number this is: percent, count, money, ratio or duration. A count, money or duration needs a unit; a percent or ratio takes none."
     },
     "/spec/keyResults/-/unit": {
-      "guide": "The unit a count, money or duration is in, such as lots or days; left out for a percent or a ratio."
+      "guide": "The unit, such as lots or days. Leave it empty for a percent or a ratio."
     },
     "/spec/keyResults/-/baseline": {
-      "guide": "Today's figure and when it was taken, from a source the person can name. If it is not known yet, say why; never invent one."
+      "guide": "Today's figure and the date it was measured. If you do not know it yet, say why; do not guess."
     },
     "/spec/keyResults/-/target": {
-      "guide": "The figure to reach and the month to reach it by, inside the aim's horizon. It moves the way the direction says."
+      "guide": "The figure to reach and the month to reach it by, within the aim's dates."
     },
     "/spec/owner": {
-      "guide": "The role accountable for the aim, from the Resource catalogue: a role, never a person. When no role fits, define the role first.",
+      "guide": "The role responsible for this aim, not a named person. If the role does not exist yet, add it first.",
       "good": [
         "operations-lead",
         "quality-reviewer"
@@ -150,54 +150,54 @@
       "poor": [
         {
           "text": "Ada Okafor",
-          "why": "A person, not a role: Cartograph names roles, and people hold them."
+          "why": "A person, not a role. Pick the role this person fills."
         }
       ]
     },
     "/spec/horizon": {
-      "guide": "When work on this aim starts and when it should be reached, as a year or a year and month. An objective or outcome left empty uses the dates of the aim above it, and one with its own dates sits inside them."
+      "guide": "When work on this aim starts and when it should be reached."
     },
     "/spec/whyItMatters": {
-      "guide": "Why this aim, in one sentence a reader would accept: what it changes for whom. It is what makes the aim relevant under its parent.",
+      "guide": "What this aim changes, and for whom.",
       "good": [
         "An inconsistent supplier is priced as its worst delivery, not its average one."
       ],
       "poor": [
         {
           "text": "It is important.",
-          "why": "Says nothing a reader can check."
+          "why": "Does not say what changes or for whom."
         }
       ]
     },
     "/spec/contributesTo": {
-      "guide": "Other objectives this outcome also moves, besides its parent, each with the reason. Only an outcome has them, and each points up at an objective or a goal other than its parent."
+      "guide": "Other goals or objectives this outcome also helps, and how."
     }
   },
   "links": {
     "Goal:/spec/parent": {
-      "ask": "What will show this aim is met? A goal is met through the objectives under it; an objective through the outcomes under it, each a state that will be true and closes a gap. Look at the existing ones first: one may already belong here.",
-      "ifNone": "Define them with the person, top-down, in the same proposal: under a goal, its objectives; under an objective, its outcomes, each written as a state, with its measures and the gap it closes (and the gap's KPI, if there is none)."
+      "ask": "What will show this aim is met? For a goal, its objectives; for an objective, its outcomes. Check the existing ones first.",
+      "ifNone": "Add them now: objectives under a goal, or outcomes under an objective. Write each outcome as what will be true, with its measures and the gap it closes."
     },
     "Gap:/spec/outcomes": {
-      "ask": "Which gap does this outcome close? A gap is a shortfall measured against the purpose: where things are now, where they should be, and on what measure.",
-      "ifNone": "Define the gap next, once this outcome is written: its current state, its desired state, the KPI that measures it (with a dated baseline and target), the segments it was observed in, and the source of the evidence. The gap names this outcome as it is written; the outcome is not opened again."
+      "ask": "Which gap does this outcome close? A gap is the difference between how things are now and how they should be.",
+      "ifNone": "Add the gap after you write this outcome: how things are now, how they should be, the KPI that tracks it, where it was seen, and where the evidence comes from."
     }
   },
   "checks": {
-    "smart-specific": "Write the statement for the level, with the numbers left to the measures.",
-    "smart-measurable": "Add a key result with a target, or align a KPI with a target to the aim.",
+    "smart-specific": "Write the aim in words, without numbers.",
+    "smart-measurable": "Add a key result with a target, or link a KPI that has one.",
     "smart-attainable": "Give every measure today's figure, dated before its target, moving the way its direction says.",
     "smart-relevant": "Place the aim under the right parent and say why it matters.",
     "smart-time-bound": "Date every target, inside the horizon.",
     "owner": "Name the accountable role.",
-    "horizon": "Give the period, inside the one above it.",
-    "closes-gap": "Write the gap this outcome closes next, naming this outcome, or name it on an existing gap.",
+    "horizon": "Give start and end dates within the dates of the aim this one belongs to.",
+    "closes-gap": "Name the gap this outcome closes, or add that gap.",
     "key-results-count": "Keep one to three key results; more blur the focus.",
-    "contributes-to": "Point each link at a higher objective other than the parent, with a reason.",
+    "contributes-to": "Link each one to a goal or objective other than the one this outcome sits under, and say how it helps.",
     "has-objectives": "Define the objectives under this goal, or place existing ones under it.",
-    "has-outcomes": "Define the outcomes under this objective, each a state that closes a gap, or place existing ones under it.",
-    "outcomes-close-gaps": "For each outcome under it, name on the gap the outcome closes, or define that gap: its current and desired state, its KPI, and the segments it was observed in.",
-    "statement-state": "Write it as a state: what a person would observe once it is met.",
+    "has-outcomes": "Add outcomes under this objective, each saying what will be true, or move existing ones under it.",
+    "outcomes-close-gaps": "For each outcome, name the gap it closes, or add that gap.",
+    "statement-state": "Say what will be true once it is met, not what to do.",
     "placed": "Place it under the aim it serves: an objective under a goal, an outcome under an objective. Define that first if it does not exist yet."
   },
   "judgements": {
@@ -215,7 +215,7 @@
         "label": "an action or task to carry out"
       },
       "pass": "Written as a state that will be true.",
-      "fail": "Reads as an action, not a state: say what will be true once it is met.",
+      "fail": "This reads as something to do. Say what will be true once it is met.",
       "opens": [
         "achieve",
         "add",

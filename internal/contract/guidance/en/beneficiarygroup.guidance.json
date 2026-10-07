@@ -11,11 +11,11 @@
     "client group",
     "stakeholder group served"
   ],
-  "definition": "A beneficiary group is a group of people a project, programme or operation serves: who perceives the benefit when it comes. Cartograph has no Benefit kind; a goal and its key results say what improves, an indicator says how it is measured, and a beneficiary group says who perceives it (TAXONOMY.md D4). It is defined once in the register so every project and programme that names it means the same people. It is qualitative: it says who, and no count belongs in it. It is not a segment (a slice a gap's evidence was observed in), not a stakeholder (a party with an interest, held on a stakeholder map), not a person, and not the team or role that does the work (that is a Team or a Resource).",
+  "definition": "A group of people your projects, programmes or operations are meant to help. It says who they are, not how many. It is not a segment (a part you compare numbers across), not a stakeholder (someone with a say in the work), not a single person, and not the team or role doing the work.",
   "steps": {},
   "fields": {
     "/metadata/name": {
-      "guide": "A short name for the group, as people in the organisation say it, plural and specific enough to tell it from its neighbours.",
+      "guide": "A short plural name for the group, in the words your organisation uses.",
       "good": [
         "Delivering members",
         "Retail partners",
@@ -24,20 +24,20 @@
       "poor": [
         {
           "text": "Members (about 1,200)",
-          "why": "A count does not belong to the group: it says who, and any figure is read from its source."
+          "why": "Leave the count out. The name says who; numbers come from a data source."
         },
         {
           "text": "Better prices for members",
-          "why": "A benefit, not a group: the improvement is a goal or a key result, and the group is who perceives it."
+          "why": "A benefit, not a group. Name the people who get it."
         },
         {
           "text": "Field officer",
-          "why": "A role that does the work, not people the work is for: it belongs in the Resource catalogue."
+          "why": "A role that does the work, not people the work helps. Add it as a resource."
         }
       ]
     },
     "/spec/description": {
-      "guide": "Who is in the group and who is not, in one sentence, clearly enough that two people would sort the same person the same way. Up to 240 characters. No numbers.",
+      "guide": "Who is in the group and who is not, in one sentence without numbers.",
       "good": [
         "Members who deliver produce to a depot during the season.",
         "Workers hired by members for harvest and delivery during the peak months."
@@ -54,7 +54,7 @@
       ]
     },
     "/spec/source": {
-      "guide": "The data source that lists the people in this group, from the register of data sources, so anyone can check who is in it. Optional: leave it empty when no source lists the group, rather than pick one that does not.",
+      "guide": "The data source that lists the people in this group. Leave it empty if none does.",
       "good": [
         "member-register",
         "member-survey"
@@ -62,19 +62,19 @@
       "poor": [
         {
           "text": "collection-log",
-          "why": "It records collections, not who belongs to the group: a source that mentions some members is not one that lists them."
+          "why": "It records collections, not who is in the group."
         }
       ]
     }
   },
   "links": {
     "Project:/spec/summary/beneficiaries/-/group": {
-      "ask": "Which projects are for this group? A project names the groups it is for on its Beneficiaries step.",
-      "ifNone": "Leave it. A group can be defined before any work names it; a project names it when it is for them."
+      "ask": "Which projects are meant to help this group?",
+      "ifNone": "None yet is fine. A project names this group when it is meant to help them."
     },
     "Programme:/spec/problems/-/groups/-": {
-      "ask": "Which programme problem lands on this group? A programme names, on each problem, the groups who feel it.",
-      "ifNone": "Leave it. A programme names the group on its problem when the problem lands on these people."
+      "ask": "Which programme problems affect this group?",
+      "ifNone": "None yet is fine. A programme names this group on each problem that affects them."
     }
   }
 }

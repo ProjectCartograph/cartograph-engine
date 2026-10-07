@@ -9,14 +9,14 @@
     "function",
     "ongoing operation"
   ],
-  "definition": "An operation is continuing work with no end date: a service the organisation runs day in and day out, or one it has decided on and is setting up (planned), or one it has stopped (retired) (TAXONOMY.md, the definitions; D14). The first question about any work is whether it ends: work that ends is a project or a programme, work that keeps running is an operation. An operation carries the name of the service (D17); a project that sets it up or changes it is named for that change, hands over to it, and the operation's team accepts the handover. It has a service owner, the role accountable for it end to end (ITIL), and a team that runs it (D23, D27). Its service levels are watched through indicators. Business as usual sits inside a programme's boundary, so an operation names the programmes it is part of, if any (D2). An operation is not a project (it has no closure), not a team (the team runs it; the operation is the service), and not a data source (a source is where records are kept; an operation may read or produce them). Its checks advise and never block.",
+  "definition": "An operation is work that keeps running with no end date: a service your organisation provides every day, one it is setting up (planned), or one it has stopped (retired). Work that ends is a project or a programme. An operation is named for the service; a project that sets it up or changes it is named for that change and hands it over when done. It has a service owner, the role responsible for it, and a team that runs it. KPIs show how well it runs. An operation can be part of a programme. An operation is not a project (it does not end), not a team (the team runs it), and not a data source (where records are kept). Its checks are advice and never stop you saving.",
   "cues": {
     "operation": "a service or routine that runs every day, week or month"
   },
   "steps": {},
   "fields": {
     "/metadata/name": {
-      "guide": "The name of the service, as the people who use it would say it. The service keeps its name; a project that changes it is named for the change.",
+      "guide": "The name people use for the service.",
       "good": [
         "Quality Check Service",
         "Collection Service",
@@ -25,7 +25,7 @@
       "poor": [
         {
           "text": "Quality Check Rollout",
-          "why": "Names a change that ends, which is a project landing in the service, not the service itself."
+          "why": "Names a change with an end. That is a project, not the service."
         },
         {
           "text": "Quality Team",
@@ -34,7 +34,7 @@
       ]
     },
     "/spec/purpose": {
-      "guide": "What the service does, day in and day out, and what for, in one sentence. It describes continuing work: no end date, no target figure.",
+      "guide": "What the service does and what for. No end date and no target figure.",
       "good": [
         "Check every delivery for quality and route failures into rework.",
         "Move produce from every depot to the buyer within a day of intake.",
@@ -43,7 +43,7 @@
       "poor": [
         {
           "text": "Introduce quality checks at every depot by the end of 2026.",
-          "why": "Work that ends: introducing the checks is a project that hands over to this service."
+          "why": "Work with an end. Introducing the checks is a project."
         },
         {
           "text": "Achieve a 90% quality pass rate.",
@@ -56,10 +56,10 @@
       ]
     },
     "/spec/status": {
-      "guide": "Where the service is in its life. Planned: decided on and being set up, not yet run; the project that sets it up names it and hands it over. Running: in use today, which is how a service already running is recorded when it is first brought into Cartograph. Retired: no longer offered."
+      "guide": "Planned: being set up, not yet in use. Running: in use today. Retired: no longer offered."
     },
     "/spec/serviceOwner": {
-      "guide": "The role accountable for the service end to end (ITIL's service owner), from the Resource catalogue. It is the role that accepts a project's handover into the service. A role, never a person; when no role fits, define the role first.",
+      "guide": "The role responsible for the whole service. It takes over the service from the project that sets it up. A role, not a person. If none fits, add the role first.",
       "good": [
         "operations-lead",
         "quality-reviewer"
@@ -67,16 +67,16 @@
       "poor": [
         {
           "text": "Ada Okafor",
-          "why": "A person, not a role: Cartograph names roles, and people hold them."
+          "why": "A person, not a role. Pick the role the person has."
         },
         {
           "text": "quality-team",
-          "why": "A team, which goes in the team field; the service owner is one accountable role."
+          "why": "A team, not a role."
         }
       ]
     },
     "/spec/team": {
-      "guide": "The team that runs the service, from the team tree. It decides whose work the operation is. When no team fits, define the team first.",
+      "guide": "The team that runs the service. If none fits, add the team first.",
       "good": [
         "quality-team",
         "depot-network-team"
@@ -84,12 +84,12 @@
       "poor": [
         {
           "text": "depot-supervisor",
-          "why": "A role, not a team: the role accountable goes in the service owner."
+          "why": "A role, not a team."
         }
       ]
     },
     "/spec/serviceWindow": {
-      "guide": "The hours and days the service runs, plainly enough that a user knows when they can rely on it.",
+      "guide": "When the service runs: which days and hours.",
       "good": [
         "Every delivery day, ongoing.",
         "Daily through the season, reduced rounds out of season.",
@@ -107,18 +107,18 @@
       ]
     },
     "/spec/funding": {
-      "guide": "The budgets that pay to run the service, each with what it costs per month or per year. A running cost starts once the project that sets the service up has closed, so it is named here, not on the project's funding. One line per currency and period.",
+      "guide": "The budgets that pay to run the service, and what it costs each month or year. Add one line per currency and period.",
       "good": [
         "Refresher training, monitoring and the annual list review, 85,000 a year from the operating budget, requested"
       ],
       "poor": [
         {
           "text": "The project's last funding line, kept open after it closes",
-          "why": "A project's funding pays for the project until it closes. What pays to run the service belongs on the service."
+          "why": "Project money stops when the project closes. Record the service's running costs on the service."
         },
         {
           "text": "A line with no amount, for a cost nobody has worked out yet",
-          "why": "A funding line states money. An uncosted need is an issue: record it on the project's risks and escalate it to whoever decides funding."
+          "why": "Each line needs an amount. If the cost is unknown, add it as an issue under the project's risks."
         }
       ]
     },
@@ -126,31 +126,31 @@
       "guide": "What running the service costs for one period, in the line's currency."
     },
     "/spec/funding/-/per": {
-      "guide": "The period the amount is for: month or year. A service's cost recurs for as long as it runs."
+      "guide": "The period the amount is for: month or year."
     },
     "/spec/funding/-/source": {
-      "guide": "The budget this line draws on, a funding source declared once with its code. Leave it empty while no budget is found, and set the status to requested or unfunded.",
+      "guide": "The budget that pays this line. If there is none yet, leave it empty and set the status to requested or unfunded.",
       "good": [
         "operating-budget"
       ]
     },
     "/spec/funding/-/status": {
-      "guide": "Whether the money is approved, requested or unfunded. A planned service with unfunded running costs is worth saying early."
+      "guide": "Whether the money is approved, requested or unfunded."
     },
     "/spec/programmes": {
-      "guide": "The programmes this service is part of. Name one only when the programme coordinates this service towards its change; an operation outside any programme is normal, and nothing advises against it. The programme reads its components back from here.",
+      "guide": "The programmes this service is part of, if any.",
       "good": [
         "quality-improvement-programme"
       ],
       "poor": [
         {
           "text": "market-access-programme, because the same team works on it",
-          "why": "Sharing a team or a stakeholder is the portfolio test failing, not membership: name a programme only when it steers this service towards its change."
+          "why": "Sharing a team does not make it part of the programme. Pick a programme only if this service works towards its change."
         }
       ]
     },
     "/spec/kpis": {
-      "guide": "The indicators that say whether the service is running at the level it should: its service levels, from the KPI register. When none exists, define the KPI first.",
+      "guide": "The KPIs that show whether the service runs as well as it should. If none fits, add the KPI first.",
       "good": [
         "quality-pass-rate",
         "collection-turnaround"
@@ -158,15 +158,15 @@
       "poor": [
         {
           "text": "member-season-earnings",
-          "why": "Measures a benefit of the wider strategy, which this service only contributes to; a service level says how the service itself performs."
+          "why": "Measures a wider result. Pick a KPI that shows how the service itself performs."
         }
       ]
     },
     "/spec/data": {
-      "guide": "The service's two-way relationship with data: what it reads, and what it creates or adds to, with where that lands."
+      "guide": "The data the service reads, and the data it creates and where it goes."
     },
     "/spec/data/consumes/-/source": {
-      "guide": "A data source the service reads and never writes back to, from the data source register.",
+      "guide": "A data source the service reads but does not change.",
       "good": [
         "member-register"
       ]
@@ -187,13 +187,13 @@
       "guide": "How the data reaches the service: a feed, a file transfer, a shared database, manual re-entry or paper."
     },
     "/spec/data/consumes/-/personalData": {
-      "guide": "Whether the data used holds personal data, sensitive personal data, or none."
+      "guide": "Whether the data includes personal data, sensitive personal data, or none."
     },
     "/spec/data/produces/-/output": {
-      "guide": "What the service puts into the world: records in an existing source, documents or files, an extract or report, or a new data source."
+      "guide": "What the service creates: records in an existing source, documents or files, an extract or report, or a new data source."
     },
     "/spec/data/produces/-/sink": {
-      "guide": "Where the produced data lands: the register, system or store that holds it afterwards.",
+      "guide": "Where the data the service creates is kept.",
       "good": [
         "quality-check-tool",
         "collection-log"
@@ -212,13 +212,13 @@
       ]
     },
     "/spec/data/produces/-/refresh": {
-      "guide": "How often the data is brought up to date where it lands."
+      "guide": "How often this data is updated."
     },
     "/spec/data/produces/-/personalData": {
-      "guide": "Whether the produced data holds personal data, sensitive personal data, or none."
+      "guide": "Whether the data includes personal data, sensitive personal data, or none."
     },
     "/spec/mandate": {
-      "guide": "What requires or authorises the service: a decision, policy, law or regulation, contract, business case or request, each with its title and, where there is one, its reference, date and issuing body."
+      "guide": "What allows or requires the service, such as a decision, policy, law, contract or request."
     },
     "/spec/mandate/-/title": {
       "guide": "The title of the decision or document, as it is written.",
@@ -228,45 +228,45 @@
       "poor": [
         {
           "text": "We have always done it",
-          "why": "Habit is not a mandate: leave the mandate empty, or name the decision or policy that requires the service."
+          "why": "Name the decision or policy that requires the service, or leave this empty."
         }
       ]
     },
     "/spec/mandate/-/issuer": {
-      "guide": "The governance body or role that issued it, picked from the Resource catalogue, so the body's page lists what it decided. When the body is not there yet, add it as a governance body first. Written as a reference, never a bare id.",
+      "guide": "The board, committee or role in Cartograph that issued it. If it is not there yet, add it first.",
       "good": [
-        "{\"kind\":\"Resource\",\"id\":\"steering-committee\"}, a governance body in the catalogue",
-        "{\"local\":\"resources\",\"id\":\"sponsor\"}, one of this work's roles"
+        "Steering committee",
+        "Sponsor, one of this work's roles"
       ],
       "poor": [
         {
           "text": "Steering Committee, typed as text",
-          "why": "A body the workspace holds is named once and referenced. Typed text gives it a second spelling no check can read."
+          "why": "Pick the body from the list instead of typing it."
         }
       ]
     },
     "/spec/mandate/-/issuedBy": {
-      "guide": "The body that issued it, as written, only when it is outside the workspace: a government, a regulator, a funder. A body the workspace holds goes in the issuer instead.",
+      "guide": "The outside body that issued it, such as a government, regulator or funder.",
       "good": [
         "Cooperative Board"
       ]
     },
     "/spec/notes": {
-      "guide": "Anything a reader needs that has no field of its own. Not a place for what a field already holds."
+      "guide": "Anything else people should know about this service."
     }
   },
   "links": {
     "Project:/spec/operation": {
       "ask": "Which project sets this service up, or changes it?",
-      "ifNone": "For a planned service, start the project that sets it up, naming this service as where it lands. A running service needs none until something about it has to change."
+      "ifNone": "For a planned service, add the project that sets it up and choose this service on it. A running service needs none until it has to change."
     }
   },
   "checks": {
     "service-purpose": "Say what the service does, day in and day out.",
-    "service-owner": "Name the role accountable for the service end to end as its service owner, from the Resource catalogue.",
+    "service-owner": "Name the role responsible for the service.",
     "service-hours": "Give the hours and days the service runs.",
-    "alignment-programmes": "Name a programme only when the service is one of its components; an operation outside any programme needs nothing here.",
-    "measures-kpis": "Name at least one indicator that shows the service's level.",
-    "service-status": "A planned service is set up by a project that names it as where it lands; once that project hands over, mark the service running."
+    "alignment-programmes": "Pick a programme only if the service is part of it.",
+    "measures-kpis": "Name at least one KPI that shows how well the service runs.",
+    "service-status": "Once the project that sets up this service is done, mark the service running."
   }
 }

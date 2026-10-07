@@ -11,7 +11,7 @@
       {
         "key": "service",
         "title": "Service",
-        "guide": "What the service does day in and day out, who is accountable for it, who runs it, and when.",
+        "guide": "What the service does, who is responsible for it, who runs it, and when.",
         "fields": [
           {
             "path": "/metadata/name",
@@ -20,7 +20,7 @@
           {
             "path": "/spec/purpose",
             "control": "sentence",
-            "hint": "What this service does, day in and day out.",
+            "hint": "What this service does every day.",
             "checks": [
               "service-purpose"
             ]
@@ -60,7 +60,7 @@
             "control": "list",
             "key": "currency",
             "title": "Running costs",
-            "hint": "What pays to run the service, per month or per year.",
+            "hint": "What the service costs to run, per month or per year, and which budget pays.",
             "fields": [
               {
                 "path": "/amount",
@@ -131,7 +131,7 @@
       {
         "key": "data",
         "title": "Data",
-        "guide": "The data the service reads, and the data it creates or adds to, with where that lands.",
+        "guide": "The data the service uses, the data it creates or adds to, and where that data is stored.",
         "optional": true,
         "fields": [
           {
@@ -219,13 +219,13 @@
                 "path": "/issuer",
                 "control": "reference",
                 "title": "Issued by",
-                "hint": "A governance body or a role in the catalogue."
+                "hint": "A board, committee or role already in Cartograph."
               },
               {
                 "path": "/issuedBy",
                 "control": "text",
-                "title": "Or, outside the workspace",
-                "hint": "A body Cartograph does not hold, such as a regulator."
+                "title": "Or someone not in Cartograph",
+                "hint": "An organisation not listed in Cartograph, such as a regulator."
               }
             ]
           },

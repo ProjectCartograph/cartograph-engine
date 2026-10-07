@@ -12,10 +12,10 @@
     "breakdown",
     "disaggregation"
   ],
-  "definition": "A segment is a slice of what the organisation serves or works across, used to compare one part with another: a finding in one region against another, a measure in one depot against another. First define the slicing itself, as a segment with no parent (Region), then each slice under it (Northern region). A gap names the slices its evidence covers, a project, programme or operation says which of those it reaches, and a KPI is broken down by the same slicing, so a finding and its measure always cut the work the same way. A segment describes where or what, never who does the work: it is not a resource (a role, unit, partner, system or place the work draws on, such as a Depot supervisor), not a beneficiary group (the people the work is for, such as Depot staff), not a team (who carries the work), not a label (a free tag nobody planned), and not a period of time (that is a reporting cycle). The test: if you would count or compare a measure across it, it is a segment; if it does something, decides something or is paid for, it is not.",
+  "definition": "A way to split what your organisation serves so you can compare the parts. First add the split itself, such as Region, then each part under it, such as Northern region. Gaps, projects, programmes, operations and KPIs use the same segments, so they compare the same parts. A segment says where or what, never who: it is not a role or partner (a resource), not the people the work helps (a beneficiary group), not a team, not a free tag, and not a period of time.",
   "fields": {
     "/spec/parent": {
-      "guide": "The slicing this is one slice of (Region, for the northern region), or the broader slice it sits inside. Leave it empty for the slicing itself. A segment can never sit under itself, directly or further up, and such a parent is refused on save. When the slicing does not exist yet, define it first.",
+      "guide": "The split this is one part of, such as Region for Northern region, or a larger part it sits inside. Leave it empty for the split itself.",
       "good": [
         "region, for the northern region",
         "product-line, for fresh produce"
@@ -23,12 +23,12 @@
       "poor": [
         {
           "text": "depot-network-team, for a depot",
-          "why": "A team, not a segment: the parent is the dimension the slice belongs to, here Depot."
+          "why": "A team, not a segment. Choose the split this part belongs to, here Depot."
         }
       ]
     },
     "/spec/description": {
-      "guide": "What falls inside this slice and what does not, precisely enough that two people counting it would agree, including how a borderline case is counted.",
+      "guide": "What is in this part and what is not, including borderline cases.",
       "good": [
         "Which collection depot produce passed through. Every depot in the network is a value; produce collected in the field is counted against the depot it was taken to.",
         "Which line produce belongs to. A crate is counted against one line only, by what it mostly holds."
@@ -45,7 +45,7 @@
       ]
     },
     "/metadata/name": {
-      "guide": "The slicing (Region, Product line) or one slice of it (Northern region, Fresh produce), as people say it.",
+      "guide": "The name of the split, such as Region, or of one part, such as Northern region.",
       "good": [
         "Region",
         "Northern region",
@@ -56,7 +56,7 @@
       "poor": [
         {
           "text": "Depot supervisor",
-          "why": "A role, which is a resource: it does work. A segment is a slice you compare a measure across, such as the depot itself."
+          "why": "A role, so it is a resource. Use the depot itself as the segment."
         },
         {
           "text": "Depot staff",
@@ -68,7 +68,7 @@
         },
         {
           "text": "Season 2026",
-          "why": "A period of time, which a reporting cycle holds."
+          "why": "A period of time. Use a reporting cycle."
         },
         {
           "text": "Urgent",
@@ -79,12 +79,12 @@
   },
   "links": {
     "Gap:/spec/segments": {
-      "ask": "Which gaps were observed in this slice? Each gap lists the segments its evidence covers.",
-      "ifNone": "Nothing has to be defined first: a segment may be declared before any gap names it. When a gap's evidence covers this slice, name the segment on the gap."
+      "ask": "Which gaps were found in this part?",
+      "ifNone": "None yet is fine. A gap names this segment when its evidence covers it."
     },
     "KPI:/spec/disaggregations": {
-      "ask": "Which KPIs are broken down by this dimension? Each KPI lists the dimensions it is split by.",
-      "ifNone": "Leave it: only a dimension, a segment with no parent, is a disaggregation, and a KPI names it when its source can report the split."
+      "ask": "Which KPIs are split by this?",
+      "ifNone": "None yet is fine. Only a top-level split, such as Region, can break down a KPI, and only when its data source reports by it."
     }
   }
 }

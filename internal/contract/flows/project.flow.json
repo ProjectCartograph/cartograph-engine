@@ -37,12 +37,12 @@
           {
             "path": "/spec/alignment/portfolios",
             "control": "references",
-            "hint": "The portfolios that select and fund this project, if any. Independent of its programmes."
+            "hint": "The portfolios that choose and fund this project, if any."
           },
           {
             "path": "/spec/alignment/partOf",
             "control": "reference",
-            "hint": "Choose this only if it shares that project's sponsor and budget.",
+            "hint": "The larger project this is part of. Choose one only if both share a sponsor and budget.",
             "checks": [
               "components-parent",
               "components-one-level"
@@ -87,7 +87,7 @@
       {
         "key": "aim",
         "title": "Problem",
-        "guide": "What those groups cannot do today, and how things will be once this has worked.",
+        "guide": "What the affected groups cannot do now, and how things will be after the change.",
         "fields": [
           {
             "path": "/spec/summary/problems",
@@ -111,7 +111,7 @@
                 "path": "/problem/situation",
                 "control": "sentence",
                 "title": "Problem",
-                "hint": "One sentence about the groups above, as things are today."
+                "hint": "What is going wrong for the affected groups now."
               },
               {
                 "path": "/problem/cause",
@@ -123,13 +123,13 @@
                 "path": "/change/what",
                 "control": "sentence",
                 "title": "Intended change",
-                "hint": "How things will be once this has worked."
+                "hint": "How things will be after the change."
               },
               {
                 "path": "/change/gain",
                 "control": "sentence",
                 "title": "Benefit",
-                "hint": "What the groups above can do then that they cannot today."
+                "hint": "What the affected groups will be able to do that they cannot do now."
               },
               {
                 "path": "/gaps",
@@ -144,7 +144,7 @@
                   {
                     "path": "/segments",
                     "control": "references",
-                    "hint": "Leave empty if this work reaches the whole of the gap."
+                    "hint": "Leave empty if the project covers the whole gap."
                   }
                 ]
               }
@@ -263,7 +263,7 @@
             "control": "list",
             "key": "id",
             "title": "Roles",
-            "hint": "Name the post, never a person.",
+            "hint": "Name the role, not a person.",
             "checks": [
               "resources-sponsor-lead",
               "resources-mapped",
@@ -294,7 +294,7 @@
             "control": "list",
             "key": "currency",
             "title": "Approved funding",
-            "hint": "Add one line per currency.",
+            "hint": "An amount for each currency.",
             "checks": [
               "resources-funding",
               "components-one-sponsor"
@@ -348,13 +348,13 @@
                 "path": "/issuer",
                 "control": "reference",
                 "title": "Issued by",
-                "hint": "A governance body or a role in the catalogue."
+                "hint": "A board, committee or role already in Cartograph."
               },
               {
                 "path": "/issuedBy",
                 "control": "text",
-                "title": "Or, outside the workspace",
-                "hint": "A body Cartograph does not hold, such as a regulator."
+                "title": "Or someone not in Cartograph",
+                "hint": "An organisation not listed in Cartograph, such as a regulator."
               }
             ]
           },
@@ -362,14 +362,14 @@
             "path": "/spec/escalationRoute",
             "control": "references",
             "title": "Escalation route",
-            "hint": "Where a matter goes when it cannot be settled here, nearest first."
+            "hint": "Who decides when it cannot be decided here, closest first."
           }
         ]
       },
       {
         "key": "stakeholders",
         "title": "Stakeholders",
-        "guide": "Who can affect this project or is affected by it, and how much power each holds.",
+        "guide": "Who can affect this project or is affected by it, and how much influence each has.",
         "fields": [],
         "links": [
           {
@@ -387,7 +387,7 @@
             "path": "/spec/summary/scopeIn",
             "control": "list",
             "title": "In scope",
-            "hint": "Write one sentence each.",
+            "hint": "What the project covers, one item each.",
             "checks": [
               "scope-in"
             ]
@@ -403,7 +403,7 @@
       {
         "key": "deliverables",
         "title": "Deliverables",
-        "guide": "What the project produces, and the test each one is accepted against.",
+        "guide": "What the project produces, and how each one is checked before it is accepted.",
         "fields": [
           {
             "path": "/spec/deliverables",
@@ -481,7 +481,7 @@
       {
         "key": "timeline",
         "title": "Schedule",
-        "guide": "When the work starts and the phases it runs through; the end is derived.",
+        "guide": "When the work starts and its phases. The end date is worked out from them.",
         "fields": [
           {
             "path": "/spec/timeline/start",
@@ -520,7 +520,7 @@
       {
         "key": "data",
         "title": "Data",
-        "guide": "The data this project reads, and the data it creates and where that lands.",
+        "guide": "The data this project uses, the data it creates, and where that data is stored.",
         "fields": [
           {
             "path": "/spec/data/consumes",
@@ -717,7 +717,7 @@
       {
         "key": "success",
         "title": "Success criteria",
-        "guide": "What has to be true for the project to have succeeded, not merely to have finished.",
+        "guide": "What has to be true for the project to count as a success.",
         "fields": [
           {
             "path": "/spec/successCriteria",
@@ -738,7 +738,7 @@
                 "path": "/statement",
                 "control": "sentence",
                 "title": "Criterion",
-                "hint": "Something that will be true once this has worked, that someone else could check."
+                "hint": "Something that will be true when the project succeeds and that can be checked."
               },
               {
                 "path": "/metric",
@@ -802,13 +802,13 @@
       {
         "key": "landing",
         "title": "Handover",
-        "guide": "The operation that runs the result, and what has to be true once it is in use.",
+        "guide": "The service that runs what the project made, and what must be true once it is in use.",
         "fields": [
           {
             "path": "/spec/operation",
             "control": "reference",
             "title": "Handed over to",
-            "hint": "The operation that runs the result, or a new one defined alongside.",
+            "hint": "The service that runs what the project made, or a new one you set up here.",
             "checks": [
               "landing-operation",
               "landing-service-funding"
@@ -866,7 +866,7 @@
       {
         "key": "governance",
         "title": "Governance",
-        "guide": "Who decides, who pays, on whose authority, and who holds power over it.",
+        "guide": "Who decides, who pays, on whose authority, and who has influence over it.",
         "steps": [
           "resources",
           "stakeholders"
@@ -905,7 +905,7 @@
       {
         "kind": "Team",
         "needed": true,
-        "guide": "The team that owns the project, and that every data source belongs to."
+        "guide": "The team that owns the project and its data sources."
       },
       {
         "kind": "Resource",
@@ -916,12 +916,12 @@
         "kind": "Goal",
         "level": "outcome",
         "needed": true,
-        "guide": "The outcome it serves: the change in the strategy it moves. Its objective and goal come with it."
+        "guide": "The outcome this project works towards. Its objective and goal are linked through it."
       },
       {
         "kind": "Segment",
         "needed": false,
-        "guide": "The slices its problems are seen in, such as a region, when a gap names them."
+        "guide": "The places or groups where its problems show up, such as a region."
       },
       {
         "kind": "Unit",
@@ -936,7 +936,7 @@
       {
         "kind": "DataSource",
         "needed": true,
-        "guide": "Where its measures are read from, and where the data it makes lands."
+        "guide": "Where its measures come from, and where the data it creates is stored."
       },
       {
         "kind": "BeneficiaryGroup",
@@ -951,12 +951,12 @@
       {
         "kind": "Gap",
         "needed": false,
-        "guide": "The shortfalls its problems answer."
+        "guide": "The gaps behind its problems."
       },
       {
         "kind": "Assumption",
         "needed": false,
-        "guide": "What its success rests on but is not proved."
+        "guide": "What it assumes to be true but has not proved."
       },
       {
         "kind": "FundingSource",
@@ -976,7 +976,7 @@
       {
         "kind": "Operation",
         "needed": true,
-        "guide": "The service the result is handed over to: running, or planned for this project to set up."
+        "guide": "The service that takes over the result, running now or set up by this project."
       }
     ],
     "review": true

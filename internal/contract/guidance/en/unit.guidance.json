@@ -7,10 +7,10 @@
     "unit of measure",
     "unit"
   ],
-  "definition": "What a measure is counted in, declared once so one quantity is not spelled several ways. A standard set ships with every vault (percent, count, ratio, score, index, days, hours, months), and an organisation declares its own beside them in the same way, such as a currency or a scale it defined. A unit carries its dimension from a closed set (percent, count, money, ratio, duration), so what a unit is called and what kind of quantity it is stay separate: hours and days are both durations. A unit is not what is counted (deliveries, members), which is said in the KPI's definition, not a KPI, and not a data source.",
+  "definition": "What a number is counted in, such as percent, hours or US dollars. Cartograph comes with common units (percent, count, ratio, score, index, days, hours, months), and you can add your own, such as a currency or a scale you use. Each unit has a type: percent, count, money, ratio or duration, so hours and days are both durations. A unit is not the thing counted (deliveries, members), not a KPI, and not a data source.",
   "fields": {
     "/spec/dimension": {
-      "guide": "What kind of quantity this is: percent (a share out of a hundred), count, money, ratio (one quantity over another, or a number on a defined scale) or duration. It tells anything adding two measures whether it may.",
+      "guide": "What kind of number this is: percent (a share out of a hundred), count, money, ratio (one number over another, or a score on a scale) or duration.",
       "good": [
         "duration, for Days",
         "money, for US dollars",
@@ -19,19 +19,19 @@
       "poor": [
         {
           "text": "percent, for a produce grade scored out of 100",
-          "why": "A score on a scale is not a share of a whole: it is a ratio, like the shipped Score."
+          "why": "A score on a scale is a ratio, not a percent."
         }
       ]
     },
     "/spec/symbol": {
-      "guide": "The short form, where there is one, such as % for percent or hrs for hours. Leave it empty when the unit is written out.",
+      "guide": "The short form, such as % or hrs. Leave empty if there is none.",
       "good": [
         "%",
         "USD"
       ]
     },
     "/spec/description": {
-      "guide": "What exactly is counted, where the name alone could be read two ways: rounding, which currency, what the scale runs from and to.",
+      "guide": "Anything the name leaves unclear, such as rounding, which currency, or the range of a scale.",
       "good": [
         "United States dollars, which is what the cooperative settles member payments in.",
         "Hours, to the nearest hour unless the KPI says otherwise."
@@ -44,13 +44,13 @@
       ]
     },
     "/metadata/name": {
-      "guide": "The name, as people say it and as lists show it."
+      "guide": "The name people use for the unit."
     }
   },
   "links": {
     "KPI:/spec/unit": {
       "ask": "Which KPIs are counted in this unit?",
-      "ifNone": "Nothing has to be defined first: a unit stands on its own, and a KPI picks it when its definition is written."
+      "ifNone": "Nothing needs to come first. You pick a unit when you define a KPI."
     }
   }
 }

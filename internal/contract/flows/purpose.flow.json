@@ -11,7 +11,7 @@
       {
         "key": "purpose",
         "title": "Purpose",
-        "guide": "Why everything below exists: the vision and mission every goal serves, stated once.",
+        "guide": "Your organisation's vision and mission, which every goal serves.",
         "fields": [
           {
             "path": "/metadata/name",
