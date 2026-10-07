@@ -114,8 +114,18 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	} else {
 		c.add("goals-aligned", "goals", phaseInitiation, checkBlock, "Not linked to an outcome yet.")
 	}
+	// A mandate counts once it names something: a row with no title is a
+	// row nobody filled in.
+	named := 0
 	mandate, _ := spec["mandate"].([]any)
-	if len(mandate) > 0 {
+	for _, m := range mandate {
+		if mm, ok := m.(map[string]any); ok {
+			if title, _ := mm["title"].(string); strings.TrimSpace(title) != "" {
+				named++
+			}
+		}
+	}
+	if named > 0 {
 		c.add("aim-mandate", "resources", phaseInitiation, checkOK, "A mandate is named.")
 	} else if isComponent {
 		c.add("aim-mandate", "resources", phaseInitiation, checkOK, "Works under the mandate of the project it is part of.")

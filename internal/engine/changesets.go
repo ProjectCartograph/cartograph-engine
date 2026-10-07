@@ -1230,16 +1230,18 @@ func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte) [
 	out := make([]Check, 0, len(problems))
 	for _, p := range problems {
 		path := p.Path
+		message := p.Message
 		// A missing property is reported on the object that lacks it;
 		// the field is the property.
 		if i := strings.Index(p.Message, "missing property '"); i >= 0 {
+			message = "Needed before this can be merged."
 			name := strings.TrimSuffix(p.Message[i+len("missing property '"):], "'")
 			if j := strings.Index(name, "'"); j >= 0 {
 				name = name[:j]
 			}
 			path = strings.TrimSuffix(path, "/") + "/" + name
 		}
-		out = append(out, Check{ID: "required:" + path, State: checkBlock, Message: "Needed before this can be merged.", Path: path})
+		out = append(out, Check{ID: "required:" + path, State: checkBlock, Message: message, Path: path})
 	}
 	return out
 }

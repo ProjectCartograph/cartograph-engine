@@ -837,3 +837,24 @@ func TestAProblemAgreesWithItsGaps(t *testing.T) {
 	}
 	t.Fatal("no check on the problem's groups and gaps")
 }
+
+// A mandate row nobody filled in names no mandate.
+func TestAnEmptyMandateRowNamesNoMandate(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	ctx := context.Background()
+	y := projectYAML("p-mandate", "  mandate:\n    - kind: decision\n      title: \"\"\n")
+	checks, err := e.ChecksOf(ctx, "Project", "p-mandate", []byte(y))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range checks {
+		if c.ID == "aim-mandate" {
+			if c.State == "ok" {
+				t.Fatalf("an empty mandate row passed: %s", c.Message)
+			}
+			return
+		}
+	}
+	t.Fatal("no mandate check")
+}
