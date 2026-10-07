@@ -1373,9 +1373,11 @@ every piece of work:
 - **loops**: a chain of components that comes back to where it started is
   refused as a definition (a blocking check on each piece of work in it,
   naming the loop in order) and drawn as such on the map;
-- the **critical path**: the longest chain of components by duration (a
-  project's timeline in months; a programme takes no time of its own), so
-  a delay anywhere on it delays the whole;
+- the **critical path**: the chain of components that runs longest on the
+  calendar, from the earliest start on it to the latest finish (a project
+  runs from its first milestone to its last, or its start to the end of its
+  last phase; a programme has no dates of its own), so a delay anywhere on
+  it delays the whole;
 - the **shared** components: those that the most work depends on, directly
   or through others, so their failure reaches furthest.
 

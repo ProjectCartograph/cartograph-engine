@@ -197,7 +197,7 @@ func dependencyDiagram(n names, g engine.ComponentGraph, focus engine.Ref) strin
 		}
 		b.WriteString(`</g>`)
 	}
-	b.WriteString(`</g></svg><figcaption>Lines run from each piece of work down to what it depends on. The heavier line is the critical path: the longest chain by duration.</figcaption></figure>`)
+	b.WriteString(`</g></svg><figcaption>Lines run from each piece of work down to what it depends on. The heavier line is the critical path: the chain that runs longest on the calendar.</figcaption></figure>`)
 	return b.String()
 }
 

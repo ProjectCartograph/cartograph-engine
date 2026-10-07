@@ -805,9 +805,10 @@ type ComponentEdge struct {
 
 // ComponentGraph defines model for ComponentGraph.
 type ComponentGraph struct {
+	// CriticalMonths The critical path's length on the calendar, in months, both ends counted.
 	CriticalMonths int `json:"criticalMonths"`
 
-	// CriticalPath The longest chain of components by duration, from the work that depends to the work depended on.
+	// CriticalPath The chain of components that runs longest on the calendar, from the earliest start on it to the latest finish, from the work that depends to the work depended on.
 	CriticalPath []WorkRef       `json:"criticalPath"`
 	Edges        []ComponentEdge `json:"edges"`
 

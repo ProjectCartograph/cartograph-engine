@@ -57,6 +57,7 @@ type ComponentGraph struct {
 func (e *Engine) Components(ctx context.Context) (ComponentGraph, error) {
 	var g ComponentGraph
 	at := map[Ref]int{}
+	spanAt := map[Ref]func() (int, int, bool){}
 	for _, kind := range []string{"Project", "Programme"} {
 		docs, err := e.allInPlay(ctx, kind)
 		if err != nil {
@@ -65,7 +66,9 @@ func (e *Engine) Components(ctx context.Context) (ComponentGraph, error) {
 		for _, d := range docs {
 			r := Ref{Kind: kind, ID: d.id}
 			at[r] = len(g.Nodes)
-			g.Nodes = append(g.Nodes, ComponentNode{Ref: r, Name: nameOf(d.doc, d.id), Months: monthsOf(specOf(d.doc))})
+			sp := specOf(d.doc)
+			g.Nodes = append(g.Nodes, ComponentNode{Ref: r, Name: nameOf(d.doc, d.id), Months: monthsOf(sp)})
+			spanAt[r] = func() (int, int, bool) { return spanOf(sp) }
 		}
 		for _, d := range docs {
 			from := Ref{Kind: kind, ID: d.id}
@@ -162,39 +165,66 @@ func (e *Engine) Components(ctx context.Context) (ComponentGraph, error) {
 		g.Nodes[i].MostDependedOn = most >= 2 && g.Nodes[i].Dependents == most
 	}
 
-	// The critical path: the longest chain by duration, loops left out.
-	best := make([]int, len(g.Nodes))
-	next := make([]int, len(g.Nodes))
-	done := make([]bool, len(g.Nodes))
-	var longest func(n int) int
-	longest = func(n int) int {
-		if done[n] {
-			return best[n]
+	// The critical path: the chain that runs longest on the calendar, from
+	// the earliest start on it to the latest finish, loops left out. Work
+	// with no dates of its own (a programme) adds nothing.
+	type span struct{ lo, hi int }
+	spans := make([]*span, len(g.Nodes))
+	for i := range g.Nodes {
+		if lo, hi, ok := spanAt[g.Nodes[i].Ref](); ok {
+			spans[i] = &span{lo, hi}
 		}
-		done[n] = true
-		best[n], next[n] = g.Nodes[n].Months, -1
+	}
+	bestLen, bestPath := 0, []int(nil)
+	walked := 0
+	var walk func(n int, path []int, lo, hi int, dated bool)
+	walk = func(n int, path []int, lo, hi int, dated bool) {
+		walked++
+		if sp := spans[n]; sp != nil {
+			if !dated || sp.lo < lo {
+				lo = sp.lo
+			}
+			if !dated || sp.hi > hi {
+				hi = sp.hi
+			}
+			dated = true
+		}
+		path = append(path, n)
+		ends := true
 		for _, c := range out[n] {
-			if g.Nodes[c].InLoop || g.Nodes[n].InLoop {
+			if g.Nodes[c].InLoop || walked > 20000 {
 				continue
 			}
-			if v := g.Nodes[n].Months + longest(c); v > best[n] {
-				best[n], next[n] = v, c
+			ends = false
+			walk(c, path, lo, hi, dated)
+		}
+		if !ends || len(path) < 2 || !dated {
+			return
+		}
+		length := hi - lo + 1
+		better := length > bestLen
+		if length == bestLen && bestPath != nil {
+			better = len(path) > len(bestPath) || (len(path) == len(bestPath) && refLess(g.Nodes[path[0]].Ref, g.Nodes[bestPath[0]].Ref))
+		}
+		if better {
+			bestLen, bestPath = length, append([]int(nil), path...)
+		}
+	}
+	for i := range g.Nodes {
+		hasParent := false
+		for _, ed := range g.Edges {
+			if ed.To == g.Nodes[i].Ref && !g.Nodes[at[ed.From]].InLoop {
+				hasParent = true
+				break
 			}
 		}
-		return best[n]
-	}
-	start := -1
-	for i := range g.Nodes {
-		if g.Nodes[i].InLoop || len(out[i]) == 0 {
-			continue
-		}
-		if v := longest(i); start < 0 || v > best[start] || (v == best[start] && refLess(g.Nodes[i].Ref, g.Nodes[start].Ref)) {
-			start = i
+		if !hasParent && !g.Nodes[i].InLoop && len(out[i]) > 0 {
+			walk(i, nil, 0, 0, false)
 		}
 	}
-	if start >= 0 {
-		g.CriticalMonths = best[start]
-		for n := start; n >= 0; n = next[n] {
+	if bestPath != nil {
+		g.CriticalMonths = bestLen
+		for _, n := range bestPath {
 			g.Nodes[n].Critical = true
 			g.CriticalPath = append(g.CriticalPath, g.Nodes[n].Ref)
 		}
@@ -202,12 +232,12 @@ func (e *Engine) Components(ctx context.Context) (ComponentGraph, error) {
 	return g, nil
 }
 
-// monthsOf is a project's own duration: its timeline's phases, summed, or
-// for one scheduled by milestones (TAXONOMY.md D48) the months from its
-// first milestone to its last, both counted.
-func monthsOf(spec map[string]any) int {
+// spanOf is the months a project runs, as indexes from year zero: its
+// milestones' first and last dates (TAXONOMY.md D48), or its start and the
+// end of its last phase.
+func spanOf(spec map[string]any) (lo, hi int, ok bool) {
 	if ms, _ := spec["milestones"].([]any); len(ms) > 0 {
-		lo, hi := "", ""
+		first := true
 		for _, it := range ms {
 			m, _ := it.(map[string]any)
 			t, _ := m["timing"].(map[string]any)
@@ -216,39 +246,46 @@ func monthsOf(spec map[string]any) int {
 				if len(v) < 7 {
 					continue
 				}
-				v = v[:7]
-				if lo == "" || v < lo {
-					lo = v
+				x, good := yearMonthIndex(v[:7])
+				if !good {
+					continue
 				}
-				if v > hi {
-					hi = v
+				if first || x < lo {
+					lo = x
 				}
+				if first || x > hi {
+					hi = x
+				}
+				first = false
 			}
 		}
-		if a, ok := yearMonthIndex(lo); ok {
-			if b, ok := yearMonthIndex(hi); ok {
-				return b - a + 1
-			}
-		}
-		return 0
+		return lo, hi, !first
 	}
 	timeline, _ := spec["timeline"].(map[string]any)
-	phases, _ := timeline["phases"].([]any)
+	start, _ := timeline["start"].(string)
+	s, good := yearMonthIndex(start)
+	if !good {
+		return 0, 0, false
+	}
 	total := 0
+	phases, _ := timeline["phases"].([]any)
 	for _, p := range phases {
 		pm, _ := p.(map[string]any)
-		switch m := pm["months"].(type) {
-		case int:
-			total += m
-		case int64:
-			total += int(m)
-		case float64:
-			total += int(m)
-		case uint64:
-			total += int(m)
-		}
+		total += intOf(pm["months"])
 	}
-	return total
+	if total == 0 {
+		return 0, 0, false
+	}
+	return s, s + total - 1, true
+}
+
+// monthsOf is how many months a project runs, first to last, both counted.
+func monthsOf(spec map[string]any) int {
+	lo, hi, ok := spanOf(spec)
+	if !ok {
+		return 0
+	}
+	return hi - lo + 1
 }
 
 func refLess(a, b Ref) bool {

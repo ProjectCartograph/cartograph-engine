@@ -4243,11 +4243,12 @@ components:
               $ref: "#/components/schemas/WorkRef"
         criticalPath:
           type: array
-          description: The longest chain of components by duration, from the work that depends to the work depended on.
+          description: The chain of components that runs longest on the calendar, from the earliest start on it to the latest finish, from the work that depends to the work depended on.
           items:
             $ref: "#/components/schemas/WorkRef"
         criticalMonths:
           type: integer
+          description: The critical path's length on the calendar, in months, both ends counted.
     LinkCandidate:
       type: object
       required: [kind, id, name, allowed]

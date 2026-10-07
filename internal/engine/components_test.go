@@ -55,13 +55,15 @@ func TestComponentsResolveTheWholeGraph(t *testing.T) {
 	if b := node("pb"); b.MostDependedOn {
 		t.Errorf("b is depended on once: %+v", b)
 	}
-	// a, then b, then the platform: 6 + 3 + 4 months.
+	// Every project starts in January 2026, so they run side by side: the
+	// chain that runs longest on the calendar is pa's six months, through pb
+	// to the platform.
 	var path []string
 	for _, r := range g.CriticalPath {
 		path = append(path, r.ID)
 	}
-	if strings.Join(path, ">") != "pa>pb>platform" || g.CriticalMonths != 13 {
-		t.Errorf("critical path %v over %d months, want pa>pb>platform over 13", path, g.CriticalMonths)
+	if strings.Join(path, ">") != "pa>pb>platform" || g.CriticalMonths != 6 {
+		t.Errorf("critical path %v over %d months, want pa>pb>platform over 6", path, g.CriticalMonths)
 	}
 	if len(g.Loops) != 0 {
 		t.Errorf("no loop yet: %v", g.Loops)
