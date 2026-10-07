@@ -1,6 +1,7 @@
 package render
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -350,4 +351,36 @@ func (d *doc) approvalBrief(p plan) bool {
 		d.b.WriteString("</table>\n")
 	}
 	return true
+}
+
+// budgetWithComponents is the project's own budget and, where the work it
+// depends on carries funding of its own, the total with it: a sponsor
+// approving the parent approves the whole (TAXONOMY.md D46).
+func budgetWithComponents(ctx context.Context, e *engine.Engine, n names, g engine.ComponentGraph, self engine.Ref, own []map[string]any, ownTotal string) string {
+	specs := map[string]map[string]any{}
+	each(ctx, e, "Project", func(id, _ string, spec map[string]any) { specs[id] = spec })
+	seen := map[engine.Ref]bool{self: true}
+	var walk func(at engine.Ref)
+	var funding []map[string]any
+	walk = func(at engine.Ref) {
+		for _, ed := range g.Edges {
+			if ed.From != at || seen[ed.To] {
+				continue
+			}
+			seen[ed.To] = true
+			if ed.To.Kind == "Project" {
+				funding = append(funding, list(specs[ed.To.ID]["funding"])...)
+			}
+			walk(ed.To)
+		}
+	}
+	walk(self)
+	if len(funding) == 0 {
+		return ownTotal
+	}
+	_, all := budget(n, append(append([]map[string]any(nil), own...), funding...))
+	if ownTotal == "" {
+		return all + " across its components"
+	}
+	return all + " with its components (" + ownTotal + " its own)"
 }

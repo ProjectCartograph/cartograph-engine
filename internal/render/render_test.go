@@ -430,3 +430,27 @@ spec:
 		t.Error("the brief prints a low-impact risk")
 	}
 }
+
+// The brief's budget includes what the work it depends on is funded with
+// (TAXONOMY.md D46, D55).
+func TestCharterBudgetIncludesComponents(t *testing.T) {
+	ctx := context.Background()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	survey := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: survey\n  name: Survey\nspec:\n  team: t\n  funding:\n    - {amount: 900, currency: USD, status: approved}\n"
+	parent := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: parent\n  name: Parent\nspec:\n  team: t\n  funding:\n    - {amount: 100, currency: USD, status: approved}\n  components:\n    - {kind: Project, id: survey}\n"
+	for id, y := range map[string]string{"survey": survey, "parent": parent} {
+		if err := e.PutWorking(ctx, "Project", id, []byte(y)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	html, _, err := Charter(ctx, e, "parent", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "USD 1,000 with its components (USD 100 its own)"; !contains(string(html), want) {
+		t.Errorf("charter lacks %q", want)
+	}
+}

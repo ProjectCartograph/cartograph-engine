@@ -124,9 +124,11 @@ Work this way, every time:
    measured by one to three key results. Every other change a document
    lists is either a key result of that objective or a Project of its
    own that the first lists among its components, as software names the
-   libraries it depends on: a strand of work with its own lead, its own
-   dates or its own risks (a survey, a portal, an app, what a document
-   calls a workstream) is a component, never a list inside the project. Projects
+   libraries it depends on. A component is work with a change of its own
+   (a survey that sets a baseline, a portal or system people will use,
+   an app); an output the project hands over (a handbook, materials, a
+   toolkit, training) is a deliverable, whoever leads it. A document's
+   workstreams are one or the other, never a list inside the project. Projects
    that each need the others to bring about one change, with a theory of
    change linking what they deliver to that change, are a Programme
    (it may hold sub-programmes). Projects and programmes grouped to

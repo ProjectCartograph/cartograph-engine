@@ -81,7 +81,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 		field{"Programme", strings.Join(programmes, "; ")},
 		field{"Start", start},
 		field{"End", finish},
-		field{"Budget", total},
+		field{"Budget", budgetWithComponents(ctx, e, n, graph, self, list(spec["funding"]), total)},
 		field{"Handover to", operation},
 	)
 	d.fields(
