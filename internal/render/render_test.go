@@ -192,7 +192,7 @@ func TestCharterSaysWhereEachPartIsDefined(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`<h2 data-step="aim">Problem statement</h2>`, `data-field="/spec/summary/problems/0/problem/situation"`, `data-field="/spec/summary/problems/0/change/what"`} {
+	for _, want := range []string{`data-step="aim">Problem statement</h2>`, `data-field="/spec/summary/problems/0/problem/situation"`, `data-field="/spec/summary/problems/0/change/what"`} {
 		if !contains(string(html), want) {
 			t.Errorf("the charter lacks %s", want)
 		}
@@ -267,8 +267,8 @@ spec:
 
 	htmlStr := string(html)
 
-	// Verify snapshot version is present (version field shows "1")
-	if !contains(htmlStr, "Version 1, saved") {
+	// Verify snapshot version is present, in the document control table
+	if !contains(htmlStr, "<th>Version</th><td>Version 1</td>") {
 		t.Errorf("expected snapshot version 1 in HTML")
 	}
 }

@@ -41,9 +41,15 @@ func (e *Engine) kpiChecksOf(_ context.Context, _ string, doc map[string]any) ([
 	default:
 		add("kpi-baseline", "baseline-target", false, "", "No baseline yet: today's figure and its date, or why it is not known.")
 	}
-	target, _ := spec["target"].(map[string]any)
-	add("kpi-target", "baseline-target", target != nil && has(target, "value") && text(target, "date"),
-		"A target is set, with the date it is to be reached by.", "No dated target yet: the figure to reach, and by when.")
+	switch t := readTarget(spec["target"]); {
+	case t.Pending && t.Set && !t.Timing.Late:
+		add("kpi-target", "baseline-target", true, "The target "+pendingWords(t)+".", "")
+	case t.Pending && t.Timing.Late:
+		add("kpi-target", "baseline-target", false, "", "The target "+pendingWords(t)+".")
+	default:
+		add("kpi-target", "baseline-target", t.Set && t.Dated,
+			"A target is set, with when it is to be reached.", "No dated target yet: the figure to reach and by when, or the event that sets it.")
+	}
 	add("kpi-cycle", "verification", text(spec, "cycle"), "Read on a reporting cycle.", "No reporting cycle yet: how often it is read.")
 	goals, _ := spec["goals"].([]any)
 	add("kpi-aligned", "result", len(goals) > 0, "Measures at least one aim.", "Measures no aim yet: name the goal, objective or outcome it tells you about.")

@@ -237,7 +237,7 @@ func TestProgrammeCharterReadsTheDefinition(t *testing.T) {
 	}
 	doc := string(html)
 	for _, want := range []string{
-		"<h2>Theory of change</h2>",
+		">Theory of change</h2>",
 		"And that is what the pillar asks for",
 		"Preconditions",
 		"Staff released",

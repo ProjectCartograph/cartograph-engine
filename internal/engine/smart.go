@@ -53,11 +53,11 @@ func measureOf(m map[string]any) measure {
 		out.baseValue, out.hasBase = toFloat(b["value"])
 		out.baseDate = monthOf(b["date"], false)
 	}
-	if t, ok := m["target"].(map[string]any); ok {
-		_, out.target = t["value"]
-		out.targetValue, out.hasTarget = toFloat(t["value"])
-		out.targetDate = monthOf(t["date"], true)
-		out.dated = out.targetDate != ""
+	if t := readTarget(m["target"]); t.Set || t.HasValue {
+		out.target = t.Set && !t.Timing.Late
+		out.targetValue, out.hasTarget = t.Value, t.HasValue
+		out.targetDate = t.Month
+		out.dated = t.Dated
 	}
 	return out
 }

@@ -305,6 +305,10 @@
             },
             "expectedBy": {
               "$ref": "#/$defs/YearMonth"
+            },
+            "when": {
+              "$ref": "#/$defs/Event",
+              "description": "The event that gives the baseline, such as the survey's first reading (TAXONOMY.md D47)."
             }
           }
         }
@@ -355,7 +359,7 @@
           "$ref": "#/$defs/KeyResultBaseline"
         },
         "target": {
-          "$ref": "#/$defs/ValueAndDate"
+          "$ref": "#/$defs/Target"
         },
         "source": {
           "$ref": "#/$defs/Slug",
@@ -409,7 +413,7 @@
           "$ref": "#/$defs/KeyResultBaseline"
         },
         "target": {
-          "$ref": "#/$defs/ValueAndDate"
+          "$ref": "#/$defs/Target"
         }
       }
     },
@@ -546,6 +550,66 @@
         "kind": {"type": "string", "enum": ["Project", "Programme"], "description": "Whether it is a project or a programme."},
         "id": {"$ref": "#/$defs/Slug", "x-cartograph-ref": "*", "description": "The project or programme depended on."},
         "why": {"type": "string", "maxLength": 240, "description": "What this work needs from it."}
+      }
+    },
+    "When": {
+      "description": "A date as precise as it is known: a month (2027-07) or a day (2026-09-02).",
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$"
+    },
+    "Event": {
+      "description": "Something that happens (TAXONOMY.md D47): to an item this record holds (a milestone reached, a deliverable accepted, a condition met), to another record (a KPI's first reading, a project closed), or outside the workspace, named in words through an external reference.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["on"],
+      "properties": {
+        "on": {"$ref": "#/$defs/Ref", "description": "What it happens to."},
+        "happens": {"type": "string", "enum": ["reached", "accepted", "met", "firstReading", "issued", "decided", "approved", "closed", "landed", "occurred"], "description": "What happens to it. Left out, the item's own ending: a milestone reached, a deliverable accepted, a condition met."}
+      }
+    },
+    "Timing": {
+      "description": "When something is due or happens, in one of four forms (TAXONOMY.md D47): a date; a window (not before, not after, or both); after an event, with a lag; or set when an event happens, with the month it is expected by.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form"],
+      "properties": {
+        "form": {"type": "string", "enum": ["date", "window", "after", "when"]},
+        "date": {"$ref": "#/$defs/When"},
+        "notBefore": {"$ref": "#/$defs/When"},
+        "notAfter": {"$ref": "#/$defs/When"},
+        "event": {"$ref": "#/$defs/Event"},
+        "lagMonths": {"type": "integer", "minimum": 0, "maximum": 120},
+        "lagDays": {"type": "integer", "minimum": 0, "maximum": 366},
+        "expectedBy": {"$ref": "#/$defs/When", "description": "For set when: the month the event is expected by. Once it passes, the item is flagged (GovEx: waiting on a baseline must not become a way of never setting a target)."},
+        "decidedBy": {"$ref": "#/$defs/Ref", "description": "For set when: the role that sets the value once the event happens."},
+        "risks": {"type": "array", "items": {"$ref": "#/$defs/Slug"}, "description": "The ids of this record's risks that could move it. Recorded, not simulated."},
+        "note": {"type": "string", "maxLength": 240}
+      },
+      "allOf": [
+        {"if": {"properties": {"form": {"const": "date"}}}, "then": {"required": ["date"]}},
+        {"if": {"properties": {"form": {"const": "window"}}}, "then": {"anyOf": [{"required": ["notBefore"]}, {"required": ["notAfter"]}]}},
+        {"if": {"properties": {"form": {"const": "after"}}}, "then": {"required": ["event"]}},
+        {"if": {"properties": {"form": {"const": "when"}}}, "then": {"required": ["event", "expectedBy"]}}
+      ]
+    },
+    "Target": {
+      "description": "A target: a value by a date (the original shape), a value due at a timing (a window, or after an event), or a value to be set when an event happens (TAXONOMY.md D47).",
+      "oneOf": [
+        {"$ref": "#/$defs/ValueAndDate"},
+        {"type": "object", "additionalProperties": false, "required": ["value", "due"], "properties": {"value": {"type": "number"}, "due": {"$ref": "#/$defs/Timing"}}},
+        {"type": "object", "additionalProperties": false, "required": ["setWhen"], "properties": {"setWhen": {"$ref": "#/$defs/Timing", "description": "A timing of form when: the event that sets the value, the month it is expected by and the role that sets it."}, "direction": {"type": "string", "maxLength": 160, "description": "What is known of the target before its value is set, in words: a continued decline."}}}
+      ]
+    },
+    "Section": {
+      "description": "A part of the organisation's charter template that Cartograph holds as text (TAXONOMY.md D53): a heading in the template's words, its text, and the step of the walk it is printed beside.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "heading", "text"],
+      "properties": {
+        "id": {"$ref": "#/$defs/Slug"},
+        "heading": {"type": "string", "minLength": 1, "maxLength": 80},
+        "text": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "step": {"$ref": "#/$defs/Slug", "description": "The walk step it belongs beside; the charter prints it at the end of that step's part."}
       }
     }
   }

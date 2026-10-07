@@ -83,6 +83,11 @@
           {
             "path": "/spec/team",
             "control": "reference"
+          },
+          {
+            "path": "/spec/classification",
+            "control": "text",
+            "hint": "The classification the charter carries, in your organisation's words."
           }
         ],
         "phase": "align"
@@ -387,6 +392,142 @@
             "control": "references",
             "title": "Escalation route",
             "hint": "Who decides when it cannot be decided here, closest first."
+          },
+          {
+            "path": "/spec/responsibilities",
+            "control": "list",
+            "key": "id",
+            "hint": "Who does it, the one accountable, who is consulted and who is told.",
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/item",
+                "control": "sentence",
+                "title": "Decision or deliverable"
+              },
+              {
+                "path": "/decision",
+                "control": "toggle",
+                "title": "A decision"
+              },
+              {
+                "path": "/deliverable",
+                "control": "choice",
+                "title": "Deliverable"
+              },
+              {
+                "path": "/responsible",
+                "control": "references",
+                "title": "Responsible"
+              },
+              {
+                "path": "/accountable",
+                "control": "reference",
+                "title": "Accountable"
+              },
+              {
+                "path": "/consulted",
+                "control": "references",
+                "title": "Consulted"
+              },
+              {
+                "path": "/informed",
+                "control": "references",
+                "title": "Informed"
+              }
+            ]
+          },
+          {
+            "path": "/spec/costs",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "costs-funded"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/category",
+                "control": "text"
+              },
+              {
+                "path": "/basis",
+                "control": "sentence"
+              },
+              {
+                "path": "/amount",
+                "control": "number"
+              },
+              {
+                "path": "/currency",
+                "control": "text"
+              },
+              {
+                "path": "/period",
+                "control": "text"
+              },
+              {
+                "path": "/source",
+                "control": "reference"
+              },
+              {
+                "path": "/status",
+                "control": "choice"
+              },
+              {
+                "path": "/recurrent",
+                "control": "sentence"
+              }
+            ]
+          },
+          {
+            "path": "/spec/procurement",
+            "control": "list",
+            "key": "id",
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/requirement",
+                "control": "sentence"
+              },
+              {
+                "path": "/value",
+                "control": "number"
+              },
+              {
+                "path": "/currency",
+                "control": "text"
+              },
+              {
+                "path": "/valueNote",
+                "control": "text"
+              },
+              {
+                "path": "/method",
+                "control": "text"
+              },
+              {
+                "path": "/leadTime",
+                "control": "text"
+              },
+              {
+                "path": "/requiredBy",
+                "control": "timing"
+              },
+              {
+                "path": "/owner",
+                "control": "reference"
+              }
+            ]
           }
         ]
       },
@@ -430,6 +571,41 @@
         "guide": "What the project produces, and how each one is checked before it is accepted.",
         "fields": [
           {
+            "path": "/spec/workstreams",
+            "control": "list",
+            "key": "id",
+            "hint": "Group the deliverables under a lead role. A workstream that needs its own sponsor or budget is a component project.",
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/name",
+                "control": "text"
+              },
+              {
+                "path": "/purpose",
+                "control": "sentence"
+              },
+              {
+                "path": "/lead",
+                "control": "reference",
+                "title": "Lead"
+              },
+              {
+                "path": "/supporting",
+                "control": "references",
+                "title": "Supported by"
+              },
+              {
+                "path": "/dependsOn",
+                "control": "sentence",
+                "title": "Needs from outside"
+              }
+            ]
+          },
+          {
             "path": "/spec/deliverables",
             "control": "list",
             "key": "id",
@@ -437,7 +613,8 @@
               "deliverables-count",
               "deliverables-acceptance",
               "deliverables-verifier",
-              "closing-criteria"
+              "closing-criteria",
+              "deliverables-register"
             ],
             "fields": [
               {
@@ -451,6 +628,26 @@
               {
                 "path": "/description",
                 "control": "sentence"
+              },
+              {
+                "path": "/owner",
+                "control": "reference",
+                "title": "Owner"
+              },
+              {
+                "path": "/due",
+                "control": "timing",
+                "title": "Due"
+              },
+              {
+                "path": "/workstream",
+                "control": "choice",
+                "title": "Workstream"
+              },
+              {
+                "path": "/evidence",
+                "control": "sentence",
+                "title": "Evidence"
               },
               {
                 "path": "/acceptance",
@@ -507,6 +704,51 @@
         "title": "Schedule",
         "guide": "When the work starts and its phases. The end date is worked out from them.",
         "fields": [
+          {
+            "path": "/spec/milestones",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "milestones-timing",
+              "milestones-loop"
+            ],
+            "hint": "Each milestone with when it falls: a date, a window, after another milestone, or when something happens.",
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/name",
+                "control": "text"
+              },
+              {
+                "path": "/timing",
+                "control": "timing",
+                "title": "When"
+              },
+              {
+                "path": "/owner",
+                "control": "reference",
+                "title": "Owner"
+              },
+              {
+                "path": "/deliverables",
+                "control": "references",
+                "title": "Marks"
+              },
+              {
+                "path": "/evidence",
+                "control": "sentence",
+                "title": "Evidence"
+              },
+              {
+                "path": "/waitsOn",
+                "control": "list",
+                "title": "Also waits on"
+              }
+            ]
+          },
           {
             "path": "/spec/timeline/start",
             "control": "date",
@@ -859,13 +1101,143 @@
             "control": "sentence"
           }
         ]
+      },
+      {
+        "key": "approval",
+        "title": "Approval",
+        "guide": "The conditions approval carries, who signs, and what has happened since.",
+        "fields": [
+          {
+            "path": "/spec/conditions",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "conditions-due"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/action",
+                "control": "sentence"
+              },
+              {
+                "path": "/owner",
+                "control": "reference"
+              },
+              {
+                "path": "/due",
+                "control": "timing"
+              },
+              {
+                "path": "/gates",
+                "control": "readonly"
+              }
+            ]
+          },
+          {
+            "path": "/spec/signOffs",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "signoffs-present"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/stage",
+                "control": "choice"
+              },
+              {
+                "path": "/label",
+                "control": "text"
+              },
+              {
+                "path": "/role",
+                "control": "reference"
+              }
+            ]
+          },
+          {
+            "path": "/spec/events",
+            "control": "list",
+            "key": "id",
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/on",
+                "control": "reference"
+              },
+              {
+                "path": "/happened",
+                "control": "choice"
+              },
+              {
+                "path": "/date",
+                "control": "date"
+              },
+              {
+                "path": "/note",
+                "control": "sentence"
+              },
+              {
+                "path": "/evidence",
+                "control": "sentence"
+              },
+              {
+                "path": "/value",
+                "control": "number"
+              },
+              {
+                "path": "/decision",
+                "control": "choice"
+              },
+              {
+                "path": "/recordedBy",
+                "control": "readonly"
+              }
+            ]
+          },
+          {
+            "path": "/spec/sections",
+            "control": "list",
+            "key": "id",
+            "hint": "A part of your charter template Cartograph does not hold as a field, in the template's words.",
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/heading",
+                "control": "text"
+              },
+              {
+                "path": "/text",
+                "control": "sentence"
+              },
+              {
+                "path": "/step",
+                "control": "choice"
+              }
+            ]
+          }
+        ]
       }
     ],
     "stages": [
       {
         "key": "context",
         "title": "Context",
-        "guide": "Where the project sits: what it is part of, the outcomes it serves and the team that owns it.",
+        "guide": "Where the project sits: what it depends on, the outcomes it serves and the team that owns it.",
         "steps": [
           "goals"
         ]
@@ -922,6 +1294,14 @@
         "steps": [
           "success",
           "landing"
+        ]
+      },
+      {
+        "key": "approval",
+        "title": "Approval",
+        "guide": "The conditions approval carries, who signs it, and what has happened since.",
+        "steps": [
+          "approval"
         ]
       }
     ],

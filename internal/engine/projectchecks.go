@@ -346,13 +346,18 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	// timeline
 	// A component runs within its parent's schedule (TAXONOMY.md D15)
 	// unless it states one of its own.
-	if haveTimeline && start != "" && len(phases) > 0 {
+	milestones, _ := spec["milestones"].([]any)
+	if len(milestones) > 0 {
+		c.add("timeline-start-phases", "timeline", phaseInitiation, checkOK,
+			fmt.Sprintf("%d milestone%s carry the schedule.", len(milestones), plural(len(milestones))))
+	} else if haveTimeline && start != "" && len(phases) > 0 {
 		c.add("timeline-start-phases", "timeline", phaseInitiation, checkOK, "A start month and at least one phase are set.")
 	} else if isComponent && start == "" && len(phases) == 0 {
 		c.add("timeline-start-phases", "timeline", phaseInitiation, checkOK, "Runs within the schedule of the project it is part of.")
 	} else {
-		c.add("timeline-start-phases", "timeline", phaseInitiation, checkBlock, "A start month and at least one phase are both needed.")
+		c.add("timeline-start-phases", "timeline", phaseInitiation, checkBlock, "Add the milestones, each with when it falls.")
 	}
+	addPlanChecks(c, spec)
 
 	// resources: the roles and the funding the project needs, and the
 	// stakeholders it must keep close.
@@ -1089,14 +1094,12 @@ func keyResultHasBaseline(kr map[string]any) bool {
 	return strings.TrimSpace(reason) != ""
 }
 
-// keyResultHasTarget reports whether a key result carries a target value.
+// keyResultHasTarget reports whether a key result carries a target: a
+// value, or one set when an event happens whose expected month has not
+// passed (TAXONOMY.md D47).
 func keyResultHasTarget(kr map[string]any) bool {
-	target, ok := kr["target"].(map[string]any)
-	if !ok {
-		return false
-	}
-	_, hasValue := target["value"]
-	return hasValue
+	t := readTarget(kr["target"])
+	return t.Set && !t.Timing.Late
 }
 
 func criterionExists(criteria []any, when string) bool {
@@ -1358,7 +1361,7 @@ func unownedMessage(n int) string {
 // beside the checks, and a test holds it to every check added as
 // checkBlock.
 var blockingChecks = map[string]bool{
-	"aim-problem-change": true, "problem-groups-match-gaps": true, "components-parent": true, "components-loop": true, "data-personal-data": true, "data-sink": true,
+	"aim-problem-change": true, "problem-groups-match-gaps": true, "components-parent": true, "components-loop": true, "milestones-loop": true, "data-personal-data": true, "data-sink": true,
 	"deliverables-count": true, "closing-criteria": true, "landing-criteria": true, "success-criteria": true,
 	"success-measured": true, "goals-aligned": true, "goals-functional-level": true, "goals-key-results-baseline": true,
 	"goals-key-results-count": true, "goals-key-results-source": true, "goals-key-results-target": true,
@@ -1372,7 +1375,7 @@ var blockingChecks = map[string]bool{
 // personal data or hands data on. A field they read is not marked
 // required, since most definitions leave it empty and are complete.
 var someBlocking = map[string]bool{
-	"components-parent": true, "components-loop": true, "goals-aligned": true, "goals-functional-level": true,
+	"components-parent": true, "components-loop": true, "milestones-loop": true, "goals-aligned": true, "goals-functional-level": true,
 	"success-measured": true, "data-personal-data": true, "data-sink": true,
 }
 

@@ -56,7 +56,7 @@
           "description": "Today's figure and when it was taken, or an admitted unknown with the reason and when it will be known: every measure has one or the other (TAXONOMY.md D25, D26)."
         },
         "target": {
-          "$ref": "common.schema.json#/$defs/ValueAndDate"
+          "$ref": "common.schema.json#/$defs/Target"
         },
         "sources": {
           "type": "array",

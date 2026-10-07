@@ -202,9 +202,10 @@
             "horizon",
             "list",
             "toggle",
-            "readonly"
+            "readonly",
+            "timing"
           ],
-          "description": "How the field is asked for. choice: pick one of the schema's enum; reference: pick an existing manifest of the x-cartograph-ref kind, with a way to add one; references: pick several; list: a keyed list of items, each defined by the fields below; horizon: years and optional months with a 'same as above' choice."
+          "description": "How the field is asked for. choice: pick one of the schema's enum; timing: a date, a window, after an event or set when an event happens (TAXONOMY.md D47); reference: pick an existing manifest of the x-cartograph-ref kind, with a way to add one; references: pick several; list: a keyed list of items, each defined by the fields below; horizon: years and optional months with a 'same as above' choice."
         },
         "title": {
           "type": "string",

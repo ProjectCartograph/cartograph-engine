@@ -104,7 +104,7 @@ func ProgrammeCharter(ctx context.Context, e *engine.Engine, id string) ([]byte,
 		}
 	}
 	d.signOff(append(roles, "Lead team: "+n.of("Team", str(spec["leadTeam"]))))
-	d.heldElsewhere()
+	d.heldElsewhere(spec)
 	return d.end(), nil
 }
 

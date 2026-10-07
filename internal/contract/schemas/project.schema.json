@@ -548,6 +548,23 @@
                     }
                   }
                 }
+              },
+              "owner": {
+                "$ref": "common.schema.json#/$defs/Ref",
+                "description": "The role that owns the deliverable (TAXONOMY.md D49)."
+              },
+              "due": {
+                "$ref": "common.schema.json#/$defs/Timing",
+                "description": "When it is due, as a timing (TAXONOMY.md D47)."
+              },
+              "evidence": {
+                "type": "string",
+                "maxLength": 240,
+                "description": "What shows it was accepted: the record someone else could check."
+              },
+              "workstream": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "description": "The id of the workstream it belongs to (spec.workstreams)."
               }
             }
           }
@@ -674,7 +691,7 @@
             "start",
             "phases"
           ],
-          "description": "The end month is derived from start plus the sum of every phase's months; it is never stored.",
+          "description": "The end month is derived from start plus the sum of every phase's months; it is never stored. Milestones (spec.milestones) carry the schedule since 2.9; a schedule is complete with either (TAXONOMY.md D48).",
           "properties": {
             "start": {
               "$ref": "common.schema.json#/$defs/YearMonth"
@@ -853,6 +870,403 @@
           "items": {
             "$ref": "common.schema.json#/$defs/Component"
           }
+        },
+        "workstreams": {
+          "type": "array",
+          "description": "The project's workstreams: deliverables grouped under a lead role, with the roles that support it (TAXONOMY.md D49). A workstream that needs its own sponsor or budget is a component project instead (D46).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "purpose": {
+                "type": "string",
+                "maxLength": 400
+              },
+              "lead": {
+                "$ref": "common.schema.json#/$defs/Ref"
+              },
+              "supporting": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Ref"
+                }
+              },
+              "dependsOn": {
+                "type": "string",
+                "maxLength": 240,
+                "description": "What the workstream needs from outside it, in words."
+              }
+            }
+          }
+        },
+        "milestones": {
+          "type": "array",
+          "description": "The project's milestones: each a timing, an owner, the deliverables it marks and the evidence it was reached (TAXONOMY.md D48). A milestone whose timing follows another's is linked finish-to-start; the engine refuses a loop and finds the critical path.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "timing"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "timing": {
+                "$ref": "common.schema.json#/$defs/Timing"
+              },
+              "owner": {
+                "$ref": "common.schema.json#/$defs/Ref"
+              },
+              "waitsOn": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Event"
+                },
+                "description": "Further events this milestone waits on besides its timing's own, finish-to-start."
+              },
+              "deliverables": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Slug"
+                },
+                "description": "The ids of the deliverables this milestone marks."
+              },
+              "evidence": {
+                "type": "string",
+                "maxLength": 240,
+                "description": "What shows it was reached."
+              }
+            }
+          }
+        },
+        "responsibilities": {
+          "type": "array",
+          "description": "Who is responsible, accountable, consulted and informed for each decision or deliverable (RACI, TAXONOMY.md D50). Roles only.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "item",
+              "accountable"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "item": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160,
+                "description": "The decision or deliverable, in words."
+              },
+              "deliverable": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "description": "The deliverable it is, where it is one."
+              },
+              "decision": {
+                "type": "boolean",
+                "description": "A decision right rather than a piece of work."
+              },
+              "responsible": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Ref"
+                }
+              },
+              "accountable": {
+                "$ref": "common.schema.json#/$defs/Ref"
+              },
+              "consulted": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Ref"
+                }
+              },
+              "informed": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Ref"
+                }
+              }
+            }
+          }
+        },
+        "costs": {
+          "type": "array",
+          "description": "The budget as cost lines (TAXONOMY.md D51).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "category"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "category": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "basis": {
+                "type": "string",
+                "maxLength": 160,
+                "description": "Quantity or basis of the estimate."
+              },
+              "amount": {
+                "type": "number",
+                "minimum": 0
+              },
+              "currency": {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              "period": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "source": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "FundingSource"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "approved",
+                  "requested",
+                  "beingCosted",
+                  "unfunded"
+                ]
+              },
+              "recurrent": {
+                "type": "string",
+                "maxLength": 160,
+                "description": "What it costs after the project, in words."
+              },
+              "condition": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "description": "While a line is unfunded or being costed: the id of the condition that decides it (spec.conditions)."
+              }
+            }
+          }
+        },
+        "procurement": {
+          "type": "array",
+          "description": "What the project buys (TAXONOMY.md D51).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "requirement"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "requirement": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0
+              },
+              "currency": {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              "valueNote": {
+                "type": "string",
+                "maxLength": 120,
+                "description": "The value in words where there is no figure yet: within the approved provision, being costed."
+              },
+              "method": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "leadTime": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "requiredBy": {
+                "$ref": "common.schema.json#/$defs/Timing"
+              },
+              "owner": {
+                "$ref": "common.schema.json#/$defs/Ref"
+              }
+            }
+          }
+        },
+        "conditions": {
+          "type": "array",
+          "description": "The conditions the project's approval carries: actions to complete, each with its owner, when it is due and what it gates (TAXONOMY.md D52).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "action"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "action": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "owner": {
+                "$ref": "common.schema.json#/$defs/Ref"
+              },
+              "due": {
+                "$ref": "common.schema.json#/$defs/Timing"
+              },
+              "gates": {
+                "$ref": "common.schema.json#/$defs/Event",
+                "description": "What cannot happen until it is met."
+              }
+            }
+          }
+        },
+        "signOffs": {
+          "type": "array",
+          "description": "The sign-offs the charter needs: each a stage and the role that signs (TAXONOMY.md D52). The signature itself is an event on the line.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "stage",
+              "role"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "stage": {
+                "type": "string",
+                "enum": [
+                  "definition",
+                  "closing",
+                  "handover"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 80,
+                "description": "What the line says in the template's words: Prepared by, Reviewed by, Approved by."
+              },
+              "role": {
+                "$ref": "common.schema.json#/$defs/Ref"
+              }
+            }
+          }
+        },
+        "events": {
+          "type": "array",
+          "description": "What happened (TAXONOMY.md D52): each event names the item it happened to, what happened, when, the evidence and, for a success criterion, the value measured. The engine records who entered it.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "on",
+              "happened",
+              "date"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "on": {
+                "$ref": "common.schema.json#/$defs/Ref",
+                "description": "The item: a milestone, deliverable, condition, risk, success criterion or sign-off of this project (local), or another record."
+              },
+              "happened": {
+                "type": "string",
+                "enum": [
+                  "reached",
+                  "slipped",
+                  "accepted",
+                  "rejected",
+                  "met",
+                  "notMet",
+                  "occurred",
+                  "issued",
+                  "decided",
+                  "signed"
+                ]
+              },
+              "date": {
+                "$ref": "common.schema.json#/$defs/When"
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 400
+              },
+              "evidence": {
+                "type": "string",
+                "maxLength": 240
+              },
+              "value": {
+                "type": "number",
+                "description": "For a success criterion: the value measured."
+              },
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "approve",
+                  "approveWithConditions",
+                  "reject"
+                ],
+                "description": "For a sign-off: what was decided."
+              },
+              "recordedBy": {
+                "type": "string",
+                "maxLength": 200,
+                "readOnly": true,
+                "description": "Who entered it, set by the engine from the session, as a version records its author."
+              }
+            }
+          }
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Section"
+          },
+          "description": "Parts of the organisation's charter template Cartograph holds as text (TAXONOMY.md D53)."
+        },
+        "classification": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "The classification the charter carries, in the organisation's words: Official, Restricted."
         }
       }
     }

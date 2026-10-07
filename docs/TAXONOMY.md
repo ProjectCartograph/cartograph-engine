@@ -1391,3 +1391,120 @@ strategy written from the top down; a dependency between two pieces of
 work is not a step down it, and a programme listing a project it depends
 on is the point of this decision. D28's other half holds: a loop is
 refused, read across projects and programmes together.
+
+### D47. A date can be a window, follow an event, or be set when one happens. *(resolved)*
+
+**The problem.** Cartograph took a figure and a month. Plans are rarely that
+certain: a target is "set after the baseline is in", a milestone is "not
+before April, not after July", a review is "twelve months after the baseline
+report is accepted". Without a place to say so, a well-defined plan read as
+unfinished, and a check stayed open with a sentence of explanation.
+
+**The discipline.** A target "specifies a particular value that an
+indicator should reach by a specific date" (OECD-DAC glossary). Schedulers
+constrain a date to a window (start or finish no earlier than, no later
+than: Microsoft Project, Primavera P6) and link items finish-to-start with a
+lag. Results frameworks record a baseline as to be determined with the month
+it will be collected, and set targets at a review after it (USAID MEL plan
+template). Waiting on a baseline can become a way of never setting a target,
+so the expected month is part of it (GovEx).
+
+**What Cartograph does.** One shape, a **timing**, wherever a definition
+says when: a date (a month, or a day where one is fixed); a window (not
+before, not after, or both); after an event, with a lag; or set when an event
+happens, with the month it is expected by and the role that sets it. An
+**event** is something that happens to an item: a milestone reached, a
+deliverable accepted, a condition met, a KPI's first reading, a decision
+issued, or something outside the workspace, named in words. A timing may name
+the risks that could move it; Cartograph records the mapping and does not
+simulate it. A target or baseline that is set when an event happens meets its
+check until its expected month passes; after that it is flagged.
+
+### D48. Milestones carry a project's schedule; phases are read as milestones. *(resolved)*
+
+**The problem.** A project's schedule was a start month and a run of phases
+in months. Real charters list dated milestones, each with an owner, what it
+waits on and the evidence that it was reached (HCD-01 lists 26). Phases
+cannot say what waits on what.
+
+**What Cartograph does.** A project lists **milestones**, each with a timing,
+an owner, the deliverables it marks and the evidence that it was reached.
+A milestone that follows another is linked finish-to-start, the common case
+(Microsoft Project, Linear), with an optional lag. The engine resolves the
+chain: a loop is refused, and the longest chain is the critical path. Nothing
+reschedules itself; a conflict is shown, and the person decides. Phases stay
+readable (they are part of the 2.x contract) and are marked deprecated; a
+schedule is complete with either.
+
+### D49. A deliverable says who owns it, when it is due and what evidences it. *(resolved)*
+
+**The discipline.** A deliverable register (PMI) names, for each
+deliverable, its owner, its due date, its acceptance criteria and the
+evidence of acceptance. Cartograph had the acceptance criteria.
+
+**What Cartograph does.** A deliverable may name its owner (a role), when it
+is due (a timing), the workstream it belongs to and the evidence that shows
+it was accepted. **Workstreams** group a project's deliverables under a
+lead role with supporting roles (PRINCE2's work packages at a level above
+tasks); a workstream large enough to need its own sponsor or budget is a
+component project instead (D46).
+
+### D50. Who is responsible, accountable, consulted and informed. *(resolved)*
+
+**The discipline.** A responsibility assignment matrix (RACI, PMBOK) names,
+for each deliverable or decision, who does the work, the one who is
+accountable, who is consulted and who is kept informed.
+
+**What Cartograph does.** A project lists **responsibilities**: a decision or
+deliverable, the roles responsible, the one role accountable, and the roles
+consulted and informed. Roles only, never people. Decision rights are
+responsibilities whose item is a decision.
+
+### D51. Costs and procurement are lines of the plan. *(resolved)*
+
+**The discipline.** A charter's resource plan breaks the budget into cost
+lines (category, basis, amount, period, source, approval), and a
+procurement plan lists what is bought, its estimated value, method, lead
+time, required-by date and owner (PMI).
+
+**What Cartograph does.** A project lists **costs**, each a category, its
+basis, an amount and currency, the period, the funding source and whether it
+is approved, requested, being costed or unfunded; and **procurement** items,
+each a requirement with its value, method, lead time, owner and a timing for
+when it is required. An unfunded cost is not hidden: a check names it until a
+decision covers it.
+
+### D52. What happened is recorded as events; sign-off is an event. *(resolved)*
+
+**The problem.** A definition says what should happen. It also has to say
+what did: a milestone reached, a deliverable accepted, a risk that occurred,
+a condition met, and the approvals the charter needs. Without it the charter
+reads the same the day it is drafted and the day it closes.
+
+**What Cartograph does.** A project keeps an **event log**: each event names
+the item it happened to (a milestone, a deliverable, a condition, a risk, a
+success criterion), what happened, when, the evidence, and, for a criterion,
+the value measured. An event is entered in a change set like any edit, and
+the engine records who entered it, as a version records its author. A
+project lists the **conditions** its approval carries (an action, the role
+that owns it, when it is due, and what it gates), and the **sign-offs** its
+charter needs, each a stage (definition, closing, handover) and the role that
+signs. A sign-off is an event on that line; the rendered charter shows who
+signed and when, and an unsigned line stays blank for a wet signature.
+Definitions still name roles; the signer is recorded the way an author is.
+
+### D53. What a template asks for and Cartograph does not check is a section in the template's words. *(resolved)*
+
+**The problem.** Organisations charter to their own templates. Beyond what
+Cartograph holds as shapes, a template asks for prose: the delivery model,
+legal and safeguarding considerations, the training plan, status rules.
+With nowhere to put it, a port either dropped it or squeezed it into a note.
+
+**What Cartograph does.** A project or programme may carry **sections**:
+each a heading in the template's words, its text, and the step of the walk
+it belongs beside, so the charter prints it where a reader of that template
+expects it. A section is never a substitute for a shape: where Cartograph
+has a field for something (personal data, a stakeholder, a cost), the field
+is used, and the section says only what the field cannot. A project also
+records the classification its document carries (for example Official),
+and its reference in the organisation's register is its alias.

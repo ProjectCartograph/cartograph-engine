@@ -370,6 +370,13 @@ func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, 
 	if err := e.guardDoc(ctx, kind, id, doc); err != nil {
 		return Version{}, err
 	}
+	if kind == "Project" {
+		if stamped, err := e.stampEvents(ctx, id, doc, actor); err != nil {
+			return Version{}, err
+		} else if stamped != nil {
+			yamlBytes = stamped
+		}
+	}
 
 	// Compute next version number: use highest snapshot number (from ListVersions), not working copy number
 	// Working copy has Number=0; snapshots have Number≥1. Always use highest snapshot + 1.

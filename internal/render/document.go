@@ -154,6 +154,7 @@ var labels = map[string]map[string]string{
 		"quarterly": "Quarterly", "annual": "Annual", "adHoc": "Ad hoc",
 	},
 	"personal":  {"none": "None", "personal": "Personal", "sensitive": "Sensitive"},
+	"readiness": {"ready": "Ready", "open": "Open points", "blocking": "Blocking"},
 	"direction": {"increase": "Increase", "decrease": "Decrease", "maintain": "Maintain", "reach": "Reach"},
 }
 
@@ -196,16 +197,20 @@ func humanise(id string) string {
 type doc struct {
 	b       bytes.Buffer
 	pending string
+	// toc is every section written, in order, for the contents.
+	toc []string
 }
 
 func (d *doc) flush() {
 	if d.pending != "" {
+		d.toc = append(d.toc, d.pending)
+		anchor := fmt.Sprintf(` id="s%d"`, len(d.toc))
 		// The step of a project's walk that defines the section, so an
 		// interface showing the charter beside the walk can open it there.
 		if step := sectionSteps[d.pending]; step != "" {
-			d.b.WriteString(`<h2 data-step="` + step + `">` + esc(d.pending) + "</h2>\n")
+			d.b.WriteString(`<h2` + anchor + ` data-step="` + step + `">` + esc(d.pending) + "</h2>\n")
 		} else {
-			d.b.WriteString("<h2>" + esc(d.pending) + "</h2>\n")
+			d.b.WriteString("<h2" + anchor + ">" + esc(d.pending) + "</h2>\n")
 		}
 		d.pending = ""
 	}
@@ -220,13 +225,19 @@ var sectionSteps = map[string]string{
 	"Deliverables":                   "deliverables",
 	"Strategic alignment":            "goals",
 	"Components":                     "goals",
+	"Components and dependencies":    "goals",
 	"Governance and roles":           "resources",
 	"Budget":                         "resources",
+	"Resources and budget":           "resources",
 	"Stakeholders":                   "stakeholders",
 	"Success criteria":               "success",
+	"Success criteria and handover":  "success",
 	"Milestones":                     "timeline",
+	"Schedule and milestones":        "timeline",
 	"Risks, issues and dependencies": "risks",
 	"Data requirements":              "data",
+	"Approval":                       "approval",
+	"Record of events":               "approval",
 }
 
 func esc(s string) string { return html.EscapeString(strings.TrimSpace(s)) }
@@ -235,6 +246,13 @@ func (d *doc) h2(s string) { d.pending = s }
 func (d *doc) h3(s string) {
 	d.flush()
 	d.b.WriteString("<h3>" + esc(s) + "</h3>\n")
+}
+
+// h3named is a sub-heading that is itself a statement, such as an
+// objective: set as a sentence, not as a label.
+func (d *doc) h3named(s string) {
+	d.flush()
+	d.b.WriteString("<h3 class=\"named\">" + esc(s) + "</h3>\n")
 }
 
 func (d *doc) p(s string) {
@@ -390,70 +408,135 @@ func (d *doc) head(name, kindLine string, vers engine.Version) {
 	d.b.WriteString(esc(name))
 	d.b.WriteString(`</title>
 <style>
-:root { --fg: #1f2328; --muted: #5b636e; --line: #d8dde3; --soft: #f5f7f9; --accent: #2f6f5e; }
+:root { --fg: #1b1f24; --muted: #5a6370; --line: #d9dee4; --soft: #f4f6f8; --paper: #ffffff; --ground: #eef1f4;
+  --accent: #1e5b52; --accent-soft: #e6f0ee; --ok: #1f7a4d; --warn: #9a6200; --bad: #b42318;
+  --serif: Charter, "Bitstream Charter", "Sitka Text", Cambria, "Iowan Old Style", Georgia, serif;
+  --sans: Inter, "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif; }
 @media (prefers-color-scheme: dark) {
-  :root { --fg: #e6e8eb; --muted: #9aa3ad; --line: #3a4048; --soft: #22262b; --accent: #7cc2ad; }
-  body { background: #181a1d; }
+  :root { --fg: #e7e9ec; --muted: #9ba4ae; --line: #343a42; --soft: #1f2328; --paper: #16191d; --ground: #0f1113;
+    --accent: #7cc2ad; --accent-soft: #1d2b28; --ok: #5cc28f; --warn: #e0a84a; --bad: #f07a6e; }
 }
 * { box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  line-height: 1.55; color: var(--fg); margin: 0 auto; padding: 2rem 1.25rem 4rem; max-width: 860px; }
-header { border-bottom: 2px solid var(--line); padding-bottom: 1rem; margin-bottom: 1rem; }
-.kind { text-transform: uppercase; letter-spacing: .06em; font-size: .75rem; color: var(--accent); font-weight: 600; margin: 0; }
-h1 { font-size: 1.9rem; line-height: 1.25; margin: .25rem 0 .5rem; }
-.version { color: var(--muted); font-size: .85rem; margin: 0; }
-h2 { font-size: 1.3rem; margin: 2.25rem 0 .5rem; padding-top: .75rem; border-top: 1px solid var(--line); }
-header + h2 { border-top: 0; padding-top: 0; }
-h3 { font-size: 1.02rem; margin: 1.5rem 0 .4rem; }
-p { margin: .4rem 0; }
-.label { font-weight: 600; margin: 1rem 0 .25rem; }
-dl { display: grid; grid-template-columns: minmax(9rem, 12rem) 1fr; gap: .35rem 1rem; margin: .5rem 0 1rem; }
-dt { color: var(--muted); }
+html { background: var(--ground); }
+body { font-family: var(--sans); font-size: 15px; line-height: 1.55; color: var(--fg); background: var(--paper);
+  margin: 2rem auto; padding: 3rem 3.25rem 4rem; max-width: 960px; border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 8px 28px rgb(0 0 0 / .06); counter-reset: section; }
+header.cover { display: grid; grid-template-columns: 1fr minmax(15rem, 19rem); gap: 1.5rem 2.5rem; align-items: start;
+  border-bottom: 3px solid var(--accent); padding-bottom: 1.5rem; margin-bottom: 1.75rem; }
+.kind { font-family: var(--sans); text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; color: var(--accent); font-weight: 700; margin: 0 0 .6rem; }
+h1 { font-family: var(--serif); font-size: 2.35rem; font-weight: 600; line-height: 1.15; margin: 0; letter-spacing: -.01em; }
+.subtitle { color: var(--muted); margin: .6rem 0 0; font-size: 1rem; }
+table.control { margin: 0; font-size: .8rem; border-collapse: collapse; width: 100%; }
+table.control th, table.control td { border: 0; border-bottom: 1px solid var(--line); padding: .3rem .1rem; background: none; text-transform: none; letter-spacing: 0; }
+table.control th { color: var(--muted); font-weight: 500; width: 42%; font-size: .8rem; }
+table.control td { font-weight: 600; }
+nav.contents { columns: 2; column-gap: 2.5rem; font-size: .9rem; margin: 0 0 2rem; padding: 1rem 1.25rem; background: var(--soft); border-radius: 8px; }
+nav.contents p { column-span: all; margin: 0 0 .5rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+nav.contents ol { margin: 0; padding-left: 1.5rem; }
+nav.contents li { margin: .15rem 0; break-inside: avoid; }
+nav.contents a { color: inherit; text-decoration: none; }
+nav.contents a:hover { text-decoration: underline; }
+h2 { font-family: var(--serif); font-size: 1.45rem; font-weight: 600; margin: 2.75rem 0 .9rem; padding-bottom: .4rem;
+  border-bottom: 1px solid var(--line); counter-increment: section; counter-reset: sub; }
+h2::before { content: counter(section); color: var(--accent); font-family: var(--sans); font-weight: 700; font-size: .95rem;
+  display: inline-block; min-width: 2rem; vertical-align: .15rem; }
+h3 { font-family: var(--sans); font-size: .82rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted);
+  margin: 1.75rem 0 .6rem; counter-increment: sub; }
+h3::before { content: counter(section) "." counter(sub) "\00a0\00a0"; color: var(--accent); }
+h3.named { font-family: var(--serif); font-size: 1.08rem; text-transform: none; letter-spacing: 0; color: var(--fg); font-weight: 600; }
+h3.named::before { font-family: var(--sans); font-size: .85rem; }
+p { margin: .45rem 0; }
+p.lead { font-family: var(--serif); font-size: 1.15rem; line-height: 1.5; margin: 0 0 1rem; }
+.label { font-weight: 600; margin: .9rem 0 .3rem; font-size: .9rem; }
+dl { display: grid; grid-template-columns: minmax(10rem, 13rem) 1fr; gap: .4rem 1.25rem; margin: .6rem 0 1.1rem; }
+dt { color: var(--muted); font-size: .9rem; }
 dd { margin: 0; }
-@media (max-width: 560px) { dl { grid-template-columns: 1fr; } dd { margin-bottom: .5rem; } }
-table { width: 100%; border-collapse: collapse; margin: .75rem 0 1.25rem; font-size: .93rem; }
-th, td { border: 1px solid var(--line); padding: .45rem .6rem; text-align: left; vertical-align: top; }
-th { background: var(--soft); font-weight: 600; }
-ul { margin: .3rem 0 .8rem; padding-left: 1.4rem; }
+@media (max-width: 640px) { body { padding: 1.5rem 1.1rem 3rem; margin: 0; border-radius: 0; }
+  header.cover { grid-template-columns: 1fr; } dl { grid-template-columns: 1fr; } dd { margin-bottom: .5rem; }
+  nav.contents { columns: 1; } .columns { grid-template-columns: 1fr; } }
+table { width: 100%; border-collapse: collapse; margin: .6rem 0 1.4rem; font-size: .86rem; }
+th, td { border-bottom: 1px solid var(--line); padding: .5rem .6rem; text-align: left; vertical-align: top; }
+th { background: var(--accent-soft); color: var(--fg); font-weight: 600; font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; border-bottom: 2px solid var(--accent); }
+tr:nth-child(even) td { background: color-mix(in srgb, var(--soft) 55%, transparent); }
+ul { margin: .3rem 0 .8rem; padding-left: 1.3rem; }
 li { margin: .2rem 0; }
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0 2rem; }
 .held { color: var(--muted); }
-dl.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: .75rem 1.25rem;
-  background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.1rem; margin: 1.25rem 0 .5rem; }
-dl.facts div { display: flex; flex-direction: column; gap: .1rem; }
-dl.facts dt { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
+dl.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .9rem 1.5rem;
+  background: var(--soft); border-left: 4px solid var(--accent); border-radius: 6px; padding: 1.1rem 1.25rem; margin: 1rem 0 1.25rem; }
+dl.facts div { display: flex; flex-direction: column; gap: .15rem; }
+dl.facts dt { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; }
 dl.facts dd { font-weight: 600; }
-table.signoff td { height: 2.4rem; }
-.chip { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; border: 1px solid var(--line);
-  border-radius: 999px; padding: .05rem .5rem .05rem .4rem; font-size: .82rem; line-height: 1.5; }
+table.signoff td { height: 2.9rem; }
+table.signoff td:nth-child(2) { width: 34%; }
+.chip { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; border: 1px solid var(--line);
+  border-radius: 999px; padding: .08rem .55rem .08rem .45rem; font-size: .78rem; line-height: 1.5; background: var(--paper); }
 .chip svg { flex: none; }
+.chip-readiness.chip { font-weight: 600; }
+.chip-ready { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.chip-open { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.chip-blocking { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
 td.fit { width: 1%; white-space: nowrap; }
-table.signoff td:first-child { width: 38%; }
-@page { size: A4; margin: 16mm 14mm; }
+footer.doc { margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .78rem; }
+@page { size: A4; margin: 18mm 15mm 16mm; @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt var(--sans); color: #555; } }
 @media print {
-  body { padding: 0; max-width: none; color: #000; background: #fff; }
-  :root { --fg: #000; --muted: #444; --line: #bbb; --soft: #f3f3f3; --accent: #1f5a4b; }
-  h2 { break-after: avoid; } table, dl, tr { break-inside: avoid; }
+  html, body { background: #fff; }
+  body { margin: 0; padding: 0; max-width: none; box-shadow: none; font-size: 9.5pt; color: #000; }
+  :root { --fg: #000; --muted: #444; --line: #c4c9cf; --soft: #f3f5f6; --paper: #fff; --accent: #1e5b52; --accent-soft: #e9f1ef; }
+  nav.contents { break-after: page; }
+  h2 { break-after: avoid; } h3 { break-after: avoid; } tr, dl, .facts { break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
 }
 </style>
 </head>
 <body>
-<header>
+<header class="cover">
+<div>
 `)
 	if kindLine != "" {
 		d.b.WriteString("<p class=\"kind\">" + esc(kindLine) + "</p>\n")
 	}
-	d.b.WriteString("<h1>" + esc(name) + "</h1>\n<p class=\"version\">")
+	d.b.WriteString("<h1>" + esc(name) + "</h1>\n<p class=\"version subtitle\">")
 	if vers.Number > 0 {
 		d.b.WriteString(fmt.Sprintf("Version %d, saved %s", vers.Number, vers.On.Format("2 January 2006")))
 	} else {
 		d.b.WriteString("Working draft, not yet saved as a version")
 	}
-	d.b.WriteString("</p>\n</header>\n\n")
+	d.b.WriteString("</p>\n</div>\n" + coverEnd)
 }
 
+// coverEnd closes the cover: whatever the charter writes straight after the
+// head (its document control) sits beside the title, so head leaves the
+// cover open and the first section closes it.
+const coverEnd = "<!--cover-->"
+
 func (d *doc) end() []byte {
-	d.b.WriteString("\n</body>\n</html>\n")
-	return d.b.Bytes()
+	d.b.WriteString("\n<footer class=\"doc\">Rendered by Cartograph from the definition: every section reads its fields, and nothing is typed twice.</footer>\n</body>\n</html>\n")
+	out := d.b.Bytes()
+	// The cover closes before the contents, or before the first section
+	// when there are none.
+	cover := "</header>\n"
+	if bytes.Contains(out, []byte(tocMark)) {
+		out = bytes.Replace(out, []byte(tocMark), []byte(cover+d.contentsHTML()), 1)
+		out = bytes.Replace(out, []byte(coverEnd), nil, 1)
+	} else {
+		out = bytes.Replace(out, []byte(coverEnd), []byte(cover), 1)
+	}
+	return out
+}
+
+// contentsHTML lists the sections written, linked to each.
+func (d *doc) contentsHTML() string {
+	if len(d.toc) < 4 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("<nav class=\"contents\" aria-label=\"Contents\"><p>Contents</p><ol>\n")
+	for i, t := range d.toc {
+		fmt.Fprintf(&b, "<li><a href=\"#s%d\">%s</a></li>\n", i+1, esc(t))
+	}
+	b.WriteString("</ol></nav>\n")
+	return b.String()
 }
 
 // problems prints the problems a project or a programme answers, each as
@@ -681,20 +764,6 @@ func each(ctx context.Context, e *engine.Engine, kind string, fn func(id, name s
 	}
 }
 
-// heldElsewhere says, once and briefly, what a charter traditionally
-// carries that Cartograph deliberately does not.
-func (d *doc) heldElsewhere() {
-	d.h2("Related plans")
-	d.flush()
-	d.b.WriteString("<p class=\"held\">Kept in the tools that manage delivery.</p>\n")
-	d.fields(
-		field{"Detailed plan", "Work management platform"},
-		field{"Procurement", "Finance and procurement systems"},
-		field{"Communications and training plan", "Work management platform"},
-		field{"Change control", "Numbered versions in Cartograph"},
-	)
-}
-
 // Chips: a value from a fixed list, shown as an icon and its word.
 //
 // Iconography first, and built for a black-and-white printer: the meaning
@@ -779,6 +848,10 @@ var chipIcons = map[string]string{
 	"keepSatisfied": svgOpen + `<rect x="2.5" y="2.5" width="11" height="11"/><rect x="2.5" y="2.5" width="5.5" height="5.5" fill="currentColor"/></svg>`,
 	"keepInformed":  svgOpen + `<rect x="2.5" y="2.5" width="11" height="11"/><rect x="8" y="8" width="5.5" height="5.5" fill="currentColor"/></svg>`,
 	"monitor":       svgOpen + `<rect x="2.5" y="2.5" width="11" height="11"/><rect x="2.5" y="8" width="5.5" height="5.5" fill="currentColor"/></svg>`,
+	// readiness of a part of the definition: a tick, half a circle, a cross
+	"ready":    svgOpen + `<circle cx="8" cy="8" r="6.3" fill="currentColor"/><path d="m5.2 8.2 1.9 1.9 3.8-4" stroke="#fff"/></svg>`,
+	"open":     svgOpen + `<circle cx="8" cy="8" r="6.3"/><path d="M8 1.7a6.3 6.3 0 0 1 0 12.6Z" fill="currentColor"/></svg>`,
+	"blocking": svgOpen + `<circle cx="8" cy="8" r="6.3" fill="currentColor"/><path d="m5.7 5.7 4.6 4.6M10.3 5.7l-4.6 4.6" stroke="#fff"/></svg>`,
 	// success criterion timing
 	"atClosing":        svgOpen + `<path d="M3 14V2.5h8.5l-1.6 2.8 1.6 2.7H3"/></svg>`,
 	"atLanding":        svgOpen + `<path d="M2 13.5h12M3.5 11l9-3.5M5 6l1.5 3"/></svg>`,
@@ -800,5 +873,5 @@ func chipHTML(group, value string) string {
 			text = humanise(value)
 		}
 	}
-	return `<span class="chip chip-` + esc(group) + `">` + icon + `<span>` + esc(text) + `</span></span>`
+	return `<span class="chip chip-` + esc(group) + ` chip-` + esc(value) + `">` + icon + `<span>` + esc(text) + `</span></span>`
 }
