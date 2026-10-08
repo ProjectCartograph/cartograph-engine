@@ -18,6 +18,8 @@ type RegisterRow struct {
 	Cells map[string]string
 }
 
+var workstreamCode = regexp.MustCompile(`^\s{0,4}((?i:ws)\s?[0-9]{1,2})\b`)
+
 var rowCode = regexp.MustCompile(`^\s{0,4}([A-Z]{1,3}-?[0-9]{1,2}[a-z]?)(\s{2,}\S|\s*$)`)
 
 // furniture is a page's header or footer, never a row.
@@ -247,8 +249,8 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 		case "milestones":
 			item["id"], item["name"] = id, clip(name, 120)
 			item["timing"] = cellTiming(byRole["date"])
-			if byRole["owner"] != "" {
-				item["owner"] = byRole["owner"]
+			if o := leadOf(byRole["owner"]); o != "" {
+				item["owner"] = o
 			}
 			if byRole["evidence"] != "" {
 				item["evidence"] = clip(byRole["evidence"], 240)
@@ -261,8 +263,8 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 			if byRole["date"] != "" {
 				item["due"] = cellTiming(byRole["date"])
 			}
-			if byRole["owner"] != "" {
-				item["owner"] = byRole["owner"]
+			if o := leadOf(byRole["owner"]); o != "" {
+				item["owner"] = o
 			}
 		case "risks":
 			item["id"], item["description"] = id, clip(name, 160)
@@ -280,8 +282,8 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 			if byRole["mitigation"] != "" {
 				item["mitigation"] = clip(byRole["mitigation"], 160)
 			}
-			if byRole["owner"] != "" {
-				item["owner"] = byRole["owner"]
+			if o := leadOf(byRole["owner"]); o != "" {
+				item["owner"] = o
 			}
 		case "kpis":
 			// An indicator row carries a baseline or a target; a fragment
@@ -382,3 +384,66 @@ func hasHeading(b []string) bool {
 	}
 	return false
 }
+
+// leadOf is the body that leads where a cell names several ("EHSU /
+// NMD-MoH / NSDSL"): the first, so one role is drafted for it, not one
+// for every combination.
+func leadOf(cell string) string {
+	cell = strings.TrimSpace(cell)
+	for _, sep := range []string{" / ", "/", ";", ","} {
+		if i := strings.Index(cell, sep); i > 0 {
+			cell = strings.TrimSpace(cell[:i])
+		}
+	}
+	return cell
+}
+
+// WorkstreamNames are the names a document's workstream plan gives its
+// workstreams: in a section headed as workstreams, the text that follows
+// a workstream's code on its line (WS5  Monitoring, Data and ...).
+func WorkstreamNames(src Source) []string {
+	var out []string
+	for _, sec := range src.Sections {
+		if !strings.Contains(strings.ToLower(sec.Heading), "workstream") {
+			continue
+		}
+		// A row is a block of lines; its name is the left-hand cell,
+		// wrapped over the block's lines.
+		lines := strings.Split(sec.text, "\n")
+		for i := 0; i < len(lines); i++ {
+			m := workstreamCode.FindStringSubmatch(lines[i])
+			if m == nil {
+				continue
+			}
+			from, to := i, i
+			for from > 0 && strings.TrimSpace(lines[from-1]) != "" {
+				from--
+			}
+			for to+1 < len(lines) && strings.TrimSpace(lines[to+1]) != "" {
+				to++
+			}
+			first := groups(lines[i])
+			if len(first) == 0 {
+				continue
+			}
+			edge := strings.Index(lines[i], first[0].text) + len(first[0].text) + 2
+			var parts []string
+			for _, l := range lines[from : to+1] {
+				for _, g := range groups(l) {
+					if start := strings.Index(l, g.text); start >= 0 && start < edge {
+						parts = append(parts, g.text)
+					}
+				}
+			}
+			name := strings.TrimSpace(strings.TrimPrefix(strings.Join(parts, " "), m[1]))
+			if name != "" {
+				out = append(out, name)
+			}
+			i = to
+		}
+	}
+	return out
+}
+
+// NearName reports whether two names say the same thing.
+func NearName(a, b string) bool { return nearName(a, b) }

@@ -2910,6 +2910,22 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 		return refused, nil
 	}
 	st := engine.Classify(pieces)
+	// The document's own workstream plan says which names are workstreams:
+	// none of them is a piece (D49), however it is called.
+	for _, p := range pieces {
+		// A service, an output or work another body leads may carry a
+		// workstream's name; only a project may not.
+		if p.Ongoing || p.OutOfScope || p.Policy || strings.TrimSpace(p.OutputOf) != "" {
+			continue
+		}
+		for _, ws := range engine.WorkstreamNames(src) {
+			if engine.NearName(p.Name, ws) {
+				st.Problems = append(st.Problems, fmt.Sprintf("%q is the document's workstream %q, and Cartograph keeps no workstreams (TAXONOMY.md D49): "+
+					"send what it hands over as pieces with outputOf the work, and each piece inside it with a change of its own (a survey, a system) as a piece by itself", p.Name, ws))
+				break
+			}
+		}
+	}
 	if len(st.Problems) > 0 {
 		return map[string]any{"problems": st.Problems, "next": "Fix every problem and call port again with the pieces; nothing was drafted."}, nil
 	}

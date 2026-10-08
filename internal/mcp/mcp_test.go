@@ -1227,3 +1227,25 @@ func TestStartWorkAfterADocumentIsAPort(t *testing.T) {
 		t.Fatalf("start_work after a document: %s", text)
 	}
 }
+
+// The document's own workstream plan says which names are workstreams: a
+// project named after one is refused, a service carrying one is not.
+func TestAPortRefusesTheDocumentsWorkstreamsAsProjects(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\nE1. Workstream Plan\n" +
+		"    Workstream                Purpose                          Lead\n\n" +
+		"WS1 Grading and              Agree the checklist and train    Quality team\n" +
+		"and Training                 graders at every depot\n\n" +
+		"WS2 Depot Inspection         Run the checks each week once    Inspection unit\n" +
+		"and Follow-up                the pilot ends, and report\n"
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{
+		map[string]any{"name": "Depot checks", "none": true},
+		map[string]any{"name": "Grading and Training", "changeOfItsOwn": true, "change": "graders apply one checklist", "dependedOnBy": []any{"Depot checks"}},
+		map[string]any{"name": "Depot Inspection and Follow-up", "ongoing": true},
+	}})
+	if !strings.Contains(text, `\"Grading and Training\" is the document's workstream`) || strings.Contains(text, `\"Depot Inspection and Follow-up\" is the document's workstream`) {
+		t.Fatalf("port: %s", text)
+	}
+}
