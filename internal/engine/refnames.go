@@ -173,6 +173,12 @@ func (r *refResolver) id(kind, value string) string {
 	if r.ids[kind][value] {
 		return value
 	}
+	// A draft this change set holds under that very id is that record,
+	// even one written after the names here were read.
+	if _, found, err := r.e.ChangeSetText(r.ctx, r.set, kind, value); err == nil && found {
+		r.ids[kind][value] = true
+		return value
+	}
 	if id, ok := r.names[kind][strings.ToLower(value)]; ok {
 		return id
 	}

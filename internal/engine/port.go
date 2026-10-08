@@ -330,7 +330,27 @@ type PortRecordResult struct {
 func (e *Engine) PortRecords(ctx context.Context, set string, records []PortRecord) ([]PortRecordResult, []RecordFill, error) {
 	var results []PortRecordResult
 	var work []string
+	// Every record the call creates exists before any is written, so one
+	// may name another by its id whatever their order in the call.
 	for _, r := range records {
+		k, id, ok := strings.Cut(r.Record, "/")
+		if !ok || id == "" {
+			continue
+		}
+		if _, found, err := e.ChangeSetText(ctx, set, k, id); err != nil || found {
+			continue
+		}
+		start := map[string]any{"/metadata/name": id}
+		if name, ok := r.Set["/metadata/name"].(string); ok && strings.TrimSpace(name) != "" {
+			start["/metadata/name"] = name
+		}
+		_, _ = e.EditInChangeSet(ctx, set, k, id, start, nil)
+	}
+	for _, r := range records {
+		// What the records before wrote is in play for this one.
+		if inSet, err := e.InChangeSet(ctx, set); err == nil {
+			ctx = inSet
+		}
 		res := PortRecordResult{Record: r.Record}
 		k, id, ok := strings.Cut(r.Record, "/")
 		if !ok {

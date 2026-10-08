@@ -56,3 +56,40 @@ func TestAPortIsAnEngineUseCase(t *testing.T) {
 		t.Fatalf("still open %+v", still)
 	}
 }
+
+// Records created in one call may name each other by id, in either
+// order, and no duplicate is drafted under an id read as a name.
+func TestPortRecordsNameEachOtherByID(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	ctx := actingAs(ada)
+	cs, err := e.StartChangeSet(ctx, "Port", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	results, _, err := e.PortRecords(ctx, cs.ID, []engine.PortRecord{
+		{Record: "Goal/goal-child", Set: map[string]any{"/metadata/name": "Every depot grades the same", "/spec/level": "outcome", "/spec/parent": "goal-root"}},
+		{Record: "Goal/goal-root", Set: map[string]any{"/metadata/name": "Produce is graded fairly", "/spec/level": "strategic"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range results {
+		if r.Error != "" {
+			t.Fatalf("%s: %s", r.Record, r.Error)
+		}
+	}
+	view, err := e.ViewChangeSet(ctx, cs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	goals := 0
+	for _, it := range view.Items {
+		if it.Item.Kind == "Goal" {
+			goals++
+		}
+	}
+	if goals != 2 {
+		t.Errorf("%d goals drafted, want 2: an id was read as a name", goals)
+	}
+}
