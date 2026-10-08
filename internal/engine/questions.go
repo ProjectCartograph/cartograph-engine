@@ -66,6 +66,36 @@ var judgements = map[string]judgement{
 	},
 }
 
+// contrasts are the guidance's judgements (a field's good option against
+// its poor one, asked good first) as measured: where good begins, and
+// the score kept. A judgement the guidance has but this does not is not
+// asked: it has not been measured.
+var contrasts = map[string]struct {
+	Threshold float64
+	Measured  Measure
+}{
+	"statement-state": {Threshold: 0.76, Measured: Measure{Right: 21, Of: 24}},
+	"gap-results":     {Threshold: 0.62, Measured: Measure{Right: 15, Of: 16}},
+}
+
+// contrast asks a guidance judgement of one text: Holds is the good
+// option, Sure its probability. ok is false without a model, or for a
+// judgement not measured.
+func (e *Engine) contrast(ctx context.Context, id string, j GuideJudgement, text string) (Judged, bool) {
+	m, measured := contrasts[id]
+	if !measured {
+		return Judged{}, false
+	}
+	// Good first: the model reads the order (docs/adr/0023).
+	a, ok := e.ask(ctx, text, map[string]decide.Question{id: {Type: decide.Choice, Instructions: "Which describes this text?",
+		Options: []decide.Option{{Key: j.Good.Key, Description: j.Good.Label}, {Key: j.Poor.Key, Description: j.Poor.Label}}}})
+	if !ok {
+		return Judged{}, false
+	}
+	p := a[id].Probabilities[j.Good.Key]
+	return Judged{Holds: p >= m.Threshold, Sure: p}, true
+}
+
 // Judged is a judgement's answer about one text: whether it holds, and
 // how sure the model is, the averaged probability of yes.
 type Judged struct {

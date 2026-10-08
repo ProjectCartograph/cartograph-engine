@@ -92,23 +92,6 @@ type GuideJudgement struct {
 	Poor   GuideOption `json:"poor"`
 	Pass   string      `json:"pass"`
 	Fail   string      `json:"fail"`
-	// Opens, where given, are the words a poor text starts with (the
-	// verbs of an instruction): a text that opens with none of them reads
-	// as good without asking, since a model reading a passive or modal
-	// state ("are no longer sold", "can buy") takes it for an action.
-	Opens []string `json:"opens,omitempty"`
-}
-
-// opensWith reports whether text's first word is one of words.
-func opensWith(text string, words []string) bool {
-	first, _, _ := strings.Cut(strings.TrimSpace(text), " ")
-	first = strings.ToLower(strings.Trim(first, ",.;:"))
-	for _, w := range words {
-		if first == w {
-			return true
-		}
-	}
-	return false
 }
 
 // GuideOption is one side of a judgement's contrast.
@@ -185,18 +168,12 @@ func (e *Engine) judgedChecks(ctx context.Context, kind string, doc map[string]a
 		failed, asked := 0, 0
 		first := 0
 		for _, v := range values {
-			if len(j.Opens) > 0 && !opensWith(v.text, j.Opens) {
-				asked++
-				continue
-			}
-			// Good first: the model reads the order (docs/adr/0023).
-			a, ok := e.ask(ctx, v.text, map[string]decide.Question{id: {Type: decide.Choice, Instructions: "Which describes this text?",
-				Options: []decide.Option{{Key: j.Good.Key, Description: j.Good.Label}, {Key: j.Poor.Key, Description: j.Poor.Label}}}})
+			got, ok := e.contrast(ctx, id, j, v.text)
 			if !ok {
 				continue
 			}
 			asked++
-			if a[id].Probabilities[j.Good.Key] < 0.5 {
+			if !got.Holds {
 				failed++
 				if first == 0 {
 					first = v.n
