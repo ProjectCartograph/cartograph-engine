@@ -518,11 +518,16 @@ func containsFold(names []string, name string) bool {
 }
 
 // isWorkstream reports whether a name is a workstream's: "Workstream 3",
-// "WS2 Materials", "Materials workstream".
+// "WS2 Materials", "Materials (WS2)", "Materials workstream".
 func isWorkstream(name string) bool {
-	n := strings.ToLower(strings.TrimSpace(name))
+	n := strings.ToLower(name)
 	if strings.Contains(n, "workstream") || strings.Contains(n, "work stream") {
 		return true
 	}
-	return len(n) > 2 && n[:2] == "ws" && (n[2] >= '0' && n[2] <= '9' || n[2] == ' ' && len(n) > 3 && n[3] >= '0' && n[3] <= '9')
+	for _, w := range strings.FieldsFunc(n, func(r rune) bool { return !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9') }) {
+		if len(w) > 2 && w[:2] == "ws" && isDigits(w[2:]) {
+			return true
+		}
+	}
+	return false
 }

@@ -141,8 +141,12 @@ func TestAWorkstreamIsRefusedAndAChangeIsSaid(t *testing.T) {
 		{Name: "Rollout", None: true},
 		{Name: "WS2 Technical materials", ChangeOfItsOwn: true, DependedOnBy: []string{"Rollout"}},
 		{Name: "Survey", ChangeOfItsOwn: true, DependedOnBy: []string{"Rollout"}},
+		{Name: "Governance and coordination (WS1)", OutputOf: "Rollout"},
 	})
 	text := strings.Join(s.Problems, "\n")
+	if !strings.Contains(text, `"Governance and coordination (WS1)" is a workstream`) {
+		t.Errorf("a workstream named in brackets: %v", s.Problems)
+	}
 	if !strings.Contains(text, `"WS2 Technical materials" is a workstream`) || !strings.Contains(text, `"Survey" is answered a change of its own but says no change`) {
 		t.Fatalf("problems: %v", s.Problems)
 	}
