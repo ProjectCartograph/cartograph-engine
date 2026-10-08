@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
 )
 
 // Porting a document is an application service (TAXONOMY.md D56, docs/
@@ -122,8 +124,8 @@ func (e *Engine) PortPieces(ctx context.Context, set string, src Source, pieces 
 		if p.Ongoing || p.OutOfScope || p.Policy || strings.TrimSpace(p.OutputOf) != "" {
 			continue
 		}
-		for _, ws := range WorkstreamNames(src) {
-			if NearName(p.Name, ws) {
+		for _, ws := range document.WorkstreamNames(src.Sections) {
+			if document.NearName(p.Name, ws) {
 				st.Problems = append(st.Problems, fmt.Sprintf("%q is the document's workstream %q, and Cartograph keeps no workstreams (TAXONOMY.md D49): "+
 					"send what it hands over as pieces with outputOf the work, and each piece inside it with a change of its own (a survey, a system) as a piece by itself", p.Name, ws))
 				break

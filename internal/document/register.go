@@ -1,4 +1,4 @@
-package engine
+package document
 
 import (
 	"fmt"
@@ -7,12 +7,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-// A document's registers read as rows (docs/adr/0027): the tables a
-// charter lists its milestones, deliverables, indicators and risks in,
-// each row led by a code (M1, D10, R9), its cells wrapped over several
-// lines, its columns named by a header that a printed page may repeat at
-// other offsets. A row's cells go to the header column nearest them.
 
 // RegisterRow is one row: its code and its cells by header.
 type RegisterRow struct {
@@ -296,25 +290,25 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 		item := map[string]any{}
 		switch strings.TrimPrefix(field, "/spec/") {
 		case "milestones":
-			item["id"], item["name"] = id, clip(name, 120)
+			item["id"], item["name"] = id, Clip(name, 120)
 			if completed.MatchString(byRole["evidence"]) && !waitedOn[id] {
 				item["_skip"] = "already completed, and no milestone still to come waits on it: not ported (porting map)"
 			}
 			if t := cellTiming(byRole["date"]); t != nil {
 				item["timing"] = t
 			} else {
-				item["timing"] = map[string]any{"form": "date", "note": clip(byRole["date"], 240)}
+				item["timing"] = map[string]any{"form": "date", "note": Clip(byRole["date"], 240)}
 			}
 			if o := leadOf(byRole["owner"]); o != "" {
 				item["owner"] = o
 			}
 			if byRole["evidence"] != "" {
-				item["evidence"] = clip(byRole["evidence"], 240)
+				item["evidence"] = Clip(byRole["evidence"], 240)
 			}
 		case "deliverables":
-			item["id"], item["name"] = id, clip(name, 60)
+			item["id"], item["name"] = id, Clip(name, 60)
 			if len([]rune(name)) > 60 {
-				item["description"] = clip(name, 240)
+				item["description"] = Clip(name, 240)
 			}
 			if t := cellTiming(byRole["date"]); t != nil {
 				item["due"] = t
@@ -323,7 +317,7 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 				item["owner"] = o
 			}
 		case "risks":
-			item["id"], item["description"] = id, clip(name, 160)
+			item["id"], item["description"] = id, Clip(name, 160)
 			item["type"] = "risk"
 			for _, t := range []string{"issue", "dependency", "constraint"} {
 				if strings.Contains(strings.ToLower(byRole["type"]), t) {
@@ -336,7 +330,7 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 				}
 			}
 			if byRole["mitigation"] != "" {
-				item["mitigation"] = clip(byRole["mitigation"], 160)
+				item["mitigation"] = Clip(byRole["mitigation"], 160)
 			}
 			if o := leadOf(byRole["owner"]); o != "" {
 				item["owner"] = o
@@ -347,7 +341,7 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 			if byRole["baseline"] == "" && byRole["date"] == "" {
 				continue
 			}
-			item["kpi"] = clip(name, 120)
+			item["kpi"] = Clip(name, 120)
 			if once.MatchString(byRole["cycle"]) {
 				item["_skip"] = "a measure taken once is not an indicator: write it as the acceptance of the deliverable it is about (porting map)"
 			}
@@ -355,15 +349,15 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 			if byRole["baseline"] != "" {
 				reason += "; baseline " + byRole["baseline"]
 			}
-			item["reason"] = clip(reason, 240)
+			item["reason"] = Clip(reason, 240)
 			// What the KPI itself holds, set on it once it is drafted.
 			extra := map[string]any{}
 			if src := leadOf(byRole["source"]); src != "" {
-				extra["/spec/sources"] = []any{clip(src, 120)}
+				extra["/spec/sources"] = []any{Clip(src, 120)}
 			}
 			// A cycle of equal periods is named by its period; one in other
 			// words (termly, once) is left for the person to set.
-			switch cyclePeriod(byRole["cycle"]) {
+			switch CyclePeriod(byRole["cycle"]) {
 			case 1:
 				extra["/spec/cycle"] = "Monthly"
 			case 3:
@@ -384,7 +378,7 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 			}
 			// The body that owns the indicator keeps its source.
 			if team := leadOf(byRole["owner"]); team != "" && extra["/spec/sources"] != nil {
-				extra["_team"] = clip(team, 120)
+				extra["_team"] = Clip(team, 120)
 			}
 			if len(extra) > 0 {
 				item["_kpi"] = extra
@@ -409,7 +403,7 @@ func cellTiming(cell string) map[string]any {
 			}
 		}
 		w = strings.Trim(w, "().")
-		if m, ok := readMonth(w); ok {
+		if m, ok := ReadMonth(w); ok {
 			last = m
 		}
 	}
@@ -423,7 +417,7 @@ func cellTiming(cell string) map[string]any {
 	// the cell kept as its note; nothing at all is left to the checks.
 	years := regexp.MustCompile(`\b(19|20)[0-9]{2}\b`).FindAllString(cell, -1)
 	if len(years) > 0 {
-		return map[string]any{"form": "window", "notBefore": years[0] + "-01", "notAfter": years[len(years)-1] + "-12", "note": clip(cell, 240)}
+		return map[string]any{"form": "window", "notBefore": years[0] + "-01", "notAfter": years[len(years)-1] + "-12", "note": Clip(cell, 240)}
 	}
 	return nil
 }
@@ -471,7 +465,7 @@ func baselineOf(cell string) map[string]any {
 	if v, ok := figureOf(cell); ok && month != "" {
 		return map[string]any{"value": v, "date": month}
 	}
-	return map[string]any{"unknownReason": clip("No figure with a date yet; the document says: "+cell, 240)}
+	return map[string]any{"unknownReason": Clip("No figure with a date yet; the document says: "+cell, 240)}
 }
 
 // registerTarget reads a register's target cell: a figure by a month, or by a
@@ -592,9 +586,9 @@ func labelsOnly(b []string) bool {
 // personLed matches a name led by a person's title.
 var personLed = regexp.MustCompile(`^(?i:dr|mr|mrs|ms|miss|mx|prof|professor|sir|dame|hon)\.?\s`)
 
-// cyclePeriod is the length in months of a cycle a register names in
+// CyclePeriod is the length in months of a cycle a register names in
 // words, or 0 when the words name no equal period (termly, once).
-func cyclePeriod(words string) int {
+func CyclePeriod(words string) int {
 	w := strings.ToLower(words)
 	switch {
 	case strings.Contains(w, "month"):
@@ -612,15 +606,15 @@ func cyclePeriod(words string) int {
 // WorkstreamNames are the names a document's workstream plan gives its
 // workstreams: in a section headed as workstreams, the text that follows
 // a workstream's code on its line (WS5  Monitoring, Data and ...).
-func WorkstreamNames(src Source) []string {
+func WorkstreamNames(sections []Section) []string {
 	var out []string
-	for _, sec := range src.Sections {
+	for _, sec := range sections {
 		if !strings.Contains(strings.ToLower(sec.Heading), "workstream") {
 			continue
 		}
 		// A row is a block of lines; its name is the left-hand cell,
 		// wrapped over the block's lines.
-		lines := strings.Split(sec.text, "\n")
+		lines := strings.Split(sec.Text, "\n")
 		for i := 0; i < len(lines); i++ {
 			m := workstreamCode.FindStringSubmatch(lines[i])
 			if m == nil {

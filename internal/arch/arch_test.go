@@ -104,6 +104,7 @@ var rules = map[string][]string{
 	"internal/kinds/kit": leaf,
 	"internal/contract":  leaf,
 	"internal/sentence":  leaf,
+	"internal/document":  leaf,
 	// The kinds know their schemas and the kit, never the engine, a port
 	// or an adapter.
 	"internal/kinds":  join([]string{"internal/engine", "internal/store", "internal/codec", "internal/printer", "internal/auth"}, outer, adapters, drivers),

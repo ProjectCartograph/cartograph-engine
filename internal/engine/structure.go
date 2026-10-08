@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
 )
 
 // Structure first (TAXONOMY.md D56). What a document calls a project, a
@@ -451,7 +453,7 @@ func (s Structure) Drafts() []map[string]any {
 				if k, _, ok := idOf(of); ok && k == "Project" {
 					sp := specOfDraft(recordOf[strings.ToLower(strings.TrimSpace(of))])
 					ds, _ := sp["deliverables"].([]any)
-					sp["deliverables"] = append(ds, map[string]any{"id": fmt.Sprintf("d%d", len(ds)+1), "name": clip(p.Name, 60)})
+					sp["deliverables"] = append(ds, map[string]any{"id": fmt.Sprintf("d%d", len(ds)+1), "name": document.Clip(p.Name, 60)})
 				}
 			}
 		case PieceScopeOut:
@@ -463,7 +465,7 @@ func (s Structure) Drafts() []map[string]any {
 					sp["summary"] = summary
 				}
 				out, _ := summary["scopeOut"].([]any)
-				summary["scopeOut"] = append(out, clip(p.Name, 60))
+				summary["scopeOut"] = append(out, document.Clip(p.Name, 60))
 			}
 		}
 	}
@@ -474,19 +476,6 @@ func (s Structure) Drafts() []map[string]any {
 		}
 	}
 	return out
-}
-
-// clip shortens text to n characters, whole words where it can.
-func clip(s string, n int) string {
-	s = strings.TrimSpace(s)
-	if len([]rune(s)) <= n {
-		return s
-	}
-	r := []rune(s)[:n]
-	if i := strings.LastIndex(string(r), " "); i > n/2 {
-		return string(r[:len([]rune(string(r)[:i]))])
-	}
-	return string(r)
 }
 
 // answered reports whether a piece carries any answer, none included.
@@ -530,7 +519,7 @@ func isWorkstream(name string) bool {
 		return true
 	}
 	for _, w := range strings.FieldsFunc(n, func(r rune) bool { return !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9') }) {
-		if len(w) > 2 && w[:2] == "ws" && isDigits(w[2:]) {
+		if len(w) > 2 && w[:2] == "ws" && strings.Trim(w[2:], "0123456789") == "" {
 			return true
 		}
 	}

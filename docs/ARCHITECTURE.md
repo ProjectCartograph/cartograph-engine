@@ -351,7 +351,7 @@ as rings, from the centre out.
 
 | Ring | Here | May depend on |
 |---|---|---|
-| Entities | `internal/kinds`, `kinds/<kind>` and `kinds/kit` (what a kind is, its rules), `internal/contract` (the schemas and flows), `internal/sentence` | nothing in the module but each other; no driver |
+| Entities | `internal/kinds`, `kinds/<kind>` and `kinds/kit` (what a kind is, its rules), `internal/contract` (the schemas and flows), `internal/sentence`, `internal/document` | nothing in the module but each other; no driver |
 | Use cases | `internal/engine` | the ports and the entities |
 | Ports | `internal/store` (with `store.DocStore` and `store.AccessStore`), `internal/codec`, `internal/printer`, `internal/layout`, `internal/crdt`, `internal/fanout`, `engine.Bus` (driven); `pkg/client`, `pkg/uiconformance`, `internal/identity`, `internal/auth` (driving) | the entities; `internal/identity` nothing at all; `internal/auth` also `net/http`, because the identity ports are request middleware, and `internal/identity` |
 | Interface adapters | driving: `internal/api`, `internal/syncserver`, `internal/render`, `internal/spa`, `pkg/client/inproc`, `pkg/client/remote`, `uiconformance/clientdriver`; driven: `store/vault`, `store/sqlite`, `store/memory`, `store/postgres`, `crdt/automerge`, `fanout/memory`, `fanout/postgres`, `codec/yaml`, `codec/json`, `printer/chromium`, `layout/layered`, `layout/force`, `decide/laya`, `auth/proxy`, `auth/roles`, `auth/access`, the conformance suites, and the helpers the adapters share (`yamlfmt`, `store/manifestmeta`) | the rings inside them, never another adapter of their side |
@@ -386,6 +386,7 @@ A change that needs a new edge gets a new port, not an exception
 |---|---|---|
 | `internal/contract` | The JSON Schema and flow files, embedded; the schema set | nothing |
 | `internal/sentence` | Composes the sentences a manifest stores in parts, the same way everywhere they are shown | nothing |
+| `internal/document` | Reads a document's text: its sections by their headings, and the registers its tables hold, as the porting map says. Pure: the engine's port use case (`engine/port.go`) brings, keeps and writes from it | nothing |
 | `internal/kinds`, `internal/kinds/<kind>` | The registry of kinds and each kind's rules beyond its schema | `kinds/kit` |
 | `internal/kinds/kit` | The small types rules need (`Problem`, `Lookup`) so kind packages never import the engine | nothing |
 | `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, the shared drafts (`Shared`, and `Shape`, which maps a kind's schema onto the document), the access list and the team checks at every write, the event bus | `store`, `codec`, `crdt`, `fanout`, `identity`, `kinds`, `kinds/kit`, `contract`, `sentence`; a JSON Schema validator |

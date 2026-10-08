@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
 )
 
@@ -105,17 +106,17 @@ func (r *refResolver) resolve(file string, node map[string]any, v any) any {
 	// longer than its field is cut at a word, said so in the answer.
 	if s, isText := v.(string); isText {
 		if _, timing := props["form"]; timing && props["date"] != nil {
-			if m, ok := readMonth(s); ok {
+			if m, ok := document.ReadMonth(s); ok {
 				return map[string]any{"form": "date", "date": m}
 			}
 		}
 		if pat, _ := node["pattern"].(string); strings.Contains(pat, "[0-9]{4}-(0[1-9]|1[0-2])") {
-			if m, ok := readMonth(s); ok {
+			if m, ok := document.ReadMonth(s); ok {
 				return m
 			}
 		}
 		if max, ok := number(node["maxLength"]); ok && len([]rune(s)) > int(max) {
-			cut := clip(s, int(max))
+			cut := document.Clip(s, int(max))
 			r.clipped = append(r.clipped, fmt.Sprintf("%q cut to %q", s, cut))
 			return cut
 		}
@@ -177,7 +178,7 @@ func (r *refResolver) id(kind, value string) string {
 	// A near enough name is the same record: "Members (all depots)"
 	// and "Members of all depots" are one group, not two.
 	for name, id := range r.names[kind] {
-		if nearName(name, value) {
+		if document.NearName(name, value) {
 			return id
 		}
 	}
@@ -216,12 +217,12 @@ func registerDefaults(kind, name string) map[string]any {
 		if strings.Contains(name, "%") || strings.Contains(strings.ToLower(name), "percent") || strings.Contains(strings.ToLower(name), "share") {
 			unit = "percent"
 		}
-		return map[string]any{"definition": clip(name, 300), "unit": unit, "direction": "increase"}
+		return map[string]any{"definition": document.Clip(name, 300), "unit": unit, "direction": "increase"}
 	}
 	if kind == "ReportingCycle" {
 		// Named by its period (Yearly); its year starts in January until
 		// the person says otherwise.
-		if n := cyclePeriod(name); n > 0 {
+		if n := document.CyclePeriod(name); n > 0 {
 			return map[string]any{"periodMonths": n, "startMonth": 1}
 		}
 	}
@@ -241,60 +242,6 @@ func registerDefaults(kind, name string) map[string]any {
 		}
 	}
 	return map[string]any{"category": category}
-}
-
-// nearName reports whether two names say the same thing: most of their
-// words shared, once case, punctuation and short words are set aside.
-func nearName(a, b string) bool {
-	wa, wb := nameWords(a), nameWords(b)
-	if len(wa) == 0 || len(wb) == 0 {
-		return false
-	}
-	shared := 0
-	for w := range wa {
-		if wb[w] {
-			shared++
-		}
-	}
-	small := len(wa)
-	if len(wb) < small {
-		small = len(wb)
-	}
-	return float64(shared)/float64(small) >= 0.75 && shared >= 2
-}
-
-func nameWords(s string) map[string]bool {
-	out := map[string]bool{}
-	for _, w := range strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9')
-	}) {
-		if len(w) > 2 && w != "and" && w != "the" && w != "all" {
-			out[strings.TrimSuffix(w, "s")] = true
-		}
-	}
-	return out
-}
-
-// readMonth reads a date as its month, YYYY-MM: from YYYY-MM, YYYY-MM-DD,
-// or DD/MM/YYYY.
-func readMonth(s string) (string, bool) {
-	s = strings.TrimSpace(s)
-	if len(s) >= 7 && s[4] == '-' && isDigits(s[:4]) && isDigits(s[5:7]) && s[5:7] >= "01" && s[5:7] <= "12" {
-		return s[:7], len(s) == 7 || len(s) == 10 && s[7] == '-'
-	}
-	if len(s) == 10 && s[2] == '/' && s[5] == '/' && isDigits(s[:2]) && isDigits(s[3:5]) && isDigits(s[6:]) && s[3:5] >= "01" && s[3:5] <= "12" {
-		return s[6:] + "-" + s[3:5], true
-	}
-	return "", false
-}
-
-func isDigits(s string) bool {
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return s != ""
 }
 
 // strictRule is what a kind's strict profile says it refuses, for an
