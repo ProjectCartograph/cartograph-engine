@@ -23,7 +23,7 @@ func TestChangeSetsKeepWorkApartAndMergeWhole(t *testing.T) {
 	t.Parallel()
 	e := newTestEngine(t)
 	seed := actingAs(ada)
-	if _, err := e.Commit(seed, "Team", "t1", []byte(fmt.Sprintf(teamText, "first")), "ada@example.org", "seed"); err != nil {
+	if _, err := e.Commit(seed, "Team", "t1", fmt.Appendf(nil, teamText, "first"), "ada@example.org", "seed"); err != nil {
 		t.Fatal(err)
 	}
 	one := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})

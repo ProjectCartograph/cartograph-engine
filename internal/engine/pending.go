@@ -57,7 +57,8 @@ func refRulePath(r refRule) *regexp.Regexp {
 		if s.wildcard {
 			b.WriteString(`/\d+`)
 		} else {
-			b.WriteString("/" + regexp.QuoteMeta(escapePointerToken(s.prop)))
+			b.WriteString("/")
+			b.WriteString(regexp.QuoteMeta(escapePointerToken(s.prop)))
 		}
 	}
 	b.WriteString("$")

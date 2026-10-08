@@ -140,6 +140,7 @@
             packages = with pkgs; [
               go
               go-tools # staticcheck
+              gopls # the language server: just check runs its diagnostics
               (python3.withPackages (ps: [ ps.pyyaml ])) # scripts/check-compat
               just
               bashInteractive

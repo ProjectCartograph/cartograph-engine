@@ -30,7 +30,11 @@ func (d *doc) facts(fs ...field) {
 	d.flush()
 	d.b.WriteString("<dl class=\"facts\">\n")
 	for _, f := range kept {
-		d.b.WriteString("<div><dt>" + esc(f.label) + "</dt><dd>" + esc(f.value) + "</dd></div>\n")
+		d.b.WriteString("<div><dt>")
+		d.b.WriteString(esc(f.label))
+		d.b.WriteString("</dt><dd>")
+		d.b.WriteString(esc(f.value))
+		d.b.WriteString("</dd></div>\n")
 	}
 	d.b.WriteString("</dl>\n")
 }
@@ -215,7 +219,9 @@ func (d *doc) signOff(roles []string) {
 	d.flush()
 	d.b.WriteString("<table class=\"signoff\">\n<tr><th>Role</th><th>Name</th><th>Signature</th><th>Date</th></tr>\n")
 	for _, r := range roles {
-		d.b.WriteString("<tr><td>" + esc(r) + "</td><td></td><td></td><td></td></tr>\n")
+		d.b.WriteString("<tr><td>")
+		d.b.WriteString(esc(r))
+		d.b.WriteString("</td><td></td><td></td><td></td></tr>\n")
 	}
 	d.b.WriteString("</table>\n")
 }

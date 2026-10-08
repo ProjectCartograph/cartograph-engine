@@ -24,8 +24,8 @@ func (d *doc) control(vers engine.Version, c docControl) {
 	// The version line under the title says what this table says.
 	if i := bytes.LastIndex(d.b.Bytes(), []byte(`<p class="version subtitle">`)); i >= 0 {
 		rest := d.b.Bytes()[i:]
-		if j := bytes.Index(rest, []byte("</p>\n")); j >= 0 {
-			tail := append([]byte{}, rest[j+5:]...)
+		if _, after, ok := bytes.Cut(rest, []byte("</p>\n")); ok {
+			tail := append([]byte{}, after...)
 			d.b.Truncate(i)
 			d.b.Write(tail)
 		}
@@ -38,7 +38,11 @@ func (d *doc) control(vers engine.Version, c docControl) {
 	d.b.WriteString("<table class=\"control\">\n")
 	row := func(k, v string) {
 		if strings.TrimSpace(v) != "" {
-			d.b.WriteString("<tr><th>" + esc(k) + "</th><td>" + esc(v) + "</td></tr>\n")
+			d.b.WriteString("<tr><th>")
+			d.b.WriteString(esc(k))
+			d.b.WriteString("</th><td>")
+			d.b.WriteString(esc(v))
+			d.b.WriteString("</td></tr>\n")
 		}
 	}
 	row("Reference", c.Reference)
@@ -59,7 +63,9 @@ const tocMark = "<!--contents-->"
 
 func (d *doc) lead(s string) {
 	d.flush()
-	d.b.WriteString("<p class=\"lead\">" + esc(s) + "</p>\n")
+	d.b.WriteString("<p class=\"lead\">")
+	d.b.WriteString(esc(s))
+	d.b.WriteString("</p>\n")
 }
 
 // readinessAreas group the walk's steps the way a charter template's

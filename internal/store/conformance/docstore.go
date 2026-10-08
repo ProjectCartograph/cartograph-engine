@@ -75,12 +75,12 @@ func RunDocStore(t *testing.T, newStore func(t *testing.T) store.DocStore) {
 		results := make([]result, n)
 		var wg sync.WaitGroup
 		start := make(chan struct{})
-		for i := 0; i < n; i++ {
+		for i := range n {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
 				<-start
-				e, c, err := s.Create(ctx, "Goal", "g1", fmt.Sprintf("doc-%d", i), []byte(fmt.Sprintf("snap-%d", i)))
+				e, c, err := s.Create(ctx, "Goal", "g1", fmt.Sprintf("doc-%d", i), fmt.Appendf(nil, "snap-%d", i))
 				results[i] = result{e, c, err}
 			}(i)
 		}
@@ -186,13 +186,13 @@ func RunDocStore(t *testing.T, newStore func(t *testing.T) store.DocStore) {
 		const writers, each = 4, 25
 		var wg sync.WaitGroup
 		errs := make(chan error, writers)
-		for w := 0; w < writers; w++ {
+		for w := range writers {
 			wg.Add(1)
 			go func(w int) {
 				defer wg.Done()
 				last := int64(0)
-				for i := 0; i < each; i++ {
-					seq, err := s.Append(ctx, "doc-1", []byte(fmt.Sprintf("%d-%d", w, i)))
+				for i := range each {
+					seq, err := s.Append(ctx, "doc-1", fmt.Appendf(nil, "%d-%d", w, i))
 					if err != nil {
 						errs <- err
 						return
@@ -277,8 +277,8 @@ func RunDocStore(t *testing.T, newStore func(t *testing.T) store.DocStore) {
 		_, _, err := s.Create(ctx, "Goal", "g1", "doc-1", nil)
 		must(t, err)
 		var seqs []int64
-		for i := 0; i < 10; i++ {
-			seq, err := s.Append(ctx, "doc-1", []byte(fmt.Sprintf("before-%d", i)))
+		for i := range 10 {
+			seq, err := s.Append(ctx, "doc-1", fmt.Appendf(nil, "before-%d", i))
 			must(t, err)
 			seqs = append(seqs, seq)
 		}
@@ -288,12 +288,12 @@ func RunDocStore(t *testing.T, newStore func(t *testing.T) store.DocStore) {
 		var mu sync.Mutex
 		var after []int64
 		errs := make(chan error, 3)
-		for w := 0; w < 2; w++ {
+		for w := range 2 {
 			wg.Add(1)
 			go func(w int) {
 				defer wg.Done()
-				for i := 0; i < 20; i++ {
-					seq, err := s.Append(ctx, "doc-1", []byte(fmt.Sprintf("after-%d-%d", w, i)))
+				for i := range 20 {
+					seq, err := s.Append(ctx, "doc-1", fmt.Appendf(nil, "after-%d-%d", w, i))
 					if err != nil {
 						errs <- err
 						return

@@ -48,7 +48,11 @@ func (d *doc) readinessBrief(items []engine.ProjectCheckItem) {
 	}
 	if open == 0 {
 		d.flush()
-		d.b.WriteString("<p class=\"ready-line\">" + chipHTML("readiness", "ready") + " " + esc(fmt.Sprintf("Every part of the definition is ready: %d checks met.", ok)) + "</p>\n")
+		d.b.WriteString("<p class=\"ready-line\">")
+		d.b.WriteString(chipHTML("readiness", "ready"))
+		d.b.WriteString(" ")
+		d.b.WriteString(esc(fmt.Sprintf("Every part of the definition is ready: %d checks met.", ok)))
+		d.b.WriteString("</p>\n")
 		return
 	}
 	var rows [][]string
@@ -232,7 +236,9 @@ func (d *doc) risksBrief(p plan, items []map[string]any) {
 // note is a quiet line under a table.
 func (d *doc) note(s string) {
 	d.flush()
-	d.b.WriteString("<p class=\"note\">" + esc(s) + "</p>\n")
+	d.b.WriteString("<p class=\"note\">")
+	d.b.WriteString(esc(s))
+	d.b.WriteString("</p>\n")
 }
 
 // heldInCartograph counts what the brief leaves to Cartograph.
@@ -346,7 +352,15 @@ func (d *doc) approvalBrief(p plan) bool {
 				last := evs[len(evs)-1]
 				signed, date = label("decision", str(last["decision"]))+": "+str(last["recordedBy"]), when(str(last["date"]))
 			}
-			d.b.WriteString("<tr><td>" + esc(label("stage", str(so["stage"]))) + "</td><td>" + esc(signs) + "</td><td>" + esc(signed) + "</td><td>" + esc(date) + "</td></tr>\n")
+			d.b.WriteString("<tr><td>")
+			d.b.WriteString(esc(label("stage", str(so["stage"]))))
+			d.b.WriteString("</td><td>")
+			d.b.WriteString(esc(signs))
+			d.b.WriteString("</td><td>")
+			d.b.WriteString(esc(signed))
+			d.b.WriteString("</td><td>")
+			d.b.WriteString(esc(date))
+			d.b.WriteString("</td></tr>\n")
 		}
 		d.b.WriteString("</table>\n")
 	}

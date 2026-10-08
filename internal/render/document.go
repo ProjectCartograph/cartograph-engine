@@ -218,9 +218,19 @@ func (d *doc) flush() {
 		// The step of a project's walk that defines the section, so an
 		// interface showing the charter beside the walk can open it there.
 		if step := sectionSteps[d.pending]; step != "" {
-			d.b.WriteString(`<h2` + anchor + ` data-step="` + step + `">` + esc(d.pending) + "</h2>\n")
+			d.b.WriteString(`<h2`)
+			d.b.WriteString(anchor)
+			d.b.WriteString(` data-step="`)
+			d.b.WriteString(step)
+			d.b.WriteString(`">`)
+			d.b.WriteString(esc(d.pending))
+			d.b.WriteString("</h2>\n")
 		} else {
-			d.b.WriteString("<h2" + anchor + ">" + esc(d.pending) + "</h2>\n")
+			d.b.WriteString("<h2")
+			d.b.WriteString(anchor)
+			d.b.WriteString(">")
+			d.b.WriteString(esc(d.pending))
+			d.b.WriteString("</h2>\n")
 		}
 		d.pending = ""
 	}
@@ -255,14 +265,18 @@ func esc(s string) string { return html.EscapeString(strings.TrimSpace(s)) }
 func (d *doc) h2(s string) { d.pending = s }
 func (d *doc) h3(s string) {
 	d.flush()
-	d.b.WriteString("<h3>" + esc(s) + "</h3>\n")
+	d.b.WriteString("<h3>")
+	d.b.WriteString(esc(s))
+	d.b.WriteString("</h3>\n")
 }
 
 // h3named is a sub-heading that is itself a statement, such as an
 // objective: set as a sentence, not as a label.
 func (d *doc) h3named(s string) {
 	d.flush()
-	d.b.WriteString("<h3 class=\"named\">" + esc(s) + "</h3>\n")
+	d.b.WriteString("<h3 class=\"named\">")
+	d.b.WriteString(esc(s))
+	d.b.WriteString("</h3>\n")
 }
 
 // raw writes markup the renderer made itself, such as a diagram.
@@ -271,7 +285,8 @@ func (d *doc) raw(html string) {
 		return
 	}
 	d.flush()
-	d.b.WriteString(html + "\n")
+	d.b.WriteString(html)
+	d.b.WriteString("\n")
 }
 
 func (d *doc) p(s string) {
@@ -279,7 +294,9 @@ func (d *doc) p(s string) {
 		return
 	}
 	d.flush()
-	d.b.WriteString("<p>" + esc(s) + "</p>\n")
+	d.b.WriteString("<p>")
+	d.b.WriteString(esc(s))
+	d.b.WriteString("</p>\n")
 }
 
 // field is one labelled value. A field with no value is not printed.
@@ -303,7 +320,11 @@ func (d *doc) fields(fs ...field) {
 	d.flush()
 	d.b.WriteString("<dl>\n")
 	for _, f := range kept {
-		d.b.WriteString("<dt>" + esc(f.label) + "</dt><dd>" + esc(f.value) + "</dd>\n")
+		d.b.WriteString("<dt>")
+		d.b.WriteString(esc(f.label))
+		d.b.WriteString("</dt><dd>")
+		d.b.WriteString(esc(f.value))
+		d.b.WriteString("</dd>\n")
 	}
 	d.b.WriteString("</dl>\n")
 }
@@ -323,10 +344,20 @@ func (d *doc) fieldsAt(fs ...pathed) {
 	d.b.WriteString("<dl>\n")
 	for _, f := range kept {
 		if f.path == "" {
-			d.b.WriteString("<dt>" + esc(f.label) + "</dt><dd>" + esc(f.value) + "</dd>\n")
+			d.b.WriteString("<dt>")
+			d.b.WriteString(esc(f.label))
+			d.b.WriteString("</dt><dd>")
+			d.b.WriteString(esc(f.value))
+			d.b.WriteString("</dd>\n")
 			continue
 		}
-		d.b.WriteString("<dt>" + esc(f.label) + `</dt><dd data-field="` + esc(f.path) + `">` + esc(f.value) + "</dd>\n")
+		d.b.WriteString("<dt>")
+		d.b.WriteString(esc(f.label))
+		d.b.WriteString(`</dt><dd data-field="`)
+		d.b.WriteString(esc(f.path))
+		d.b.WriteString(`">`)
+		d.b.WriteString(esc(f.value))
+		d.b.WriteString("</dd>\n")
 	}
 	d.b.WriteString("</dl>\n")
 }
@@ -344,11 +375,15 @@ func (d *doc) list(heading string, items []string) {
 	}
 	d.flush()
 	if heading != "" {
-		d.b.WriteString("<p class=\"label\">" + esc(heading) + "</p>\n")
+		d.b.WriteString("<p class=\"label\">")
+		d.b.WriteString(esc(heading))
+		d.b.WriteString("</p>\n")
 	}
 	d.b.WriteString("<ul>\n")
 	for _, it := range kept {
-		d.b.WriteString("<li>" + esc(it) + "</li>\n")
+		d.b.WriteString("<li>")
+		d.b.WriteString(esc(it))
+		d.b.WriteString("</li>\n")
 	}
 	d.b.WriteString("</ul>\n")
 }
@@ -386,17 +421,23 @@ func (d *doc) table(headers []string, rows [][]string) {
 	d.flush()
 	d.b.WriteString("<table>\n<tr>")
 	for _, h := range headers {
-		d.b.WriteString("<th>" + esc(h) + "</th>")
+		d.b.WriteString("<th>")
+		d.b.WriteString(esc(h))
+		d.b.WriteString("</th>")
 	}
 	d.b.WriteString("</tr>\n")
 	for _, r := range kept {
 		d.b.WriteString("<tr>")
 		for _, c := range r {
 			if group, value, ok := isChip(c); ok {
-				d.b.WriteString("<td class=\"fit\">" + chipHTML(group, value) + "</td>")
+				d.b.WriteString("<td class=\"fit\">")
+				d.b.WriteString(chipHTML(group, value))
+				d.b.WriteString("</td>")
 				continue
 			}
-			d.b.WriteString("<td>" + esc(c) + "</td>")
+			d.b.WriteString("<td>")
+			d.b.WriteString(esc(c))
+			d.b.WriteString("</td>")
 		}
 		d.b.WriteString("</tr>\n")
 	}
@@ -528,14 +569,21 @@ nav.contents ol { columns: 2; column-gap: 2.5rem; }
 	if d.org != "" || d.logo != "" {
 		d.b.WriteString("<p class=\"org\">")
 		if d.logo != "" {
-			d.b.WriteString("<img src=\"" + esc(d.logo) + "\" alt=\"\">")
+			d.b.WriteString("<img src=\"")
+			d.b.WriteString(esc(d.logo))
+			d.b.WriteString("\" alt=\"\">")
 		}
-		d.b.WriteString(esc(d.org) + "</p>\n")
+		d.b.WriteString(esc(d.org))
+		d.b.WriteString("</p>\n")
 	}
 	if kindLine != "" {
-		d.b.WriteString("<p class=\"kind\">" + esc(kindLine) + "</p>\n")
+		d.b.WriteString("<p class=\"kind\">")
+		d.b.WriteString(esc(kindLine))
+		d.b.WriteString("</p>\n")
 	}
-	d.b.WriteString("<h1>" + esc(name) + "</h1>\n<p class=\"version subtitle\">")
+	d.b.WriteString("<h1>")
+	d.b.WriteString(esc(name))
+	d.b.WriteString("</h1>\n<p class=\"version subtitle\">")
 	if vers.Number > 0 {
 		d.b.WriteString(fmt.Sprintf("Version %d, saved %s", vers.Number, vers.On.Format("2 January 2006")))
 	} else {

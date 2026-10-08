@@ -96,9 +96,11 @@ fmt-check:
 fmt:
     gofmt -w .
 
-# staticcheck, the analyser the style guide names
+# staticcheck, the analyser the style guide names, and gopls, the
+# language server's own diagnostics: either finding anything fails
 lint: embed
     staticcheck ./...
+    out="$(gopls check $(git ls-files '*.go' | grep -v '/gen/'))"; [ -z "$out" ] || { echo "$out"; exit 1; }
 
 # The dependency rule: inward only (internal/arch)
 arch: embed
