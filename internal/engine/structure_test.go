@@ -110,3 +110,25 @@ func TestStructureRefusesUnansweredAndUnlinkedPieces(t *testing.T) {
 		t.Fatalf("a linked port: %v", ok.Problems)
 	}
 }
+
+// A survey that sets a baseline is a change of its own even when it also
+// hands over a report: asked first, it is a component project, the piece
+// it was said to be an output of depending on it.
+func TestAChangeOfItsOwnIsAskedBeforeAnOutput(t *testing.T) {
+	t.Parallel()
+	s := engine.Classify([]engine.StructurePiece{
+		{Name: "Rollout", None: true},
+		{Name: "Baseline survey", ChangeOfItsOwn: true, OutputOf: "Rollout"},
+		{Name: "Handbook", OutputOf: "Rollout"},
+	})
+	if len(s.Problems) > 0 {
+		t.Fatalf("problems: %v", s.Problems)
+	}
+	kinds := map[string]string{}
+	for _, p := range s.Pieces {
+		kinds[p.Name] = p.Kind
+	}
+	if kinds["Baseline survey"] != "Project" || kinds["Handbook"] != engine.PieceDeliverable {
+		t.Fatalf("pieces: %+v", s.Pieces)
+	}
+}

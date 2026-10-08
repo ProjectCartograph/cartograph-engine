@@ -1598,9 +1598,10 @@ questions (`GET /structure`, and the structure tool for agents):
    Portfolio.
 5. Coordinates several projects, each with its own sponsor or budget,
    towards one change: a Programme.
-6. An output another piece of work hands over: a deliverable of it.
-7. A change of its own that other work depends on: a Project, listed as
-   a component of what depends on it (D46, D54).
+6. A change of its own that other work depends on: a Project, listed as
+   a component of what depends on it (D46, D54), even when it also hands
+   over a report, a dataset or a list.
+7. An output another piece of work hands over: a deliverable of it.
 8. Otherwise: a Project, the parent of those that are its components.
 
 The first yes decides. `POST /structure` returns what each piece is,

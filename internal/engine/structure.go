@@ -71,8 +71,8 @@ var StructureQuestions = []StructureQuestion{
 	{"ongoing", "Does it keep running with no end date: a service or a function, whether it runs today or a project will set it up?", "An Operation: running if it runs today, otherwise planned and named by the project that sets it up as where it lands."},
 	{"groupsForFunding", "Does it group projects or programmes only to decide what to fund and in what order?", "A Portfolio, with its strategic objectives."},
 	{"coordinatesProjects", "Does it coordinate several projects, each with its own sponsor or budget, that together bring about one change?", "A Programme, with its theory of change; the projects are its components."},
+	{"changeOfItsOwn", "Does it bring about a change of its own that another piece of work depends on: a survey that sets a baseline, a system or portal people use, an app, a study? Yes even when it also hands over a report, a dataset or a list.", "A Project of its own, with one objective, listed as a component of each piece that depends on it."},
 	{"outputOf", "Is it an output another piece of work hands over: a document, materials, a toolkit, a training delivered, an event?", "A deliverable of that piece of work, whoever leads it."},
-	{"changeOfItsOwn", "Does it bring about a change of its own that another piece of work depends on: a survey that sets a baseline, a system or portal people use, an app, a study?", "A Project of its own, with one objective, listed as a component of each piece that depends on it."},
 	{"", "None of these (answer none: true):", "A Project: work that ends, with one objective. A project the others are components of is the parent."},
 }
 
@@ -146,6 +146,14 @@ func Classify(pieces []StructurePiece) Structure {
 			kindOf[i] = "Portfolio"
 		case p.CoordinatesProjects:
 			kindOf[i] = "Programme"
+		case p.ChangeOfItsOwn:
+			// A change of its own is a project even when it also hands
+			// something over (a survey's report, a portal's list): what it
+			// is an output of is what depends on it.
+			kindOf[i] = "Project"
+			if parent := strings.TrimSpace(p.OutputOf); parent != "" && !containsFold(p.DependedOnBy, parent) {
+				pieces[i].DependedOnBy = append(pieces[i].DependedOnBy, parent)
+			}
 		case strings.TrimSpace(p.OutputOf) != "":
 			kindOf[i] = PieceDeliverable
 		default:
@@ -481,4 +489,14 @@ func quoteList(names []string) string {
 // pieceJSON is a piece as an agent sends it, with the answers given.
 func pieceJSON(name, answers string) string {
 	return fmt.Sprintf(`{"name":%q,%s}`, name, answers)
+}
+
+// containsFold reports whether names holds name, ignoring case.
+func containsFold(names []string, name string) bool {
+	for _, n := range names {
+		if strings.EqualFold(strings.TrimSpace(n), name) {
+			return true
+		}
+	}
+	return false
 }
