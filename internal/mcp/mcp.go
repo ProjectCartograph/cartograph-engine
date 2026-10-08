@@ -1631,7 +1631,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 	settleSchema.AdditionalProperties = &jsonschema.Schema{}
 	tool(s, o, person, &sdk.Tool{Name: "settle", Description: "Settle one record in one call: set every field the documents give (by JSON pointer, under set), " +
 		"leave open each check they do not answer with its reason, and get what comes next across the work, the next record's checks or draft included. " +
-		"The way to work through a port: one settle per record, in the order next gives. " +
+		"Porting a document? Write every record at once with port and records instead; settle is for one record at a time. " +
 		`Example: {"kind":"Project","id":"project-1a2b","set":{"/spec/summary/about":"...","/spec/objectives/0/objective":"..."},` +
 		`"open":[{"check":"aim-mandate","reason":"No mandate is named"}],"asked":"not available","work":["Project/project-1a2b"]}.`, Annotations: drafting, InputSchema: settleSchema},
 		func(c call, raw map[string]any) (any, error) {
@@ -1643,25 +1643,28 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
-			if len(in.Open) > 0 && strings.TrimSpace(in.Asked) == "" {
-				return nil, fmt.Errorf("pass asked: what you asked your person and what they answered, or \"not available\" when you were told to work without them")
-			}
 			refused, created, err := applyFields(c, cs.ID, in.Kind, in.ID, in.Set, in.Unset)
 			if err != nil {
 				return nil, err
 			}
-			var left []string
+			// The fields are kept whatever happens to the checks left open:
+			// a check that cannot be left is said, never the call refused.
+			var left, notLeft []string
 			for _, o := range in.Open {
-				if strings.TrimSpace(o.Reason) == "" {
-					return nil, fmt.Errorf("check %s: give the reason your person will read", o.Check)
+				switch {
+				case strings.TrimSpace(in.Asked) == "":
+					notLeft = append(notLeft, o.Check+`: pass asked, what you asked your person and what they answered, or "not available" when you were told to work without them`)
+				case strings.TrimSpace(o.Reason) == "":
+					notLeft = append(notLeft, o.Check+": give the reason your person will read")
+				default:
+					if err := mayLeave(o.Check, in.Asked); err != nil {
+						notLeft = append(notLeft, err.Error())
+					} else if err := e.LeaveOpen(c.ctx, cs.ID, in.Kind, in.ID, o.Check, o.Reason, false); err != nil {
+						notLeft = append(notLeft, o.Check+": "+err.Error())
+					} else {
+						left = append(left, o.Check)
+					}
 				}
-				if err := mayLeave(o.Check, in.Asked); err != nil {
-					return nil, err
-				}
-				if err := e.LeaveOpen(c.ctx, cs.ID, in.Kind, in.ID, o.Check, o.Reason, false); err != nil {
-					return nil, err
-				}
-				left = append(left, o.Check)
 			}
 			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
 				return nil, err
@@ -1671,6 +1674,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, err
 			}
 			out := map[string]any{"changeSet": cs.ID, "record": in.Kind + "/" + in.ID, "left": left}
+			if len(notLeft) > 0 {
+				out["notLeft"] = notLeft
+			}
 			var drafted, cut []string
 			for _, c := range created {
 				if note, ok := strings.CutPrefix(c, "cut: "); ok {

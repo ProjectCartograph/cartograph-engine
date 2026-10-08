@@ -1068,12 +1068,12 @@ func TestAnAgentCannotWaiveWhatTheDocumentSays(t *testing.T) {
 	var out struct{ Work []string }
 	_ = json.Unmarshal([]byte(text), &out)
 	kind, id, _ := strings.Cut(out.Work[0], "/")
-	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "asked": "not available",
+	_, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "asked": "not available",
 		"open": []any{map[string]any{"check": "deliverables-count", "reason": "Deferred"}}})
-	if !res.IsError || !strings.Contains(text, "what the document itself says") {
+	if !strings.Contains(text, `"left":null`) || !strings.Contains(text, "what the document itself says") {
 		t.Fatalf("leaving the deliverables open: %s", text)
 	}
-	res, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{
+	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{
 		"/spec/summary/scopeIn": []any{"Every depot in the network, from the coast to the hill stations, through the whole season"},
 		"/spec/deliverables":    []any{map[string]any{"id": "d1", "name": "Checklist", "due": "2026-09-04"}},
 		"/spec/milestones":      []any{map[string]any{"id": "m1", "name": "Pilot ends", "timing": "15/10/2026"}},
@@ -1405,5 +1405,27 @@ func TestStartWorkAfterBringingADocumentIsItsPort(t *testing.T) {
 	_ = json.Unmarshal([]byte(text), &b)
 	if a.ChangeSet == "" || a.ChangeSet != b.ChangeSet || !strings.Contains(text, `"field":"/spec/milestones"`) {
 		t.Fatalf("brought into %s, started %s: %s", a.ChangeSet, b.ChangeSet, text[strings.Index(text, `"registers"`):])
+	}
+}
+
+// A settle that leaves a check open without saying what was asked keeps
+// every field it sets: only the check is not left, and the answer says
+// why.
+func TestSettleKeepsItsFieldsWhenACheckCannotBeLeft(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id,
+		"set":  map[string]any{"/spec/objectives/0/objective": "Produce is graded the same at every depot"},
+		"open": []any{map[string]any{"check": "resources-funding", "reason": "No funding is named"}}})
+	if res.IsError || !strings.Contains(text, "notLeft") {
+		t.Fatalf("settle: %s", text)
+	}
+	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
+	if !strings.Contains(text, "graded the same at every depot") {
+		t.Errorf("objective lost: %s", text)
 	}
 }
