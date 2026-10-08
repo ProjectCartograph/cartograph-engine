@@ -802,3 +802,26 @@ func TestNextLeadsThroughRecordsNotWrittenYet(t *testing.T) {
 		t.Fatalf("next: %s", text)
 	}
 }
+
+// Names sent where pieces go are answered with the shape, not refused;
+// pieces are answered with the work to pass to next, ids generated.
+func TestStructureTeachesItsShapeAndHandsOverTheWork(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	res, text := callTool(t, cs, "structure", map[string]any{"pieces": []any{"Rollout", "Handbook"}})
+	if res.IsError || !strings.Contains(text, "not text") || !strings.Contains(text, `\"outputOf\"`) {
+		t.Fatalf("names: %s", text)
+	}
+	res, text = callTool(t, cs, "structure", map[string]any{"pieces": []any{
+		map[string]any{"name": "Rollout"}, map[string]any{"name": "Handbook", "outputOf": "Rollout"},
+		map[string]any{"name": "Survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
+	}})
+	var out struct{ Work []string }
+	if res.IsError || json.Unmarshal([]byte(text), &out) != nil || len(out.Work) != 2 || !strings.HasPrefix(out.Work[0], "Project/project-") {
+		t.Fatalf("pieces: %s", text)
+	}
+	_, text = callTool(t, cs, "next", map[string]any{"work": out.Work})
+	if !strings.Contains(text, `"draft"`) || !strings.Contains(text, strings.TrimPrefix(out.Work[0], "Project/")) {
+		t.Fatalf("next: %s", text)
+	}
+}

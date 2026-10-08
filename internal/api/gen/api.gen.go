@@ -1791,6 +1791,9 @@ type Structure struct {
 	Order    []string          `json:"order"`
 	Pieces   []StructuredPiece `json:"pieces"`
 	Problems *[]string         `json:"problems,omitempty"`
+
+	// Work Every record to write, as Kind/id, in the order to write them.
+	Work *[]string `json:"work,omitempty"`
 }
 
 // StructurePiece defines model for StructurePiece.
@@ -1818,10 +1821,13 @@ type StructureQuestion struct {
 // StructuredPiece defines model for StructuredPiece.
 type StructuredPiece struct {
 	// Kind Goal, Operation, Portfolio, Programme, Project, Deliverable or ScopeOut.
-	Kind  string    `json:"kind"`
-	Name  string    `json:"name"`
-	Of    *[]string `json:"of,omitempty"`
-	Where string    `json:"where"`
+	Kind string    `json:"kind"`
+	Name string    `json:"name"`
+	Of   *[]string `json:"of,omitempty"`
+
+	// Record Kind/id, with a generated id, for a piece that is a record of its own.
+	Record *string `json:"record,omitempty"`
+	Where  string  `json:"where"`
 }
 
 // Summary defines model for Summary.

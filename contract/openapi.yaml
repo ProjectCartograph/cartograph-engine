@@ -4310,6 +4310,9 @@ components:
           description: Goal, Operation, Portfolio, Programme, Project, Deliverable or ScopeOut.
         where:
           type: string
+        record:
+          type: string
+          description: Kind/id, with a generated id, for a piece that is a record of its own.
         of:
           type: array
           items:
@@ -4324,6 +4327,11 @@ components:
             $ref: "#/components/schemas/StructuredPiece"
         order:
           type: array
+          items:
+            type: string
+        work:
+          type: array
+          description: Every record to write, as Kind/id, in the order to write them.
           items:
             type: string
         problems:

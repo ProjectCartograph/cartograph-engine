@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strings"
@@ -69,19 +71,25 @@ var StructureQuestions = []StructureQuestion{
 
 // StructuredPiece is what one piece is, and where it goes.
 type StructuredPiece struct {
-	Name  string   `json:"name"`
-	Kind  string   `json:"kind"`
-	Where string   `json:"where"`
-	Of    []string `json:"of,omitempty"`
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+	// Record is Kind/id for a piece that is a record of its own, with an
+	// id generated for it: the work to pass to next, as it is.
+	Record string   `json:"record,omitempty"`
+	Where  string   `json:"where"`
+	Of     []string `json:"of,omitempty"`
 }
 
 // Structure is the answer for a whole document: each piece, the order to
 // write the records in, and anything the answers leave inconsistent.
 type Structure struct {
-	Pieces   []StructuredPiece `json:"pieces"`
-	Order    []string          `json:"order"`
-	Problems []string          `json:"problems,omitempty"`
-	Next     string            `json:"next"`
+	Pieces []StructuredPiece `json:"pieces"`
+	Order  []string          `json:"order"`
+	// Work is every record to write, as Kind/id, in the order to write
+	// them: what next takes as work, unchanged.
+	Work     []string `json:"work"`
+	Problems []string `json:"problems,omitempty"`
+	Next     string   `json:"next"`
 }
 
 // Kinds a structured piece may be besides a kind of record.
@@ -185,9 +193,28 @@ func Classify(pieces []StructurePiece) Structure {
 		}
 	}
 	out.Order = writingOrder(pieces, kindOf, components, &out.Problems)
-	out.Next = "Fix every problem above and ask again until there are none. Then: open one change set (start_work); choose an id for each record " +
-		"(a few lowercase words joined by hyphens) and call next with work set to every record as Kind/id, in this order, the goals and " +
-		"registers it names first; do exactly what next says, one record at a time, until it says every check is met; then propose. " +
+	// Ids are generated, never derived from names (AGENTS.md).
+	record := map[string]string{}
+	for i := range out.Pieces {
+		p := &out.Pieces[i]
+		if p.Kind == PieceDeliverable || p.Kind == PieceScopeOut {
+			continue
+		}
+		p.Record = p.Kind + "/" + strings.ToLower(p.Kind) + "-" + shortID()
+		record[strings.ToLower(strings.TrimSpace(p.Name))] = p.Record
+	}
+	out.Work = []string{}
+	for _, name := range out.Order {
+		if r, ok := record[strings.ToLower(strings.TrimSpace(name))]; ok {
+			out.Work = append(out.Work, r)
+		}
+	}
+	if len(out.Problems) > 0 {
+		out.Next = "Fix every problem above and call structure again until there are none."
+		return out
+	}
+	out.Next = "Call start_work once, then call next with work set to the work list above, exactly as it is, and do what next says; " +
+		"call next again with the same work after every save, until it says every check is met; then propose. " +
 		"Write each deliverable inside its project and each scope-out line in the project that mentions it."
 	return out
 }
@@ -266,4 +293,11 @@ func writingOrder(pieces []StructurePiece, kindOf []string, components [][]int, 
 		}
 	}
 	return order
+}
+
+// shortID is a generated id part: a record's id never comes from its name.
+func shortID() string {
+	b := make([]byte, 4)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }

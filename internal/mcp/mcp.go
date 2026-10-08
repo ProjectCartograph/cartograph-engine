@@ -87,9 +87,9 @@ The loop, for any document or new piece of work, in one pass:
 1. structure: list every piece of work named, answer its questions, call
    structure, fix its problems.
 2. start_work: one change set for all of it.
-3. next with work (every record as Kind/id, in structure's order): do
-   exactly what it says (guide, save_draft, edit_draft, leave_open),
-   then call next again with the same work. Repeat until it says every
+3. next with work set to the work list structure returned, exactly:
+   do what it says (save_draft the draft it hands you, edit_draft,
+   leave_open), then call next again with the same work. Repeat until it says every
    check is met. Never stop part way and never describe work you have
    not saved: what is not saved does not exist.
 4. propose.
@@ -483,6 +483,11 @@ func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[strin
 
 // structureDescription is the structure tool's description: the questions
 // themselves, in order, so an agent answers them as a person would.
+// structureExample is a whole structure call, the shape a small agent copies.
+const structureExample = `{"pieces":[{"name":"Rollout"},{"name":"Handbook","outputOf":"Rollout"},` +
+	`{"name":"Baseline survey","changeOfItsOwn":true,"dependedOnBy":["Rollout"]},{"name":"Compliance checks","ongoing":true},` +
+	`{"name":"Standards policy","policy":true},{"name":"Farm supply scheme","outOfScope":true}]}`
+
 func structureDescription() string {
 	var b strings.Builder
 	b.WriteString("Call this first, before any draft, whenever you port a document or start something new (TAXONOMY.md D56). " +
@@ -496,9 +501,9 @@ func structureDescription() string {
 		}
 		fmt.Fprintf(&b, "%d. %s (%s) %s\n", i+1, q.Question, q.Field, q.Then)
 	}
-	b.WriteString(`Example: {"pieces":[{"name":"Rollout"},{"name":"Handbook","outputOf":"Rollout"},` +
-		`{"name":"Baseline survey","changeOfItsOwn":true,"dependedOnBy":["Rollout"]},{"name":"Compliance checks","ongoing":true},` +
-		`{"name":"Standards policy","policy":true},{"name":"Farm supply scheme","outOfScope":true}]}. Leave out every answer that is no. `)
+	b.WriteString("Example: " + structureExample + ". Leave out every answer that is no. ")
+	b.WriteString("A piece is a piece of work: the whole project, each workstream, phase or sub-project, each survey, system, service, policy or " +
+		"scheme the documents name, one piece each. Milestones, risks, KPIs, objectives, costs and roles are not pieces: they go inside the records. ")
 	b.WriteString("Give outputOf as the name of the piece it is an output of, and dependedOnBy as the names of the pieces that depend on it. " +
 		"The answer says what each piece is, what it belongs to, and the order to write the records in; fix every problem it lists and " +
 		"call it again until there are none, then open one change set and write the records in that order.")
@@ -670,7 +675,7 @@ type (
 		Check string `json:"check"`
 	}
 	structureIn struct {
-		Pieces []engine.StructurePiece `json:"pieces" jsonschema:"every piece of work the documents or your person name, each with its answers to the structure questions"`
+		Pieces []any `json:"pieces" jsonschema:"every piece of work the documents or your person name, each an object with its name and its answers to the structure questions"`
 	}
 	readingIn struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to read in: your own, or your person's when they ask you to help with it; your latest open one when left out"`
@@ -962,7 +967,26 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 		func(c call, in manifestRef) (any, error) { return e.References(c.ctx, in.Kind, in.ID) })
 
 	tool(s, o, person, &sdk.Tool{Name: "structure", Description: structureDescription(), Annotations: readOnly},
-		func(_ call, in structureIn) (any, error) { return engine.Classify(in.Pieces), nil })
+		func(_ call, in structureIn) (any, error) {
+			// A small agent sends names where pieces go: say how, by example,
+			// rather than refusing in the words of a schema.
+			pieces := make([]engine.StructurePiece, 0, len(in.Pieces))
+			var bad []string
+			for _, raw := range in.Pieces {
+				b, _ := json.Marshal(raw)
+				var p engine.StructurePiece
+				if _, isText := raw.(string); isText || json.Unmarshal(b, &p) != nil {
+					bad = append(bad, string(b))
+					continue
+				}
+				pieces = append(pieces, p)
+			}
+			if len(bad) > 0 {
+				return map[string]any{"problems": []string{"each piece is an object with its name and its yes answers, not text: " + strings.Join(bad, ", ")},
+					"next": "Call structure again with every piece as an object, like " + structureExample + "."}, nil
+			}
+			return engine.Classify(pieces), nil
+		})
 
 	tool(s, o, person, &sdk.Tool{Name: "components", Description: "The graph of components across every project and programme (TAXONOMY.md D46), as your change set reads it: " +
 		"who depends on whom (edges run from the work that depends to the work it depends on), how many months each runs, how widely each is depended on, " +
@@ -1239,11 +1263,20 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				}
 				if errors.Is(err, engine.ErrNotFound) || errors.Is(err, engine.ErrUnknownKind) {
 					written := len(drafted)
-					return map[string]any{
-						"next": fmt.Sprintf("Write %s/%s now (%d of %d in the work are written): call guide for %s, draft it from the documents with save_draft, "+
-							"passing the same work, then call next again with the same work.", w.Kind, w.ID, written, len(work), w.Kind),
+					out := map[string]any{
+						"next": fmt.Sprintf("Write %s/%s now (%d of %d in the work are written): call save_draft with kind %s, id %s, the same work, "+
+							"and manifest set to the draft here, its name and every field you can filled from the documents; then call next again with the same work, "+
+							"which says what each check still needs.", w.Kind, w.ID, written, len(work), w.Kind, w.ID),
 						"write": w.Kind + "/" + w.ID,
-					}, nil
+					}
+					if g, gerr := e.Guide(c.ctx, w.Kind, "", in.Locale); gerr == nil && g.Template != nil {
+						draft := g.Template
+						if meta, ok := draft["metadata"].(map[string]any); ok {
+							meta["id"] = w.ID
+						}
+						out["draft"] = draft
+					}
+					return out, nil
 				}
 				if err != nil {
 					return nil, err
