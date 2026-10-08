@@ -120,7 +120,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	}
 	for _, tl := range tools.Tools {
 		readOnly := tl.Annotations != nil && tl.Annotations.ReadOnlyHint
-		if !readOnly && tl.Name != "save_draft" && tl.Name != "save_drafts" && tl.Name != "settle" && tl.Name != "bring_document" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
+		if !readOnly && tl.Name != "save_draft" && tl.Name != "save_drafts" && tl.Name != "settle" && tl.Name != "bring_document" && tl.Name != "settle_register" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
 			t.Errorf("tool %s may change something and is neither a draft nor a proposal", tl.Name)
 		}
 	}
@@ -1144,5 +1144,35 @@ func TestAPersonsNameCostsOnlyItsField(t *testing.T) {
 	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
 	if !strings.Contains(text, "Checks at every depot") || strings.Contains(text, "Mensah") {
 		t.Errorf("draft: %s", text)
+	}
+}
+
+// A register in the document is settled in one call: its rows read from
+// the table, multi-line cells and all, each a milestone in the project.
+func TestARegisterIsSettledFromItsSection(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\n" +
+		"G1. Milestone Plan\n" +
+		"No.        Milestone                     Owner                  Due Date\n\n" +
+		"           Checklist agreed with\n" +
+		"M1                                       Quality team           15/09/2026\n" +
+		"           every depot manager\n\n" +
+		"M2         Graders trained               Training unit          20-21/10/2026\n\n" +
+		"M3         Pilot season reviewed         Quality team           Term I 2026\n"
+	callTool(t, cs, "bring_document", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
+	var started struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &started)
+	kind, id, _ := strings.Cut(started.Work[0], "/")
+	res, text := callTool(t, cs, "settle_register", map[string]any{"kind": kind, "id": id, "field": "/spec/milestones", "section": "s2"})
+	if res.IsError || !strings.Contains(text, `"added":3`) {
+		t.Fatalf("settle_register: %s", text)
+	}
+	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
+	for _, want := range []string{"Checklist agreed with every depot manager", "date: 2026-09", "date: 2026-10", "Graders trained"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("lacks %q: %s", want, text)
+		}
 	}
 }

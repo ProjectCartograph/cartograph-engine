@@ -82,9 +82,12 @@ const instructions = `Porting a document, or starting any new piece of work? Do 
    shape each shows, reading with read_section only the sections each
    names under read; leave open
    each check they do not answer, with its reason; pass the work list
-   start_work returned. Where a team, a role, a group served, a source
-   of funds or of data goes, write its name (a role, never a person):
-   settle finds that record or drafts it, and says what it drafted. Its answer names the next record and
+   start_work returned. For each register the document has (its
+   milestones, deliverables, risks, indicators), call settle_register
+   with its section instead of retyping its rows. Where a team, a role,
+   a group served, a source of funds or of data goes, write its name (a
+   role, never a person): settle finds that record or drafts it, and
+   says what it drafted. Its answer names the next record and
    what it lacks. Repeat until it says every check is met. Never stop
    part way and never hand the rest to your person.
 4. propose.
@@ -788,6 +791,14 @@ type (
 	none     struct{}
 	kindOnly struct {
 		Kind string `json:"kind" jsonschema:"a kind, such as Goal or Project"`
+	}
+	registerIn struct {
+		ChangeSet string   `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out"`
+		Kind      string   `json:"kind" jsonschema:"the record's kind: Project"`
+		ID        string   `json:"id"`
+		Field     string   `json:"field" jsonschema:"the list to write: /spec/milestones, /spec/deliverables, /spec/risks or /spec/kpis"`
+		Section   string   `json:"section" jsonschema:"the section holding the table, by the id the outline gave"`
+		Work      []string `json:"work,omitempty" jsonschema:"the work list start_work returned"`
 	}
 	bringIn struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to keep it in; your latest open one when left out, and a new one when you have none"`
@@ -1720,6 +1731,66 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, fmt.Errorf("%w: no change set yet: bring the document in with bring_document", engine.ErrNotFound)
 			}
 			return e.ReadSections(c.ctx, cs.ID, in.IDs)
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "settle_register", Description: "Write a whole register from the document in one call: the rows of a section's table " +
+		"(its milestones, deliverables, risks, or the indicators a project names) are read by Cartograph and settled into a project's list, each row as an item, " +
+		"names of roles and bodies found or drafted, dates read as months. Use it for every register the document has, instead of retyping its rows; " +
+		"then fix what comes back refused, and add what the table did not give with settle. Give the section by the id its outline gave.", Annotations: drafting},
+		func(c call, in registerIn) (any, error) {
+			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
+			if err != nil {
+				return nil, err
+			}
+			items, err := e.RegisterOf(c.ctx, cs.ID, in.Section, in.Field)
+			if err != nil {
+				return nil, err
+			}
+			if len(items) == 0 {
+				return nil, fmt.Errorf("%w: section %s holds no rows Cartograph can read as %s: write them with settle", engine.ErrNotFound, in.Section, in.Field)
+			}
+			var refused []engine.Problem
+			var drafted []string
+			added := 0
+			for _, it := range items {
+				r, created, err := applyFields(c, cs.ID, in.Kind, in.ID, map[string]any{in.Field + "/-": it}, nil)
+				if err != nil {
+					var invalid *engine.ValidationError
+					if errors.As(err, &invalid) {
+						refused = append(refused, invalid.Problems...)
+						continue
+					}
+					return nil, err
+				}
+				refused = append(refused, r...)
+				for _, d := range created {
+					if !strings.HasPrefix(d, "cut: ") && !strings.HasPrefix(d, "refused: ") {
+						drafted = append(drafted, d)
+					}
+				}
+				added++
+			}
+			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
+				return nil, err
+			}
+			out := map[string]any{"changeSet": cs.ID, "record": in.Kind + "/" + in.ID, "field": in.Field, "rows": len(items), "added": added}
+			if len(drafted) > 0 {
+				out["drafted"] = drafted
+			}
+			if len(refused) > 0 {
+				out["refused"] = refused
+				out["fix"] = "Every other row was kept. Fix the refused ones with settle, in the shape each says."
+			}
+			work := in.Work
+			if len(work) == 0 {
+				work = []string{in.Kind + "/" + in.ID}
+			}
+			next, err := nextOf(c, cs.ID, true, work, "")
+			if err != nil {
+				return nil, err
+			}
+			out["then"] = next
+			return out, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "work_summary", Description: "What your change set really holds, record by record: each record's name, how many objectives, " +

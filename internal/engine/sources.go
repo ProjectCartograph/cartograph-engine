@@ -296,3 +296,13 @@ func (e *Engine) rawChangeSetStore() (store.ChangeSetStore, error) {
 	}
 	return cs, nil
 }
+
+// RegisterOf reads the rows of a section's tables as items of a project's
+// list field (milestones, deliverables, risks, the KPIs it names).
+func (e *Engine) RegisterOf(ctx context.Context, set, section, field string) ([]map[string]any, error) {
+	secs, err := e.ReadSections(ctx, set, []string{section})
+	if err != nil {
+		return nil, err
+	}
+	return RegisterItems(field, ReadRegister(secs[0].Text)), nil
+}
