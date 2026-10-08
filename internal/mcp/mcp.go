@@ -60,7 +60,23 @@ func ServeStdio(ctx context.Context, o Options) error {
 	return newServer(o, identity.Anonymous).Run(ctx, &sdk.StdioTransport{})
 }
 
-const instructions = `Cartograph is the organisation's record of what it has decided to do: its
+const instructions = `Porting a document, or starting any new piece of work? Do this, in one pass:
+1. structure: list every piece of work named, answer its questions, call
+   structure, fix its problems.
+2. start_work with the same pieces: one change set for all of it, every
+   record already drafted, named and linked.
+3. next with work set to the work list structure returned, exactly:
+   do what it says (save_draft the draft it hands you, edit_draft,
+   leave_open), passing the same work to every save; each answer says
+   what comes next. Write the goals, outcomes, KPIs and registers a
+   project names with save_drafts, many in one call. Repeat until it
+   says every check is met. A port is often 30 to 60 records and a few
+   hundred calls: that is expected. Never stop part way, never hand the rest to
+   your person and never describe work you have not saved: what is not
+   saved does not exist.
+4. propose.
+
+Cartograph is the organisation's record of what it has decided to do: its
 purpose, goals, objectives and outcomes, the gaps they close, the
 projects, programmes and operations that deliver them, and the KPIs and
 data that measure them. What you help define must fit that record and the
@@ -87,22 +103,6 @@ A long document does not fit in your context with the work: never read
 it whole. Read its contents list and the parts that name the pieces of
 work first, for structure; then read each section only when you write
 what it gives, and let it go.
-
-The loop, for any document or new piece of work, in one pass:
-1. structure: list every piece of work named, answer its questions, call
-   structure, fix its problems.
-2. start_work with the same pieces: one change set for all of it, every
-   record already drafted, named and linked.
-3. next with work set to the work list structure returned, exactly:
-   do what it says (save_draft the draft it hands you, edit_draft,
-   leave_open), passing the same work to every save; each answer says
-   what comes next. Write the goals, outcomes, KPIs and registers a
-   project names with save_drafts, many in one call. Repeat until it
-   says every check is met. A port is often 30 to 60 records and a few
-   hundred calls: that is expected. Never stop part way, never hand the rest to
-   your person and never describe work you have not saved: what is not
-   saved does not exist.
-4. propose.
 
 Work this way, every time:
 - Structure first. Before you draft anything, list every piece of work
@@ -1477,6 +1477,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			out := map[string]any{"changeSet": cs.ID, "title": cs.Title, "next": "Draft into it with save_draft and edit_draft; propose it with propose when every check is met."}
 			if len(in.Pieces) == 0 {
+				out["first"] = "For a port or a new piece of work, call structure, then start_work again with the same pieces: it drafts every record for you."
 				return out, nil
 			}
 			// The structure's records, written as first drafts: the agent fills
@@ -1994,7 +1995,14 @@ func nextOf(c call, set string, found bool, workIn []string, locale string) (any
 		}
 	}
 	if len(work) == 0 {
-		return workspaceNext(c.ctx, e)
+		out, err := workspaceNext(c.ctx, e)
+		if m, ok := out.(map[string]any); ok {
+			// Asked with no work at all: a port or a new piece of work
+			// starts at its structure, not at the workspace's next stage.
+			m["first"] = "Porting a document or starting a piece of work? Call structure first with every piece of work it names, then start_work " +
+				"with the same pieces: it drafts every record, named and linked, and hands you the work list. Do not write records one by one from here."
+		}
+		return out, err
 	}
 	if out, err := firstUnwritten(c, set, found, work, locale); out != nil || err != nil {
 		return out, err
