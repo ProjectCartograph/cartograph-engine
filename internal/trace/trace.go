@@ -39,9 +39,12 @@ type Call struct {
 	// ErrorType is tool_error for a call answered with isError, empty on
 	// success.
 	ErrorType string `json:"error.type,omitempty"`
-	Agent     string `json:"cartograph.agent,omitempty"`
-	Person    string `json:"cartograph.person,omitempty"`
-	ChangeSet string `json:"cartograph.change_set,omitempty"`
+	// ErrorMessage is what a refusal said, with every quoted value
+	// masked and cut short: why a call was refused, never what was sent.
+	ErrorMessage string `json:"error.message,omitempty"`
+	Agent        string `json:"cartograph.agent,omitempty"`
+	Person       string `json:"cartograph.person,omitempty"`
+	ChangeSet    string `json:"cartograph.change_set,omitempty"`
 	// Record is the Kind/id the call names, when it names one.
 	Record string `json:"cartograph.record,omitempty"`
 	// Keys are the argument's top-level keys, sorted; never their values.

@@ -1098,7 +1098,7 @@ func TestADocumentIsBroughtInAndReadBySection(t *testing.T) {
 	doc := "Depot Checks Charter\n\nA. Background and Authority\nThe board decided in March to check every delivery at intake, and asked the quality lead to run the work across the network this season.\n\n" +
 		"D. Scope and Deliverables\nEvery depot is in scope. The work hands over a checklist, a training session for graders and a weekly report to the board from the first month.\n\n" +
 		"K. Risks and Issues\nGraders may be short in the harvest weeks; forms may arrive late at the office; the scanner supply may run low during the pilot weeks.\n"
-	res, text := callTool(t, cs, "bring_document", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	res, text := callTool(t, cs, "bring_document", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
 	if res.IsError || !strings.Contains(text, `"heading":"D. Scope and Deliverables"`) || !strings.Contains(text, `"/spec/risks"`) {
 		t.Fatalf("bring_document: %s", text)
 	}
@@ -1160,7 +1160,7 @@ func TestARegisterIsSettledFromItsSection(t *testing.T) {
 		"           every depot manager\n\n" +
 		"M2         Graders trained               Training unit          20-21/10/2026\n\n" +
 		"M3         Pilot season reviewed         Quality team           Term I 2026\n"
-	callTool(t, cs, "bring_document", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	callTool(t, cs, "bring_document", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
 	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
 	var started struct{ Work []string }
 	_ = json.Unmarshal([]byte(text), &started)
@@ -1190,7 +1190,7 @@ func TestAPortIsOneChain(t *testing.T) {
 		"M2         Graders trained               Training unit          20/10/2026\n\n" +
 		"M3         Pilot depots checking         Quality team           02/11/2026\n\n" +
 		"M4         Pilot season reviewed         Steering committee     15/12/2026\n"
-	res, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileBytes": len(doc)})
+	res, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
 	if res.IsError || !strings.Contains(text, `"piecesIn":["s2"]`) {
 		t.Fatalf("port, first call: %s", text)
 	}
@@ -1218,7 +1218,7 @@ func TestStartWorkAfterADocumentIsAPort(t *testing.T) {
 		"M2         Graders trained               Training unit          20/10/2026\n\n" +
 		"M3         Pilot depots checking         Quality team           02/11/2026\n\n" +
 		"M4         Pilot season reviewed         Steering committee     15/12/2026\n"
-	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileBytes": len(doc)})
+	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
 	if !strings.Contains(text, `"questions"`) || !strings.Contains(text, `"example"`) {
 		t.Fatalf("port's first answer lacks the questions: %s", text)
 	}
@@ -1239,7 +1239,7 @@ func TestAPortRefusesTheDocumentsWorkstreamsAsProjects(t *testing.T) {
 		"and Training                 graders at every depot\n\n" +
 		"WS2 Depot Inspection         Run the checks each week once    Inspection unit\n" +
 		"and Follow-up                the pilot ends, and report\n"
-	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileBytes": len(doc)})
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
 	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{
 		map[string]any{"name": "Depot checks", "none": true},
 		map[string]any{"name": "Grading and Training", "changeOfItsOwn": true, "change": "graders apply one checklist", "dependedOnBy": []any{"Depot checks"}},
@@ -1315,7 +1315,7 @@ func TestAPortWritesEveryRecordInOneCall(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
 	doc := "Depot Checks Charter\n\nA. Purpose\nGraders at every depot apply one checklist, so produce is graded the same everywhere.\n"
-	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileBytes": len(doc)})
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
 	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{
 		map[string]any{"name": "Depot checks", "none": true},
 		map[string]any{"name": "Weekly inspection", "ongoing": true},
@@ -1357,7 +1357,7 @@ func TestARegisterGivesItsKPIsBaselinesAndTargets(t *testing.T) {
 		"    Indicator                    Baseline              Target / Date             Data Source         Frequency    Owner\n\n" +
 		"    Depots grading to checklist  0 (March 2026)        100% by June 2027         Inspection forms    Quarterly    Quality team\n\n" +
 		"    Grading disputes             Not counted yet       Set after the pilot       Dispute log         Monthly      Dr. Ada Mensah / Quality team\n"
-	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileBytes": len(doc)})
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
 	_, ported := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
 	_, text := callTool(t, cs, "work_summary", map[string]any{})
 	if !strings.Contains(text, "KPI/") {
@@ -1375,7 +1375,7 @@ func TestARegisterGivesItsKPIsBaselinesAndTargets(t *testing.T) {
 func TestAPortRefusesATextThatIsNotTheWholeFile(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
-	res, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": "A short summary of the charter.", "fileBytes": 40000})
+	res, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": "A short summary of the charter.", "fileSize": 40000})
 	if !res.IsError || !strings.Contains(text, "never a summary") {
 		t.Fatalf("port: %s", text)
 	}

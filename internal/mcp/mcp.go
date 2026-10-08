@@ -69,7 +69,8 @@ func ServeStdio(ctx context.Context, o Options) error {
 
 const instructions = `Porting a document? Do exactly this, in one pass:
 1. port with the document's title, its text straight from its file and
-   fileBytes, the file's size: have a script build the call, never
+   fileSize, the file's size in bytes: have a script build the call
+   (os.path.getsize for the size), never
    retype, summarise or read the document whole. It answers with the
    sections that name pieces of work.
 2. read_section those sections; list every piece of work they name
@@ -694,6 +695,7 @@ func (o Options) record(name string, req *sdk.CallToolRequest, c call, in, out a
 	}
 	if err != nil {
 		tc.Outcome, tc.ErrorType, tc.Defect = trace.Refused, "tool_error", defectOf(err)
+		tc.ErrorMessage = maskQuoted(err.Error())
 		var invalid *engine.ValidationError
 		if errors.As(err, &invalid) {
 			tc.Problems = len(invalid.Problems)
@@ -800,7 +802,7 @@ type (
 		ChangeSet string       `json:"changeSet,omitempty" jsonschema:"the change set to port into; your latest open one when left out, and a new one when you have none"`
 		Title     string       `json:"title" jsonschema:"the document's title"`
 		Text      string       `json:"text,omitempty" jsonschema:"the document's whole text, straight from its file: on the first call only"`
-		FileBytes int          `json:"fileBytes,omitempty" jsonschema:"with text: the file's size in bytes (wc -c, os.path.getsize), so a text that is not the whole file is refused"`
+		FileSize  int          `json:"fileSize,omitempty" jsonschema:"with text: the file's size, a number of bytes (wc -c, os.path.getsize): a text that is not the whole file is refused"`
 		Pieces    []any        `json:"pieces,omitempty" jsonschema:"on the second call: every piece of work the document names, each with its name and only its yes answers to the structure questions"`
 		Records   []portRecord `json:"records,omitempty" jsonschema:"on the third call: every record the second call listed, each with set (every field the document gives, by JSON pointer) and open (each check it does not answer, with the reason)"`
 	}
@@ -813,6 +815,7 @@ type (
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to keep it in; your latest open one when left out, and a new one when you have none"`
 		Title     string `json:"title" jsonschema:"the document's title"`
 		Text      string `json:"text" jsonschema:"the document's whole text, straight from its file"`
+		FileSize  int    `json:"fileSize,omitempty" jsonschema:"the file's size, a number of bytes (os.path.getsize): a text that is not the whole file is refused"`
 	}
 	readSectionIn struct {
 		ChangeSet string   `json:"changeSet,omitempty" jsonschema:"the change set the document is in; your latest open one when left out"`
@@ -1720,7 +1723,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				if strings.TrimSpace(in.Text) == "" {
 					return nil, fmt.Errorf("%w: give the document's text, straight from its file, on the first call", engine.ErrBadEdit)
 				}
-				if err := wholeFile(in.Text, in.FileBytes); err != nil {
+				if err := wholeFile(in.Text, in.FileSize); err != nil {
 					return nil, err
 				}
 				src, err := e.BringSource(c.ctx, cs.ID, in.Title, in.Text)
@@ -1757,6 +1760,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 		func(c call, in bringIn) (any, error) {
 			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
 			if err != nil {
+				return nil, err
+			}
+			if err := wholeFile(in.Text, in.FileSize); err != nil {
 				return nil, err
 			}
 			src, err := e.BringSource(c.ctx, cs.ID, in.Title, in.Text)
@@ -3042,15 +3048,15 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 // summary or an excerpt loses the registers and sections a port is
 // written from, and no later step can tell. The file's size is given
 // beside the text; line endings and a final newline may differ.
-func wholeFile(text string, fileBytes int) error {
-	if fileBytes <= 0 {
-		return fmt.Errorf("%w: give fileBytes, the file's size in bytes (wc -c, or os.path.getsize in a script), beside its text", engine.ErrBadEdit)
+func wholeFile(text string, fileSize int) error {
+	if fileSize <= 0 {
+		return fmt.Errorf("%w: give fileSize, the file's size as one number of bytes (os.path.getsize(path) in a script), beside its text", engine.ErrBadEdit)
 	}
 	got := len(text)
-	slack := fileBytes/50 + 64
-	if got < fileBytes-slack || got > fileBytes+slack {
+	slack := fileSize/50 + 64
+	if got < fileSize-slack || got > fileSize+slack {
 		return fmt.Errorf("%w: the text is %d bytes and the file %d: send the file's whole text, read straight from it by a script "+
-			"(json.dump({\"title\": ..., \"text\": open(path).read(), \"fileBytes\": os.path.getsize(path)})), never a summary or a part", engine.ErrBadEdit, got, fileBytes)
+			"(json.dump({\"title\": ..., \"text\": open(path).read(), \"fileSize\": os.path.getsize(path)})), never a summary or a part", engine.ErrBadEdit, got, fileSize)
 	}
 	return nil
 }
@@ -3135,6 +3141,19 @@ func fillsOf(c call, set string, work []string) ([]map[string]any, error) {
 	}
 	return out, nil
 }
+
+// maskQuoted is a message with every quoted value replaced by an
+// ellipsis and the whole cut to 300 characters, so a trace says why a
+// call was refused without keeping what the agent sent.
+func maskQuoted(msg string) string {
+	msg = quotedValue.ReplaceAllString(msg, "${1}…${1}")
+	if r := []rune(msg); len(r) > 300 {
+		msg = string(r[:300]) + "…"
+	}
+	return msg
+}
+
+var quotedValue = regexp.MustCompile(`(['"])[^'"]{4,}['"]`)
 
 // quotedName is a name a schema message quotes ('team').
 var quotedName = regexp.MustCompile(`'([^']+)'`)
