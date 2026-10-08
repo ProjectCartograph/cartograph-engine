@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
 )
@@ -104,4 +106,58 @@ func sureWords(p float64) string {
 	default:
 		return "possibly"
 	}
+}
+
+// personCheck asks whether any text the record holds names a person
+// (names-person): an advisory check, the exact rule having refused a
+// name with a title already (docs/adr/0029, 0030). asked is false
+// without a model: the check is off.
+func (e *Engine) personCheck(ctx context.Context, kind string, doc map[string]any) (Check, bool) {
+	type text struct{ path, s string }
+	var texts []text
+	var walk func(v any, path string)
+	walk = func(v any, path string) {
+		switch t := v.(type) {
+		case map[string]any:
+			for k, x := range t {
+				walk(x, path+"/"+k)
+			}
+		case []any:
+			for i, x := range t {
+				walk(x, fmt.Sprintf("%s/%d", path, i))
+			}
+		case string:
+			// Words a person wrote: more than one, so not an id, a key or
+			// a choice.
+			if strings.Contains(strings.TrimSpace(t), " ") {
+				texts = append(texts, text{path, t})
+			}
+		}
+	}
+	walk(doc["spec"], "/spec")
+	if m, ok := doc["metadata"].(map[string]any); ok {
+		if n, ok := m["name"].(string); ok {
+			texts = append(texts, text{"/metadata/name", n})
+		}
+	}
+	sort.Slice(texts, func(i, j int) bool { return texts[i].path < texts[j].path })
+	// Each text on its own: asked joined, the model found a name in two
+	// parts of nine (measured), so a joined screen would hide most. The
+	// answers are cached by text, so a record pays for each once.
+	asked := false
+	for _, t := range texts {
+		one, ok := e.judge(ctx, "names-person", t.s)
+		if !ok {
+			return Check{}, false
+		}
+		asked = true
+		if one.Holds {
+			return Check{ID: "names-person", State: checkWarn, Section: e.stepOfField(kind, t.path),
+				Message: fmt.Sprintf("%s %s names a person. Cartograph names roles and bodies: name the role, such as the lead analyst, or the body.", t.path, sureWords(one.Sure))}, true
+		}
+	}
+	if !asked {
+		return Check{}, false
+	}
+	return Check{ID: "names-person", State: checkOK, Message: "No text names a person."}, true
 }

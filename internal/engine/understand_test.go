@@ -7,6 +7,7 @@ import (
 
 	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide/fake"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
@@ -285,6 +286,49 @@ func TestAPassiveStateIsNotTakenForAnAction(t *testing.T) {
 	for _, c := range checks {
 		if c.ID == "statement-state" && c.State != "ok" {
 			t.Fatalf("a passive state read as an action: %+v", c)
+		}
+	}
+}
+
+// A text that names a person is a warning on any kind, pinned to its
+// field; with no model the check is off, and absent.
+func TestATextNamingAPersonIsAWarning(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	model := fake.New().On("names-person-0", func(state string, _ decide.Question) decide.Answer {
+		if strings.Contains(state, "Mensah") {
+			return fake.Yes(0.8)
+		}
+		return fake.Yes(0.05)
+	})
+	y := []byte("apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t-named\n  name: Grading team\nspec:\n  purpose: Ada Mensah grades the produce at intake\n")
+	for _, c := range []struct {
+		d    decide.Decider
+		want string
+	}{{model, "warn"}, {nil, ""}} {
+		opts := []engine.Option{engine.WithCodec(codecyaml.New())}
+		if c.d != nil {
+			opts = append(opts, engine.WithDecider(c.d))
+		}
+		e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), opts...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		checks, err := e.ChecksOf(ctx, "Team", "t-named", y)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := ""
+		for _, ch := range checks {
+			if ch.ID == "names-person" {
+				got = ch.State
+				if !strings.Contains(ch.Message, "/spec/purpose") {
+					t.Errorf("not pinned to its field: %q", ch.Message)
+				}
+			}
+		}
+		if got != c.want {
+			t.Errorf("model %v: %q, want %q", c.d != nil, got, c.want)
 		}
 	}
 }
