@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace/jsonl"
 	"os"
 	"os/signal"
 
@@ -25,5 +27,23 @@ func runMCP(args []string) error {
 		return err
 	}
 	defer c.Close()
-	return mcp.ServeStdio(ctx, mcp.Options{Engine: c.Engine, Reports: c.Reports, Version: version})
+	rec, closeTrace, err := mcpTrace(os.Getenv("CARTOGRAPH_MCP_TRACE"))
+	if err != nil {
+		return err
+	}
+	defer closeTrace()
+	return mcp.ServeStdio(ctx, mcp.Options{Engine: c.Engine, Reports: c.Reports, Version: version, Trace: rec})
+}
+
+// mcpTrace is the trace recorder the configuration names: none when off
+// or unset, else JSON lines appended to the file named (docs/adr/0028).
+func mcpTrace(setting string) (trace.Recorder, func(), error) {
+	if setting == "" || setting == "off" {
+		return trace.Off{}, func() {}, nil
+	}
+	r, err := jsonl.Open(setting)
+	if err != nil {
+		return nil, nil, err
+	}
+	return r, func() { _ = r.Close() }, nil
 }

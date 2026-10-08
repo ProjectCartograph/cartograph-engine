@@ -27,6 +27,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/reporting"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace"
 )
 
 // Presence announces an agent on a document, so the people on it see it
@@ -44,6 +45,9 @@ type Options struct {
 	Reports  reporting.Reporter
 	Presence Presence
 	Version  string
+	// Trace records every tool call by its shape (docs/adr/0028); nil
+	// records none.
+	Trace trace.Recorder
 }
 
 // Handler serves MCP over HTTP, sessionless. The principal is the one the
@@ -609,16 +613,101 @@ func personFor(p identity.Principal) string {
 // tool registers a tool whose handler runs as the agent.
 func tool[In any](s *sdk.Server, o Options, person identity.Principal, t *sdk.Tool, h func(c call, in In) (any, error)) {
 	sdk.AddTool(s, t, func(ctx context.Context, req *sdk.CallToolRequest, in In) (*sdk.CallToolResult, any, error) {
+		start := time.Now()
 		c, err := o.begin(ctx, person, req)
 		if err != nil {
+			o.record(t.Name, req, c, in, nil, err, start)
 			return failed(err), nil, nil
 		}
 		out, err := h(c, in)
+		o.record(t.Name, req, c, in, out, err, start)
 		if err != nil {
 			return failed(err), nil, nil
 		}
 		return nil, out, nil
 	})
+}
+
+// record traces one call by its shape (docs/adr/0028): what was called,
+// on what, by whom, with which keys, how big, how long and how it ended;
+// never what the arguments or the answer said.
+func (o Options) record(name string, req *sdk.CallToolRequest, c call, in, out any, err error, start time.Time) {
+	if o.Trace == nil {
+		return
+	}
+	tc := trace.Call{At: start.UTC(), Method: "tools/call", Operation: "execute_tool", Tool: name,
+		Seconds: time.Since(start).Seconds(), Outcome: trace.OK, Agent: c.who.Agent, Person: c.who.Subject}
+	var args map[string]any
+	if b, mErr := json.Marshal(in); mErr == nil {
+		tc.InputBytes = len(b)
+		_ = json.Unmarshal(b, &args)
+	}
+	for k := range args {
+		tc.Keys = append(tc.Keys, k)
+	}
+	sort.Strings(tc.Keys)
+	kind, _ := args["kind"].(string)
+	id, _ := args["id"].(string)
+	if kind != "" && id != "" {
+		tc.Record = kind + "/" + id
+	}
+	tc.ChangeSet, _ = args["changeSet"].(string)
+	if req != nil && req.Extra != nil && req.Extra.Header != nil {
+		tc.Session = req.Extra.Header.Get("Mcp-Session-Id")
+		tc.Protocol = req.Extra.Header.Get("Mcp-Protocol-Version")
+	}
+	if tc.Session == "" {
+		tc.Session = tc.Agent + "|" + tc.Person
+	}
+	if out != nil {
+		if b, mErr := json.Marshal(out); mErr == nil {
+			tc.OutputBytes = len(b)
+		}
+		// An answer that lists problems, and nothing else done, is a
+		// refusal in all but name: structure and start_work answer so.
+		if m, ok := out.(map[string]any); ok {
+			if ps, ok := m["problems"].([]string); ok && len(ps) > 0 {
+				tc.Outcome, tc.Defect, tc.Problems = trace.Refused, "structure", len(ps)
+			}
+		}
+	}
+	if err != nil {
+		tc.Outcome, tc.ErrorType, tc.Defect = trace.Refused, "tool_error", defectOf(err)
+		var invalid *engine.ValidationError
+		if errors.As(err, &invalid) {
+			tc.Problems = len(invalid.Problems)
+		}
+		if tc.Defect == "other" {
+			tc.Outcome = trace.Failed
+		}
+	}
+	o.Trace.Record(tc)
+}
+
+// defectOf classifies a refusal, low in cardinality, for the analysis.
+func defectOf(err error) string {
+	var invalid *engine.ValidationError
+	var open *engine.OpenChecksError
+	switch {
+	case errors.As(err, &invalid):
+		return "schema"
+	case errors.As(err, &open):
+		return "open-checks"
+	case errors.Is(err, engine.ErrNotFound), errors.Is(err, engine.ErrUnknownKind):
+		return "not-found"
+	case errors.Is(err, identity.ErrForbidden):
+		return "access"
+	case errors.Is(err, engine.ErrBadEdit):
+		return "input"
+	case errors.Is(err, engine.ErrConflict):
+		return "conflict"
+	}
+	// An argument the server could not read, or one it asked to be sent
+	// otherwise, is the agent's input.
+	if msg := err.Error(); strings.Contains(msg, "settle does not take") || strings.HasPrefix(msg, "give ") || strings.HasPrefix(msg, "name ") || strings.HasPrefix(msg, "pass ") {
+		return "input"
+	}
+	return "other"
 }
 
 // failed is a tool error the agent reads: problems by field, or why it

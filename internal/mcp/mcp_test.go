@@ -20,6 +20,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/mcp"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace"
 )
 
 var ada = identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada"}
@@ -56,6 +57,12 @@ func (refuseAgents) Authorize(_ context.Context, p identity.Principal, a identit
 
 func setup(t *testing.T, authz identity.Authorizer) (*engine.Engine, *presence, *sdk.ClientSession) {
 	t.Helper()
+	return setupTraced(t, authz, nil)
+}
+
+// setupTraced is setup with a trace recorder.
+func setupTraced(t *testing.T, authz identity.Authorizer, rec trace.Recorder) (*engine.Engine, *presence, *sdk.ClientSession) {
+	t.Helper()
 	ms := memory.NewManifestStore()
 	am, err := automerge.New(1)
 	if err != nil {
@@ -70,7 +77,7 @@ func setup(t *testing.T, authz identity.Authorizer) (*engine.Engine, *presence, 
 		t.Fatal(err)
 	}
 	pr := &presence{}
-	h := mcp.Handler(mcp.Options{Engine: e, Authz: authz, Presence: pr, Version: "test"})
+	h := mcp.Handler(mcp.Options{Engine: e, Authz: authz, Presence: pr, Version: "test", Trace: rec})
 	// As the authentication middleware does: Ada is who the agent acts for.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.ServeHTTP(w, r.WithContext(identity.WithPrincipal(r.Context(), ada)))
@@ -964,5 +971,44 @@ func TestSettleReadsFieldsWhereverSentAndTeachesTheShape(t *testing.T) {
 	res, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/summary/problems": []any{map[string]any{"statement": "Faults reach buyers"}}}})
 	if !res.IsError || !strings.Contains(text, "/spec/summary/problems/0/problem/situation") {
 		t.Fatalf("a made-up shape: %s", text)
+	}
+}
+
+// calls is a trace recorder that keeps calls in memory.
+type calls struct {
+	mu   sync.Mutex
+	seen []trace.Call
+}
+
+func (c *calls) Record(tc trace.Call) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.seen = append(c.seen, tc)
+}
+
+// Every tool call is traced by its shape, under OpenTelemetry's names
+// (docs/adr/0028): the tool, the record, the keys sent, how it ended and
+// why; never what the arguments said.
+func TestEveryToolCallIsTracedByItsShape(t *testing.T) {
+	t.Parallel()
+	rec := &calls{}
+	_, _, cs := setupTraced(t, nil, rec)
+	callTool(t, cs, "start_work", map[string]any{"title": "Secret plan"})
+	callTool(t, cs, "edit_draft", map[string]any{"kind": "Project", "id": "p1", "set": map[string]any{"/spec/objectives/0/objective": "One", "/spec/objectives/1/objective": "Two"}})
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	if len(rec.seen) != 2 {
+		t.Fatalf("calls traced: %d", len(rec.seen))
+	}
+	start, edit := rec.seen[0], rec.seen[1]
+	if start.Method != "tools/call" || start.Operation != "execute_tool" || start.Tool != "start_work" || start.Outcome != trace.OK || start.Session == "" {
+		t.Errorf("start_work: %+v", start)
+	}
+	if edit.Record != "Project/p1" || edit.Outcome != trace.Refused || edit.Defect != "schema" || edit.ErrorType != "tool_error" || edit.Problems == 0 {
+		t.Errorf("a refused edit: %+v", edit)
+	}
+	b, _ := json.Marshal(rec.seen)
+	if strings.Contains(string(b), "Secret plan") || !strings.Contains(string(b), `"gen_ai.tool.name":"edit_draft"`) {
+		t.Errorf("a trace carried an argument's value, or lacks the conventions' names: %s", b)
 	}
 }

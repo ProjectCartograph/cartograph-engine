@@ -37,6 +37,7 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0025](0025-an-agent-works-in-its-persons-change-set.md) | An agent works in its person's change set when asked | Accepted |
 | [0026](0026-the-semantic-layer-is-a-port.md) | The semantic layer is a port, and dbt its first adapter | Accepted |
 | [0027](0027-agents-draft-to-a-strict-profile.md) | Agents draft to a strict profile, and settle a record in one call | Accepted |
+| [0028](0028-agents-calls-are-traced.md) | Every agent's call is traced by its shape | Accepted |
 
 ## Writing one
 

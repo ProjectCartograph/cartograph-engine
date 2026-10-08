@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace"
 	"log/slog"
 	"net"
 	"net/http"
@@ -154,6 +155,12 @@ func runServe(args []string) error {
 		mtr = newMetrics()
 	}
 	agents := agentsConfig{On: cfg.MCP == "on", Issuer: cfg.MCPIssuer}
+	rec, closeTrace, err := mcpTrace(cfg.MCPTrace)
+	if err != nil {
+		return err
+	}
+	defer closeTrace()
+	agents.Trace = rec
 	if agents.On && cfg.MCPAuth == "cartograph" {
 		// Cartograph's own authorization server: its consent page knows the
 		// person by the same authenticator as every other request.
@@ -356,7 +363,7 @@ func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz au
 	if agents.On {
 		// Agents too, behind the same sign-in and access list: /mcp is
 		// MCP, the person on the request is who the agent acts for.
-		opts := mcp.Options{Engine: e, Authz: authz, Reports: reports, Version: version}
+		opts := mcp.Options{Engine: e, Authz: authz, Reports: reports, Version: version, Trace: agents.Trace}
 		if syncSrv != nil {
 			opts.Presence = syncSrv
 		}
@@ -407,6 +414,8 @@ type agentsConfig struct {
 	On     bool
 	Issuer string
 	OAuth  *oauth.Server
+	// Trace keeps every tool call by its shape (docs/adr/0028).
+	Trace trace.Recorder
 }
 
 func withMCP(next, mcpHandler http.Handler) http.Handler {

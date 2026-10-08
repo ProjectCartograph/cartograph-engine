@@ -39,6 +39,7 @@ prints the same table.
 | `CARTOGRAPH_DECIDE_URL` | `-decide-url` | `http://127.0.0.1:8411` | The Laya sidecar's address. Keep it off any network people reach |
 | `CARTOGRAPH_DECIDE_TIMEOUT` | `-decide-timeout` | `5s` | The longest one decision may take; a slower or absent sidecar only means its checks are not shown |
 | `CARTOGRAPH_MCP` | `-mcp` | `off` | `on` serves agents over MCP at `/api/v1/mcp` (ADR 0016) |
+| `CARTOGRAPH_MCP_TRACE` | `-mcp-trace` | `off` | Keep every MCP tool call by its shape, for governance and analysis (docs/adr/0028): `off`, or a file the calls are appended to as JSON lines under OpenTelemetry's MCP names. Never an argument's value. `cartograph traces` reads it. Keep it on a volume apart from the server, append-only, for as long as your audit policy says (90 days at least is common) |
 | `CARTOGRAPH_MCP_AUTH` | `-mcp-auth` | `proxy` | Who authorizes agents: `cartograph`, Cartograph's own authorization server, or `proxy`, whatever authenticates every other request ("Agents" below) |
 | `CARTOGRAPH_MCP_ISSUER` | `-mcp-issuer` | empty | The authorization server MCP clients sign in with, published as protected resource metadata at `/.well-known/oauth-protected-resource`. With `CARTOGRAPH_MCP_AUTH=cartograph`, Cartograph's own public address |
 | `CARTOGRAPH_AGENT_KEY` | none | empty | With `CARTOGRAPH_MCP_AUTH=cartograph`: the secret its tokens are signed with, at least 32 bytes, the same on every replica |
