@@ -8,6 +8,7 @@ import (
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/structure"
 )
 
 // NamedRefs resolves, in fields about to be set on a kind's draft, every
@@ -182,7 +183,7 @@ func (r *refResolver) id(kind, value string) string {
 			return id
 		}
 	}
-	id := strings.ToLower(kind) + "-" + shortID()
+	id := strings.ToLower(kind) + "-" + structure.NewID()
 	doc := map[string]any{"apiVersion": "cartograph/v1", "kind": kind, "metadata": map[string]any{"id": id, "name": value}, "spec": registerDefaults(kind, value)}
 	text, err := r.e.codec.Encode(doc)
 	if err == nil {

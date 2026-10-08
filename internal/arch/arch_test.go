@@ -105,6 +105,9 @@ var rules = map[string][]string{
 	"internal/contract":  leaf,
 	"internal/sentence":  leaf,
 	"internal/document":  leaf,
+	// The structure questions read the document helpers and nothing else.
+	"internal/structure": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/codec", "internal/printer", "internal/auth",
+		"internal/contract", "internal/sentence", "pkg", "cmd"}, outer, adapters, drivers),
 	// The kinds know their schemas and the kit, never the engine, a port
 	// or an adapter.
 	"internal/kinds":  join([]string{"internal/engine", "internal/store", "internal/codec", "internal/printer", "internal/auth"}, outer, adapters, drivers),

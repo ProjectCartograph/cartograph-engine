@@ -1,4 +1,4 @@
-package engine
+package structure
 
 import (
 	"crypto/rand"
@@ -10,7 +10,8 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
 )
 
-// Structure first (TAXONOMY.md D56). What a document calls a project, a
+// Package structure lays out a port's or a new piece of work's
+// structure first (TAXONOMY.md D56). What a document calls a project, a
 // workstream or a programme is evidence, not a structure: a person or an
 // agent porting it, or starting something new, answers the same few
 // questions about each piece of work it names, in order, and the answers
@@ -18,10 +19,10 @@ import (
 // write it in. The questions are asked of everyone, so the structure is
 // Cartograph's, not the document's.
 
-// StructurePiece is one piece of work a document or a person names, with
+// Piece is one piece of work a document or a person names, with
 // the answers to the structure questions. Each answer is asked plainly in
 // structureQuestions.
-type StructurePiece struct {
+type Piece struct {
 	Name string `json:"name"`
 	// OutOfScope: another body leads and funds it to its own plan, and the
 	// work only depends on it or mentions it.
@@ -64,20 +65,20 @@ type StructurePiece struct {
 	None bool `json:"none,omitempty"`
 }
 
-// StructureKeys are the keys a piece may carry: its name and the answers.
-var StructureKeys = map[string]bool{"name": true, "outOfScope": true, "policy": true, "ongoing": true, "runsToday": true, "groupsForFunding": true,
+// Keys are the keys a piece may carry: its name and the answers.
+var Keys = map[string]bool{"name": true, "outOfScope": true, "policy": true, "ongoing": true, "runsToday": true, "groupsForFunding": true,
 	"coordinatesProjects": true, "outputOf": true, "changeOfItsOwn": true, "dependedOnBy": true, "none": true, "change": true, "deliverable": true}
 
-// StructureQuestion is one question, as people and agents are asked it.
-type StructureQuestion struct {
+// Question is one question, as people and agents are asked it.
+type Question struct {
 	Field    string `json:"field"`
 	Question string `json:"question"`
 	Then     string `json:"then"`
 }
 
-// StructureQuestions are asked of every piece, in this order; the first
+// Questions are asked of every piece, in this order; the first
 // yes decides.
-var StructureQuestions = []StructureQuestion{
+var Questions = []Question{
 	{"outOfScope", "Does another body lead and fund it to its own plan, so the work only depends on it or mentions it?", "Not a record here: a scope-out line of the work, and a dependency risk if the work waits on it."},
 	{"policy", "Is it a standing policy or rule with no end date that the work puts into effect?", "A Goal at goal level, its horizon ending at its next review. The rules taking effect go in the project's notes."},
 	{"ongoing", "Does it keep running with no end date: a service or a function, whether it runs today or a project will set it up?", "An Operation: running if it runs today, otherwise planned and named by the project that sets it up as where it lands."},
@@ -88,8 +89,8 @@ var StructureQuestions = []StructureQuestion{
 	{"", "None of these (answer none: true):", "A Project: work that ends, with one objective. A project the others are components of is the parent."},
 }
 
-// StructuredPiece is what one piece is, and where it goes.
-type StructuredPiece struct {
+// Placed is what one piece is, and where it goes.
+type Placed struct {
 	Name string `json:"name"`
 	Kind string `json:"kind"`
 	// Record is Kind/id for a piece that is a record of its own, with an
@@ -99,11 +100,11 @@ type StructuredPiece struct {
 	Of     []string `json:"of,omitempty"`
 }
 
-// Structure is the answer for a whole document: each piece, the order to
+// Result is the answer for a whole document: each piece, the order to
 // write the records in, and anything the answers leave inconsistent.
-type Structure struct {
-	Pieces []StructuredPiece `json:"pieces"`
-	Order  []string          `json:"order"`
+type Result struct {
+	Pieces []Placed `json:"pieces"`
+	Order  []string `json:"order"`
 	// Work is every record to write, as Kind/id, in the order to write
 	// them: what next takes as work, unchanged.
 	Work     []string `json:"work"`
@@ -122,8 +123,8 @@ const (
 // then projects with the ones depended on first, then programmes, then
 // portfolios. Deliverables and scope-out lines are written inside the
 // project they belong to.
-func Classify(pieces []StructurePiece) Structure {
-	var out Structure
+func Classify(pieces []Piece) Result {
+	var out Result
 	byName := map[string]int{}
 	for i, p := range pieces {
 		key := strings.ToLower(strings.TrimSpace(p.Name))
@@ -197,11 +198,11 @@ func Classify(pieces []StructurePiece) Structure {
 			if !ok || !work(j) {
 				out.Problems = append(out.Problems, fmt.Sprintf("%q is an output of %q, which is not a project or programme among the pieces", p.Name, p.OutputOf))
 			}
-			out.Pieces = append(out.Pieces, StructuredPiece{Name: p.Name, Kind: PieceDeliverable, Of: []string{p.OutputOf},
+			out.Pieces = append(out.Pieces, Placed{Name: p.Name, Kind: PieceDeliverable, Of: []string{p.OutputOf},
 				Where: "A deliverable of " + p.OutputOf + ", with its owner, due date and acceptance."})
 			continue
 		case PieceScopeOut:
-			out.Pieces = append(out.Pieces, StructuredPiece{Name: p.Name, Kind: PieceScopeOut,
+			out.Pieces = append(out.Pieces, Placed{Name: p.Name, Kind: PieceScopeOut,
 				Where: "Not a record: a scope-out line of the work that mentions it, and a dependency risk if the work waits on it."})
 			continue
 		}
@@ -221,7 +222,7 @@ func Classify(pieces []StructurePiece) Structure {
 					"if another piece needs it, send %s", p.Name, pieceJSON(p.Name, `"none":true`), pieceJSON(p.Name, `"changeOfItsOwn":true,"change":"<what it changes>","dependedOnBy":["<the piece that needs it>"]`)))
 			}
 		}
-		out.Pieces = append(out.Pieces, StructuredPiece{Name: p.Name, Kind: kindOf[i], Of: of, Where: whereOf(kindOf[i], p, of)})
+		out.Pieces = append(out.Pieces, Placed{Name: p.Name, Kind: kindOf[i], Of: of, Where: whereOf(kindOf[i], p, of)})
 	}
 	// A programme lists the projects nothing else lists.
 	listed := map[int]bool{}
@@ -286,7 +287,7 @@ func Classify(pieces []StructurePiece) Structure {
 		if p.Kind == PieceDeliverable || p.Kind == PieceScopeOut {
 			continue
 		}
-		p.Record = p.Kind + "/" + strings.ToLower(p.Kind) + "-" + shortID()
+		p.Record = p.Kind + "/" + strings.ToLower(p.Kind) + "-" + NewID()
 		record[strings.ToLower(strings.TrimSpace(p.Name))] = p.Record
 	}
 	out.Work = []string{}
@@ -305,7 +306,7 @@ func Classify(pieces []StructurePiece) Structure {
 	return out
 }
 
-func whereOf(kind string, p StructurePiece, of []string) string {
+func whereOf(kind string, p Piece, of []string) string {
 	switch kind {
 	case "Goal":
 		return "A Goal at goal level: the standing policy, its horizon ending at its next review; the rules taking effect go in the project's notes."
@@ -328,7 +329,7 @@ func whereOf(kind string, p StructurePiece, of []string) string {
 // writingOrder is the order to write records in: goals, operations,
 // projects with the ones depended on first, programmes, portfolios. A
 // loop of dependencies is a problem, and its pieces go last.
-func writingOrder(pieces []StructurePiece, kindOf []string, components [][]int, problems *[]string) []string {
+func writingOrder(pieces []Piece, kindOf []string, components [][]int, problems *[]string) []string {
 	rank := map[string]int{"Goal": 0, "Operation": 1, "Project": 2, "Programme": 3, "Portfolio": 4}
 	var order []string
 	for _, k := range []string{"Goal", "Operation"} {
@@ -381,8 +382,8 @@ func writingOrder(pieces []StructurePiece, kindOf []string, components [][]int, 
 	return order
 }
 
-// shortID is a generated id part: a record's id never comes from its name.
-func shortID() string {
+// NewID is a generated id part: a record's id never comes from its name.
+func NewID() string {
 	b := make([]byte, 4)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
@@ -393,7 +394,7 @@ func shortID() string {
 // components each piece lists, each deliverable inside the work it is an
 // output of, and each scope-out line in the work at the top. What only the
 // documents can say is left for the checks to ask for, one at a time.
-func (s Structure) Drafts() []map[string]any {
+func (s Result) Drafts() []map[string]any {
 	recordOf := map[string]string{}
 	for _, p := range s.Pieces {
 		if p.Record != "" {
@@ -479,7 +480,7 @@ func (s Structure) Drafts() []map[string]any {
 }
 
 // answered reports whether a piece carries any answer, none included.
-func answered(p StructurePiece) bool {
+func answered(p Piece) bool {
 	return p.None || p.OutOfScope || p.Policy || p.Ongoing || p.RunsToday || p.GroupsForFunding || p.CoordinatesProjects ||
 		strings.TrimSpace(p.OutputOf) != "" || p.ChangeOfItsOwn || len(p.DependedOnBy) > 0
 }

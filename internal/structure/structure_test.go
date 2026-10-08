@@ -1,11 +1,11 @@
-package engine_test
+package structure_test
 
 import (
 	"encoding/json"
 	"strings"
 	"testing"
 
-	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/structure"
 )
 
 // A charter of the shape the agents found hardest: a standing policy, one
@@ -14,7 +14,7 @@ import (
 // another body runs (TAXONOMY.md D56).
 func TestClassifyPutsEachPieceWhereItBelongs(t *testing.T) {
 	t.Parallel()
-	s := engine.Classify([]engine.StructurePiece{
+	s := structure.Classify([]structure.Piece{
 		{Name: "Produce standards", Policy: true},
 		{Name: "Standards rollout", None: true},
 		{Name: "Grading handbook", OutputOf: "Standards rollout"},
@@ -50,7 +50,7 @@ func TestClassifyPutsEachPieceWhereItBelongs(t *testing.T) {
 
 func TestClassifySaysWhatIsInconsistent(t *testing.T) {
 	t.Parallel()
-	s := engine.Classify([]engine.StructurePiece{
+	s := structure.Classify([]structure.Piece{
 		{Name: "Handbook", OutputOf: "Nowhere"},
 		{Name: "Survey", ChangeOfItsOwn: true, Change: "sets the baseline"},
 		{Name: "A", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"B"}},
@@ -67,7 +67,7 @@ func TestClassifySaysWhatIsInconsistent(t *testing.T) {
 // A programme lists the projects no other project lists.
 func TestClassifyGivesAProgrammeItsProjects(t *testing.T) {
 	t.Parallel()
-	s := engine.Classify([]engine.StructurePiece{
+	s := structure.Classify([]structure.Piece{
 		{Name: "Cleaner water", CoordinatesProjects: true},
 		{Name: "Pipes"},
 		{Name: "Treatment works"},
@@ -81,15 +81,15 @@ func TestClassifyGivesAProgrammeItsProjects(t *testing.T) {
 // Every key structure accepts is an answer StructurePiece holds.
 func TestStructureKeysAreThePieceFields(t *testing.T) {
 	t.Parallel()
-	b, _ := json.Marshal(engine.StructurePiece{Name: "x", OutOfScope: true, Policy: true, Ongoing: true, RunsToday: true, GroupsForFunding: true,
+	b, _ := json.Marshal(structure.Piece{Name: "x", OutOfScope: true, Policy: true, Ongoing: true, RunsToday: true, GroupsForFunding: true,
 		CoordinatesProjects: true, OutputOf: "y", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"z"}, None: true, Deliverable: "D4"})
 	var m map[string]any
 	_ = json.Unmarshal(b, &m)
-	if len(m) != len(engine.StructureKeys) {
-		t.Fatalf("piece fields %v, keys %v", m, engine.StructureKeys)
+	if len(m) != len(structure.Keys) {
+		t.Fatalf("piece fields %v, keys %v", m, structure.Keys)
 	}
 	for k := range m {
-		if !engine.StructureKeys[k] {
+		if !structure.Keys[k] {
 			t.Errorf("%s is a field structure refuses", k)
 		}
 	}
@@ -100,12 +100,12 @@ func TestStructureKeysAreThePieceFields(t *testing.T) {
 // both are problems, so a port is never laid out as unrelated projects.
 func TestStructureRefusesUnansweredAndUnlinkedPieces(t *testing.T) {
 	t.Parallel()
-	s := engine.Classify([]engine.StructurePiece{{Name: "Rollout"}, {Name: "Survey"}, {Name: "Checks", None: true}})
+	s := structure.Classify([]structure.Piece{{Name: "Rollout"}, {Name: "Survey"}, {Name: "Checks", None: true}})
 	text := strings.Join(s.Problems, "\n")
 	if !strings.Contains(text, `"Rollout" has no answers`) || !strings.Contains(text, `"Survey" has no answers`) || !strings.Contains(text, "stand alone") {
 		t.Fatalf("problems: %v", s.Problems)
 	}
-	ok := engine.Classify([]engine.StructurePiece{{Name: "Rollout", None: true}, {Name: "Survey", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"Rollout"}}, {Name: "Checks", Ongoing: true}})
+	ok := structure.Classify([]structure.Piece{{Name: "Rollout", None: true}, {Name: "Survey", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"Rollout"}}, {Name: "Checks", Ongoing: true}})
 	if len(ok.Problems) > 0 {
 		t.Fatalf("a linked port: %v", ok.Problems)
 	}
@@ -116,7 +116,7 @@ func TestStructureRefusesUnansweredAndUnlinkedPieces(t *testing.T) {
 // it was said to be an output of depending on it.
 func TestAChangeOfItsOwnIsAskedBeforeAnOutput(t *testing.T) {
 	t.Parallel()
-	s := engine.Classify([]engine.StructurePiece{
+	s := structure.Classify([]structure.Piece{
 		{Name: "Rollout", None: true},
 		{Name: "Baseline survey", ChangeOfItsOwn: true, Change: "sets the baseline", OutputOf: "Rollout"},
 		{Name: "Handbook", OutputOf: "Rollout"},
@@ -128,7 +128,7 @@ func TestAChangeOfItsOwnIsAskedBeforeAnOutput(t *testing.T) {
 	for _, p := range s.Pieces {
 		kinds[p.Name] = p.Kind
 	}
-	if kinds["Baseline survey"] != "Project" || kinds["Handbook"] != engine.PieceDeliverable {
+	if kinds["Baseline survey"] != "Project" || kinds["Handbook"] != structure.PieceDeliverable {
 		t.Fatalf("pieces: %+v", s.Pieces)
 	}
 }
@@ -137,7 +137,7 @@ func TestAChangeOfItsOwnIsAskedBeforeAnOutput(t *testing.T) {
 // what it changes: neither is taken on a bare yes.
 func TestAWorkstreamIsRefusedAndAChangeIsSaid(t *testing.T) {
 	t.Parallel()
-	s := engine.Classify([]engine.StructurePiece{
+	s := structure.Classify([]structure.Piece{
 		{Name: "Rollout", None: true},
 		{Name: "WS2 Technical materials", ChangeOfItsOwn: true, DependedOnBy: []string{"Rollout"}},
 		{Name: "Survey", ChangeOfItsOwn: true, DependedOnBy: []string{"Rollout"}},

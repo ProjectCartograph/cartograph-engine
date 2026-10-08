@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/structure"
 )
 
 // The port chain: a document's text to its structure, its registers and every record written.
@@ -24,7 +25,7 @@ func structureDescription() string {
 		"What a document calls a project, a workstream or a programme is never trusted: list every piece of work it names " +
 		"(the project itself, each workstream, sub-project, phase, survey, system, service, policy and partner strand), " +
 		"then answer these questions for each piece, in order; the first yes decides:\n")
-	for i, q := range engine.StructureQuestions {
+	for i, q := range structure.Questions {
 		if q.Field == "" {
 			fmt.Fprintf(&b, "%d. %s %s\n", i+1, q.Question, q.Then)
 			continue
@@ -72,14 +73,14 @@ func portOnly(c call, name string, in any) error {
 // piecesOf reads structure answers as an agent sent them, strictly: a
 // piece sent as text, a key the questions do not ask or a kind that is
 // not work is refused with what to send instead, never ignored.
-func piecesOf(raws []any) ([]engine.StructurePiece, map[string]any) {
+func piecesOf(raws []any) ([]structure.Piece, map[string]any) {
 	// A small agent sends names where pieces go: say how, by example,
 	// rather than refusing in the words of a schema.
-	pieces := make([]engine.StructurePiece, 0, len(raws))
+	pieces := make([]structure.Piece, 0, len(raws))
 	var bad, problems []string
 	for _, raw := range raws {
 		b, _ := json.Marshal(raw)
-		var p engine.StructurePiece
+		var p structure.Piece
 		m, isObject := raw.(map[string]any)
 		if !isObject || json.Unmarshal(b, &p) != nil {
 			bad = append(bad, string(b))
@@ -88,7 +89,7 @@ func piecesOf(raws []any) ([]engine.StructurePiece, map[string]any) {
 		// What a piece is, is the answer, never the agent's to say:
 		// a key the questions do not ask is refused, not ignored.
 		for k := range m {
-			if !engine.StructureKeys[k] {
+			if !structure.Keys[k] {
 				problems = append(problems, fmt.Sprintf("%q: %q is not an answer; give only name and the yes answers", p.Name, k))
 			}
 		}

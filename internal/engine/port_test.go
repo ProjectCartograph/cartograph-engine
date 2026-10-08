@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/structure"
 )
 
 // A port is the engine's use case, driven without any adapter: a
@@ -35,7 +36,7 @@ func TestAPortIsAnEngineUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	layout, err := e.PortPieces(ctx, cs.ID, src, []engine.StructurePiece{{Name: "Depot checks", None: true}})
+	layout, err := e.PortPieces(ctx, cs.ID, src, []structure.Piece{{Name: "Depot checks", None: true}})
 	if err != nil || len(layout.Problems) > 0 {
 		t.Fatalf("layout: %v %v", err, layout.Problems)
 	}

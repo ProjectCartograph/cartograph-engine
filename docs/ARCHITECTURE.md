@@ -387,6 +387,7 @@ A change that needs a new edge gets a new port, not an exception
 | `internal/contract` | The JSON Schema and flow files, embedded; the schema set | nothing |
 | `internal/sentence` | Composes the sentences a manifest stores in parts, the same way everywhere they are shown | nothing |
 | `internal/document` | Reads a document's text: its sections by their headings, and the registers its tables hold, as the porting map says. Pure: the engine's port use case (`engine/port.go`) brings, keeps and writes from it | nothing |
+| `internal/structure` | The structure questions (TAXONOMY.md D56): what each piece of work a document names is, what it belongs to, and the order its records are written in. Pure | `internal/document` |
 | `internal/kinds`, `internal/kinds/<kind>` | The registry of kinds and each kind's rules beyond its schema | `kinds/kit` |
 | `internal/kinds/kit` | The small types rules need (`Problem`, `Lookup`) so kind packages never import the engine | nothing |
 | `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, the shared drafts (`Shared`, and `Shape`, which maps a kind's schema onto the document), the access list and the team checks at every write, the event bus | `store`, `codec`, `crdt`, `fanout`, `identity`, `kinds`, `kinds/kit`, `contract`, `sentence`; a JSON Schema validator |

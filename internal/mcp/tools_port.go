@@ -7,6 +7,7 @@ import (
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/structure"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -54,7 +55,7 @@ func registerPortTools(s *sdk.Server, o Options, person identity.Principal) {
 			}
 			if len(in.Pieces) == 0 {
 				return map[string]any{"changeSet": cs.ID, "sections": srcs[0].Sections, "piecesIn": pieceSections,
-					"questions": engine.StructureQuestions, "example": json.RawMessage(structureExample),
+					"questions": structure.Questions, "example": json.RawMessage(structureExample),
 					"next": "Read sections " + strings.Join(pieceSections, ", ") + " with read_section, list every piece of work they name, answer the questions " +
 						"here for each, and call port again with title and pieces, shaped as example. Do not call structure or start_work: port does both, and writes the registers."}, nil
 			}

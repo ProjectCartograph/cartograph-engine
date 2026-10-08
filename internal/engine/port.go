@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/structure"
 )
 
 // Porting a document is an application service (TAXONOMY.md D56, docs/
@@ -101,7 +102,7 @@ type RecordFill struct {
 // that kept it from being drafted; the records drafted; the registers
 // written; and what each record still needs.
 type PortLayout struct {
-	Structure Structure
+	Structure structure.Result
 	Problems  []string
 	Drafts    []Draft
 	Registers []RegisterResult
@@ -113,9 +114,9 @@ type PortLayout struct {
 // component that is no row of its deliverable register), drafts every
 // record, and writes every register the document has into the main
 // project, a component's own rows into the component.
-func (e *Engine) PortPieces(ctx context.Context, set string, src Source, pieces []StructurePiece) (PortLayout, error) {
+func (e *Engine) PortPieces(ctx context.Context, set string, src Source, pieces []structure.Piece) (PortLayout, error) {
 	var out PortLayout
-	st := Classify(pieces)
+	st := structure.Classify(pieces)
 	// The document's own workstream plan says which names are workstreams:
 	// none of them is a piece (D49), however it is called. A service, an
 	// output or work another body leads may carry the name; a project may
@@ -564,7 +565,7 @@ func (e *Engine) sourceTeams(ctx context.Context, set string) {
 // deliverable register, where it has one: a piece with a change of its
 // own names the row that hands it over (D4), one row to one piece, so a
 // phase, a service or a theme cannot be made a project by renaming it.
-func (e *Engine) componentRows(ctx context.Context, set string, src Source, pieces []StructurePiece) []string {
+func (e *Engine) componentRows(ctx context.Context, set string, src Source, pieces []structure.Piece) []string {
 	var rows []map[string]any
 	for _, sec := range src.Sections {
 		for _, f := range sec.Feeds {

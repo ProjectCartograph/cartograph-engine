@@ -8,6 +8,7 @@ import (
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/structure"
 	"github.com/google/jsonschema-go/jsonschema"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -22,7 +23,7 @@ func registerDraftTools(s *sdk.Server, o Options, person identity.Principal) {
 			if refused != nil {
 				return refused, nil
 			}
-			return engine.Classify(pieces), nil
+			return structure.Classify(pieces), nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "save_draft", Description: "Create a manifest in your change set: your own draft of it, apart from the record and from every other agent's work, " +
@@ -382,13 +383,13 @@ func registerDraftTools(s *sdk.Server, o Options, person identity.Principal) {
 		"Pass pieces, the same answers you gave structure, and it also writes the first draft of every record the structure names (each named, with its components, " +
 		"its deliverables and its scope-out lines) and says what to fill in first.", Annotations: drafting},
 		func(c call, in startWorkIn) (any, error) {
-			var st engine.Structure
+			var st structure.Result
 			if len(in.Pieces) > 0 {
 				pieces, refused := piecesOf(in.Pieces)
 				if refused != nil {
 					return refused, nil
 				}
-				if st = engine.Classify(pieces); len(st.Problems) > 0 {
+				if st = structure.Classify(pieces); len(st.Problems) > 0 {
 					return map[string]any{"problems": st.Problems, "next": "Fix every problem and call start_work again with the pieces; nothing was started."}, nil
 				}
 			}
