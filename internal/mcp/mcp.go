@@ -65,10 +65,11 @@ const instructions = `Porting a document, or starting any new piece of work? Do 
    structure, fix its problems.
 2. start_work with the same pieces: one change set for all of it, every
    record already drafted, named and linked.
-3. next with work set to the work list structure returned, exactly:
-   do what it says (save_draft the draft it hands you, edit_draft,
-   leave_open), passing the same work to every save; each answer says
-   what comes next. Write the goals, outcomes, KPIs and registers a
+3. next with work set to the work list start_work returned, exactly.
+   It names one record at a time with every check open on it (fill):
+   settle the whole record at once, one edit_draft setting every field
+   the documents give and a leave_open for each they do not, passing
+   the same work to every save; each answer says what comes next. Write the goals, outcomes, KPIs and registers a
    project names with save_drafts, many in one call. Repeat until it
    says every check is met. A port is often 30 to 60 records and a few
    hundred calls: that is expected. Never stop part way, never hand the rest to
@@ -1756,6 +1757,7 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 	} else if w, err := c.o.Engine.Work(c.ctx, append([]engine.Ref{{Kind: kind, ID: id}}, also...), ""); err == nil {
 		if len(w.Tasks) > 0 {
 			out["next"] = firstNext(c.ctx, c.o.Engine, w.Tasks[0])
+			withFill(c, out, w.Tasks)
 		} else {
 			out["next"] = allMet(c.ctx, c.o.Engine)
 		}
@@ -2022,7 +2024,38 @@ func nextOf(c call, set string, found bool, workIn []string, locale string) (any
 		then = then[:8]
 	}
 	out["task"], out["then"] = w.Tasks[0], then
+	withFill(c, out, w.Tasks)
 	return out, nil
+}
+
+// withFill puts every open check on the first task's record in out, so the
+// record is settled in one visit: one edit_draft with every field the
+// documents give, one leave_open for each they do not. A check at a time
+// costs a small agent its room.
+func withFill(c call, out map[string]any, tasks []engine.Task) {
+	if len(tasks) == 0 {
+		return
+	}
+	first := tasks[0]
+	var fill []map[string]string
+	for _, t := range tasks {
+		if t.Kind != first.Kind || t.ID != first.ID {
+			continue
+		}
+		f := map[string]string{"check": t.Check, "do": t.Do, "now": t.Message}
+		if t.Field != "" {
+			f["field"] = t.Field
+		}
+		if t.By != "" {
+			f["writeFirst"] = t.By
+		}
+		fill = append(fill, f)
+	}
+	if len(fill) > 1 {
+		out["fill"] = fill
+		out["next"] = fmt.Sprintf("Settle %s/%s now, every check in fill at once: one edit_draft setting every field the documents give (set takes many JSON pointers), "+
+			"then one leave_open per check they do not answer; then go on as the answer says. %s", first.Kind, first.ID, firstNext(c.ctx, c.o.Engine, first))
+	}
 }
 
 // firstUnwritten hands over the first record the work names that is not

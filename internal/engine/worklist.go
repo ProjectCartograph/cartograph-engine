@@ -39,6 +39,9 @@ type Task struct {
 	// to do about it.
 	Step string `json:"step,omitempty"`
 	Do   string `json:"do,omitempty"`
+	// Field is the field that settles it, as a JSON pointer, where one
+	// field does.
+	Field string `json:"field,omitempty"`
 	// By is the kind written to settle it, where that is another kind (a
 	// gap settles an outcome's closes-gap): the stage it waits for.
 	By string `json:"by,omitempty"`
@@ -242,7 +245,7 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 				by = ""
 			}
 			out.Tasks = append(out.Tasks, Task{Phase: pl.phase, Kind: r.Kind, ID: r.ID, Name: rec.name, Check: c.ID, State: c.State,
-				Message: c.Message, Step: pl.step, Do: words[r.Kind].Checks[c.ID], By: by, Choices: e.choices(l, r.Kind, rec.level, pl.field)})
+				Message: c.Message, Step: pl.step, Do: words[r.Kind].Checks[c.ID], By: by, Choices: e.choices(l, r.Kind, rec.level, pl.field), Field: fieldOf(pl.field)})
 			out.Open[pl.phase]++
 		}
 	}
@@ -421,4 +424,12 @@ func (e *Engine) OpenNow(ctx context.Context, set string) ([]OpenCheck, error) {
 		out = append(out, oc)
 	}
 	return out, nil
+}
+
+// fieldOf is a place's field when it is one, not a link.
+func fieldOf(f string) string {
+	if strings.HasPrefix(f, "/") {
+		return f
+	}
+	return ""
 }

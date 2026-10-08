@@ -903,3 +903,17 @@ func TestStartWorkDraftsTheStructure(t *testing.T) {
 		t.Errorf("the rollout's draft: %s", rollout)
 	}
 }
+
+// next hands over a whole record's open checks, each with the field that
+// settles it, so one edit settles the record.
+func TestNextFillsAWholeRecord(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout"}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	_, text = callTool(t, cs, "next", map[string]any{"work": out.Work})
+	if !strings.Contains(text, `"fill":[`) || !strings.Contains(text, `"field":"/`) || !strings.Contains(text, "every check in fill at once") {
+		t.Fatalf("next: %s", text)
+	}
+}
