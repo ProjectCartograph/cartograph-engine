@@ -6,7 +6,11 @@ import (
 	"strings"
 	"testing"
 
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide/fake"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 // I3a (2026-09-17): GET /manifests/Project/{id}/checks. Every rule is
@@ -884,5 +888,61 @@ func TestAProjectHasOneObjective(t *testing.T) {
 	}
 	if got.State != "block" || !strings.Contains(got.Message, "a project has one") || !strings.Contains(got.Message, "component") {
 		t.Fatalf("goals-objective: %+v", got)
+	}
+}
+
+// A project's objective is judged by the decision model, as a change in
+// words or a figure to reach: a warning that says how sure it is, and no
+// check at all without a model (docs/adr/0030).
+func TestAProjectObjectiveIsJudgedByTheModel(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	y := fullProjectYAML("judged")
+	byText := func(target bool) *fake.Decider {
+		m := fake.New()
+		for _, q := range []string{"objective-target-0", "objective-target-1"} {
+			m.On(q, func(string, decide.Question) decide.Answer {
+				if target {
+					return fake.Yes(0.7)
+				}
+				return fake.Yes(0.1)
+			})
+		}
+		return m
+	}
+	for _, c := range []struct {
+		name  string
+		model *fake.Decider
+		want  string
+	}{
+		{"read as a target", byText(true), "warn"},
+		{"read as a change", byText(false), "ok"},
+		{"no model", nil, ""},
+	} {
+		opts := []engine.Option{engine.WithCodec(codecyaml.New())}
+		if c.model != nil {
+			opts = append(opts, engine.WithDecider(c.model))
+		}
+		e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), opts...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+			t.Fatal(err)
+		}
+		if err := e.PutWorking(ctx, "Project", "judged", []byte(y)); err != nil {
+			t.Fatal(err)
+		}
+		checks, err := e.ProjectChecks(ctx, "judged", true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := checksByID(checks.Items)["goals-objective-aim"]
+		if got.State != c.want {
+			t.Errorf("%s: %+v", c.name, got)
+		}
+		if c.want == "warn" && !strings.Contains(got.Message, "likely reads as a target") {
+			t.Errorf("%s: the message says how sure: %q", c.name, got.Message)
+		}
 	}
 }

@@ -96,20 +96,20 @@ func TestProjectDeliverables(t *testing.T) {
 	})
 }
 
-func TestObjectiveMustBeQualitative(t *testing.T) {
+// A number in an objective is never refused: whether the objective says a
+// change or a figure to reach is the decision model's to judge, and it
+// advises (docs/adr/0030). "Every 2-year-old reaches the milestone" names
+// a group; a pattern could not tell it from a target.
+func TestAnObjectiveWithANumberIsNotRefused(t *testing.T) {
 	t.Parallel()
 	e := seededEngine(t)
 	runSchemaCases(t, e, []schemaCase{
 		{
-			name: "goal objective with a digit is rejected", kind: "Goal", wantProblem: true, wantSubstr: "qualitative",
-			yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g6\n  name: Goal Six\nspec:\n  level: goal\n  objective: Reach 75 percent attainment by next year\n",
+			name: "a goal objective naming a group by number", kind: "Goal",
+			yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g6\n  name: Goal Six\nspec:\n  level: goal\n  objective: Every 2-year-old in the valley reaches the language milestone\n",
 		},
 		{
-			name: "goal objective without a digit is fine", kind: "Goal",
-			yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g6\n  name: Goal Six\nspec:\n  level: goal\n  objective: Raise quality across every depot\n",
-		},
-		{
-			name: "project objective with a digit is rejected", kind: "Project", wantProblem: true, wantSubstr: "qualitative",
+			name: "a project objective with a figure in it", kind: "Project",
 			yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj3\n  name: Project Three\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n  objectives:\n    - objective: Deliver 1200 orders this year\n",
 		},
 	})

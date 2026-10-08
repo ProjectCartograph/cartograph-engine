@@ -7,8 +7,6 @@ package kit
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
 )
 
 // Problem is one validation failure. Path is a JSON pointer into the
@@ -64,27 +62,6 @@ func KeyResultUnitProblem(kr map[string]any, path string) *Problem {
 	case "percent", "ratio":
 		if hasUnit {
 			return &Problem{Path: path + "/unit", Message: "unit is not allowed when kind is percent or ratio"}
-		}
-	}
-	return nil
-}
-
-// ObjectiveDigitProblem flags an objective statement that contains a digit,
-// a sign it states a target rather than a qualitative aim (the number
-// belongs in a key result instead). path is the objective field's own
-// location, for example "/spec/objective". Shared by Goal and Project,
-// which both carry an objective statement.
-// A number that is part of a name is not a target: "Standard 1",
-// "Form 1", "Grade 2", a capitalised word inside the sentence and the
-// number it names. The first word is capitalised anyway ("Reach 90
-// percent"), so it names nothing.
-var namedNumber = regexp.MustCompile(`\s\p{Lu}\p{L}*\s+\d+\p{L}?\b`)
-
-func ObjectiveDigitProblem(objective, path string) *Problem {
-	if strings.ContainsAny(namedNumber.ReplaceAllString(objective, " "), "0123456789") {
-		return &Problem{
-			Path:    path,
-			Message: "An objective is qualitative; this reads like a key result. Put the number in a key result.",
 		}
 	}
 	return nil

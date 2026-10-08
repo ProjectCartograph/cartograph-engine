@@ -207,6 +207,7 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	// goals they serve, so the alignment and the evidence are checked in
 	// the same place.
 	addMeasureChecks(c, spec, isComponent)
+	e.addObjectiveJudgement(ctx, c, spec)
 
 	// aim: the problems and what will be different about each (the first
 	// step of the journey), plus the mandate that authorises the project.
@@ -613,6 +614,39 @@ func (e *Engine) alignedToOutcome(ctx context.Context, goals []any) (hasFunction
 		}
 	}
 	return
+}
+
+// addObjectiveJudgement asks the decision model whether each objective
+// reads as a target rather than a change said in words (docs/adr/0030):
+// an advisory check, met when none does. A number that names a group
+// ("2-year-olds") is the model's to tell from a figure to reach. Without
+// a model the check is not asked: it is off.
+func (e *Engine) addObjectiveJudgement(ctx context.Context, c checkAdder, spec map[string]any) {
+	objectives, _ := spec["objectives"].([]any)
+	asked, target, first, sure := false, false, 0, 0.0
+	for i, o := range objectives {
+		om, _ := o.(map[string]any)
+		text, _ := om["objective"].(string)
+		if strings.TrimSpace(text) == "" {
+			continue
+		}
+		j, ok := e.judge(ctx, "objective-target", text)
+		if !ok {
+			return
+		}
+		asked = true
+		if j.Holds && !target {
+			target, first, sure = true, i+1, j.Sure
+		}
+	}
+	switch {
+	case !asked:
+	case target:
+		c.add("goals-objective-aim", "measures", phaseInitiation, checkWarn, fmt.Sprintf(
+			"Objective %d %s reads as a target. Say the change the work makes in words, and put the figure in a key result.", first, sureWords(sure)))
+	default:
+		c.add("goals-objective-aim", "measures", phaseInitiation, checkOK, "Each objective says a change in words.")
+	}
 }
 
 // addMeasureChecks reports on the objective and its key results. Each part

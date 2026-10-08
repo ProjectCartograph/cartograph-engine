@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
-	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/timing"
 )
 
@@ -209,7 +208,7 @@ func span(h *Horizon) string {
 
 // goalSmart reads the five letters for one record and the check line for
 // each. kpis are the specs of the indicators aligned to it.
-func (e *Engine) goalSmart(read goalReader, spec map[string]any, kpis []map[string]any, horizon *Horizon) (Smart, []GoalCheck) {
+func (e *Engine) goalSmart(ctx context.Context, read goalReader, spec map[string]any, kpis []map[string]any, horizon *Horizon) (Smart, []GoalCheck) {
 	var s Smart
 	var checks []GoalCheck
 	add := func(id string, ok bool, section, okMsg, warnMsg string) {
@@ -223,10 +222,12 @@ func (e *Engine) goalSmart(read goalReader, spec map[string]any, kpis []map[stri
 	statement, _ := spec["objective"].(string)
 	specificMsg := "Specific: say what will change."
 	if strings.TrimSpace(statement) != "" {
-		if p := kit.ObjectiveDigitProblem(statement, "/spec/objective"); p != nil {
-			specificMsg = "Specific: " + p.Message
-		} else {
-			s.Specific = true
+		s.Specific = true
+		// Whether it says a change, or a figure to reach, is the model's
+		// to judge (docs/adr/0030); without one, it is not asked.
+		if j, ok := e.judge(ctx, "objective-target", statement); ok && j.Holds {
+			s.Specific = false
+			specificMsg = "Specific: this " + sureWords(j.Sure) + " reads as a target. Say the change in words; put the figure in a key result."
 		}
 	}
 	add("smart-specific", s.Specific, "objective", "Specific: says what will change.", specificMsg)

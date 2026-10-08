@@ -380,7 +380,7 @@ func (e *Engine) GoalTree(ctx context.Context) (GoalTree, error) {
 			rawSpec = map[string]any{}
 		}
 		horizon := e.effectiveHorizon(read, rawSpec)
-		smart, _ := e.goalSmart(read, rawSpec, kpis, horizon)
+		smart, _ := e.goalSmart(ctx, read, rawSpec, kpis, horizon)
 		owner, _ := rawSpec["owner"].(string)
 		nodesByID[id] = &GoalNode{
 			Proposed:   Proposed(ctx, "Goal", id),
@@ -508,7 +508,7 @@ func (e *Engine) goalChecksOf(ctx context.Context, id string, doc map[string]any
 	}
 	read := e.storedGoals(ctx)
 	horizon := e.effectiveHorizon(read, spec)
-	_, checks := e.goalSmart(read, spec, kpis, horizon)
+	_, checks := e.goalSmart(ctx, read, spec, kpis, horizon)
 	checks = append(checks, e.contextChecks(ctx, spec, horizon)...)
 
 	// The strategy is read top-down (D24): a goal is met through the

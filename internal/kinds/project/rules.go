@@ -40,12 +40,6 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 		if !ok {
 			continue
 		}
-		if objective, ok := om["objective"].(string); ok {
-			if p := kit.ObjectiveDigitProblem(objective, fmt.Sprintf("/spec/objectives/%d/objective", oi)); p != nil {
-				problems = append(problems, *p)
-			}
-		}
-
 		krs, _ := om["keyResults"].([]any)
 		seen := map[string]int{}
 		for ki, kr := range krs {
