@@ -1451,3 +1451,20 @@ func TestAComponentNamesItsDeliverableRow(t *testing.T) {
 		t.Fatalf("port: %s", text)
 	}
 }
+
+// A change set holding a document is a port: a one-at-a-time write in
+// it is refused and sent to port with records.
+func TestAPortHasOneWritePath(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\nA. Purpose\nGraders at every depot apply one checklist, so produce is graded the same everywhere.\n"
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
+	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	res, text := callTool(t, cs, "edit_draft", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/summary/about": "x"}})
+	if !res.IsError || !strings.Contains(text, "Call port with records now") {
+		t.Fatalf("edit_draft in a port: %s", text)
+	}
+}

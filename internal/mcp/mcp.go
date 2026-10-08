@@ -636,6 +636,10 @@ func tool[In any](s *sdk.Server, o Options, person identity.Principal, t *sdk.To
 			o.record(t.Name, req, c, in, nil, err, start)
 			return failed(err), nil, nil
 		}
+		if err := portOnly(c, t.Name, in); err != nil {
+			o.record(t.Name, req, c, in, nil, err, start)
+			return failed(err), nil, nil
+		}
 		out, err := h(c, in)
 		o.record(t.Name, req, c, in, out, err, start)
 		if err != nil {
@@ -643,6 +647,35 @@ func tool[In any](s *sdk.Server, o Options, person identity.Principal, t *sdk.To
 		}
 		return nil, out, nil
 	})
+}
+
+// portWrites are the tools that write a record one field or one check at
+// a time: in a port, port writes every record at once instead.
+var portWrites = map[string]bool{"edit_draft": true, "save_draft": true, "save_drafts": true, "settle": true, "leave_open": true}
+
+// portOnly refuses a one-at-a-time write in a change set that holds a
+// document: a port has one path, port with records, so an agent cannot
+// wander off it into writes that leave the rest of the port unwritten.
+func portOnly(c call, name string, in any) error {
+	if !portWrites[name] {
+		return nil
+	}
+	var args struct {
+		ChangeSet string `json:"changeSet"`
+	}
+	if b, err := json.Marshal(in); err == nil {
+		_ = json.Unmarshal(b, &args)
+	}
+	cs, cc, found, err := c.inChangeSet(args.ChangeSet, false)
+	if err != nil || !found {
+		return nil
+	}
+	if srcs, err := c.o.Engine.Sources(cc.ctx, cs.ID); err != nil || len(srcs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%w: change set %s is a port of a document: write its records with port and records, "+
+		`[{"record": "Kind/id", "set": {"/spec/...": ...}, "unset": ["/spec/..."], "open": [{"check": "...", "reason": "..."}]}], every record in one call; `+
+		"port answers what is still open on each. Call port with records now", engine.ErrBadEdit, cs.ID)
 }
 
 // record traces one call by its shape (docs/adr/0028): what was called,
@@ -810,6 +843,7 @@ type (
 	portRecord struct {
 		Record string         `json:"record" jsonschema:"the record, as Kind/id"`
 		Set    map[string]any `json:"set,omitempty" jsonschema:"every field the document gives, by JSON pointer"`
+		Unset  []string       `json:"unset,omitempty" jsonschema:"fields to clear, by JSON pointer"`
 		Open   []settleOpen   `json:"open,omitempty" jsonschema:"each check the document does not answer, with the reason your person will read"`
 	}
 	bringIn struct {
@@ -3246,7 +3280,7 @@ func portRecords(c call, set string, records []portRecord) (any, error) {
 		}
 		work = append(work, r.Record)
 		res := map[string]any{"record": r.Record}
-		refused, created, err := applyFields(c, set, k, id, r.Set, nil)
+		refused, created, err := applyFields(c, set, k, id, r.Set, r.Unset)
 		if err != nil {
 			res["error"] = err.Error()
 			results = append(results, res)
