@@ -28,6 +28,7 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 | Serve a copy of the example | `just serve` (`just serve laya` with the decision model) |
 | Release binaries for both architectures | `just release` |
 | The container image, from the flake | `just image` |
+| How agents used the MCP server: defects, sigma, waste, variance | `cartograph traces [-agent name] <trace file>` |
 
 ## Rules that are not negotiable
 
@@ -46,6 +47,29 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 - **Tests under ten seconds.** Browser flows and container runs are not in the gate.
 - **Never run `git` or `jj` write commands** (commit, push, rebase) unless the person asks for that in so many words.
 
+## Changing what agents use
+
+A change to anything an agent touches through MCP (a tool, an answer,
+the instructions, the port, a rule the engine enforces) is run as Lean
+Six Sigma's DMAIC loop, and `docs/EVALUATING.md` is the procedure:
+
+- **Define** the criteria first, as a script scores them from the
+  server: the change set, its records, the trace. Never from what the
+  agent reports.
+- **Measure** fresh runs, each on its own vault and trace, the agent
+  given a minimal prompt; the evaluator's own calls left out of the
+  analysis (`cartograph traces -agent`).
+- **Analyse** the trace as a value stream: defects, waste (a record
+  read again unchanged, a write undone, a call repeated after a
+  refusal), and variance across runs and models.
+- **Improve** the cause in the engine, deterministically, with a test
+  that fails without it; a line in the instructions is the weakest fix.
+- **Control** on one frozen build: the counted runs one at a time, the
+  bar (three passing in a row by default) met before the feature is
+  closed, and the figures in the pull request.
+
+Run one agent at a time. Several at once only with the person's leave.
+
 ## Where things are
 
 - `docs/ARCHITECTURE.md`: the system, the hexagon, the flows, the extension points, the clean-architecture mapping. Read sections 3 and 7 before any structural change.
@@ -54,6 +78,7 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 - `docs/DISTRIBUTIONS.md`: shipping a distribution, worked through with a Laravel interface and Entra ID.
 - `docs/UI_CONTRACT.md`, `docs/MULTIPLAYER.md`: what interfaces are built from, and shared editing.
 - `docs/DESIGN_RULES.md`: how Cartograph behaves. `docs/TAXONOMY.md`: what the nouns mean.
+- `docs/EVALUATING.md`: judging a change agents use, by DMAIC, from the server and the trace.
 - `STYLE.md`: code and commits. `CONTRIBUTING.md`: the loop.
 - `pkg/`: the public surface other repositories import (`client`, `uiconformance`), under the module path `github.com/ProjectCartograph/cartograph-engine/v2`. Changing a signature there is a breaking change; say so.
 
