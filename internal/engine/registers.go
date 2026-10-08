@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -71,6 +72,12 @@ func ReadRegister(text string) []RegisterRow {
 					}
 				}
 				if !same {
+					// A table with other columns after the register's rows
+					// is another table (a form of fields and responses),
+					// never more of the register.
+					if len(out) > 0 {
+						return out
+					}
 					coded = false
 				}
 				cols = cols[:0]
@@ -92,6 +99,12 @@ func ReadRegister(text string) []RegisterRow {
 			}
 			if len(filled) < 2 {
 				continue
+			}
+			// After the register's rows, a block of short labels with no
+			// figure (Field, Requirement, Project Response) heads another
+			// table: the register has ended.
+			if len(out) > 0 && labelsOnly(b) {
+				return out
 			}
 			// In a table whose rows have codes, a block without one is the
 			// row before it, carried over a page.
@@ -222,6 +235,14 @@ func headerRole(h string) string {
 		{"name", "milestone|deliverable|description|risk|issue|item|name|title|indicator|kpi|output"},
 	} {
 		for _, w := range strings.Split(r.words, "|") {
+			// A code's words are short and stand alone: "id" inside
+			// "evidence" is no code.
+			if r.role == "code" {
+				if slices.Contains(strings.FieldsFunc(h, func(c rune) bool { return c == ' ' || c == '/' || c == '(' || c == ')' }), w) {
+					return r.role
+				}
+				continue
+			}
 			if strings.Contains(h, w) {
 				return r.role
 			}
@@ -233,8 +254,33 @@ func headerRole(h string) string {
 // RegisterItems maps a register's rows onto a list field of a project, in
 // the field's own shape: milestones, deliverables, risks or the KPIs it
 // names. What a row does not give is left out, for the checks to ask.
+//
+// The server's porting map is applied to the rows as they are read, so a
+// port comes out the same whoever runs it: a milestone already completed
+// is not ported unless one still to come waits on it, and a measure taken
+// once is not an indicator. Such a row is returned with _skip, its reason.
 func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 	var out []map[string]any
+	waitedOn := map[string]bool{}
+	for _, r := range rows {
+		// Only a milestone still to come keeps a completed one it waits on.
+		done := false
+		for h, v := range r.Cells {
+			if headerRole(h) == "evidence" && completed.MatchString(v) {
+				done = true
+			}
+		}
+		if done {
+			continue
+		}
+		for h, v := range r.Cells {
+			if headerRole(h) == "dependency" {
+				for _, m := range milestoneCode.FindAllString(v, -1) {
+					waitedOn[strings.ToLower(m)] = true
+				}
+			}
+		}
+	}
 	for _, r := range rows {
 		byRole := map[string]string{}
 		for h, v := range r.Cells {
@@ -251,6 +297,9 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 		switch strings.TrimPrefix(field, "/spec/") {
 		case "milestones":
 			item["id"], item["name"] = id, clip(name, 120)
+			if completed.MatchString(byRole["evidence"]) && !waitedOn[id] {
+				item["_skip"] = "already completed, and no milestone still to come waits on it: not ported (porting map)"
+			}
 			if t := cellTiming(byRole["date"]); t != nil {
 				item["timing"] = t
 			} else {
@@ -299,6 +348,9 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 				continue
 			}
 			item["kpi"] = clip(name, 120)
+			if once.MatchString(byRole["cycle"]) {
+				item["_skip"] = "a measure taken once is not an indicator: write it as the acceptance of the deliverable it is about (porting map)"
+			}
 			reason := "Named in the document's indicator register"
 			if byRole["baseline"] != "" {
 				reason += "; baseline " + byRole["baseline"]
@@ -511,6 +563,30 @@ func leadOf(cell string) string {
 		}
 	}
 	return ""
+}
+
+// milestoneCode is a milestone's code as a dependency names it (M12,
+// M6a); completed is an evidence cell that says the milestone is done;
+// once is a frequency that says a measure is taken once.
+var (
+	milestoneCode = regexp.MustCompile(`(?i)\bM[0-9]{1,3}[a-z]?\b`)
+	completed     = regexp.MustCompile(`(?i)^\s*(completed?|done|achieved)\b`)
+	once          = regexp.MustCompile(`(?i)^\s*once\b`)
+)
+
+// labelsOnly reports whether a block is three or more short labels and
+// nothing else: a table's header, not a row.
+func labelsOnly(b []string) bool {
+	n := 0
+	for _, l := range b {
+		for _, g := range groups(l) {
+			if len(strings.Fields(g.text)) > 3 || strings.ContainsAny(g.text, "0123456789%") {
+				return false
+			}
+			n++
+		}
+	}
+	return n >= 3
 }
 
 // personLed matches a name led by a person's title.

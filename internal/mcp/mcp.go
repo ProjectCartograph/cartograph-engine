@@ -1845,7 +1845,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
-			rows, added, refused, drafted, err := registerInto(c, cs.ID, in.Kind, in.ID, in.Section, in.Field)
+			rows, added, refused, drafted, _, err := registerInto(c, cs.ID, in.Kind, in.ID, in.Section, in.Field, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -2924,15 +2924,31 @@ func sectionsFor(c call, field string) []string {
 // registerInto settles a section's register into a record's list, row by
 // row through the field pipeline: it answers how many rows the section
 // holds, how many were added, what was refused and what was drafted.
-func registerInto(c call, set, kind, id, section, field string) (int, int, []engine.Problem, []string, error) {
+func registerInto(c call, set, kind, id, section, field string, route map[string]string) (int, int, []engine.Problem, []string, []string, error) {
 	items, err := c.o.Engine.RegisterOf(c.ctx, set, section, field)
 	if err != nil {
-		return 0, 0, nil, nil, err
+		return 0, 0, nil, nil, nil, err
 	}
 	var refused []engine.Problem
-	var drafted []string
+	var drafted, notPorted []string
 	added := 0
+	main, mainID := kind, id
 	for _, it := range items {
+		// What the rows before drafted is in play for this one, so a body
+		// named on ten rows is one record, not ten.
+		if ctx, err := c.o.Engine.InChangeSet(c.ctx, set); err == nil {
+			c.ctx = ctx
+		}
+		rowID, _ := it["id"].(string)
+		if why, skip := it["_skip"].(string); skip {
+			notPorted = append(notPorted, strings.ToUpper(rowID)+": "+why)
+			continue
+		}
+		// A component's own row goes into the component.
+		kind, id = main, mainID
+		if to, ok := route[rowID]; ok {
+			kind, id, _ = strings.Cut(to, "/")
+		}
 		extra, _ := it["_kpi"].(map[string]any)
 		delete(it, "_kpi")
 		team, _ := extra["_team"].(string)
@@ -2988,7 +3004,7 @@ func registerInto(c call, set, kind, id, section, field string) (int, int, []eng
 				refused = append(refused, invalid.Problems...)
 				continue
 			}
-			return 0, 0, nil, nil, err
+			return 0, 0, nil, nil, nil, err
 		}
 		refused = append(refused, r...)
 		for _, d := range created {
@@ -2998,7 +3014,7 @@ func registerInto(c call, set, kind, id, section, field string) (int, int, []eng
 		}
 		added++
 	}
-	return len(items), added, refused, drafted, nil
+	return len(items), added, refused, drafted, notPorted, nil
 }
 
 // portPieces runs the rest of a port once its pieces are answered: it
@@ -3057,6 +3073,17 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 			break
 		}
 	}
+	// Each component's deliverable row, by the code its piece gave.
+	route := map[string]string{}
+	recordOf := map[string]string{}
+	for _, p := range st.Pieces {
+		recordOf[p.Name] = p.Record
+	}
+	for _, p := range pieces {
+		if code := strings.ToLower(strings.TrimSpace(p.Deliverable)); code != "" && recordOf[p.Name] != "" {
+			route[code] = recordOf[p.Name]
+		}
+	}
 	var registers []map[string]any
 	if mk, mid, ok := strings.Cut(main, "/"); ok {
 		for _, sec := range src.Sections {
@@ -3064,7 +3091,7 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 				if f != "/spec/milestones" && f != "/spec/deliverables" && f != "/spec/risks" && f != "/spec/kpis" {
 					continue
 				}
-				rows, added, refusedRows, drafted, err := registerInto(c, set, mk, mid, sec.ID, f)
+				rows, added, refusedRows, drafted, notPorted, err := registerInto(c, set, mk, mid, sec.ID, f, route)
 				if err != nil {
 					registers = append(registers, map[string]any{"section": sec.ID, "field": f, "error": err.Error()})
 					continue
@@ -3078,6 +3105,9 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 				}
 				if len(drafted) > 0 {
 					reg["drafted"] = len(drafted)
+				}
+				if len(notPorted) > 0 {
+					reg["notPorted"] = notPorted
 				}
 				registers = append(registers, reg)
 			}

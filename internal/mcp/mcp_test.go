@@ -1468,3 +1468,56 @@ func TestAPortHasOneWritePath(t *testing.T) {
 		t.Fatalf("edit_draft in a port: %s", text)
 	}
 }
+
+// The register chain applies the porting map, whoever runs it: a
+// milestone already completed is not ported unless one to come waits on
+// it, a measure taken once is not an indicator, a form after a register
+// is not more of it, and a body named on several rows is one record.
+func TestARegisterIsPortedAsThePortingMapSays(t *testing.T) {
+	t.Parallel()
+	e, _, cs := setup(t, nil)
+	if _, err := e.SeedStandardUnits(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	doc := "Depot Checks Charter\n\nG1. Milestone Plan\n" +
+		"    No.     Milestone                    Owner            Dependency     Completion Evidence\n\n" +
+		"    M1      Checklist agreed             Quality team                    Completed - minutes on file\n\n" +
+		"    M2      Pilot graded                 Quality team                    Completed - pilot forms\n\n" +
+		"    M3      Graders trained              Quality team     M2             Planned\n\n" +
+		"    M4      Every depot graded           Inspection unit  M3             Planned\n\n" +
+		"H1. KPI Register\n" +
+		"    Indicator                    Baseline              Target / Date             Data Source         Frequency    Owner\n\n" +
+		"    Depots grading to checklist  0 (March 2026)        100% by June 2027         Inspection forms    Quarterly    Quality team\n\n" +
+		"    Pilot depots surveyed        0 (March 2026)        100% by May 2026          Pilot memo          Once         Quality team\n\n" +
+		"    Field                        Requirement           Project Response\n\n" +
+		"    Reporting Frequency          Mandatory             Monthly report to the board on every depot graded\n"
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
+	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
+	var out struct {
+		Registers []struct {
+			Field     string
+			Added     int
+			NotPorted []string
+		}
+	}
+	if err := json.Unmarshal([]byte(text), &out); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]int{}
+	skipped := map[string]int{}
+	for _, r := range out.Registers {
+		got[r.Field], skipped[r.Field] = r.Added, len(r.NotPorted)
+	}
+	// M1 is completed and nothing to come waits on it; M2 is completed
+	// but M3 waits on it, so it stays.
+	if got["/spec/milestones"] != 3 || skipped["/spec/milestones"] != 1 || got["/spec/kpis"] != 1 || skipped["/spec/kpis"] != 1 {
+		t.Fatalf("registers %+v: %s", out.Registers, text)
+	}
+	_, text = callTool(t, cs, "work_summary", map[string]any{})
+	if n := strings.Count(text, `"name":"Quality team","openChecks":0,"record":"Resource/`); n != 1 {
+		t.Errorf("Quality team drafted as a role %d times: %s", n, text)
+	}
+	if strings.Contains(text, `"name":"Field"`) || strings.Contains(text, "Reporting Frequency") {
+		t.Errorf("the form after the register was read as rows: %s", text)
+	}
+}
