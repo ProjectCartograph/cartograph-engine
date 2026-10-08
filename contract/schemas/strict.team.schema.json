@@ -1,0 +1,22 @@
+{
+  "$id": "strict.team.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Team, strict profile",
+  "description": "A team as an agent may draft it (docs/adr/0027): a body of the organisation, never a person, so a name led by a person's title (Dr, Mr, Ms, Prof and the like) is refused. Name the unit and leave out who leads it.",
+  "allOf": [
+    {
+      "$ref": "team.schema.json"
+    }
+  ],
+  "properties": {
+    "metadata": {
+      "properties": {
+        "name": {
+          "not": {
+            "pattern": "(^|[,(]\\s*)([Dd][Rr]|[Mm][Rr][Ss]?|[Mm][Ss]|[Mm][Ii][Ss][Ss]|[Mm][Xx]|[Pp][Rr][Oo][Ff]([Ee][Ss][Ss][Oo][Rr])?|[Ss][Ii][Rr]|[Dd][Aa][Mm][Ee]|[Hh][Oo][Nn]|[Rr][Ee][Vv])\\.?\\s+\\S"
+          }
+        }
+      }
+    }
+  }
+}

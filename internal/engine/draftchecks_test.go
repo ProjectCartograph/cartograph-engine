@@ -157,3 +157,14 @@ func TestNamedRegistersAreReadFromTheirNames(t *testing.T) {
 		}
 	}
 }
+
+// A team is a body, never a person: an agent cannot draft one named so.
+func TestAnAgentCannotNameATeamAfterAPerson(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
+	team := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t-person\n  name: Dr. Ada Mensah\nspec: {}\n"
+	if err := e.SaveInChangeSet(agent, "", "Team", "t-person", []byte(team)); err == nil {
+		t.Error("a team named after a person was saved")
+	}
+}
