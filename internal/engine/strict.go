@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -33,17 +35,50 @@ func (e *Engine) StructuralProblems(_ context.Context, kind string, text []byte)
 			return nil, fmt.Errorf("%w: %s", ErrUnknownKind, kind)
 		}
 	}
+	// No person appears in Cartograph (AGENTS.md): a name led by a
+	// person's title is refused in any text, a note as much as a name.
+	out := personNames(doc, "")
 	err := schema.Validate(any(doc))
 	if err == nil {
-		return nil, nil
+		return out, nil
 	}
-	var out []Problem
 	for _, p := range schemaProblems(err) {
 		if !unfinished[p.Keyword] {
 			out = append(out, p)
 		}
 	}
 	return out, nil
+}
+
+// titledName is a person named by their title: Dr. M. Francis, Ms Rao,
+// Prof. Ada Mensah. A role or a body is named instead.
+var titledName = regexp.MustCompile(`\b(Dr|Mr|Mrs|Ms|Mx|Prof|Professor|Sir|Dame)\.?[ \t]+(?:[A-Z]\.[ \t]*)*[A-Z][a-z]+`)
+
+// personNames are the strings in a document that name a person by their
+// title, each a problem on its path, the name itself not repeated.
+func personNames(v any, path string) []Problem {
+	var out []Problem
+	switch t := v.(type) {
+	case map[string]any:
+		keys := make([]string, 0, len(t))
+		for k := range t {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			out = append(out, personNames(t[k], path+"/"+k)...)
+		}
+	case []any:
+		for i, x := range t {
+			out = append(out, personNames(x, fmt.Sprintf("%s/%d", path, i))...)
+		}
+	case string:
+		if titledName.MatchString(t) {
+			out = append(out, Problem{Path: path, Keyword: "person",
+				Message: "names a person by their title: Cartograph names roles and bodies, never people (name the role, such as the lead analyst, or the body)"})
+		}
+	}
+	return out
 }
 
 // introducedProblems are the strict profile's problems a version would

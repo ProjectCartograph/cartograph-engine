@@ -52,8 +52,10 @@ func (e *Engine) WriteFields(ctx context.Context, set, kind, id string, put map[
 	sort.Slice(keys, func(i, j int) bool {
 		return len(keys[i]) < len(keys[j]) || len(keys[i]) == len(keys[j]) && keys[i] < keys[j]
 	})
+	failed := 0
 	for _, k := range keys {
 		if _, err := e.EditInChangeSet(ctx, set, kind, id, map[string]any{k: put[k]}, nil); err != nil {
+			failed++
 			var one *ValidationError
 			if errors.As(err, &one) {
 				refused = append(refused, one.Problems...)
@@ -67,8 +69,9 @@ func (e *Engine) WriteFields(ctx context.Context, set, kind, id string, put map[
 			refused = append(refused, Problem{Message: err.Error()})
 		}
 	}
-	// Nothing kept is a refusal, as it was before any field was tried.
-	if len(refused) >= len(keys) && len(keys) > 0 && len(unset) == 0 {
+	// Nothing kept is a refusal, as it was before any field was tried: every
+	// field refused, however many problems each had.
+	if failed == len(keys) && len(keys) > 0 && len(unset) == 0 {
 		return nil, nil, &ValidationError{Problems: refused}
 	}
 	return refused, created, nil

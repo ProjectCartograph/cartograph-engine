@@ -268,3 +268,36 @@ func TestAProjectStoredWithTwoObjectivesMayOnlyShed(t *testing.T) {
 		t.Errorf("dropping to one: %+v", iv.Problems[:3])
 	}
 }
+
+// No person appears in Cartograph, in any text: a note naming someone by
+// their title is refused, an agent's draft as much as a person's save.
+func TestAPersonIsNamedInNoText(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
+	cs, err := e.StartChangeSet(agent, "Roles", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = e.EditInChangeSet(agent, cs.ID, "Project", "p-note", map[string]any{
+		"/metadata/name":  "Rollout",
+		"/spec/resources": []any{map[string]any{"role": "manager", "note": "Dr. M. Mensah with the quality team"}},
+	}, nil)
+	var invalid *engine.ValidationError
+	if !errors.As(err, &invalid) {
+		t.Fatalf("a titled name in a note: %v", err)
+	}
+	named := false
+	for _, p := range invalid.Problems {
+		named = named || (p.Path == "/spec/resources/0/note" && strings.Contains(p.Message, "never people"))
+	}
+	if !named {
+		t.Fatalf("problems %+v", invalid.Problems)
+	}
+	if _, err := e.EditInChangeSet(agent, cs.ID, "Project", "p-note", map[string]any{
+		"/metadata/name":  "Rollout",
+		"/spec/resources": []any{map[string]any{"role": "manager", "note": "The lead analyst, with the quality team"}},
+	}, nil); err != nil {
+		t.Fatalf("a role named instead: %v", err)
+	}
+}
