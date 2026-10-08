@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -2825,6 +2826,7 @@ func applyFields(c call, set, kind, id string, put map[string]any, unset []strin
 		return nil, created, nil
 	}
 	put = mergeLists(c, set, kind, id, put)
+	withItemIDs(c.o.Engine, kind, put)
 	_, err = e.EditInChangeSet(c.ctx, set, kind, id, put, unset)
 	if err == nil {
 		return nil, created, nil
@@ -3147,12 +3149,21 @@ func fillsOf(c call, set string, work []string) ([]map[string]any, error) {
 					continue
 				}
 				seen[field] = true
-				f := map[string]any{"check": "required", "field": field, "do": "Required: write it from the document."}
+				f := map[string]any{"check": "required", "field": field, "do": "Required: write " + m[1] + " from the document."}
 				if read := sectionsFor(c, field); len(read) > 0 {
 					f["read"] = read
 				}
 				if sh, ok := e.FieldShapeAt(k, field); ok {
 					f["shape"] = sh
+					// A reference is written as the name the document
+					// gives; Cartograph finds or drafts what it names.
+					if _, text := sh.Example.(string); text && slices.Contains(sh.Optional, "kind") && slices.Contains(sh.Optional, "id") {
+						f["do"] = "Required: write " + m[1] + " as the name the document gives the role or body (Steering Committee); Cartograph finds it or drafts it."
+						delete(f, "shape")
+					}
+					if len(sh.OneOf) > 0 {
+						f["do"] = "Required: write " + m[1] + ", one of " + strings.Join(sh.OneOf, ", ") + ", as the document says it."
+					}
 				}
 				fill = append(fill, f)
 			}
@@ -3273,6 +3284,7 @@ func portRecords(c call, set string, records []portRecord) (any, error) {
 		}
 		results = append(results, res)
 	}
+	sourceTeams(c, set)
 	var err error
 	if c.ctx, err = e.InChangeSet(c.ctx, set); err != nil {
 		return nil, err
@@ -3294,6 +3306,141 @@ func portRecords(c call, set string, records []portRecord) (any, error) {
 		out["next"] = "Every record is settled. Propose the change set with propose; report from work_summary."
 	}
 	return out, nil
+}
+
+// sourceTeams gives a data source the port drafted with no team (its
+// register row named no body that keeps it) the team of the project
+// whose indicator reads it: the work's own data, kept by the team doing
+// the work until the person says otherwise.
+func sourceTeams(c call, set string) {
+	e := c.o.Engine
+	view, err := e.ViewChangeSet(c.ctx, set)
+	if err != nil {
+		return
+	}
+	docs := map[string]map[string]any{}
+	for _, it := range view.Items {
+		text, found, err := e.ChangeSetText(c.ctx, set, it.Item.Kind, it.Item.ID)
+		var doc map[string]any
+		if err == nil && found && e.Codec().DecodeInto(text, &doc) == nil {
+			docs[it.Item.Kind+"/"+it.Item.ID] = doc
+		}
+	}
+	spec := func(d map[string]any) map[string]any { m, _ := d["spec"].(map[string]any); return m }
+	// The team of each KPI, from the project that lists it.
+	kpiTeam := map[string]any{}
+	for ref, d := range docs {
+		if !strings.HasPrefix(ref, "Project/") || spec(d)["team"] == nil {
+			continue
+		}
+		kpis, _ := spec(d)["kpis"].([]any)
+		for _, k := range kpis {
+			if m, ok := k.(map[string]any); ok {
+				if id, _ := m["kpi"].(string); id != "" {
+					kpiTeam[id] = spec(d)["team"]
+				}
+			}
+		}
+	}
+	for ref, d := range docs {
+		kind, id, _ := strings.Cut(ref, "/")
+		if kind != "DataSource" || spec(d)["team"] != nil {
+			continue
+		}
+		for kref, kd := range docs {
+			if !strings.HasPrefix(kref, "KPI/") || kpiTeam[strings.TrimPrefix(kref, "KPI/")] == nil {
+				continue
+			}
+			if slices.Contains(stringsOfAny(spec(kd)["sources"]), id) {
+				_, _ = e.EditInChangeSet(c.ctx, set, kind, id, map[string]any{"/spec/team": kpiTeam[strings.TrimPrefix(kref, "KPI/")]}, nil)
+				break
+			}
+		}
+	}
+}
+
+func stringsOfAny(v any) []string {
+	list, _ := v.([]any)
+	var out []string
+	for _, x := range list {
+		if s, ok := x.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// withItemIDs gives every list item that the schema keys by id and that
+// arrives without one a generated id (sc1, sc2): ids are generated,
+// never left to the writer (AGENTS.md), so an item is never refused
+// for the one field nobody reads from a document.
+func withItemIDs(e *engine.Engine, kind string, put map[string]any) {
+	for p, v := range put {
+		var items []any
+		base := p
+		switch t := v.(type) {
+		case []any:
+			items = t
+		case map[string]any:
+			if b, ok := strings.CutSuffix(p, "/-"); ok {
+				items, base = []any{t}, b
+			}
+		}
+		if len(items) == 0 {
+			continue
+		}
+		sh, ok := e.FieldShapeAt(kind, base+"/-")
+		if !ok {
+			continue
+		}
+		ex, _ := sh.Example.(map[string]any)
+		if _, keyed := ex["id"]; !keyed && !slices.Contains(sh.Optional, "id") {
+			continue
+		}
+		taken := map[string]bool{}
+		for _, it := range items {
+			if m, ok := it.(map[string]any); ok {
+				if s, _ := m["id"].(string); s != "" {
+					taken[s] = true
+				}
+			}
+		}
+		prefix := idPrefix(base)
+		n := 0
+		for _, it := range items {
+			m, ok := it.(map[string]any)
+			if !ok {
+				continue
+			}
+			if s, _ := m["id"].(string); s != "" {
+				continue
+			}
+			for {
+				n++
+				if id := fmt.Sprintf("%s%d", prefix, n); !taken[id] {
+					m["id"], taken[id] = id, true
+					break
+				}
+			}
+			if _, appended := v.(map[string]any); appended {
+				// One item appended: an id unlikely to meet the list's own.
+				m["id"] = fmt.Sprintf("%s-%x", prefix, time.Now().UnixNano()&0xffffff)
+			}
+		}
+	}
+}
+
+// idPrefix is the initials of a list's field: successCriteria is sc,
+// deliverables d.
+func idPrefix(pointer string) string {
+	name := pointer[strings.LastIndex(pointer, "/")+1:]
+	out := strings.ToLower(name[:1])
+	for _, r := range name[1:] {
+		if r >= 'A' && r <= 'Z' {
+			out += strings.ToLower(string(r))
+		}
+	}
+	return out
 }
 
 // componentRows holds each component project to the document's own

@@ -14,6 +14,8 @@ import (
 type FieldShape struct {
 	Example  any      `json:"example"`
 	Optional []string `json:"optional,omitempty"`
+	// OneOf are the values a fixed choice takes.
+	OneOf []string `json:"oneOf,omitempty"`
 }
 
 // FieldShapeAt is the shape of the field at a JSON pointer in a kind's
@@ -64,7 +66,7 @@ func (e *Engine) FieldShapeAt(kind, pointer string) (FieldShape, bool) {
 		}
 	}
 	sort.Strings(optional)
-	return FieldShape{Example: e.example(file, node, 0), Optional: optional}, true
+	return FieldShape{Example: e.example(file, node, 0), Optional: optional, OneOf: stringsOf(node["enum"])}, true
 }
 
 // schemaNode resolves a node's $ref (in its file or another) and its
