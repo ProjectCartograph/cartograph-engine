@@ -33,13 +33,18 @@ so recipes skip the second of start-up.
 Docker is needed only for `just image` (loading the flake-built image)
 and `compose.yaml`; `just release` builds the binaries without it.
 
-## macOS (Apple silicon or Intel)
+## macOS (Apple silicon)
 
 ```
 curl -fsSL https://install.determinate.systems/nix | sh -s -- install
 ```
 
 Open a new terminal, then the same clone and `just test` as on Linux.
+
+Nixpkgs no longer builds for Intel Macs, so the flake has no shell for
+them: work in the test environment instead (`scripts/dev`,
+docs/CONTAINERS.md), which needs only Docker. The release still ships
+an Intel macOS binary, cross-compiled on Linux (docs/CROSS.md).
 
 Chromium is not packaged for macOS in nixpkgs, so the flake leaves it
 out there. PDF printing and the browser flows then use whatever browser

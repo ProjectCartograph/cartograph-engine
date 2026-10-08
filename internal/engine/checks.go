@@ -33,6 +33,18 @@ func (e *Engine) ChecksOf(ctx context.Context, kind, id string, text []byte) ([]
 	if err := e.codec.DecodeInto(text, &doc); err != nil {
 		return nil, fmt.Errorf("parse %s/%s: %w", kind, id, err)
 	}
+	out, err := e.kindChecksOf(ctx, kind, id, doc)
+	if err != nil {
+		return nil, err
+	}
+	if c, asked := e.personCheck(ctx, kind, doc); asked {
+		out = append(out, c)
+	}
+	return out, nil
+}
+
+// kindChecksOf is a kind's own checks.
+func (e *Engine) kindChecksOf(ctx context.Context, kind, id string, doc map[string]any) ([]Check, error) {
 	out := []Check{}
 	var advisory func(context.Context, string, map[string]any) ([]ProgrammeCheck, error)
 	switch kind {

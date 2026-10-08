@@ -301,3 +301,32 @@ func TestAPersonIsNamedInNoText(t *testing.T) {
 		t.Fatalf("a role named instead: %v", err)
 	}
 }
+
+// A deliverable named by a line longer than a name is cut at a clause,
+// and the whole line kept as its description, saying so.
+func TestALongNameIsCutAtAClauseAndKeptWhole(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
+	if _, err := e.EditInChangeSet(agent, "", "Project", "p-long", map[string]any{"/metadata/name": "Rollout"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	sets, err := e.ChangeSets(agent, "", false)
+	if err != nil || len(sets) == 0 {
+		t.Fatalf("change sets: %v", err)
+	}
+	long := "One grading checklist agreed with every depot, and graders trained to apply it alike"
+	fields, notes, err := e.NamedRefs(agent, sets[0].ID, "Project", map[string]any{
+		"/spec/deliverables": []any{map[string]any{"id": "d1", "name": long}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := fields["/spec/deliverables"].([]any)[0].(map[string]any)
+	if d["name"] != "One grading checklist agreed with every depot" || d["description"] != long {
+		t.Fatalf("deliverable: %+v", d)
+	}
+	if len(notes) != 1 || !strings.Contains(notes[0], "kept as its description") {
+		t.Fatalf("notes: %v", notes)
+	}
+}

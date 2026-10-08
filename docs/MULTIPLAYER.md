@@ -330,7 +330,7 @@ promise ("files are the truth") says it should.
     with equal heads, equal JSON and equal conflicts.
 - `conformance.RunDocStore` and `internal/fanout/conformance` hold every
   adapter of those ports to the same behaviour, and the Postgres
-  adapters run them against a real database in `just test-postgres`.
+  adapters run them against a real database in `just test-integration`.
 - A multi-replica test starts two engines on one database, connects a
   peer to each, edits on both, and checks they converge.
 - The web interface's tests join two automerge-repo instances over an

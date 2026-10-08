@@ -16,8 +16,9 @@ no other supported way to build: one environment is the point.
 
 ## The loop
 
-1. `just test` after every edit. It is the gate and it must stay under
-   ten seconds.
+1. `just test` after every edit. It is the gate, the fake adapters only,
+   and it must stay within a few seconds. `just test-integration` runs
+   the real adapters, locally.
 2. If you changed the contract (`contract/`), `just generate`, and
    commit what it produced with your change. CI fails on drift.
 3. `just ci` before you open a pull request: it is exactly what CI

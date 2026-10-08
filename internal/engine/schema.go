@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -27,6 +28,30 @@ type schemaSet struct {
 	// the first, because measuredBy, note, source, statement is what the
 	// alphabet says.
 	bytes map[string][]byte // by kind name
+}
+
+// compiledContract is the embedded contract compiled: every kind's
+// schema and strict profile, and its reference and series rules. The
+// contract is part of the binary and never changes while it runs, so it
+// is compiled once a process and shared by every Engine: a cache, not
+// state. Compiling it was most of the time an Engine took to build.
+var compiledContract = sync.OnceValues(func() (contractSet, error) {
+	ss, err := loadSchemas()
+	if err != nil {
+		return contractSet{}, err
+	}
+	c := contractSet{schemas: ss, refRules: map[string][]refRule{}, seriesRules: map[string][]seriesRule{}}
+	for _, spec := range kinds.All {
+		c.refRules[spec.Name] = collectRefRules(ss.raw, spec.SchemaFile)
+		c.seriesRules[spec.Name] = collectSeriesRules(ss.raw, spec.SchemaFile)
+	}
+	return c, nil
+})
+
+type contractSet struct {
+	schemas     *schemaSet
+	refRules    map[string][]refRule
+	seriesRules map[string][]seriesRule
 }
 
 func loadSchemas() (*schemaSet, error) {

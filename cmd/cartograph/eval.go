@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"text/tabwriter"
 	"time"
 
@@ -160,8 +159,8 @@ func evalServeCmd(args []string) error {
 	cmd := exec.Command(bin, "serve", filepath.Join(rd, "vault"), "-addr", addr)
 	cmd.Env = append(os.Environ(), "CARTOGRAPH_MCP=on", "CARTOGRAPH_MCP_TRACE="+filepath.Join(rd, "trace.jsonl"))
 	cmd.Stdout, cmd.Stderr = logf, logf
-	// The server outlives this command: it is its own session.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	// The server outlives this command.
+	detach(cmd)
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -370,7 +369,7 @@ func evalStopCmd(args []string) error {
 		if len(args) > 1 && r.Name != args[1] {
 			continue
 		}
-		if p, err := os.FindProcess(r.PID); err == nil && p.Signal(syscall.SIGTERM) == nil {
+		if p, err := os.FindProcess(r.PID); err == nil && stop(p) == nil {
 			fmt.Printf("stopped run %s (pid %d)\n", r.Name, r.PID)
 		}
 	}

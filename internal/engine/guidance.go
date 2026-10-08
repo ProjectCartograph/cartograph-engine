@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/contract"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
@@ -186,6 +187,29 @@ const DefaultLocale = "en"
 // GuideBundleFor returns a kind's guidance in locale, or in the default
 // language when there is none in locale.
 func GuideBundleFor(kind, locale string) (GuideBundle, bool, error) {
+	key := kind + "\x00" + locale
+	if got, ok := guideBundles.Load(key); ok {
+		g := got.(guideBundle)
+		return g.bundle, g.found, nil
+	}
+	g, found, err := readGuideBundle(kind, locale)
+	if err == nil {
+		guideBundles.Store(key, guideBundle{g, found})
+	}
+	return g, found, err
+}
+
+// guideBundles keeps each kind's guidance as parsed: it is embedded in
+// the binary and never changes while it runs, and every server start and
+// check run reads it. A cache, not state. Callers read it, never write.
+var guideBundles sync.Map
+
+type guideBundle struct {
+	bundle GuideBundle
+	found  bool
+}
+
+func readGuideBundle(kind, locale string) (GuideBundle, bool, error) {
 	for _, l := range []string{locale, DefaultLocale} {
 		if l == "" {
 			continue

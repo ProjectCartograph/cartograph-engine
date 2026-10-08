@@ -50,3 +50,24 @@ func TestADocumentSplitsAtItsHeadings(t *testing.T) {
 		t.Fatalf("sections %+v", secs)
 	}
 }
+
+// A long text is cut at a sentence, else a clause, else a word, and
+// never ends on a joining word.
+func TestClipCutsAtABoundary(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		in   string
+		n    int
+		want string
+	}{
+		{"Agree the grading checklist. Then train every grader at every depot", 40, "Agree the grading checklist"},
+		{"Agree the grading checklist with the depots, then train every grader", 50, "Agree the grading checklist with the depots"},
+		{"Agree the grading checklist and train every grader at the depots", 32, "Agree the grading checklist"},
+		{"Short enough", 40, "Short enough"},
+		{"Unbreakablelongwordwithoutanyspacesatall", 10, "Unbreakabl"},
+	} {
+		if got := document.Clip(c.in, c.n); got != c.want {
+			t.Errorf("Clip(%q, %d) = %q, want %q", c.in, c.n, got, c.want)
+		}
+	}
+}

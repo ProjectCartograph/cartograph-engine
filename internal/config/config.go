@@ -211,7 +211,7 @@ func Defaults() Config {
 		Reports:         "computed",
 		GraphLayout:     "layered",
 		Semantic:        "dbt",
-		Decide:          "off",
+		Decide:          "laya",
 		DecideURL:       "http://127.0.0.1:8411",
 		DecideTimeout:   5 * time.Second,
 		MCP:             "off",

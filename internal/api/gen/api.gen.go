@@ -995,7 +995,10 @@ type DMAICPhasesPhase string
 // DecisionModel defines model for DecisionModel.
 type DecisionModel struct {
 	Configured bool `json:"configured"`
-	Ready      bool `json:"ready"`
+
+	// Off While no model answers, what is not judged meanwhile, in plain words (docs/adr/0030).
+	Off   *[]string `json:"off,omitempty"`
+	Ready bool      `json:"ready"`
 }
 
 // DeleteGoalRequest defines model for DeleteGoalRequest.

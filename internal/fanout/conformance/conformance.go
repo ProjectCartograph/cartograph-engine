@@ -26,8 +26,17 @@ import (
 // on a loaded CI runner is well inside it.
 const wait = 5 * time.Second
 
-// quiet is how long the suite listens to be satisfied that nothing came.
+// quiet is how long the suite listens, by default, to be satisfied that
+// nothing came: long enough for a real backend's round trip.
 const quiet = 300 * time.Millisecond
+
+// Options adjust the suite to an adapter.
+type Options struct {
+	// Quiet is how long to listen for nothing arriving: an in-process
+	// backend that delivers before Publish returns needs only a moment.
+	// Zero is the default, for a real backend.
+	Quiet time.Duration
+}
 
 // Run exercises an adapter. Every Bus newBus returns must share one
 // backend, as two replicas share one database or one broker; newBus
@@ -35,6 +44,15 @@ const quiet = 300 * time.Millisecond
 // backend may be shared with other tests running at the same time.
 func Run(t *testing.T, newBus func(t *testing.T) fanout.Bus) {
 	t.Helper()
+	RunWith(t, newBus, Options{})
+}
+
+// RunWith is Run with the adapter's options.
+func RunWith(t *testing.T, newBus func(t *testing.T) fanout.Bus, o Options) {
+	t.Helper()
+	if o.Quiet <= 0 {
+		o.Quiet = quiet
+	}
 	ctx := context.Background()
 
 	t.Run("delivers to subscribers on every replica", func(t *testing.T) {
@@ -62,7 +80,7 @@ func Run(t *testing.T, newBus func(t *testing.T) fanout.Bus) {
 		s2 := subscribe(t, b, two)
 		must(t, a.Publish(ctx, one, []byte("for one")))
 		expect(t, s1, []byte("for one"))
-		nothing(t, s2)
+		nothing(t, s2, o.Quiet)
 	})
 
 	t.Run("binary data arrives intact at the largest size", func(t *testing.T) {
@@ -194,7 +212,7 @@ func expect(t *testing.T, s fanout.Subscription, want []byte) {
 	}
 }
 
-func nothing(t *testing.T, s fanout.Subscription) {
+func nothing(t *testing.T, s fanout.Subscription, quiet time.Duration) {
 	t.Helper()
 	select {
 	case got := <-s.C():

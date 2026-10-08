@@ -92,23 +92,6 @@ type GuideJudgement struct {
 	Poor   GuideOption `json:"poor"`
 	Pass   string      `json:"pass"`
 	Fail   string      `json:"fail"`
-	// Opens, where given, are the words a poor text starts with (the
-	// verbs of an instruction): a text that opens with none of them reads
-	// as good without asking, since a model reading a passive or modal
-	// state ("are no longer sold", "can buy") takes it for an action.
-	Opens []string `json:"opens,omitempty"`
-}
-
-// opensWith reports whether text's first word is one of words.
-func opensWith(text string, words []string) bool {
-	first, _, _ := strings.Cut(strings.TrimSpace(text), " ")
-	first = strings.ToLower(strings.Trim(first, ",.;:"))
-	for _, w := range words {
-		if first == w {
-			return true
-		}
-	}
-	return false
 }
 
 // GuideOption is one side of a judgement's contrast.
@@ -185,18 +168,12 @@ func (e *Engine) judgedChecks(ctx context.Context, kind string, doc map[string]a
 		failed, asked := 0, 0
 		first := 0
 		for _, v := range values {
-			if len(j.Opens) > 0 && !opensWith(v.text, j.Opens) {
-				asked++
-				continue
-			}
-			// Good first: the model reads the order (docs/adr/0023).
-			a, ok := e.ask(ctx, v.text, map[string]decide.Question{id: {Type: decide.Choice, Instructions: "Which describes this text?",
-				Options: []decide.Option{{Key: j.Good.Key, Description: j.Good.Label}, {Key: j.Poor.Key, Description: j.Poor.Label}}}})
+			got, ok := e.contrast(ctx, id, j, v.text)
 			if !ok {
 				continue
 			}
 			asked++
-			if a[id].Probabilities[j.Good.Key] < 0.5 {
+			if !got.Holds {
 				failed++
 				if first == 0 {
 					first = v.n
@@ -365,25 +342,10 @@ func (e *Engine) sameAs(ctx context.Context, text string, pool []Match) ([]Match
 	return []Match{m}, true
 }
 
-// byWords keeps the candidates that share enough words with the text,
-// best first: the answer without a model.
-func byWords(pool []Match) []Match {
-	out := []Match{}
-	for _, m := range pool {
-		if m.Likelihood >= 0.2 {
-			out = append(out, m)
-		}
-	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Likelihood > out[j].Likelihood })
-	if len(out) > maxMatches {
-		out = out[:maxMatches]
-	}
-	return out
-}
-
 // MatchExisting returns the existing records of kind (and level) that say
-// what text says, most likely first: judged by the model where there is
-// one, else by the words they share.
+// what text says, most likely first, as the model judges (docs/adr/0030).
+// Without a model only the exact rule matches: the same name spelt
+// otherwise, or by its initials. Shared words only find whom to ask.
 func (e *Engine) MatchExisting(ctx context.Context, kind, level, text string) []Match {
 	pool := e.matchCandidates(ctx, kind, level, text, matchPool)
 	if len(pool) == 0 || strings.TrimSpace(text) == "" {
@@ -396,16 +358,28 @@ func (e *Engine) MatchExisting(ctx context.Context, kind, level, text string) []
 	if out, ok := e.sameAs(ctx, text, pool); ok {
 		return out
 	}
-	return byWords(pool)
+	return []Match{}
+}
+
+// exactMatches are the candidates whose name is the text's, spelt
+// otherwise or by its initials: what is certain without a model.
+func exactMatches(text string, pool []Match) []Match {
+	out := []Match{}
+	for _, m := range pool {
+		if sameName(text, m.Name) {
+			m.Likelihood, m.By = 1, "name"
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 // Understanding is what Cartograph makes of a text a person typed: the
 // existing record that says the same, and the flows likeliest to define
 // it.
 type Understanding struct {
-	// Available is false when no decision model answered: Matches are
-	// then the records that share the text's words, and there are no
-	// Routes.
+	// Available is false when no decision model answered: there are
+	// then no Matches but a name's exact match, and no Routes.
 	Available bool    `json:"available"`
 	Matches   []Match `json:"matches"`
 	Routes    []Route `json:"routes"`
@@ -521,12 +495,12 @@ func (e *Engine) Understand(ctx context.Context, text, locale string) (Understan
 	}
 	found, ok := e.sameAs(ctx, text, pool)
 	if !ok {
-		out.Matches = byWords(pool)
+		out.Matches = exactMatches(text, pool)
 		return out, nil
 	}
 	routes, ok := e.routesFor(ctx, text, locale)
 	if !ok {
-		out.Matches = byWords(pool)
+		out.Matches = exactMatches(text, pool)
 		return out, nil
 	}
 	out.Available, out.Matches, out.Routes = true, found, routes
@@ -535,17 +509,22 @@ func (e *Engine) Understand(ctx context.Context, text, locale string) (Understan
 
 // DecisionModel is whether a decision model is configured, and whether it
 // answers now: what an agent asks first, to know whether to lean on it.
+// Off, when it does not answer, says what is not judged meanwhile
+// (docs/adr/0030), which the agent must then judge itself.
 type DecisionModel struct {
-	Configured bool `json:"configured"`
-	Ready      bool `json:"ready"`
+	Configured bool     `json:"configured"`
+	Ready      bool     `json:"ready"`
+	Off        []string `json:"off,omitempty"`
 }
 
 // DecisionModel reports the decision port's state, whatever is behind it.
 func (e *Engine) DecisionModel(ctx context.Context) DecisionModel {
-	if e.decider == nil {
-		return DecisionModel{}
+	m := DecisionModel{Configured: e.decider != nil}
+	m.Ready = m.Configured && e.decider.Ready(ctx) == nil
+	if !m.Ready {
+		m.Off = offWithoutModel
 	}
-	return DecisionModel{Configured: true, Ready: e.decider.Ready(ctx) == nil}
+	return m
 }
 
 // How relevance is judged, as measured (docs/adr/0023): of each candidate
@@ -637,10 +616,11 @@ func (e *Engine) Relevant(ctx context.Context, text string, kinds []string, leve
 			pool[i].By = "model"
 		}
 	}
-	floor := relevantFloor
 	if !ok {
-		floor = 0.2 // shared words, as a match falls back to them
+		// Without a model nothing is judged relevant (docs/adr/0030).
+		return out, nil
 	}
+	floor := relevantFloor
 	byKind := map[string][]Match{}
 	for _, m := range pool {
 		if m.Likelihood >= floor {
@@ -756,9 +736,10 @@ var minorWords = map[string]bool{"a": true, "an": true, "and": true, "for": true
 // sameName reports whether two names are one: the same once case, spacing
 // and punctuation are set aside ("Depot customers", "Depot Customers"),
 // or one the initials of the other ("SMS", "Student Management System"),
-// with or without its minor words.
+// with or without its minor words, or one the other with its own initials
+// after it ("Depot Services Unit (DSU)").
 func sameName(a, b string) bool {
-	na, nb := plainName(a), plainName(b)
+	na, nb := withoutOwnInitials(plainName(a)), withoutOwnInitials(plainName(b))
 	if len(na) == 0 || len(nb) == 0 {
 		return false
 	}
@@ -766,6 +747,15 @@ func sameName(a, b string) bool {
 		return true
 	}
 	return initialsOf(na, nb) || initialsOf(nb, na)
+}
+
+// withoutOwnInitials drops a last word that spells the words before it,
+// as a name given with its abbreviation does.
+func withoutOwnInitials(words []string) []string {
+	if n := len(words); n >= 3 && initialsOf(words[n-1:], words[:n-1]) {
+		return words[:n-1]
+	}
+	return words
 }
 
 // plainName is a name's words, lower-case, without punctuation.

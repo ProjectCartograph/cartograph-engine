@@ -27,9 +27,10 @@ services:
       CARTOGRAPH_LOG_FORMAT: json
       # Agents over MCP at /api/v1/mcp (ADR 0016): CARTOGRAPH_MCP=on.
       CARTOGRAPH_MCP: ${CARTOGRAPH_MCP:-off}
-      # The decision model (ADR 0023): CARTOGRAPH_DECIDE=laya with the
-      # decide profile below.
-      CARTOGRAPH_DECIDE: ${CARTOGRAPH_DECIDE:-off}
+      # The decision model (ADR 0023, 0030), on by default: start the
+      # decide profile below with it, or set CARTOGRAPH_DECIDE=off. Without
+      # the sidecar the checks that judge meaning are off, and say so.
+      CARTOGRAPH_DECIDE: ${CARTOGRAPH_DECIDE:-laya}
       CARTOGRAPH_DECIDE_URL: ${CARTOGRAPH_DECIDE_URL:-http://laya:8411}
       # CARTOGRAPH_AUTH: proxy   # only behind an authenticating proxy; see docs/DEPLOYMENT.md
     # The image has no shell, so the binary checks itself. /bin/cartograph
@@ -44,7 +45,7 @@ services:
   # The decision model (deploy/laya, docs/adr/0023), its model inside the
   # image the flake builds (`just image-laya`, tagged cartograph-laya:local):
   #
-  #   CARTOGRAPH_DECIDE=laya docker compose --profile decide up -d
+  #   docker compose --profile decide up -d
   laya:
     profiles: ["decide"]
     image: ${CARTOGRAPH_LAYA_IMAGE:-cartograph-laya:local}

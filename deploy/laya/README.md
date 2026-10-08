@@ -7,8 +7,9 @@ same (docs/adr/0023). Laya is that model, open under Apache 2.0. It needs
 the ONNX runtime, which Cartograph's static binary does not carry, so it
 runs beside Cartograph, and Cartograph reaches it over HTTP.
 
-It is off unless you turn it on. Without it, every check and answer
-Cartograph had before is unchanged.
+Cartograph asks it by default (docs/adr/0030); `CARTOGRAPH_DECIDE=off`
+turns it off. Without it, the checks that judge meaning are left out,
+`GET /decision-model` lists them, and nothing else changes.
 
 ## Run it
 
@@ -37,6 +38,19 @@ Start Cartograph beside it with:
     CARTOGRAPH_DECIDE=laya CARTOGRAPH_DECIDE_URL=http://127.0.0.1:8411 cartograph serve <vault>
 
 `GET /ready` answers 200 once the model is loaded.
+
+## Platforms
+
+The package and its image are built for x86_64 and arm64 Linux on one
+x86_64 machine (`laya-linux-<arch>`, `image-laya-linux-<arch>`;
+docs/CROSS.md), each with the ONNX runtime's library for that platform.
+A release publishes one tag for both:
+`ghcr.io/projectcartograph/cartograph-laya:<version>` (set
+`CARTOGRAPH_LAYA_IMAGE` to it for compose). Before the tag is made, a
+runner of each architecture runs the image and `just decide-measure
+<url>` against it, which holds every answer to the one recorded on
+x86_64 (`internal/engine/testdata/decide/answers.json`) within 0.005:
+the same model answers the same on both.
 
 With compose, `docker compose --profile decide up -d` starts it beside
 Cartograph and keeps the model in a volume.

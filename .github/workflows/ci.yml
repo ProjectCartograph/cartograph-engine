@@ -5,14 +5,24 @@ on:
     branches: [main]
   pull_request:
 
+# The Nix caches, each its own switch, so both may be on: the Actions
+# cache (repository variable CARTOGRAPH_CACHE_GHA, on unless set to off)
+# and Cachix (CARTOGRAPH_CACHIX, a cache name, with the secret
+# CACHIX_AUTH_TOKEN; off unless set).
+env:
+  CARTOGRAPH_CACHE_GHA: ${{ vars.CARTOGRAPH_CACHE_GHA || 'on' }}
+  CARTOGRAPH_CACHIX: ${{ vars.CARTOGRAPH_CACHIX }}
+
 permissions:
   contents: read
-  # cache-nix-action purges its own old entries.
-  actions: write
+  # magic-nix-cache asks for a token to reach the Actions cache.
+  id-token: write
 
 jobs:
-  # The same `just ci` a contributor runs, inside the same flake, on
-  # both architectures the release targets.
+  # The same `just ci` a contributor runs, in the same flake, on both
+  # architectures the release targets. CI runs on the runner itself: it
+  # is a clean machine already, and Nix makes it the same environment as
+  # the container people and agents use (docs/CONTAINERS.md).
   ci:
     strategy:
       # Each architecture reports for itself; one failing must not hide
@@ -32,48 +42,19 @@ jobs:
           extra-conf: |
             keep-outputs = true
             keep-env-derivations = true
-      # The Nix store in the GitHub Actions cache, as one entry (no
-      # per-path requests to be rate-limited).
-      - uses: nix-community/cache-nix-action@v7
+      # Every store path built here, by its own hash: in the Actions cache
+      # (magic-nix-cache) and, where one is named, in Cachix; each fetched
+      # by the next run instead of built (docs/CONTAINERS.md, "CI").
+      - if: env.CARTOGRAPH_CACHE_GHA == 'on'
+        uses: DeterminateSystems/magic-nix-cache-action@main
+      - if: env.CARTOGRAPH_CACHIX != ''
+        uses: cachix/cachix-action@v15
         with:
-          primary-key: nix-devshell-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.nix', 'flake.lock', 'go.sum') }}
-          restore-prefixes-first-match: nix-devshell-${{ runner.os }}-${{ runner.arch }}-
-          gc-max-store-size-linux: 4G
-          purge: true
-          purge-prefixes: nix-devshell-${{ runner.os }}-${{ runner.arch }}-
-          purge-created: 0
-          purge-last-accessed: P1DT12H
-          purge-primary-key: never
+          name: ${{ env.CARTOGRAPH_CACHIX }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          # Images live in the registry; the cache keeps what builds them.
+          pushFilter: '\.tar\.gz$'
       - run: nix develop --command just ci
-
-  # The Postgres adapters' tests against a throwaway server the flake
-  # provides, on both architectures. The gate above stays
-  # database-free.
-  postgres:
-    strategy:
-      # Each architecture reports for itself; one failing must not hide
-      # the other's result.
-      fail-fast: false
-      matrix:
-        runner: [ubuntu-latest, ubuntu-24.04-arm]
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          # Keep what the development shell and the builds were made
-          # from, so the cached store rebuilds nothing.
-          extra-conf: |
-            keep-outputs = true
-            keep-env-derivations = true
-      # The Nix store in the GitHub Actions cache, as one entry (no
-      # per-path requests to be rate-limited).
-      - uses: nix-community/cache-nix-action@v7
-        with:
-          primary-key: nix-devshell-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.nix', 'flake.lock', 'go.sum') }}
-          restore-prefixes-first-match: nix-devshell-${{ runner.os }}-${{ runner.arch }}-
-          save: false
-      - run: nix develop --command just test-postgres
 
   commits:
     if: github.event_name == 'pull_request'
@@ -89,13 +70,18 @@ jobs:
           extra-conf: |
             keep-outputs = true
             keep-env-derivations = true
-      # The Nix store in the GitHub Actions cache, as one entry (no
-      # per-path requests to be rate-limited).
-      - uses: nix-community/cache-nix-action@v7
+      # Every store path built here, by its own hash: in the Actions cache
+      # (magic-nix-cache) and, where one is named, in Cachix; each fetched
+      # by the next run instead of built (docs/CONTAINERS.md, "CI").
+      - if: env.CARTOGRAPH_CACHE_GHA == 'on'
+        uses: DeterminateSystems/magic-nix-cache-action@main
+      - if: env.CARTOGRAPH_CACHIX != ''
+        uses: cachix/cachix-action@v15
         with:
-          primary-key: nix-devshell-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.nix', 'flake.lock', 'go.sum') }}
-          restore-prefixes-first-match: nix-devshell-${{ runner.os }}-${{ runner.arch }}-
-          save: false
+          name: ${{ env.CARTOGRAPH_CACHIX }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          # Images live in the registry; the cache keeps what builds them.
+          pushFilter: '\.tar\.gz$'
       - run: nix develop --command just commit-check origin/${{ github.base_ref }}
 
   # The binary and the image from the flake, on both architectures; the
@@ -117,18 +103,18 @@ jobs:
           extra-conf: |
             keep-outputs = true
             keep-env-derivations = true
-      # The Nix store in the GitHub Actions cache, as one entry (no
-      # per-path requests to be rate-limited).
-      - uses: nix-community/cache-nix-action@v7
+      # Every store path built here, by its own hash: in the Actions cache
+      # (magic-nix-cache) and, where one is named, in Cachix; each fetched
+      # by the next run instead of built (docs/CONTAINERS.md, "CI").
+      - if: env.CARTOGRAPH_CACHE_GHA == 'on'
+        uses: DeterminateSystems/magic-nix-cache-action@main
+      - if: env.CARTOGRAPH_CACHIX != ''
+        uses: cachix/cachix-action@v15
         with:
-          primary-key: nix-image-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.nix', 'flake.lock', 'go.sum') }}
-          restore-prefixes-first-match: nix-image-${{ runner.os }}-${{ runner.arch }}-
-          gc-max-store-size-linux: 4G
-          purge: true
-          purge-prefixes: nix-image-${{ runner.os }}-${{ runner.arch }}-
-          purge-created: 0
-          purge-last-accessed: P1DT12H
-          purge-primary-key: never
+          name: ${{ env.CARTOGRAPH_CACHIX }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          # Images live in the registry; the cache keeps what builds them.
+          pushFilter: '\.tar\.gz$'
       - run: nix flake check --print-build-logs
       - run: nix run .#cartograph -- validate examples/minimal
       - run: nix build .#image --out-link result-image && docker load < result-image
@@ -141,7 +127,7 @@ jobs:
           docker run -d --name cartograph -p 8080:8080 -v cartograph-vault:/vault "$tag"
       - name: ready
         run: |
-          for i in $(seq 1 60); do curl -sf http://localhost:8080/readyz && exit 0; sleep 0.5; done
+          for _ in $(seq 1 60); do curl -sf http://localhost:8080/readyz && exit 0; sleep 0.5; done
           docker logs cartograph; exit 1
 
   # The Helm chart: rendered and validated without a cluster, then
@@ -158,16 +144,16 @@ jobs:
           extra-conf: |
             keep-outputs = true
             keep-env-derivations = true
-      # The Nix store in the GitHub Actions cache, as one entry (no
-      # per-path requests to be rate-limited).
-      - uses: nix-community/cache-nix-action@v7
+      # Every store path built here, by its own hash: in the Actions cache
+      # (magic-nix-cache) and, where one is named, in Cachix; each fetched
+      # by the next run instead of built (docs/CONTAINERS.md, "CI").
+      - if: env.CARTOGRAPH_CACHE_GHA == 'on'
+        uses: DeterminateSystems/magic-nix-cache-action@main
+      - if: env.CARTOGRAPH_CACHIX != ''
+        uses: cachix/cachix-action@v15
         with:
-          primary-key: nix-deploy-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.nix', 'flake.lock', 'go.sum') }}
-          restore-prefixes-first-match: nix-deploy-${{ runner.os }}-${{ runner.arch }}-
-          gc-max-store-size-linux: 4G
-          purge: true
-          purge-prefixes: nix-deploy-${{ runner.os }}-${{ runner.arch }}-
-          purge-created: 0
-          purge-last-accessed: P1DT12H
-          purge-primary-key: never
+          name: ${{ env.CARTOGRAPH_CACHIX }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          # Images live in the registry; the cache keeps what builds them.
+          pushFilter: '\.tar\.gz$'
       - run: nix develop --command just helm-lint helm-kind

@@ -151,8 +151,8 @@ after every move.
 
 ## Tests run in seconds
 
-`just test` is the gate and completes in under 10 seconds on the development machine: Go
-tests plus web unit tests (Vitest, jsdom), no browser, no network, no fixed sleeps (watchers
+`just test` is the gate and completes within a few seconds: Go unit tests through fake
+adapters plus web unit tests (Vitest, jsdom), no browser, no network, no fixed sleeps (watchers
 and debounces take their interval from an option the test shortens). Every contributor runs
 `just test` and `just tsc` after each edit; nobody is asked to run the browser flows.
 The browser flows (`just e2e`, the former smoke) are an end-to-end check run

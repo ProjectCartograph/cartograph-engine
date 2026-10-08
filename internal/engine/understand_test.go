@@ -7,6 +7,7 @@ import (
 
 	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide/fake"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
@@ -154,8 +155,16 @@ func TestUnderstandingWhatAPersonTyped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if u.Available || len(u.Routes) != 0 || len(u.Matches) == 0 || u.Matches[0].By != "words" || u.Matches[0].ID != "faults-found-before-dispatch" {
-		t.Fatalf("without a model: %+v", u)
+	// Without a model only the exact rule matches: the record's own name.
+	if u.Available || len(u.Routes) != 0 || len(u.Matches) != 1 || u.Matches[0].By != "name" || u.Matches[0].ID != "faults-found-before-dispatch" {
+		t.Fatalf("without a model, the name: %+v", u)
+	}
+	u, err = engineWith(t, nil).Understand(ctx, "Faults found before produce leaves", "en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Available || len(u.Matches) != 0 {
+		t.Fatalf("without a model, words are not a match: %+v", u)
 	}
 }
 
@@ -163,7 +172,7 @@ func TestUnderstandingWhatAPersonTyped(t *testing.T) {
 // on its own whether the work is about the same thing, that answer and
 // the words it shares with the work weighed evenly, the likeliest few of
 // each kind at an even chance or more, and nothing below it; without a
-// model, by shared words alone.
+// model, nothing is judged relevant (docs/adr/0030).
 func TestRelevantRanksTheWorkspace(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -192,7 +201,7 @@ func TestRelevantRanksTheWorkspace(t *testing.T) {
 	if !r.Available || strings.Join(got, " ") != "Goal/faults-found-before-dispatch KPI/quality-pass-rate" {
 		t.Fatalf("with a model: %+v", r)
 	}
-	if s := e.DecisionModel(ctx); !s.Configured || !s.Ready {
+	if s := e.DecisionModel(ctx); !s.Configured || !s.Ready || len(s.Off) != 0 {
 		t.Fatalf("status with a model: %+v", s)
 	}
 
@@ -201,10 +210,11 @@ func TestRelevantRanksTheWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Available || len(r.Matches) == 0 || r.Matches[0].By != "words" {
+	if r.Available || len(r.Matches) != 0 {
 		t.Fatalf("without a model: %+v", r)
 	}
-	if s := plain.DecisionModel(ctx); s.Configured || s.Ready {
+	// Without a model, the status says what is not judged meanwhile.
+	if s := plain.DecisionModel(ctx); s.Configured || s.Ready || len(s.Off) == 0 {
 		t.Fatalf("status without a model: %+v", s)
 	}
 }
@@ -266,25 +276,77 @@ func TestANameSpeltOtherwiseOrByInitialsIsTheRecord(t *testing.T) {
 	}
 }
 
-// A state written in the passive or with a modal is not an action,
-// whatever a model reads into it: only a text that opens as an
-// instruction is asked.
-func TestAPassiveStateIsNotTakenForAnAction(t *testing.T) {
+// A contrast is judged at the threshold it was measured at, not at one
+// half: the model's probability of the good option must reach it. No
+// list of words decides beforehand (docs/adr/0030).
+func TestAContrastIsJudgedAtItsMeasuredThreshold(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	m := &model{answer: func(string, decide.Question) decide.Answer {
-		return decide.Answer{Probabilities: map[string]float64{"state": 0.1, "action": 0.9}}
-	}}
-	e := engineWith(t, m)
 	outcome := "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: o-gone\n  name: Bruised fruit gone\nspec:\n  level: outcome\n  parent: depots-stay-open-through-the-season\n  objective: Bruised fruit is no longer sold to buyers\n"
-	mustCommit(t, e, "Goal", "o-gone", "local", outcome)
-	checks, err := e.GoalChecks(ctx, "o-gone")
-	if err != nil {
-		t.Fatal(err)
+	for _, c := range []struct {
+		good float64
+		want string
+	}{{0.9, "ok"}, {0.6, "warn"}} {
+		m := &model{answer: func(string, decide.Question) decide.Answer {
+			return decide.Answer{Probabilities: map[string]float64{"state": c.good, "action": 1 - c.good}}
+		}}
+		e := engineWith(t, m)
+		mustCommit(t, e, "Goal", "o-gone", "local", outcome)
+		checks, err := e.GoalChecks(ctx, "o-gone")
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := ""
+		for _, ch := range checks {
+			if ch.ID == "statement-state" {
+				got = ch.State
+			}
+		}
+		if got != c.want {
+			t.Errorf("good at %.1f: %q, want %q", c.good, got, c.want)
+		}
 	}
-	for _, c := range checks {
-		if c.ID == "statement-state" && c.State != "ok" {
-			t.Fatalf("a passive state read as an action: %+v", c)
+}
+
+// A text that names a person is a warning on any kind, pinned to its
+// field; with no model the check is off, and absent.
+func TestATextNamingAPersonIsAWarning(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	model := fake.New().On("names-person-0", func(state string, _ decide.Question) decide.Answer {
+		if strings.Contains(state, "Mensah") {
+			return fake.Yes(0.8)
+		}
+		return fake.Yes(0.05)
+	})
+	y := []byte("apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t-named\n  name: Grading team\nspec:\n  purpose: Ada Mensah grades the produce at intake\n")
+	for _, c := range []struct {
+		d    decide.Decider
+		want string
+	}{{model, "warn"}, {nil, ""}} {
+		opts := []engine.Option{engine.WithCodec(codecyaml.New())}
+		if c.d != nil {
+			opts = append(opts, engine.WithDecider(c.d))
+		}
+		e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), opts...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		checks, err := e.ChecksOf(ctx, "Team", "t-named", y)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := ""
+		for _, ch := range checks {
+			if ch.ID == "names-person" {
+				got = ch.State
+				if !strings.Contains(ch.Message, "/spec/purpose") {
+					t.Errorf("not pinned to its field: %q", ch.Message)
+				}
+			}
+		}
+		if got != c.want {
+			t.Errorf("model %v: %q, want %q", c.d != nil, got, c.want)
 		}
 	}
 }

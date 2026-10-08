@@ -13,7 +13,8 @@ default:
 
 # --- the gate -------------------------------------------------------------
 
-# The gate, after every edit: under ten seconds
+# The gate, after every edit, and what CI runs: unit tests with fake
+# adapters, a few seconds. The real adapters' tests are test-integration.
 test: embed
     #!{{toolchain}} bash
     set -euo pipefail
@@ -35,7 +36,23 @@ test: embed
     go test -count=1 ./...
     end=$(date +%s%3N)
     echo "tests completed in $((end - start))ms"
-    test $((end - start)) -lt 10000
+    test $((end - start)) -lt 5000
+
+# The real adapters, locally and never in CI: SQLite, the vault, the
+# WebAssembly CRDT, the sync server's sockets, the serve stack, Postgres
+# against a throwaway server. Nix makes them the same on every machine,
+# so passing here is passing anywhere (scripts/dev just test-integration).
+test-integration: embed
+    #!{{toolchain}} bash
+    set -euo pipefail
+    dir=$(mktemp -d /tmp/cartograph-pg.XXXXXX)
+    trap 'pg_ctl -D "$dir/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$dir"' EXIT
+    initdb -D "$dir/data" -U cartograph -A trust -E UTF8 --no-sync >/dev/null
+    pg_ctl -D "$dir/data" -l "$dir/server.log" -w \
+      -o "-k $dir -c listen_addresses= -c fsync=off -c synchronous_commit=off -c full_page_writes=off" \
+      start >/dev/null || { cat "$dir/server.log"; exit 1; }
+    export CARTOGRAPH_TEST_POSTGRES="postgres://cartograph@/postgres?host=$dir"
+    go test -count=1 -tags integration ./...
 
 # The whole suite with the Postgres adapters' tests, against a throwaway
 # server from the flake: a fresh cluster in a temporary directory,
@@ -51,7 +68,7 @@ test-postgres *args="./...": embed
       -o "-k $dir -c listen_addresses= -c fsync=off -c synchronous_commit=off -c full_page_writes=off" \
       start >/dev/null || { cat "$dir/server.log"; exit 1; }
     export CARTOGRAPH_TEST_POSTGRES="postgres://cartograph@/postgres?host=$dir"
-    go test -count=1 {{args}}
+    go test -count=1 -tags integration {{args}}
 
 # What CI runs, in this order; green here is green there
 ci: generate drift vet fmt-check lint arch test words clean-tree compat build
@@ -112,16 +129,17 @@ fmt:
 lint: embed
     staticcheck ./...
     out="$(gopls check $(git ls-files '*.go' | grep -v '/gen/'))"; [ -z "$out" ] || { echo "$out"; exit 1; }
+    actionlint .github/workflows/*.yml
 
 # The dependency rule: inward only (internal/arch)
 arch: embed
-    go test -count=1 ./internal/arch/
+    go test -count=1 -tags arch ./internal/arch/
 
 # No organisation's words, no em dashes in what a person reads
 words:
     #!{{toolchain}} bash
     set -uo pipefail
-    n=$(grep -rniE '\b(ministry|school|schools|pupil|cabinet|circular|vote|district|teacher|ecce)\b' --include='*.go' --include='*.json' --include='*.yaml' --include='*.yml' --include='*.md' . | grep -v '/dist/' | grep -vE '^./docs/(TAXONOMY|DESIGN_RULES).md' | wc -l)
+    n=$(grep -rniE '\b(ministry|school|schools|pupil|cabinet|circular|vote|district|teacher|ecce)\b' --include='*.go' --include='*.json' --include='*.jsonl' --include='*.yaml' --include='*.yml' --include='*.md' . | grep -v '/dist/' | grep -vE '^./docs/(TAXONOMY|DESIGN_RULES).md' | wc -l)
     d=$(grep -rnE '—' examples/ contract/guidance/ contract/flows/ 2>/dev/null | wc -l)
     echo "domain words: $n, em dashes in the example: $d"
     test "$n" -eq 0 && test "$d" -eq 0
@@ -165,15 +183,16 @@ build: embed
 bin: embed
     mkdir -p bin && go build -trimpath -ldflags="-s -w -X main.version={{version}}" -o bin/cartograph ./cmd/cartograph
 
-# Release binaries for both architectures (pure Go, static)
-release: embed
+# Release binaries for every platform, cross-compiled here (pure Go, static)
+release:
     #!{{toolchain}} bash
     set -euo pipefail
-    mkdir -p dist
-    for arch in amd64 arm64; do
-      CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags="-s -w -X main.version={{version}}" -o dist/cartograph-linux-$arch ./cmd/cartograph
-      echo "dist/cartograph-linux-$arch"
-    done
+    # Every platform's binary, cross-compiled here by the flake
+    # (docs/CROSS.md), with SHA256SUMS.
+    rm -rf dist && mkdir -p dist
+    cp "$(nix build .#release --no-link --print-out-paths)"/* dist/
+    chmod u+w dist/*
+    ls dist
 
 # The container image, from the flake, for this machine's architecture;
 # loads into docker as cartograph:<version> and cartograph:local, the tag
@@ -268,6 +287,34 @@ serve *args: embed
 # Serve any vault directory, with the arguments serve takes
 serve-vault dir *args: embed
     scripts/serve "{{dir}}" {{args}}
+
+# Measure every System-1 judgement against its examples whose answer is
+# known, on the model the flake pins, and hold each to the score it was
+# kept at (docs/adr/0030), and every answer to the one recorded on
+# x86_64. Locally and at a release, never in CI: it runs the real model.
+decide-measure url="":
+    #!{{toolchain}} bash
+    set -euo pipefail
+    # A sidecar already running (an image a release is about to publish)
+    # is measured where it is.
+    if [ -n "{{url}}" ]; then
+      CARTOGRAPH_DECIDE_URL="{{url}}" go test -count=1 -tags decide -run TestMeasureJudgements -v ./internal/engine/ | grep -E "^\s+measure_test|^(--- |ok|FAIL)"
+      exit
+    fi
+    # Built first: the model is fetched into the store once, however long
+    # that takes; starting it then takes seconds.
+    laya=$(nix build .#laya --no-link --print-out-paths)
+    port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')
+    LAYA_PORT=$port "$laya/bin/cartograph-laya" >/tmp/cartograph-laya-$port.log 2>&1 &
+    pid=$!
+    trap 'kill $pid 2>/dev/null || true' EXIT
+    ready=
+    for _ in $(seq 1 120); do
+      curl -sf "http://127.0.0.1:$port/ready" >/dev/null && { ready=1; break; }
+      sleep 1
+    done
+    [ -n "$ready" ] || { echo "the model did not start:"; tail -5 /tmp/cartograph-laya-$port.log; exit 1; }
+    CARTOGRAPH_DECIDE_URL="http://127.0.0.1:$port" go test -count=1 -tags decide -run TestMeasureJudgements -v ./internal/engine/ | grep -E "^\s+measure_test|^(--- |ok|FAIL)"
 
 # Run the Laya sidecar on its own (deploy/laya, docs/adr/0023)
 laya port="8411":

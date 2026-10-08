@@ -8,6 +8,8 @@ import (
 	"time"
 
 	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide/fake"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
@@ -216,10 +218,17 @@ func TestGoalChecksSmartMinimal(t *testing.T) {
 // A digit in the statement fails Specific. Goal.Rules refuses such a
 // statement on commit, so this writes to the store directly, the way a
 // file written before the rule would look.
+// Whether an objective reads as a target is the decision model's to judge:
+// asked, it makes "specific" a warning; without a model, the objective
+// is specific for saying something, and the judgement is off.
 func TestGoalChecksSpecificWithDigit(t *testing.T) {
 	t.Parallel()
 	manifests := memory.NewManifestStore()
-	e, err := engine.New(manifests, memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	model := fake.New()
+	for _, q := range []string{"objective-target-0", "objective-target-1"} {
+		model.On(q, func(string, decide.Question) decide.Answer { return fake.Yes(0.9) })
+	}
+	e, err := engine.New(manifests, memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()), engine.WithDecider(model))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,8 +242,8 @@ func TestGoalChecksSpecificWithDigit(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := wantCheck(t, checks, "smart-specific", "warn")
-	if c.Fix == nil || c.Fix.Section != "objective" {
-		t.Fatalf("expected fix section objective, got %+v", c.Fix)
+	if c.Fix == nil || c.Fix.Section != "objective" || !strings.Contains(c.Message, "very likely reads as a target") {
+		t.Fatalf("expected the model's judgement, fixed in objective, got %+v", c)
 	}
 	// A goal with no vision or mission above it cannot be judged relevant.
 	wantCheck(t, checks, "smart-relevant", "warn")

@@ -21,11 +21,8 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 		return problems
 	}
 
-	if objective, ok := spec["objective"].(string); ok {
-		if p := kit.ObjectiveDigitProblem(objective, "/spec/objective"); p != nil {
-			problems = append(problems, *p)
-		}
-	}
+	// Whether an objective reads as a target is a judgement of its words,
+	// the decision model's, and advises (docs/adr/0030): never refused here.
 
 	level, _ := spec["level"].(string)
 	_, hasParent := spec["parent"]

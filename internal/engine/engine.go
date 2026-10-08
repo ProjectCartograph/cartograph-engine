@@ -82,22 +82,17 @@ func WithBundles(b store.BundleStore) Option {
 	return func(e *Engine) { e.bundles = b }
 }
 
-// New builds an Engine over the given stores, compiling every kind's JSON
-// Schema and precomputing its reference rules. An adapter that offers more
+// New builds an Engine over the given stores, with every kind's JSON
+// Schema compiled and its reference rules worked out (once a process:
+// compiledContract). An adapter that offers more
 // than the two required ports is attached with options; a store that
 // satisfies StateStore or BundleStore itself is attached automatically.
 func New(manifests store.ManifestStore, ops store.OperationalStore, opts ...Option) (*Engine, error) {
-	ss, err := loadSchemas()
+	c, err := compiledContract()
 	if err != nil {
 		return nil, err
 	}
-	rules := map[string][]refRule{}
-	series := map[string][]seriesRule{}
-	for _, spec := range kinds.All {
-		rules[spec.Name] = collectRefRules(ss.raw, spec.SchemaFile)
-		series[spec.Name] = collectSeriesRules(ss.raw, spec.SchemaFile)
-	}
-	e := &Engine{manifests: manifests, ops: ops, schemas: ss, refRules: rules, seriesRules: series}
+	e := &Engine{manifests: manifests, ops: ops, schemas: c.schemas, refRules: c.refRules, seriesRules: c.seriesRules}
 	if s, ok := manifests.(store.StateStore); ok {
 		e.state = s
 	}

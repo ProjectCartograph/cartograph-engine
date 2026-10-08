@@ -1235,7 +1235,7 @@ func TestAPortRefusesTheDocumentsWorkstreamsAsProjects(t *testing.T) {
 	_, _, cs := setup(t, nil)
 	doc := "Depot Checks Charter\n\nE1. Workstream Plan\n" +
 		"    Workstream                Purpose                          Lead\n\n" +
-		"WS1 Grading and              Agree the checklist and train    Quality team\n" +
+		"WS1 Grading                  Agree the checklist and train    Quality team\n" +
 		"and Training                 graders at every depot\n\n" +
 		"WS2 Depot Inspection         Run the checks each week once    Inspection unit\n" +
 		"and Follow-up                the pilot ends, and report\n"
