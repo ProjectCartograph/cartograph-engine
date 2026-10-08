@@ -766,3 +766,27 @@ func TestAnAgentReadsTheComponentsAndTheSchedule(t *testing.T) {
 		t.Fatalf("components: %s", text)
 	}
 }
+
+// Structure first: an agent answers the questions for each piece and is
+// told what each is and the order to write them (TAXONOMY.md D56).
+func TestAnAgentIsToldTheStructure(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	res, text := callTool(t, cs, "structure", map[string]any{"pieces": []any{
+		map[string]any{"name": "Rollout"},
+		map[string]any{"name": "Handbook", "outputOf": "Rollout"},
+		map[string]any{"name": "Survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
+	}})
+	if res.IsError || !strings.Contains(text, `"order":["Survey","Rollout"]`) || !strings.Contains(text, `"kind":"Deliverable"`) {
+		t.Fatalf("structure: %s", text)
+	}
+	tools, err := cs.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tl := range tools.Tools {
+		if tl.Name == "structure" && !strings.Contains(tl.Description, "Is it an output another piece of work hands over") {
+			t.Fatalf("the description lacks the questions: %s", tl.Description)
+		}
+	}
+}

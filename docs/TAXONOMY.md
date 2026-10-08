@@ -1576,3 +1576,36 @@ budget, the high-impact risks and issues, the success criteria, approval
 and the version history. Everything else is counted and stays in
 Cartograph, where it is kept current. Names are printed, never
 descriptions.
+
+### D56. The structure is decided first, by the same questions for everyone. *(resolved)*
+
+**The problem.** People bring documents with their own words for their
+work, and the words are often wrong: a charter called one project held a
+standing policy, the service it hands over to, outputs it calls
+workstreams, and pieces of work with changes of their own. Agents copied
+the document's structure, so the record was only as sound as the
+document, and a port took several passes to put right.
+
+**What Cartograph does.** Before anything is written, every piece of
+work a document or a person names is answered against the same ordered
+questions (`GET /structure`, and the structure tool for agents):
+
+1. Another body leads and funds it to its own plan: not a record, a
+   scope-out line and, if the work waits on it, a dependency risk.
+2. A standing policy or rule with no end date: a Goal.
+3. Keeps running with no end date: an Operation.
+4. Groups work only to decide what to fund and in what order: a
+   Portfolio.
+5. Coordinates several projects, each with its own sponsor or budget,
+   towards one change: a Programme.
+6. An output another piece of work hands over: a deliverable of it.
+7. A change of its own that other work depends on: a Project, listed as
+   a component of what depends on it (D46, D54).
+8. Otherwise: a Project, the parent of those that are its components.
+
+The first yes decides. `POST /structure` returns what each piece is,
+what it belongs to, the order to write the records in (goals,
+operations, projects with those depended on first, programmes,
+portfolios) and any answers that contradict each other, so a port is
+one change set written in one pass. The document's own names are kept
+as names and aliases; they never decide the kind.

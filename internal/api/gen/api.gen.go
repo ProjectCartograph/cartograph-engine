@@ -1785,6 +1785,45 @@ type SnapshotList struct {
 	Snapshots []Snapshot `json:"snapshots"`
 }
 
+// Structure defines model for Structure.
+type Structure struct {
+	Next     string            `json:"next"`
+	Order    []string          `json:"order"`
+	Pieces   []StructuredPiece `json:"pieces"`
+	Problems *[]string         `json:"problems,omitempty"`
+}
+
+// StructurePiece defines model for StructurePiece.
+type StructurePiece struct {
+	ChangeOfItsOwn      *bool     `json:"changeOfItsOwn,omitempty"`
+	CoordinatesProjects *bool     `json:"coordinatesProjects,omitempty"`
+	DependedOnBy        *[]string `json:"dependedOnBy,omitempty"`
+	GroupsForFunding    *bool     `json:"groupsForFunding,omitempty"`
+	Name                string    `json:"name"`
+	Ongoing             *bool     `json:"ongoing,omitempty"`
+	OutOfScope          *bool     `json:"outOfScope,omitempty"`
+	OutputOf            *string   `json:"outputOf,omitempty"`
+	Policy              *bool     `json:"policy,omitempty"`
+	RunsToday           *bool     `json:"runsToday,omitempty"`
+}
+
+// StructureQuestion defines model for StructureQuestion.
+type StructureQuestion struct {
+	// Field The answer this question sets on a StructurePiece; empty for the last, which applies when none does.
+	Field    string `json:"field"`
+	Question string `json:"question"`
+	Then     string `json:"then"`
+}
+
+// StructuredPiece defines model for StructuredPiece.
+type StructuredPiece struct {
+	// Kind Goal, Operation, Portfolio, Programme, Project, Deliverable or ScopeOut.
+	Kind  string    `json:"kind"`
+	Name  string    `json:"name"`
+	Of    *[]string `json:"of,omitempty"`
+	Where string    `json:"where"`
+}
+
 // Summary defines model for Summary.
 type Summary struct {
 	// Draft true when this Summary represents a project that has only ever been saved as a draft, never committed (version is then 0). Present only when kind is Project and includeDrafts=true surfaced it; omitted (never false) for every ordinary, committed Summary.
@@ -2217,6 +2256,11 @@ type ListSnapshotsParams struct {
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// ClassifyStructureJSONBody defines parameters for ClassifyStructure.
+type ClassifyStructureJSONBody struct {
+	Pieces []StructurePiece `json:"pieces"`
+}
+
 // UnderstandJSONBody defines parameters for Understand.
 type UnderstandJSONBody struct {
 	Locale *string `json:"locale,omitempty"`
@@ -2291,6 +2335,9 @@ type DeclineProposalJSONRequestBody = ProposalDecision
 
 // RelevantJSONRequestBody defines body for Relevant for application/json ContentType.
 type RelevantJSONRequestBody RelevantJSONBody
+
+// ClassifyStructureJSONRequestBody defines body for ClassifyStructure for application/json ContentType.
+type ClassifyStructureJSONRequestBody ClassifyStructureJSONBody
 
 // UnderstandJSONRequestBody defines body for Understand for application/json ContentType.
 type UnderstandJSONRequestBody UnderstandJSONBody
@@ -2599,6 +2646,12 @@ type ServerInterface interface {
 	// ListSnapshots Every snapshot (version) across all kinds, newest first, with pagination
 	// (GET /snapshots)
 	ListSnapshots(w http.ResponseWriter, r *http.Request, params ListSnapshotsParams)
+	// StructureQuestions The questions that decide what each piece of work is
+	// (GET /structure)
+	StructureQuestions(w http.ResponseWriter, r *http.Request)
+	// ClassifyStructure What each piece of work is, where it goes, and the order to write it in
+	// (POST /structure)
+	ClassifyStructure(w http.ResponseWriter, r *http.Request)
 	// Sync The sync socket (automerge-repo network protocol, version 1)
 	// (GET /sync)
 	Sync(w http.ResponseWriter, r *http.Request)
@@ -5352,6 +5405,34 @@ func (siw *ServerInterfaceWrapper) ListSnapshots(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// StructureQuestions operation middleware
+func (siw *ServerInterfaceWrapper) StructureQuestions(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StructureQuestions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ClassifyStructure operation middleware
+func (siw *ServerInterfaceWrapper) ClassifyStructure(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ClassifyStructure(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // Sync operation middleware
 func (siw *ServerInterfaceWrapper) Sync(w http.ResponseWriter, r *http.Request) {
 
@@ -5623,6 +5704,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/order", wrapper.GetOrder)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/understand", wrapper.Understand)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/structure", wrapper.StructureQuestions)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/structure", wrapper.ClassifyStructure)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/relevant", wrapper.Relevant)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/from-idea", wrapper.FromIdea)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/decision-model", wrapper.GetDecisionModel)
@@ -10909,6 +10992,79 @@ func (response ListSnapshots403JSONResponse) VisitListSnapshotsResponse(w http.R
 	return err
 }
 
+type StructureQuestionsRequestObject struct {
+}
+
+type StructureQuestionsResponseObject interface {
+	VisitStructureQuestionsResponse(w http.ResponseWriter) error
+}
+
+type StructureQuestions200JSONResponse struct {
+	Questions []StructureQuestion `json:"questions"`
+}
+
+func (response StructureQuestions200JSONResponse) VisitStructureQuestionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type StructureQuestions401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response StructureQuestions401JSONResponse) VisitStructureQuestionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ClassifyStructureRequestObject struct {
+	Body *ClassifyStructureJSONRequestBody
+}
+
+type ClassifyStructureResponseObject interface {
+	VisitClassifyStructureResponse(w http.ResponseWriter) error
+}
+
+type ClassifyStructure200JSONResponse Structure
+
+func (response ClassifyStructure200JSONResponse) VisitClassifyStructureResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ClassifyStructure401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ClassifyStructure401JSONResponse) VisitClassifyStructureResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SyncRequestObject struct {
 }
 
@@ -11639,6 +11795,12 @@ type StrictServerInterface interface {
 	// ListSnapshots Every snapshot (version) across all kinds, newest first, with pagination
 	// (GET /snapshots)
 	ListSnapshots(ctx context.Context, request ListSnapshotsRequestObject) (ListSnapshotsResponseObject, error)
+	// StructureQuestions The questions that decide what each piece of work is
+	// (GET /structure)
+	StructureQuestions(ctx context.Context, request StructureQuestionsRequestObject) (StructureQuestionsResponseObject, error)
+	// ClassifyStructure What each piece of work is, where it goes, and the order to write it in
+	// (POST /structure)
+	ClassifyStructure(ctx context.Context, request ClassifyStructureRequestObject) (ClassifyStructureResponseObject, error)
 	// Sync The sync socket (automerge-repo network protocol, version 1)
 	// (GET /sync)
 	Sync(ctx context.Context, request SyncRequestObject) (SyncResponseObject, error)
@@ -13901,6 +14063,61 @@ func (sh *strictHandler) ListSnapshots(w http.ResponseWriter, r *http.Request, p
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListSnapshotsResponseObject); ok {
 		if err := validResponse.VisitListSnapshotsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// StructureQuestions operation middleware
+func (sh *strictHandler) StructureQuestions(w http.ResponseWriter, r *http.Request) {
+	var request StructureQuestionsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.StructureQuestions(ctx, request.(StructureQuestionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "StructureQuestions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(StructureQuestionsResponseObject); ok {
+		if err := validResponse.VisitStructureQuestionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ClassifyStructure operation middleware
+func (sh *strictHandler) ClassifyStructure(w http.ResponseWriter, r *http.Request) {
+	var request ClassifyStructureRequestObject
+
+	var body ClassifyStructureJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ClassifyStructure(ctx, request.(ClassifyStructureRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ClassifyStructure")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ClassifyStructureResponseObject); ok {
+		if err := validResponse.VisitClassifyStructureResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

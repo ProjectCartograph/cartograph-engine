@@ -769,6 +769,62 @@ paths:
               schema:
                 $ref: "#/components/schemas/Understanding"
 
+  /structure:
+    get:
+      operationId: structureQuestions
+      summary: The questions that decide what each piece of work is
+      description: >-
+        Asked of every piece of work a document or a person names, in
+        order; the first yes decides (TAXONOMY.md D56). The same questions
+        guide a person starting something new and an agent porting a
+        document, so the structure is Cartograph's, not the document's.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [questions]
+                properties:
+                  questions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StructureQuestion"
+    post:
+      operationId: classifyStructure
+      summary: What each piece of work is, where it goes, and the order to write it in
+      description: >-
+        From the answers to the structure questions for each piece: its
+        kind (or a deliverable, or a scope-out line), what it belongs to,
+        the order to write the records in (goals, operations, projects
+        with those depended on first, programmes, portfolios) and any
+        answers that contradict each other. Nothing is stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pieces]
+              properties:
+                pieces:
+                  type: array
+                  maxItems: 200
+                  items:
+                    $ref: "#/components/schemas/StructurePiece"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Structure"
+
   /relevant:
     post:
       operationId: relevant
@@ -4202,6 +4258,79 @@ components:
           type: string
           enum: [Project, Programme]
         id:
+          type: string
+    StructureQuestion:
+      type: object
+      required: [field, question, then]
+      properties:
+        field:
+          type: string
+          description: The answer this question sets on a StructurePiece; empty for the last, which applies when none does.
+        question:
+          type: string
+        then:
+          type: string
+    StructurePiece:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        outOfScope:
+          type: boolean
+        policy:
+          type: boolean
+        ongoing:
+          type: boolean
+        runsToday:
+          type: boolean
+        groupsForFunding:
+          type: boolean
+        coordinatesProjects:
+          type: boolean
+        outputOf:
+          type: string
+          maxLength: 200
+        changeOfItsOwn:
+          type: boolean
+        dependedOnBy:
+          type: array
+          items:
+            type: string
+            maxLength: 200
+    StructuredPiece:
+      type: object
+      required: [name, kind, where]
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          description: Goal, Operation, Portfolio, Programme, Project, Deliverable or ScopeOut.
+        where:
+          type: string
+        of:
+          type: array
+          items:
+            type: string
+    Structure:
+      type: object
+      required: [pieces, order, next]
+      properties:
+        pieces:
+          type: array
+          items:
+            $ref: "#/components/schemas/StructuredPiece"
+        order:
+          type: array
+          items:
+            type: string
+        problems:
+          type: array
+          items:
+            type: string
+        next:
           type: string
     ComponentNode:
       type: object

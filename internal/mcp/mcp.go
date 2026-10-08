@@ -84,6 +84,13 @@ propose and merge it.
 Recording a reading and moving a project are proposals of their own.
 
 Work this way, every time:
+- Structure first. Before you draft anything, list every piece of work
+  the documents or your person name, answer the structure questions for
+  each (the structure tool lists them), and call structure. Never take a
+  document's own word for what a piece is: a "project" may be a
+  programme, a "workstream" a deliverable or a project of its own, a
+  "programme" a standing service. Write the records in the order
+  structure returns, in one change set, in one pass.
 - First, call decision_model. When it is ready and the workspace (or
   your change set) holds records to choose from, call relevant with what
   the work is about before you choose what a draft names (the outcomes it
@@ -463,6 +470,27 @@ func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[strin
 	return changeSetOut(out, items), nil
 }
 
+// structureDescription is the structure tool's description: the questions
+// themselves, in order, so an agent answers them as a person would.
+func structureDescription() string {
+	var b strings.Builder
+	b.WriteString("Call this first, before any draft, whenever you port a document or start something new (TAXONOMY.md D56). " +
+		"What a document calls a project, a workstream or a programme is never trusted: list every piece of work it names " +
+		"(the project itself, each workstream, sub-project, phase, survey, system, service, policy and partner strand), " +
+		"then answer these questions for each piece, in order; the first yes decides:\n")
+	for i, q := range engine.StructureQuestions {
+		if q.Field == "" {
+			fmt.Fprintf(&b, "%d. %s %s\n", i+1, q.Question, q.Then)
+			continue
+		}
+		fmt.Fprintf(&b, "%d. %s (%s) %s\n", i+1, q.Question, q.Field, q.Then)
+	}
+	b.WriteString("Give outputOf as the name of the piece it is an output of, and dependedOnBy as the names of the pieces that depend on it. " +
+		"The answer says what each piece is, what it belongs to, and the order to write the records in; fix every problem it lists and " +
+		"call it again until there are none, then open one change set and write the records in that order.")
+	return b.String()
+}
+
 // componentsOut is the components graph as an agent reads it, each
 // piece of work by name with its kind and id.
 func componentsOut(g engine.ComponentGraph) map[string]any {
@@ -626,6 +654,9 @@ type (
 		Kind  string `json:"kind"`
 		ID    string `json:"id"`
 		Check string `json:"check"`
+	}
+	structureIn struct {
+		Pieces []engine.StructurePiece `json:"pieces" jsonschema:"every piece of work the documents or your person name, each with its answers to the structure questions"`
 	}
 	readingIn struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to read in: your own, or your person's when they ask you to help with it; your latest open one when left out"`
@@ -915,6 +946,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 
 	tool(s, o, person, &sdk.Tool{Name: "references", Description: "What a manifest references, and what references it.", Annotations: readOnly},
 		func(c call, in manifestRef) (any, error) { return e.References(c.ctx, in.Kind, in.ID) })
+
+	tool(s, o, person, &sdk.Tool{Name: "structure", Description: structureDescription(), Annotations: readOnly},
+		func(_ call, in structureIn) (any, error) { return engine.Classify(in.Pieces), nil })
 
 	tool(s, o, person, &sdk.Tool{Name: "components", Description: "The graph of components across every project and programme (TAXONOMY.md D46), as your change set reads it: " +
 		"who depends on whom (edges run from the work that depends to the work it depends on), how many months each runs, how widely each is depended on, " +
