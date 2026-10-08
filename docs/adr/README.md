@@ -35,6 +35,7 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0023](0023-a-decision-model-behind-a-port.md) | A decision model behind a port, run as a sidecar | Accepted |
 | [0024](0024-every-change-goes-through-a-change-set.md) | Every change goes through a change set | Accepted |
 | [0025](0025-an-agent-works-in-its-persons-change-set.md) | An agent works in its person's change set when asked | Accepted |
+| [0026](0026-the-semantic-layer-is-a-port.md) | The semantic layer is a port, and dbt its first adapter | Accepted |
 
 ## Writing one
 

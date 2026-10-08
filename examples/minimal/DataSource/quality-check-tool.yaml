@@ -10,3 +10,12 @@ spec:
   access: Paper forms transcribed into a shared spreadsheet each season.
   refresh: quarterly
   qualityIssues: Some forms arrive late and are transcribed after the season closes.
+  # Where its rows sit once loaded to the warehouse (TAXONOMY.md D57).
+  semanticModel:
+    model: stg_quality_checks
+    entity: delivery_check
+    key: check_id
+    time: {column: checked_on, grain: day}
+    dimensions:
+      - {name: region, column: depot_region, segment: region}
+      - {name: product_line, segment: product-line}

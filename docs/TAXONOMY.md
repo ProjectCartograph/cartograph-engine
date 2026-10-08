@@ -1609,3 +1609,41 @@ operations, projects with those depended on first, programmes,
 portfolios) and any answers that contradict each other, so a port is
 one change set written in one pass. The document's own names are kept
 as names and aliases; they never decide the kind.
+
+### D57. A KPI's number is defined as the semantic layer defines it. *(resolved)*
+
+**The problem.** A KPI said what is counted in words and named the data
+sources it is read from. The analytics engineer who builds the number
+in the warehouse had to read the words and decide again what is summed,
+over which rows, out of what, and split by what. Two people building
+the same KPI could build two numbers, and the record could not say
+which was right.
+
+**What Cartograph does.** A KPI may say how it is computed in the terms
+of the dbt semantic layer, the open standard most analytics teams use
+for metric definitions:
+
+- `metric.type` is one of dbt's metric types: `simple` (one measure),
+  `ratio` (a numerator over a denominator), `cumulative` (a measure
+  summed over a window) or `derived` (an expression over other KPIs'
+  metrics).
+- A measure is an aggregation (`sum`, `count`, `count_distinct`,
+  `average`, `min`, `max`, `median`, `sum_boolean`) of a column or
+  expression over one data source, which must be one of the KPI's own
+  sources (check `kpi-metric`), so where the number is checked and
+  where it is computed agree.
+- A data source may say where its rows sit in the warehouse as a dbt
+  semantic model: the dbt model, what one row is (its entity and key),
+  the time each row is counted at and its grain, and the columns a KPI
+  read from it may be split by, each naming the Segment it is when it
+  is one of the register's (D9).
+
+Both are optional: a KPI without a metric is as complete as before, and
+a team with no warehouse never sees the step. The semantic layer leaves
+Cartograph through a port (`internal/semantic`, docs/adr/0026); the dbt
+adapter writes `semantic_models` and `metrics` an engineer drops into a
+dbt project (`GET /semantic-layer`). A KPI's id is its metric's name and
+a data source's id its semantic model's, hyphens as underscores. The
+same port takes an importer, so metrics defined in the warehouse can
+later come back as KPIs.
+

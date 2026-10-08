@@ -27,6 +27,81 @@
         "team"
       ],
       "properties": {
+        "semanticModel": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "model",
+            "entity"
+          ],
+          "description": "Where the source's data sits in the warehouse, as a dbt semantic model (TAXONOMY.md D57): the dbt model, what one row is, its time and the dimensions the KPIs read from it may be split by.",
+          "properties": {
+            "model": {
+              "$ref": "common.schema.json#/$defs/Identifier",
+              "description": "The dbt model the semantic model is built on, as ref() names it."
+            },
+            "entity": {
+              "$ref": "common.schema.json#/$defs/Identifier",
+              "description": "What one row is: the primary entity, such as inspection."
+            },
+            "key": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "The column that identifies a row; the entity's name when left out."
+            },
+            "time": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "column",
+                "grain"
+              ],
+              "description": "The time each row is counted at: the semantic model's default time dimension.",
+              "properties": {
+                "column": {
+                  "$ref": "common.schema.json#/$defs/Identifier"
+                },
+                "grain": {
+                  "type": "string",
+                  "enum": [
+                    "day",
+                    "week",
+                    "month",
+                    "quarter",
+                    "year"
+                  ]
+                }
+              }
+            },
+            "dimensions": {
+              "type": "array",
+              "maxItems": 50,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "$ref": "common.schema.json#/$defs/Identifier"
+                  },
+                  "column": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "The column or expression; the name when left out."
+                  },
+                  "segment": {
+                    "$ref": "common.schema.json#/$defs/Slug",
+                    "x-cartograph-ref": "Segment",
+                    "description": "The segment it splits by, when it is one of the register's."
+                  }
+                }
+              },
+              "description": "The categorical columns a KPI read from it may be split by."
+            }
+          }
+        },
         "name": {
           "description": "Deprecated: the name is metadata.name, as Kubernetes keeps it. Read from a manifest saved before 2.6.0 and folded into metadata.name; never written.",
           "type": "string",

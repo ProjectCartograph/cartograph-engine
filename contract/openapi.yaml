@@ -820,6 +820,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Lineage"
+  /semantic-layer:
+    get:
+      operationId: exportSemanticLayer
+      summary: The KPIs as a semantic layer, in a tool's syntax
+      description: >-
+        Every KPI with a metric, and every data source one measures from,
+        written as a semantic layer (TAXONOMY.md D57): dbt's semantic
+        models and metrics today, for an analytics engineer to put in a dbt
+        project. Read as the change set reads the workspace. The notes say
+        what the record leaves to defaults. Formats lists the syntaxes this
+        deployment writes; none when the export is off.
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
+        - name: format
+          in: query
+          required: false
+          description: The syntax, such as dbt; the first the deployment writes when left out.
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: No exporter writes that format, or the export is off.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticExport"
   /structure:
     get:
       operationId: structureQuestions
@@ -4382,6 +4418,30 @@ components:
         y:
           type: number
           description: Its row in the column, centred on 0.
+    SemanticExport:
+      type: object
+      required: [format, formats, files, notes]
+      properties:
+        format:
+          type: string
+        formats:
+          type: array
+          items:
+            type: string
+        files:
+          type: array
+          items:
+            type: object
+            required: [path, content]
+            properties:
+              path:
+                type: string
+              content:
+                type: string
+        notes:
+          type: array
+          items:
+            type: string
     StructuredPiece:
       type: object
       required: [name, kind, where]

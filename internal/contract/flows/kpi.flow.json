@@ -153,6 +153,160 @@
             "hint": "How this number is broken down, such as by region. Leave empty if only the total is reported."
           }
         ]
+      },
+      {
+        "key": "metric",
+        "title": "How it is computed",
+        "guide": "How the number is computed from its sources, in the terms of the dbt semantic layer, so an analytics engineer can build it as a dbt metric.",
+        "optional": true,
+        "phase": "measure",
+        "fields": [
+          {
+            "path": "/spec/metric/type",
+            "control": "choice",
+            "hint": "Simple: one count or sum. Ratio: one count out of another. Cumulative: a count summed over a window. Derived: worked out from other KPIs."
+          },
+          {
+            "path": "/spec/metric/measure/source",
+            "control": "reference",
+            "hint": "What is counted: the data source it is counted in, one of this KPI's sources.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "simple",
+                "cumulative"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/measure/agg",
+            "control": "choice",
+            "hint": "What is counted: how the rows are added up.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "simple",
+                "cumulative"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/measure/expr",
+            "control": "text",
+            "hint": "What is counted: the column, or expression, added up. Leave it empty to count rows.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "simple",
+                "cumulative"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/numerator/source",
+            "control": "reference",
+            "hint": "What is counted: the data source it is counted in, one of this KPI's sources.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "ratio"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/numerator/agg",
+            "control": "choice",
+            "hint": "What is counted: how the rows are added up.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "ratio"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/numerator/expr",
+            "control": "text",
+            "hint": "What is counted: the column, or expression, added up. Leave it empty to count rows.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "ratio"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/denominator/source",
+            "control": "reference",
+            "hint": "Out of what: the data source it is counted in, one of this KPI's sources.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "ratio"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/denominator/agg",
+            "control": "choice",
+            "hint": "Out of what: how the rows are added up.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "ratio"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/denominator/expr",
+            "control": "text",
+            "hint": "Out of what: the column, or expression, added up. Leave it empty to count rows.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "ratio"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/window",
+            "control": "text",
+            "hint": "How far back it sums, such as 28 days. Leave it empty to sum over all time.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "cumulative"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/uses",
+            "control": "references",
+            "hint": "The KPIs it is worked out from.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "derived"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/expr",
+            "control": "text",
+            "hint": "The expression over them, each named by its id with hyphens as underscores.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "derived"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/filter",
+            "control": "text",
+            "hint": "Only the rows it counts, as a dbt filter. Leave it empty to count every row."
+          }
+        ]
       }
     ],
     "review": true

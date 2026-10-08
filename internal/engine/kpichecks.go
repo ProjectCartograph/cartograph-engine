@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"strings"
 )
 
@@ -53,8 +54,41 @@ func (e *Engine) kpiChecksOf(_ context.Context, _ string, doc map[string]any) ([
 	add("kpi-cycle", "verification", text(spec, "cycle"), "Read on a reporting cycle.", "No reporting cycle yet: how often it is read.")
 	goals, _ := spec["goals"].([]any)
 	add("kpi-aligned", "result", len(goals) > 0, "Measures at least one aim.", "Measures no aim yet: name the goal, objective or outcome it tells you about.")
+	if mt, _ := spec["metric"].(map[string]any); mt != nil {
+		problem := metricProblem(mt, stringsOf(spec["sources"]))
+		add("kpi-metric", "metric", problem == "", "Computed as a dbt metric from its sources.", problem)
+	}
 	if pc, ok := pendingCheck(doc); ok {
 		out = append(out, pc)
 	}
 	return out, nil
+}
+
+// metricProblem says what keeps a KPI's metric from being built in the
+// semantic layer (TAXONOMY.md D57): the parts its type needs, and each
+// measure over one of the KPI's own sources, so the number and where it
+// is checked agree. Empty when nothing does.
+func metricProblem(mt map[string]any, sources []string) string {
+	own := map[string]bool{}
+	for _, s := range sources {
+		own[s] = true
+	}
+	need := map[string][]string{"simple": {"measure"}, "cumulative": {"measure"}, "ratio": {"numerator", "denominator"}}
+	t, _ := mt["type"].(string)
+	if t == "derived" {
+		if expr, _ := mt["expr"].(string); strings.TrimSpace(expr) == "" || len(stringsOf(mt["uses"])) == 0 {
+			return "A derived metric needs the KPIs it uses and the expression over them."
+		}
+		return ""
+	}
+	for _, part := range need[t] {
+		ms, _ := mt[part].(map[string]any)
+		if ms == nil {
+			return fmt.Sprintf("A %s metric needs its %s: the source it is counted in and how.", t, part)
+		}
+		if src, _ := ms["source"].(string); !own[src] {
+			return fmt.Sprintf("Its %s is counted in %q, which is not one of this KPI's sources: add it to the sources, or count it in one of them.", part, src)
+		}
+	}
+	return ""
 }

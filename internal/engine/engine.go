@@ -17,6 +17,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/semantic"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
@@ -48,7 +49,10 @@ type Engine struct {
 	seriesRules map[string][]seriesRule
 	// decider answers typed questions about text (docs/adr/0023); nil
 	// when the deployment chose none, and decisions caches its answers.
-	decider   decide.Decider
+	decider decide.Decider
+	// semantic is the syntaxes the KPIs export in as a semantic layer
+	// (TAXONOMY.md D57); empty when none is configured.
+	semantic  map[string]semantic.Exporter
 	decisions *decisionCache
 }
 

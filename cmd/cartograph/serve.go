@@ -74,7 +74,7 @@ func runServe(args []string) error {
 	if cfg.Store != "" {
 		target = cfg.Store
 	}
-	opts := storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout, FanoutURL: cfg.FanoutURL, DocCache: cfg.DocCache, CompactAfter: cfg.CompactAfter, Reports: cfg.Reports, GraphLayout: cfg.GraphLayout, Decide: cfg.Decide, DecideURL: cfg.DecideURL, DecideTimeout: cfg.DecideTimeout}
+	opts := storeOptions{Target: target, Watch: cfg.Watch, Codec: cfg.Codec, Fanout: cfg.Fanout, FanoutURL: cfg.FanoutURL, DocCache: cfg.DocCache, CompactAfter: cfg.CompactAfter, Reports: cfg.Reports, GraphLayout: cfg.GraphLayout, Semantic: cfg.Semantic, Decide: cfg.Decide, DecideURL: cfg.DecideURL, DecideTimeout: cfg.DecideTimeout}
 	if cfg.Authz == "access" {
 		d, err := loadDirectory(cfg.AccessFile)
 		if err != nil {

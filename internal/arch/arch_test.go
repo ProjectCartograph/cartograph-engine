@@ -49,7 +49,7 @@ var outer = []string{"internal/api", "internal/spa", "internal/render", "interna
 // outward.
 var adapters = []string{
 	"internal/store/", "internal/codec/", "internal/printer/", "internal/auth/",
-	"internal/crdt/", "internal/fanout/", "internal/reporting/", "internal/layout/", "internal/decide/",
+	"internal/crdt/", "internal/fanout/", "internal/reporting/", "internal/layout/", "internal/decide/", "internal/semantic/",
 	"internal/yamlfmt", "pkg/client/",
 }
 
@@ -72,6 +72,7 @@ func adapter(own string) []string {
 		"internal/reporting/postgres", "internal/reporting/conformance",
 		"internal/layout/force", "internal/layout/layered", "internal/layout/conformance",
 		"internal/decide/laya", "internal/decide/conformance",
+		"internal/semantic/dbt", "internal/semantic/conformance",
 	}
 	var forbid []string
 	for _, s := range siblings {
@@ -115,8 +116,10 @@ var rules = map[string][]string{
 	"internal/printer": join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/layout":  join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/decide":  join([]string{"internal", "pkg", "cmd"}, drivers),
-	"internal/crdt":    join([]string{"internal", "pkg", "cmd"}, drivers),
-	"internal/fanout":  join([]string{"internal", "pkg", "cmd"}, drivers),
+	// The semantic layer port: its own terms, nothing else (docs/adr/0026).
+	"internal/semantic": join([]string{"internal", "pkg", "cmd"}, drivers),
+	"internal/crdt":     join([]string{"internal", "pkg", "cmd"}, drivers),
+	"internal/fanout":   join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/auth": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/codec", "internal/printer",
 		"internal/crdt", "internal/fanout", "internal/contract", "internal/sentence", "internal/syncserver", "internal/yamlfmt",
 		"pkg", "cmd"}, outer, adapters, without(drivers, "net/http")),
@@ -156,10 +159,14 @@ var rules = map[string][]string{
 	"internal/decide/laya":        join([]string{"internal/store", "internal/codec"}, without(drivers, "net/http"), adapter("internal/decide/laya")),
 	"internal/decide/conformance": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/decide/conformance")),
 	"internal/layout/conformance": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/conformance")),
-	"internal/auth/access":        join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/access")),
-	"internal/auth/proxy":         join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/proxy")),
-	"internal/auth/roles":         join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/roles")),
-	"internal/yamlfmt":            join([]string{"internal", "pkg", "cmd"}, without(drivers, "go.yaml.in/yaml")),
+	// A semantic layer exporter writes one tool's syntax; it knows its port
+	// and a YAML library, nothing else.
+	"internal/semantic/dbt":         join([]string{"internal/store", "internal/codec"}, without(drivers, "go.yaml.in/yaml"), adapter("internal/semantic/dbt")),
+	"internal/semantic/conformance": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/semantic/conformance")),
+	"internal/auth/access":          join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/access")),
+	"internal/auth/proxy":           join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/proxy")),
+	"internal/auth/roles":           join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/roles")),
+	"internal/yamlfmt":              join([]string{"internal", "pkg", "cmd"}, without(drivers, "go.yaml.in/yaml")),
 	// The CRDT adapter knows its port and wazero; its suite knows the
 	// port only, so it holds any adapter to the same promises.
 	"internal/crdt/automerge":   join([]string{"internal/store", "internal/codec", "internal/printer", "internal/auth", "internal/fanout"}, adapter("internal/crdt/automerge")),

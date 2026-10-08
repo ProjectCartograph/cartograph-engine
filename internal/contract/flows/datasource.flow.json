@@ -78,6 +78,44 @@
             "hint": "What is already known to be wrong with it."
           }
         ]
+      },
+      {
+        "key": "semantic-model",
+        "title": "In the warehouse",
+        "guide": "Where its data sits in the warehouse, as a dbt semantic model, so the KPIs read from it can be built as dbt metrics.",
+        "optional": true,
+        "fields": [
+          {
+            "path": "/spec/semanticModel/model",
+            "control": "text",
+            "hint": "The dbt model it is built on, as ref() names it."
+          },
+          {
+            "path": "/spec/semanticModel/entity",
+            "control": "text",
+            "hint": "What one row is, such as inspection."
+          },
+          {
+            "path": "/spec/semanticModel/key",
+            "control": "text",
+            "hint": "The column that identifies a row. Leave it empty when it has the entity's name."
+          },
+          {
+            "path": "/spec/semanticModel/time/column",
+            "control": "text",
+            "hint": "The column with the date each row is counted at."
+          },
+          {
+            "path": "/spec/semanticModel/time/grain",
+            "control": "choice",
+            "hint": "The finest it is counted by: day, week, month, quarter or year."
+          },
+          {
+            "path": "/spec/semanticModel/dimensions",
+            "control": "list",
+            "hint": "The columns a KPI read from it may be split by, each with the segment it is, when it is one."
+          }
+        ]
       }
     ],
     "review": true

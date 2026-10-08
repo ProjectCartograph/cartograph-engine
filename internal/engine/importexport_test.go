@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/semantic"
 )
 
 // exampleDir locates cartograph/examples/minimal relative to this package
@@ -256,5 +257,51 @@ func TestLineageFollowsTheDataAsEdited(t *testing.T) {
 	}
 	if col["DataSource/member-register"] >= col["Project/quality-check-rollout"] || col["Project/quality-check-rollout"] >= col["DataSource/quality-check-tool"] {
 		t.Errorf("columns: %v", col)
+	}
+}
+
+// The example's KPIs as dbt's semantic layer: the check tool a semantic
+// model with the ratio's two measures, the pass rate a ratio of two
+// simple metrics, and a data source with no model said so.
+func TestTheExampleAsASemanticLayer(t *testing.T) {
+	t.Parallel()
+	e := newTestEngine(t)
+	if _, err := e.ImportDir(context.Background(), exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	l, notes, err := e.SemanticLayer(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model *semantic.Model
+	for i := range l.Models {
+		if l.Models[i].Source == "quality-check-tool" {
+			model = &l.Models[i]
+		}
+	}
+	if model == nil || model.Ref != "stg_quality_checks" || model.TimeColumn != "checked_on" || len(model.Measures) != 2 || len(model.Dimensions) != 2 {
+		t.Fatalf("model: %+v", model)
+	}
+	byName := map[string]semantic.Metric{}
+	for _, m := range l.Metrics {
+		byName[m.Name] = m
+	}
+	rate := byName["quality_pass_rate"]
+	if rate.Type != semantic.Ratio || byName[rate.Numerator].Type != semantic.Simple || byName[rate.Denominator].Measure != "quality_pass_rate_denominator" {
+		t.Fatalf("metrics: %+v", l.Metrics)
+	}
+	_ = notes
+	v, err := e.Get(context.Background(), "KPI", "quality-pass-rate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	checks, err := e.ChecksOf(context.Background(), "KPI", "quality-pass-rate", v.YAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range checks {
+		if c.ID == "kpi-metric" && c.Open() {
+			t.Errorf("the example's metric: %s", c.Message)
+		}
 	}
 }

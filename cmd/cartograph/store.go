@@ -9,6 +9,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout/force"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/layout/layered"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/semantic/dbt"
 	"log/slog"
 	"os"
 	"sync"
@@ -88,6 +89,8 @@ type storeOptions struct {
 	// GraphLayout places the workspace graph: "layered" (the default) or
 	// "force".
 	GraphLayout string
+	// Semantic is the semantic layer exporter: "dbt" or "off".
+	Semantic string
 	// Decide is the decision model: "off" (none) or "laya", at DecideURL,
 	// each call given at most DecideTimeout (docs/adr/0023).
 	Decide        string
@@ -155,7 +158,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		counted := &countedBus{Bus: bus}
 		accessOpts, authz, bind := accessControl(o, postgres.NewAccessStore(pool))
 		e, err := engine.New(postgres.NewManifestStore(pool), postgres.NewOperationalStore(pool),
-			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), decider(o), engine.WithBundles(postgres.NewBundleStore(pool)))...)
+			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), semanticExporters(o.Semantic), decider(o), engine.WithBundles(postgres.NewBundleStore(pool)))...)
 		if err != nil {
 			bus.Close()
 			pool.Close()
@@ -194,7 +197,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		bus := fanoutmemory.New()
 		counted := &countedBus{Bus: bus}
 		accessOpts, authz, bind := accessControl(o, v.Index().Access())
-		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), decider(o))...)
+		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), semanticExporters(o.Semantic), decider(o))...)
 		if err != nil {
 			bus.Close()
 			v.Close()
@@ -226,7 +229,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 	docs := sqlite.NewDocStore(db)
 	counted := &countedBus{Bus: bus}
 	accessOpts, authz, bind := accessControl(o, sqlite.NewAccessStore(db))
-	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), decider(o))...)
+	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), semanticExporters(o.Semantic), decider(o))...)
 	if err != nil {
 		bus.Close()
 		db.Close()
@@ -402,6 +405,15 @@ func graphLayout(name string) layout.Layout {
 		return force.New()
 	}
 	return layered.New()
+}
+
+// semanticExporters is the semantic layer exporter the configuration
+// names: dbt unless it is off. Exporting costs nothing until asked.
+func semanticExporters(name string) engine.Option {
+	if name == "off" {
+		return engine.WithSemanticExporters()
+	}
+	return engine.WithSemanticExporters(dbt.New())
 }
 
 // decider is the decision model the configuration names: a Laya sidecar,

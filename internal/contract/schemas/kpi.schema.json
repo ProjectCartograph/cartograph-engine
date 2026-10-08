@@ -29,6 +29,61 @@
         "direction"
       ],
       "properties": {
+        "metric": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "description": "How the number is computed from its sources, in the dbt semantic layer's terms (TAXONOMY.md D57), so an analytics engineer can build it as a dbt metric: simple (one measure), ratio (a numerator over a denominator), cumulative (one measure summed over a window) or derived (an expression over other KPIs' metrics).",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "simple",
+                "ratio",
+                "cumulative",
+                "derived"
+              ]
+            },
+            "measure": {
+              "$ref": "common.schema.json#/$defs/Measure",
+              "description": "For simple and cumulative: the measure."
+            },
+            "numerator": {
+              "$ref": "common.schema.json#/$defs/Measure",
+              "description": "For ratio: what is counted."
+            },
+            "denominator": {
+              "$ref": "common.schema.json#/$defs/Measure",
+              "description": "For ratio: what it is counted out of."
+            },
+            "window": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,3} (day|week|month|quarter|year)s?$",
+              "description": "For cumulative: how far back it sums, such as 28 days; over all time when left out."
+            },
+            "expr": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "For derived: the expression over the metrics it uses, named by their KPIs' ids with hyphens as underscores."
+            },
+            "uses": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "x-cartograph-ref": "KPI"
+              },
+              "description": "For derived: the KPIs whose metrics the expression uses."
+            },
+            "filter": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "A dbt where filter on the metric, such as {{ Dimension('depot__region') }} = 'north'."
+            }
+          }
+        },
         "name": {
           "description": "Deprecated: the name is metadata.name, as Kubernetes keeps it. Read from a manifest saved before 2.6.0 and folded into metadata.name; never written.",
           "type": "string",

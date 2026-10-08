@@ -19,3 +19,9 @@ spec:
   goals: [raise-produce-quality, faults-found-before-dispatch]
   resultLevel: outcome
   disaggregations: [region, product-line]
+  # As the analytics engineer builds it (TAXONOMY.md D57): deliveries
+  # passing, out of deliveries checked, in the check tool's rows.
+  metric:
+    type: ratio
+    numerator: {source: quality-check-tool, agg: sum, expr: "case when passed then 1 else 0 end"}
+    denominator: {source: quality-check-tool, agg: count}

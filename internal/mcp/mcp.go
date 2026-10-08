@@ -686,6 +686,10 @@ type (
 	structureIn struct {
 		Pieces []any `json:"pieces" jsonschema:"every piece of work the documents or your person name, each an object with its name and its answers to the structure questions"`
 	}
+	semanticIn struct {
+		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to read in; your latest open one when left out"`
+		Format    string `json:"format,omitempty" jsonschema:"the syntax, such as dbt; the deployment's first when left out"`
+	}
 	readingIn struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to read in: your own, or your person's when they ask you to help with it; your latest open one when left out"`
 	}
@@ -1018,6 +1022,28 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 						"each an object with name and only the answers that are yes, like " + structureExample + "."}, nil
 			}
 			return engine.Classify(pieces), nil
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "semantic_layer", Description: "The KPIs with a metric, and the data sources they measure from, written as a semantic layer " +
+		"(TAXONOMY.md D57) for an analytics engineer: dbt's semantic models and metrics. Notes say what the record leaves to defaults, " +
+		"such as a data source with no semantic model. Ask it when your person wants their KPIs built in the warehouse.", Annotations: readOnly},
+		func(c call, in semanticIn) (any, error) {
+			c = c.reading(in.ChangeSet)
+			format := in.Format
+			if format == "" {
+				if fs := e.SemanticFormats(); len(fs) > 0 {
+					format = fs[0]
+				}
+			}
+			files, notes, err := e.ExportSemantic(c.ctx, format)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]map[string]string, len(files))
+			for i, f := range files {
+				out[i] = map[string]string{"path": f.Path, "content": string(f.Content)}
+			}
+			return map[string]any{"format": format, "files": out, "notes": notes}, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "components", Description: "The graph of components across every project and programme (TAXONOMY.md D46), as your change set reads it: " +

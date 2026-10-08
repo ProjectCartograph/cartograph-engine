@@ -1717,6 +1717,17 @@ type ScheduleItem struct {
 // ScheduleItemForm defines model for ScheduleItem.Form.
 type ScheduleItemForm string
 
+// SemanticExport defines model for SemanticExport.
+type SemanticExport struct {
+	Files []struct {
+		Content string `json:"content"`
+		Path    string `json:"path"`
+	} `json:"files"`
+	Format  string   `json:"format"`
+	Formats []string `json:"formats"`
+	Notes   []string `json:"notes"`
+}
+
 // SeriesAppend defines model for SeriesAppend.
 type SeriesAppend struct {
 	// Item The item, as the series' schema has it: for a reading, period and value, and provisional and note when they apply.
@@ -2324,6 +2335,15 @@ type GetReportParamsFormat string
 // GetReportParamsName defines parameters for GetReport.
 type GetReportParamsName string
 
+// ExportSemanticLayerParams defines parameters for ExportSemanticLayer.
+type ExportSemanticLayerParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+
+	// Format The syntax, such as dbt; the first the deployment writes when left out.
+	Format *string `form:"format,omitempty" json:"format,omitempty"`
+}
+
 // ListSnapshotsParams defines parameters for ListSnapshots.
 type ListSnapshotsParams struct {
 	// Limit Maximum number of snapshots to return
@@ -2720,6 +2740,9 @@ type ServerInterface interface {
 	// GetSchema The JSON Schema document for a kind
 	// (GET /schemas/{kind})
 	GetSchema(w http.ResponseWriter, r *http.Request, kind KindParam)
+	// ExportSemanticLayer The KPIs as a semantic layer, in a tool's syntax
+	// (GET /semantic-layer)
+	ExportSemanticLayer(w http.ResponseWriter, r *http.Request, params ExportSemanticLayerParams)
 	// GetSession Who this request acts as, as the engine records it
 	// (GET /session)
 	GetSession(w http.ResponseWriter, r *http.Request)
@@ -5447,6 +5470,52 @@ func (siw *ServerInterfaceWrapper) GetSchema(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// ExportSemanticLayer operation middleware
+func (siw *ServerInterfaceWrapper) ExportSemanticLayer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ExportSemanticLayerParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "format" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "format", r.URL.Query(), &params.Format, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "format"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "format", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ExportSemanticLayer(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetSession operation middleware
 func (siw *ServerInterfaceWrapper) GetSession(w http.ResponseWriter, r *http.Request) {
 
@@ -5821,6 +5890,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/order", wrapper.GetOrder)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/understand", wrapper.Understand)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/lineage", wrapper.GetLineage)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/semantic-layer", wrapper.ExportSemanticLayer)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/structure", wrapper.StructureQuestions)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/structure", wrapper.ClassifyStructure)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/relevant", wrapper.Relevant)
@@ -11012,6 +11082,70 @@ func (response GetSchema404JSONResponse) VisitGetSchemaResponse(w http.ResponseW
 	return err
 }
 
+type ExportSemanticLayerRequestObject struct {
+	Params ExportSemanticLayerParams
+}
+
+type ExportSemanticLayerResponseObject interface {
+	VisitExportSemanticLayerResponse(w http.ResponseWriter) error
+}
+
+type ExportSemanticLayer200JSONResponse SemanticExport
+
+func (response ExportSemanticLayer200JSONResponse) VisitExportSemanticLayerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExportSemanticLayer401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ExportSemanticLayer401JSONResponse) VisitExportSemanticLayerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExportSemanticLayer403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ExportSemanticLayer403JSONResponse) VisitExportSemanticLayerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExportSemanticLayer404JSONResponse Problem
+
+func (response ExportSemanticLayer404JSONResponse) VisitExportSemanticLayerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetSessionRequestObject struct {
 }
 
@@ -11957,6 +12091,9 @@ type StrictServerInterface interface {
 	// GetSchema The JSON Schema document for a kind
 	// (GET /schemas/{kind})
 	GetSchema(ctx context.Context, request GetSchemaRequestObject) (GetSchemaResponseObject, error)
+	// ExportSemanticLayer The KPIs as a semantic layer, in a tool's syntax
+	// (GET /semantic-layer)
+	ExportSemanticLayer(ctx context.Context, request ExportSemanticLayerRequestObject) (ExportSemanticLayerResponseObject, error)
 	// GetSession Who this request acts as, as the engine records it
 	// (GET /session)
 	GetSession(ctx context.Context, request GetSessionRequestObject) (GetSessionResponseObject, error)
@@ -14193,6 +14330,32 @@ func (sh *strictHandler) GetSchema(w http.ResponseWriter, r *http.Request, kind 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetSchemaResponseObject); ok {
 		if err := validResponse.VisitGetSchemaResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ExportSemanticLayer operation middleware
+func (sh *strictHandler) ExportSemanticLayer(w http.ResponseWriter, r *http.Request, params ExportSemanticLayerParams) {
+	var request ExportSemanticLayerRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ExportSemanticLayer(ctx, request.(ExportSemanticLayerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ExportSemanticLayer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ExportSemanticLayerResponseObject); ok {
+		if err := validResponse.VisitExportSemanticLayerResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

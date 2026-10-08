@@ -3,6 +3,46 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Common definitions",
   "$defs": {
+      "Identifier": {
+        "type": "string",
+        "pattern": "^[a-z_][a-z0-9_]{0,63}$",
+        "description": "A name in a warehouse and in dbt: lowercase letters, digits and underscores."
+      },
+      "Measure": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "agg"
+        ],
+        "description": "A dbt semantic layer measure: an aggregation over one data source's semantic model.",
+        "properties": {
+          "source": {
+            "$ref": "common.schema.json#/$defs/Slug",
+            "x-cartograph-ref": "DataSource",
+            "description": "The data source it is aggregated over; one of the KPI's sources."
+          },
+          "agg": {
+            "type": "string",
+            "enum": [
+              "sum",
+              "count",
+              "count_distinct",
+              "average",
+              "min",
+              "max",
+              "median",
+              "sum_boolean"
+            ],
+            "description": "How the rows are aggregated, as dbt names it."
+          },
+          "expr": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "The column or SQL expression aggregated; the measure counts rows when it is left out and agg is count."
+          }
+        }
+      },
     "Slug": {
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"

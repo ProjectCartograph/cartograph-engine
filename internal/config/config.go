@@ -89,6 +89,11 @@ type Config struct {
 	// a force-directed layout. CARTOGRAPH_GRAPH_LAYOUT.
 	GraphLayout string
 
+	// Semantic is the syntax the KPIs export in as a semantic layer
+	// (TAXONOMY.md D57): "dbt" (the default) or "off".
+	// CARTOGRAPH_SEMANTIC.
+	Semantic string
+
 	// Decide is the decision model the engine asks about what people
 	// write (docs/adr/0023): "off" (the default) or "laya", a Laya
 	// sidecar at DecideURL, each call given at most DecideTimeout.
@@ -200,6 +205,7 @@ func Defaults() Config {
 		CompactAfter:    24 * time.Hour,
 		Reports:         "computed",
 		GraphLayout:     "layered",
+		Semantic:        "dbt",
 		Decide:          "off",
 		DecideURL:       "http://127.0.0.1:8411",
 		DecideTimeout:   5 * time.Second,
@@ -299,6 +305,9 @@ func FromEnv(getenv Getenv) (Config, error) {
 	if v := getenv("CARTOGRAPH_GRAPH_LAYOUT"); v != "" {
 		c.GraphLayout = v
 	}
+	if v := getenv("CARTOGRAPH_SEMANTIC"); v != "" {
+		c.Semantic = v
+	}
 	if v := getenv("CARTOGRAPH_DECIDE"); v != "" {
 		c.Decide = v
 	}
@@ -356,6 +365,7 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.MCPIssuer, "mcp-issuer", c.MCPIssuer, "the authorization server MCP clients sign in with (CARTOGRAPH_MCP_ISSUER)")
 	fs.StringVar(&c.Reports, "reports", c.Reports, "reporting: computed, postgres (views, with a Postgres store) or off (CARTOGRAPH_REPORTS)")
 	fs.StringVar(&c.GraphLayout, "graph-layout", c.GraphLayout, "how the workspace graph is placed: layered or force (CARTOGRAPH_GRAPH_LAYOUT)")
+	fs.StringVar(&c.Semantic, "semantic", c.Semantic, "the syntax the KPIs export in as a semantic layer: dbt or off (CARTOGRAPH_SEMANTIC)")
 	fs.StringVar(&c.Decide, "decide", c.Decide, "the decision model asked about what people write: off or laya (CARTOGRAPH_DECIDE)")
 	fs.StringVar(&c.DecideURL, "decide-url", c.DecideURL, "the Laya sidecar's address (CARTOGRAPH_DECIDE_URL)")
 	fs.DurationVar(&c.DecideTimeout, "decide-timeout", c.DecideTimeout, "the longest one decision may take (CARTOGRAPH_DECIDE_TIMEOUT)")
@@ -446,6 +456,9 @@ func (c Config) Validate() error {
 		if c.DecideTimeout <= 0 {
 			return fmt.Errorf("decide timeout %s: want more than 0", c.DecideTimeout)
 		}
+	}
+	if c.Semantic != "dbt" && c.Semantic != "off" {
+		return fmt.Errorf("semantic %q: want dbt or off", c.Semantic)
 	}
 	if c.GraphLayout != "layered" && c.GraphLayout != "force" {
 		return fmt.Errorf("graph layout %q: want layered or force", c.GraphLayout)
