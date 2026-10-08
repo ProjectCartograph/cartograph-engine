@@ -2912,8 +2912,31 @@ func registerInto(c call, set, kind, id, section, field string) (int, int, []eng
 	added := 0
 	for _, it := range items {
 		r, created, err := applyFields(c, set, kind, id, map[string]any{field + "/-": it}, nil)
+		var invalid *engine.ValidationError
+		if errors.As(err, &invalid) {
+			// A row is worth more than a cell: the cells refused (an owner
+			// named by person, a date that is not one) are dropped and the
+			// row tried again, the refusal said.
+			trimmed := map[string]any{}
+			for k, v := range it {
+				trimmed[k] = v
+			}
+			dropped := false
+			for _, p := range invalid.Problems {
+				segs := strings.Split(strings.TrimPrefix(p.Path, field+"/"), "/")
+				if len(segs) >= 2 {
+					if _, ok := trimmed[segs[1]]; ok && segs[1] != "id" && segs[1] != "name" && segs[1] != "description" && segs[1] != "kpi" {
+						delete(trimmed, segs[1])
+						dropped = true
+					}
+				}
+			}
+			if dropped {
+				refused = append(refused, invalid.Problems...)
+				r, created, err = applyFields(c, set, kind, id, map[string]any{field + "/-": trimmed}, nil)
+			}
+		}
 		if err != nil {
-			var invalid *engine.ValidationError
 			if errors.As(err, &invalid) {
 				refused = append(refused, invalid.Problems...)
 				continue
