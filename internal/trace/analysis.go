@@ -21,7 +21,7 @@ const (
 )
 
 // writes are the tools that change a change set.
-var writes = map[string]bool{"start_work": true, "save_draft": true, "save_drafts": true, "edit_draft": true, "settle": true,
+var writes = map[string]bool{"port": true, "settle_register": true, "bring_document": true, "start_work": true, "save_draft": true, "save_drafts": true, "edit_draft": true, "settle": true,
 	"leave_open": true, "discard_draft": true, "propose": true, "propose_item": true, "propose_save": true, "propose_set": true, "propose_state": true}
 
 // ToolStats is one tool's line in the report.
@@ -181,12 +181,17 @@ func Analyse(calls []Call) Report {
 				ss.Defects++
 				failedStep[step]++
 				r.Value[Waste]++
+			case c.Tool == "discard_draft":
+				// Undoing a write is rework, however cleanly it ends.
+				ss.Writes++
+				r.Value[Waste]++
 			case writes[c.Tool]:
 				ss.Writes++
 				r.Value[ValueAdding]++
 			default:
 				// A read repeated with the same keys on the same record,
-				// with nothing written between, is waste.
+				// with nothing written to that record between, is waste:
+				// it is read again as it was.
 				sig := strings.Join(c.Keys, ",")
 				if prev, seen := lastRead[step]; seen && prev == sig {
 					r.Value[Waste]++
@@ -196,7 +201,17 @@ func Analyse(calls []Call) Report {
 				lastRead[step] = sig
 			}
 			if writes[c.Tool] && c.Outcome == OK {
-				lastRead = map[string]string{}
+				// A write to one record makes only its reads stale; one
+				// over the change set (a port, a batch) makes all of them.
+				if c.Record == "" {
+					lastRead = map[string]string{}
+				} else {
+					for k := range lastRead {
+						if strings.HasSuffix(k, "|"+c.Record) {
+							delete(lastRead, k)
+						}
+					}
+				}
 			}
 			if retry {
 				ss.Rework++

@@ -47,3 +47,21 @@ func TestAnalyseReadsCallsAsAProcess(t *testing.T) {
 		t.Errorf("sigma %v for a quarter defective", r.Sigma)
 	}
 }
+
+// A record read again with nothing written to it since is waste, even
+// when other records were written between; undoing a write is rework.
+func TestARereadOfAnUnchangedRecordIsWaste(t *testing.T) {
+	t.Parallel()
+	at := time.Date(2026, 10, 8, 9, 0, 0, 0, time.UTC)
+	c := func(tool, record string) trace.Call {
+		at = at.Add(time.Second)
+		return trace.Call{At: at, Tool: tool, Record: record, Session: "s", Outcome: trace.OK, Keys: []string{"id", "kind"}}
+	}
+	r := trace.Analyse([]trace.Call{
+		c("get", "Project/a"), c("edit_draft", "Project/b"), c("get", "Project/a"),
+		c("edit_draft", "Project/a"), c("get", "Project/a"), c("discard_draft", "Team/t"),
+	})
+	if r.Value[trace.Waste] != 2 || r.Value[trace.Necessary] != 2 || r.Value[trace.ValueAdding] != 2 {
+		t.Fatalf("value stream %v", r.Value)
+	}
+}

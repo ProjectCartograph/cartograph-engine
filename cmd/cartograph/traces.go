@@ -20,11 +20,12 @@ import (
 func runTraces(args []string) error {
 	fs := flag.NewFlagSet("traces", flag.ContinueOnError)
 	asJSON := fs.Bool("json", false, "print the report as JSON")
+	agent := fs.String("agent", "", "only the calls of this agent (its client name), so one writer is measured apart from another")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() == 0 {
-		return fmt.Errorf("usage: cartograph traces [-json] <trace file>... (the files CARTOGRAPH_MCP_TRACE appends to)")
+		return fmt.Errorf("usage: cartograph traces [-json] [-agent name] <trace file>... (the files CARTOGRAPH_MCP_TRACE appends to)")
 	}
 	var calls []trace.Call
 	for _, path := range fs.Args() {
@@ -37,7 +38,11 @@ func runTraces(args []string) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
-		calls = append(calls, cs...)
+		for _, c := range cs {
+			if *agent == "" || c.Agent == *agent {
+				calls = append(calls, c)
+			}
+		}
 	}
 	sort.SliceStable(calls, func(i, j int) bool { return calls[i].At.Before(calls[j].At) })
 	r := trace.Analyse(calls)
