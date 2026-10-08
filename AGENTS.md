@@ -33,6 +33,7 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 ## Rules that are not negotiable
 
 - **Everything runs through the flake, agents included.** Every command is a `just` recipe or runs inside `nix develop` (or is a `nix build` or `nix run` of the flake): never a system binary, never a tool installed on the machine, never a Makefile (`just` is this repository's one task runner). This holds for an agent as much as a person, and for anything an agent starts: a server under evaluation is a `nix build` of a pinned commit, served from the Nix store, so a run is never touched by code changing beside it, and every environment is the same as every other.
+- **Build, test and serve in the test environment; change on the host.** Every command that builds, tests or serves runs in the container through `scripts/dev` (`scripts/dev just test`), which mounts the workspace read-only, runs in its own synced copy, and shares one Nix store volume across every instance (`docs/CONTAINERS.md`). The environment never makes a change: edits, `jj` and pushes happen on the host, through the flake.
 - **Version control is jujutsu, colocated with git.** Every clone is a colocated `jj` repository (`jj git init --colocate` once in a plain git clone), and an agent makes every change with `jj` from the flake: `jj new -m` before a piece of work, `jj describe`, `jj bookmark set`, `jj git push`. Never `git commit`, `git push`, `git rebase` or `git checkout`. The read-only git queries a recipe shares with CI (whose checkouts are plain git) stay as they are.
 - **Contract first.** `contract/openapi.yaml`, `contract/schemas/*.schema.json` and `contract/flows/*.flow.json` are the truth. Change them, `just generate`, commit the generated Go with the change. Never edit `internal/api/gen`, `internal/contract/schemas` or `internal/contract/flows` by hand.
 - **Clean architecture, enforced.** Dependencies point inward: entities (the kinds, the contract) know nothing of the engine; the engine knows ports, never an adapter, never a driver, never a syntax; adapters know the ports; `cmd` is the only package that knows everything and the only place an adapter is chosen, from configuration. `internal/arch` is the test; `docs/ARCHITECTURE.md` section 3 is the picture. A new capability that needs a file path, SQL, an HTTP header, a browser or a syntax is a new port plus an adapter.
@@ -81,6 +82,7 @@ Run one agent at a time. Several at once only with the person's leave.
 - `docs/UI_CONTRACT.md`, `docs/MULTIPLAYER.md`: what interfaces are built from, and shared editing.
 - `docs/DESIGN_RULES.md`: how Cartograph behaves. `docs/TAXONOMY.md`: what the nouns mean.
 - `docs/EVALUATING.md`: judging a change agents use, by DMAIC, from the server and the trace.
+- `docs/CONTAINERS.md`: the test environment every command builds, tests and serves in.
 - `STYLE.md`: code and commits. `CONTRIBUTING.md`: the loop.
 - `pkg/`: the public surface other repositories import (`client`, `uiconformance`), under the module path `github.com/ProjectCartograph/cartograph-engine/v2`. Changing a signature there is a breaking change; say so.
 

@@ -1,0 +1,53 @@
+# The test environment (docs/CONTAINERS.md): every recipe, build and
+# server, and every command an agent runs to test, runs in it, through
+# scripts/dev; the host needs a container runtime and nothing else.
+#
+#   scripts/dev just test
+#   scripts/dev just serve
+#
+# It never makes a change. The workspace (this repository's parent
+# directory, holding cartograph-engine and cartograph-ui) is mounted
+# read-only at /src, and each command runs in a copy synced from it into
+# the cartograph-workspace volume first, so builds, generated files and
+# evaluation runs stay in the container and the working tree is never
+# written. Changes are made, described and pushed on the host, with jj
+# from the flake.
+#
+# /nix is the cartograph-nix volume, shared by every instance and run:
+# the toolchain, the model and every build are fetched once. /tmp is a
+# tmpfs (the tests' temporary files). Host networking lets a browser on
+# the host reach a server started inside.
+
+name: cartograph-dev
+
+services:
+  dev:
+    build:
+      context: deploy/dev
+      dockerfile: Containerfile
+    image: cartograph-dev:local
+    user: "${CARTOGRAPH_UID:-1000}:${CARTOGRAPH_GID:-1000}"
+    working_dir: /workspace/cartograph-engine
+    network_mode: host
+    init: true
+    volumes:
+      - ..:/src:ro
+      - cartograph-workspace:/workspace
+      - cartograph-nix:/nix
+      - cartograph-home:/home/dev
+    tmpfs:
+      - /tmp:exec,mode=1777
+    environment:
+      HOME: /home/dev
+      # The command that reaches this container from the host, for
+      # prompts that tell an agent how to run (cartograph eval serve).
+      CARTOGRAPH_HOST_RUN: ${CARTOGRAPH_HOST_RUN:-}
+      CARTOGRAPH_HOST_WORKSPACE: ${CARTOGRAPH_HOST_WORKSPACE:-}
+
+volumes:
+  cartograph-workspace:
+    name: cartograph-workspace
+  cartograph-nix:
+    name: cartograph-nix
+  cartograph-home:
+    name: cartograph-home

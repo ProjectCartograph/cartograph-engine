@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Run a command in the test environment, inside the flake of the
+# repository it runs in: scripts/dev just test (docs/CONTAINERS.md). The
+# host needs Docker or Podman, with compose, and nothing else.
+#
+# The environment never makes a change: the workspace is read-only in it,
+# and each command first syncs the repositories into the container's own
+# copy, then runs there. Commit, describe and push on the host.
+#
+# The container starts on first use and keeps running, so servers a
+# command starts (just serve, just eval-serve) outlive the command;
+# scripts/dev --down stops it.
+set -euo pipefail
+
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+workspace=$(dirname "$root")
+runtime=${CARTOGRAPH_RUNTIME:-$(command -v docker || command -v podman)}
+compose=("$runtime" compose -f "$root/compose.dev.yaml")
+
+export CARTOGRAPH_UID=$(id -u) CARTOGRAPH_GID=$(id -g)
+export CARTOGRAPH_HOST_RUN="$root/scripts/dev" CARTOGRAPH_HOST_WORKSPACE="$workspace"
+
+if [ "${1:-}" = "--down" ]; then
+  exec "${compose[@]}" down
+fi
+
+"${compose[@]}" up -d --build --quiet-pull dev >/dev/null 2>&1 || "${compose[@]}" up -d --build dev
+# The container's volumes belong to whoever runs in it: the host user.
+for vol in /nix /home/dev /workspace; do
+  if [ "$("${compose[@]}" exec -T --user 0 dev stat -c %u "$vol")" != "$CARTOGRAPH_UID" ]; then
+    echo "dev: giving $vol to uid $CARTOGRAPH_UID (once)" >&2
+    "${compose[@]}" exec -T --user 0 dev chown -R "$CARTOGRAPH_UID:$CARTOGRAPH_GID" "$vol"
+  fi
+done
+
+# The same directory in the copy, when the caller is in the workspace.
+here=$(pwd)
+case "$here" in
+  "$workspace"/*) wd="/workspace${here#"$workspace"}" ;;
+  *) wd="/workspace/$(basename "$root")" ;;
+esac
+tty=(-T)
+[ -t 0 ] && [ -t 1 ] && tty=(-it)
+
+[ $# -gt 0 ] || set -- bash
+exec "${compose[@]}" exec "${tty[@]}" -w /workspace dev sh -c '
+  set -e
+  # The repositories, as they stand on the host, into the copy: what the
+  # host deleted goes, what a command built (outside the repositories:
+  # the evaluation runs) stays.
+  for repo in /src/*/; do
+    [ -f "$repo/flake.nix" ] || continue
+    name=$(basename "$repo")
+    nix develop /src/cartograph-engine --command rsync -a --delete \
+      --exclude /.jj --exclude /result --exclude /result-image "$repo" "/workspace/$name/"
+  done
+  cd "'"$wd"'" 2>/dev/null || cd "/workspace/'"$(basename "$root")"'"
+  d=$PWD
+  while [ "$d" != / ] && [ ! -f "$d/flake.nix" ]; do d=$(dirname "$d"); done
+  [ -f "$d/flake.nix" ] || d=/workspace/'"$(basename "$root")"'
+  exec nix develop "$d" --command "$@"
+' dev "$@"

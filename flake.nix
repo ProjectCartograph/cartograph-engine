@@ -185,6 +185,22 @@
         { inherit cartograph automerge-wasm laya laya-model; default = cartograph; }
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           image = imageFor { name = "cartograph"; };
+          # The Laya sidecar, its model inside: no download when it starts.
+          image-laya = pkgs.dockerTools.buildLayeredImage {
+            name = "cartograph-laya";
+            tag = version;
+            contents = [ laya pkgs.cacert ];
+            fakeRootCommands = ''
+              mkdir -p ./tmp
+              chmod 1777 ./tmp
+            '';
+            config = {
+              Entrypoint = [ "${laya}/bin/cartograph-laya" ];
+              User = "65532:65532";
+              Env = [ "LAYA_HOST=0.0.0.0" "LAYA_PORT=8411" "HOME=/tmp" ];
+              ExposedPorts = { "8411/tcp" = { }; };
+            };
+          };
           # The same, plus Chromium for PDF printing.
           image-chromium = imageFor {
             name = "cartograph-chromium";
@@ -211,6 +227,7 @@
               curl
               git
               jujutsu # version control: colocated with git, the one agents use
+              rsync # scripts/dev syncs the workspace into the test environment's copy
               postgresql # `just test-postgres` starts a throwaway server
               # The Laya sidecar (deploy/laya): `just serve laya`
               # starts it beside the server (docs/adr/0023).

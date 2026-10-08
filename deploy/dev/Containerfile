@@ -1,0 +1,25 @@
+# The development container (docs/CONTAINERS.md): Nix and nothing else.
+# Every tool comes from the repository's flake inside it, so a person, CI
+# and an agent work in the same environment, and nothing is installed on
+# the host. /nix is a volume every instance shares: what one container
+# fetches or builds, every other uses, and nothing is fetched twice.
+#
+# The base is pinned by digest. Nix runs single-user, owned by whoever
+# the container runs as (scripts/dev makes that the host user, so files
+# written into the workspace stay theirs), and without its build sandbox,
+# which needs privileges a container is not given; fixed-output fetches
+# are still checked against their hashes.
+FROM docker.io/nixos/nix:2.28.3@sha256:e623d73af9cac82d1b50784c83e0cf2a4b83bfd2cfe8d5b67809a2fc94e043ac
+
+RUN printf '%s\n' \
+      'experimental-features = nix-command flakes' \
+      'build-users-group =' \
+      'sandbox = false' \
+      'substituters = https://cache.nixos.org' \
+      'trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
+      > /etc/nix/nix.conf \
+ && mkdir -p /home/dev /workspace && chmod 0777 /home/dev
+
+ENV HOME=/home/dev
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

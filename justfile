@@ -175,6 +175,16 @@ image:
     docker tag "$name" cartograph:local
     echo "tagged $name as cartograph:local"
 
+# The Laya sidecar's image, its model inside, tagged cartograph-laya:local
+# (compose.yaml's decide profile)
+image-laya:
+    #!{{toolchain}} bash
+    set -euo pipefail
+    nix build .#image-laya --out-link result-image-laya
+    name=$(docker load < result-image-laya | sed -n 's/^Loaded image: //p')
+    docker tag "$name" cartograph-laya:local
+    echo "tagged $name as cartograph-laya:local"
+
 # The highly available topology on this machine: Postgres, a one-shot
 # import of the example, two replicas, nginx on :8080 (compose.ha.yaml).
 # Needs `just image` first.
@@ -267,7 +277,7 @@ roundtrip dir="examples/minimal": embed
     diff -r /tmp/cartograph-rt/e1 /tmp/cartograph-rt/e2 && echo "round trip identical"
 
 clean:
-    rm -rf bin dist result result-image internal/spa/dist internal/spa/dist.stamp
+    rm -rf bin dist result result-image result-image-laya internal/spa/dist internal/spa/dist.stamp
 
 # --- judging a change agents use (docs/EVALUATING.md) ---------------------
 # An evaluation directory lives outside the repository, beside its

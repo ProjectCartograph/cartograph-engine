@@ -34,7 +34,11 @@ the checks (`wholeDocument`, `proposed`, `oneObjectiveEach`,
 
 ## Measure
 
-Everything runs through the flake, the agent's calls included:
+Everything runs in the test environment (`docs/CONTAINERS.md`), the
+agent's calls included: each recipe below is run as `scripts/dev just
+eval-...`, the evaluation directory and its runs live in the
+environment's copy of the workspace, and the prompt `eval-serve` prints
+tells the agent to prefix every command with `scripts/dev`.
 
 | Do | Run |
 |---|---|
