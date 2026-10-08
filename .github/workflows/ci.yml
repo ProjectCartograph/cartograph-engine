@@ -23,8 +23,6 @@ jobs:
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
-    env:
-      CARTOGRAPH_NIX_STORE: ${{ runner.temp }}/nix
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,16 +34,19 @@ jobs:
           key: dev-nix-${{ runner.arch }}-${{ hashFiles('flake.nix', 'flake.lock', 'go.sum', 'deploy/dev/Containerfile') }}
           restore-keys: dev-nix-${{ runner.arch }}-
       - run: scripts/dev just ci
+        env:
+          # A step's own: the runner context is not there at the job's.
+          CARTOGRAPH_NIX_STORE: ${{ runner.temp }}/nix
       # A new entry keeps what the development shell needs and nothing an
       # older flake left behind.
       - if: steps.store.outputs.cache-hit != 'true'
         run: scripts/dev sh -c 'nix develop --profile /nix/var/nix/profiles/dev-shell --command true && nix store gc'
+        env:
+          CARTOGRAPH_NIX_STORE: ${{ runner.temp }}/nix
 
   commits:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    env:
-      CARTOGRAPH_NIX_STORE: ${{ runner.temp }}/nix
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,6 +57,9 @@ jobs:
           key: dev-nix-${{ runner.arch }}-${{ hashFiles('flake.nix', 'flake.lock', 'go.sum', 'deploy/dev/Containerfile') }}
           restore-keys: dev-nix-${{ runner.arch }}-
       - run: scripts/dev just commit-check origin/${{ github.base_ref }}
+        env:
+          # A step's own: the runner context is not there at the job's.
+          CARTOGRAPH_NIX_STORE: ${{ runner.temp }}/nix
 
   # The binary and the image from the flake, on both architectures; the
   # image is started and asked whether it is ready.
