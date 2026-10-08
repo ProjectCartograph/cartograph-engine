@@ -166,8 +166,9 @@ Work this way, every time:
   that shortlist first: the decision model is Cartograph's way of finding
   what in the workspace is relevant, and it is quicker and more complete
   than reading every register. It ranks and never decides. When it is
-  not ready, relevant still ranks by shared words, so read the register
-  more fully before offering choices.
+  not ready, its off list is what Cartograph does not judge meanwhile:
+  judge those yourself, and read each register in full before offering
+  choices.
 0. Ask your person once, at the start, how they want to work, as a
    choice: with suggestions, or step by step. With suggestions, at every
    step you offer two to four concrete options, drawn from the documents

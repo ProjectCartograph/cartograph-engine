@@ -126,6 +126,18 @@ func (e *Engine) judge(ctx context.Context, name, text string) (Judged, bool) {
 	return Judged{Holds: p >= j.Threshold, Sure: p}, true
 }
 
+// offWithoutModel is what is not judged while no model answers: every
+// question above, and the matching that is the model's to do. A check
+// that needs one is left out of a record's checks, not passed.
+var offWithoutModel = []string{
+	"whether an objective is a target with a number, rather than a change in words",
+	"whether a text names a person without a title",
+	"whether an outcome is written as a state rather than an action",
+	"whether a gap names a result that falls short rather than a missing resource",
+	"which existing record says what a text says, unless its name is the same or its initials",
+	"what in the workspace is relevant to a piece of work, and which flow defines a text",
+}
+
 // sureWords says how sure an answer is, for a check's message.
 func sureWords(p float64) string {
 	switch {

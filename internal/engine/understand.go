@@ -509,17 +509,22 @@ func (e *Engine) Understand(ctx context.Context, text, locale string) (Understan
 
 // DecisionModel is whether a decision model is configured, and whether it
 // answers now: what an agent asks first, to know whether to lean on it.
+// Off, when it does not answer, says what is not judged meanwhile
+// (docs/adr/0030), which the agent must then judge itself.
 type DecisionModel struct {
-	Configured bool `json:"configured"`
-	Ready      bool `json:"ready"`
+	Configured bool     `json:"configured"`
+	Ready      bool     `json:"ready"`
+	Off        []string `json:"off,omitempty"`
 }
 
 // DecisionModel reports the decision port's state, whatever is behind it.
 func (e *Engine) DecisionModel(ctx context.Context) DecisionModel {
-	if e.decider == nil {
-		return DecisionModel{}
+	m := DecisionModel{Configured: e.decider != nil}
+	m.Ready = m.Configured && e.decider.Ready(ctx) == nil
+	if !m.Ready {
+		m.Off = offWithoutModel
 	}
-	return DecisionModel{Configured: true, Ready: e.decider.Ready(ctx) == nil}
+	return m
 }
 
 // How relevance is judged, as measured (docs/adr/0023): of each candidate

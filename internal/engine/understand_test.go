@@ -201,7 +201,7 @@ func TestRelevantRanksTheWorkspace(t *testing.T) {
 	if !r.Available || strings.Join(got, " ") != "Goal/faults-found-before-dispatch KPI/quality-pass-rate" {
 		t.Fatalf("with a model: %+v", r)
 	}
-	if s := e.DecisionModel(ctx); !s.Configured || !s.Ready {
+	if s := e.DecisionModel(ctx); !s.Configured || !s.Ready || len(s.Off) != 0 {
 		t.Fatalf("status with a model: %+v", s)
 	}
 
@@ -213,7 +213,8 @@ func TestRelevantRanksTheWorkspace(t *testing.T) {
 	if r.Available || len(r.Matches) != 0 {
 		t.Fatalf("without a model: %+v", r)
 	}
-	if s := plain.DecisionModel(ctx); s.Configured || s.Ready {
+	// Without a model, the status says what is not judged meanwhile.
+	if s := plain.DecisionModel(ctx); s.Configured || s.Ready || len(s.Off) == 0 {
 		t.Fatalf("status without a model: %+v", s)
 	}
 }

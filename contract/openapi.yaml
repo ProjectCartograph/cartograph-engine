@@ -2912,6 +2912,11 @@ components:
           type: boolean
         ready:
           type: boolean
+        off:
+          type: array
+          items:
+            type: string
+          description: While no model answers, what is not judged meanwhile, in plain words (docs/adr/0030).
     Route:
       type: object
       required: [key, kind, likelihood]

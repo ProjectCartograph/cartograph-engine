@@ -268,20 +268,20 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "match", Description: "Before defining anything, the existing records of a kind that already say what it would say, most likely first: " +
-		"judged by Cartograph's decision model where one is configured, else by the words they share (by says which). Work on a match instead of defining another.", Annotations: readOnly},
+		"judged by Cartograph's decision model; without one, only a record with the same name or its initials (by says which). Work on a match instead of defining another.", Annotations: readOnly},
 		func(c call, in matchIn) (any, error) {
 			c = c.reading("")
 			return map[string]any{"matches": e.MatchExisting(c.ctx, in.Kind, in.Level, in.Text)}, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "decision_model", Description: "Call first, once a session: whether Cartograph has a decision model configured and answering now, whatever backs it. " +
-		"When it is ready, relevant, match and understand rank by meaning; when it is not, by shared words only, so read the registers more fully yourself.", Annotations: readOnly},
+		"When it is ready, relevant, match and understand rank by meaning, and the checks judge meaning; when it is not, off lists what is not judged, which you must then judge yourself, reading the registers in full.", Annotations: readOnly},
 		func(c call, _ struct{}) (any, error) {
 			return e.DecisionModel(c.ctx), nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "relevant", Description: "What in the workspace is relevant to a piece of work: the likeliest few records of each kind, likeliest first, " +
-		"ranked by the decision model where one answers, else by shared words (available says which). Call it with what the work is about before choosing what a draft names, " +
+		"ranked by the decision model; without one, nothing (available says which). Call it with what the work is about before choosing what a draft names, " +
 		"and offer its shortlist first. It ranks; it never decides: your person still chooses, and anything else in the register remains a choice.", Annotations: readOnly},
 		func(c call, in relevantIn) (any, error) {
 			c = c.reading("")

@@ -1768,7 +1768,11 @@ func (s *Server) FromIdea(ctx context.Context, req apigen.FromIdeaRequestObject)
 // GetDecisionModel is whether a decision model is configured and ready.
 func (s *Server) GetDecisionModel(ctx context.Context, _ apigen.GetDecisionModelRequestObject) (apigen.GetDecisionModelResponseObject, error) {
 	m := s.Engine.DecisionModel(ctx)
-	return apigen.GetDecisionModel200JSONResponse(apigen.DecisionModel{Configured: m.Configured, Ready: m.Ready}), nil
+	out := apigen.DecisionModel{Configured: m.Configured, Ready: m.Ready}
+	if len(m.Off) > 0 {
+		out.Off = &m.Off
+	}
+	return apigen.GetDecisionModel200JSONResponse(out), nil
 }
 
 // MatchExisting is the records of a kind that say what a text says.
