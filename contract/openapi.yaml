@@ -4386,6 +4386,9 @@ components:
           items:
             type: string
             maxLength: 200
+        none:
+          type: boolean
+          description: Every question was asked and none is yes. A piece says it, or answers; among several, a piece with neither is a problem.
     Lineage:
       type: object
       required: [nodes, edges]

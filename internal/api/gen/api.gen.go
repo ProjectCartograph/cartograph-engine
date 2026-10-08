@@ -1865,11 +1865,14 @@ type StructurePiece struct {
 	DependedOnBy        *[]string `json:"dependedOnBy,omitempty"`
 	GroupsForFunding    *bool     `json:"groupsForFunding,omitempty"`
 	Name                string    `json:"name"`
-	Ongoing             *bool     `json:"ongoing,omitempty"`
-	OutOfScope          *bool     `json:"outOfScope,omitempty"`
-	OutputOf            *string   `json:"outputOf,omitempty"`
-	Policy              *bool     `json:"policy,omitempty"`
-	RunsToday           *bool     `json:"runsToday,omitempty"`
+
+	// None Every question was asked and none is yes. A piece says it, or answers; among several, a piece with neither is a problem.
+	None       *bool   `json:"none,omitempty"`
+	Ongoing    *bool   `json:"ongoing,omitempty"`
+	OutOfScope *bool   `json:"outOfScope,omitempty"`
+	OutputOf   *string `json:"outputOf,omitempty"`
+	Policy     *bool   `json:"policy,omitempty"`
+	RunsToday  *bool   `json:"runsToday,omitempty"`
 }
 
 // StructureQuestion defines model for StructureQuestion.

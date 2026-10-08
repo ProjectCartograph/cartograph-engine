@@ -318,7 +318,7 @@ func TestTheAgentIsToldWhatComesNext(t *testing.T) {
 		t.Fatalf("save_draft does not lead with the outcome the gap names: %s", text)
 	}
 	res, text = callTool(t, cs, "next", map[string]any{"work": []string{"Goal/o-sound", "Gap/gap-bruising"}})
-	if res.IsError || !strings.Contains(text, `"then"`) || !strings.Contains(text, `"define"`) {
+	if res.IsError || !strings.Contains(text, `"fill"`) || !strings.Contains(text, `"define"`) {
 		t.Fatalf("next: %s", text)
 	}
 }
@@ -782,7 +782,7 @@ func TestAnAgentIsToldTheStructure(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
 	res, text := callTool(t, cs, "structure", map[string]any{"pieces": []any{
-		map[string]any{"name": "Rollout"},
+		map[string]any{"name": "Rollout", "none": true},
 		map[string]any{"name": "Handbook", "outputOf": "Rollout"},
 		map[string]any{"name": "Survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
 	}})
@@ -822,7 +822,7 @@ func TestStructureTeachesItsShapeAndHandsOverTheWork(t *testing.T) {
 		t.Fatalf("names: %s", text)
 	}
 	res, text = callTool(t, cs, "structure", map[string]any{"pieces": []any{
-		map[string]any{"name": "Rollout"}, map[string]any{"name": "Handbook", "outputOf": "Rollout"},
+		map[string]any{"name": "Rollout", "none": true}, map[string]any{"name": "Handbook", "outputOf": "Rollout"},
 		map[string]any{"name": "Survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
 	}})
 	var out struct{ Work []string }
@@ -876,7 +876,7 @@ func TestStartWorkDraftsTheStructure(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
 	res, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{
-		map[string]any{"name": "Rollout"},
+		map[string]any{"name": "Rollout", "none": true},
 		map[string]any{"name": "Handbook", "outputOf": "Rollout"},
 		map[string]any{"name": "Baseline survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
 		map[string]any{"name": "Compliance checks", "ongoing": true},
@@ -909,7 +909,7 @@ func TestStartWorkDraftsTheStructure(t *testing.T) {
 func TestNextFillsAWholeRecord(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
-	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout"}}})
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
 	var out struct{ Work []string }
 	_ = json.Unmarshal([]byte(text), &out)
 	_, text = callTool(t, cs, "next", map[string]any{"work": out.Work})
@@ -925,7 +925,7 @@ func TestSettleARecordInOneCall(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
 	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{
-		map[string]any{"name": "Rollout"}, map[string]any{"name": "Survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
+		map[string]any{"name": "Rollout", "none": true}, map[string]any{"name": "Survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
 	}})
 	var out struct{ Work []string }
 	_ = json.Unmarshal([]byte(text), &out)
@@ -945,5 +945,24 @@ func TestSettleARecordInOneCall(t *testing.T) {
 	_, text = callTool(t, cs, "work_summary", map[string]any{})
 	if !strings.Contains(text, `"objectives":1`) || !strings.Contains(text, `"leftForPerson":1`) || !strings.Contains(text, `"components":1`) {
 		t.Fatalf("summary: %s", text)
+	}
+}
+
+// settle reads fields sent beside kind and id or under fields, and a
+// refused shape says which fields go where it was sent.
+func TestSettleReadsFieldsWhereverSentAndTeachesTheShape(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "/spec/summary/about": "Checks at every depot", "fields": map[string]any{"/spec/team": "t1"}})
+	if res.IsError {
+		t.Fatalf("pointers beside kind and id: %s", text)
+	}
+	res, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/summary/problems": []any{map[string]any{"statement": "Faults reach buyers"}}}})
+	if !res.IsError || !strings.Contains(text, "/spec/summary/problems/0/problem/situation") {
+		t.Fatalf("a made-up shape: %s", text)
 	}
 }

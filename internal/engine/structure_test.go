@@ -16,7 +16,7 @@ func TestClassifyPutsEachPieceWhereItBelongs(t *testing.T) {
 	t.Parallel()
 	s := engine.Classify([]engine.StructurePiece{
 		{Name: "Produce standards", Policy: true},
-		{Name: "Standards rollout"},
+		{Name: "Standards rollout", None: true},
 		{Name: "Grading handbook", OutputOf: "Standards rollout"},
 		{Name: "Grader training", OutputOf: "Standards rollout"},
 		{Name: "Baseline survey", ChangeOfItsOwn: true, DependedOnBy: []string{"Standards rollout"}},
@@ -82,7 +82,7 @@ func TestClassifyGivesAProgrammeItsProjects(t *testing.T) {
 func TestStructureKeysAreThePieceFields(t *testing.T) {
 	t.Parallel()
 	b, _ := json.Marshal(engine.StructurePiece{Name: "x", OutOfScope: true, Policy: true, Ongoing: true, RunsToday: true, GroupsForFunding: true,
-		CoordinatesProjects: true, OutputOf: "y", ChangeOfItsOwn: true, DependedOnBy: []string{"z"}})
+		CoordinatesProjects: true, OutputOf: "y", ChangeOfItsOwn: true, DependedOnBy: []string{"z"}, None: true})
 	var m map[string]any
 	_ = json.Unmarshal(b, &m)
 	if len(m) != len(engine.StructureKeys) {
@@ -92,5 +92,21 @@ func TestStructureKeysAreThePieceFields(t *testing.T) {
 		if !engine.StructureKeys[k] {
 			t.Errorf("%s is a field structure refuses", k)
 		}
+	}
+}
+
+// A piece with no answer was never asked about, and several projects each
+// standing as the whole of the work mean their links were not answered:
+// both are problems, so a port is never laid out as unrelated projects.
+func TestStructureRefusesUnansweredAndUnlinkedPieces(t *testing.T) {
+	t.Parallel()
+	s := engine.Classify([]engine.StructurePiece{{Name: "Rollout"}, {Name: "Survey"}, {Name: "Checks", None: true}})
+	text := strings.Join(s.Problems, "\n")
+	if !strings.Contains(text, `"Rollout" has no answers`) || !strings.Contains(text, `"Survey" has no answers`) || !strings.Contains(text, "stand alone") {
+		t.Fatalf("problems: %v", s.Problems)
+	}
+	ok := engine.Classify([]engine.StructurePiece{{Name: "Rollout", None: true}, {Name: "Survey", ChangeOfItsOwn: true, DependedOnBy: []string{"Rollout"}}, {Name: "Checks", Ongoing: true}})
+	if len(ok.Problems) > 0 {
+		t.Fatalf("a linked port: %v", ok.Problems)
 	}
 }

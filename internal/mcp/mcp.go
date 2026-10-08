@@ -15,9 +15,11 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
@@ -1236,7 +1238,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, fmt.Errorf("%s/%s is already drafted in this change set: change its fields with edit_draft, or pass replace true to put this whole manifest in its place", in.Kind, in.ID)
 			}
 			if err := e.SaveInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, text); err != nil {
-				return nil, err
+				return nil, withFields(c, in.Kind, err)
 			}
 			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
 				return nil, err
@@ -1392,7 +1394,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			text, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, in.Set, in.Unset)
 			if err != nil {
-				return nil, err
+				return nil, withFields(c, in.Kind, err)
 			}
 			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
 				return nil, err
@@ -1427,10 +1429,21 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return out, nil
 		})
 
-	tool(s, o, person, &sdk.Tool{Name: "settle", Description: "Settle one record in one call: set every field the documents give (by JSON pointer), " +
+	// settle reads its fields wherever a small agent puts them: under set,
+	// under fields, or as JSON pointers beside kind and id. The shape of
+	// the call is not the record's; the record's shape is held strictly.
+	settleSchema, _ := jsonschema.For[settleIn](nil)
+	settleSchema.AdditionalProperties = &jsonschema.Schema{}
+	tool(s, o, person, &sdk.Tool{Name: "settle", Description: "Settle one record in one call: set every field the documents give (by JSON pointer, under set), " +
 		"leave open each check they do not answer with its reason, and get what comes next across the work, the next record's checks or draft included. " +
-		"The way to work through a port: one settle per record, in the order next gives.", Annotations: drafting},
-		func(c call, in settleIn) (any, error) {
+		"The way to work through a port: one settle per record, in the order next gives. " +
+		`Example: {"kind":"Project","id":"project-1a2b","set":{"/spec/summary/about":"...","/spec/objectives/0/objective":"..."},` +
+		`"open":[{"check":"aim-mandate","reason":"No mandate is named"}],"asked":"not available","work":["Project/project-1a2b"]}.`, Annotations: drafting, InputSchema: settleSchema},
+		func(c call, raw map[string]any) (any, error) {
+			in, err := settleOf(raw)
+			if err != nil {
+				return nil, err
+			}
 			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
 			if err != nil {
 				return nil, err
@@ -1440,7 +1453,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			if len(in.Set) > 0 || len(in.Unset) > 0 {
 				if _, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, in.Set, in.Unset); err != nil {
-					return nil, fmt.Errorf("%w; nothing was saved: fix those fields and call settle again", err)
+					return nil, withFields(c, in.Kind, err)
 				}
 			}
 			var left []string
@@ -2164,6 +2177,7 @@ func withFill(c call, out map[string]any, tasks []engine.Task) {
 	}
 	if len(fill) > 1 {
 		out["fill"] = fill
+		delete(out, "then")
 		out["next"] = fmt.Sprintf("Settle %s/%s now, every check in fill at once, with one settle call: set every field the documents give, "+
 			"open each check they do not answer with its reason, and pass the work list. %s", first.Kind, first.ID, firstNext(c.ctx, c.o.Engine, first))
 	}
@@ -2253,4 +2267,90 @@ func piecesOf(raws []any) ([]engine.StructurePiece, map[string]any) {
 				"each an object with name and only the answers that are yes, like " + structureExample + "."}
 	}
 	return pieces, nil
+}
+
+// settleOf reads a settle call: its named inputs, and any JSON pointer
+// beside them or under fields as a field to set.
+func settleOf(raw map[string]any) (settleIn, error) {
+	var in settleIn
+	b, _ := json.Marshal(raw)
+	if err := json.Unmarshal(b, &in); err != nil {
+		return in, fmt.Errorf("settle: %w; send {kind, id, set: {JSON pointer: value}, open: [{check, reason}], asked, work}", err)
+	}
+	if in.Set == nil {
+		in.Set = map[string]any{}
+	}
+	if f, ok := raw["fields"].(map[string]any); ok {
+		for k, v := range f {
+			in.Set[k] = v
+		}
+	}
+	var unknown []string
+	for k, v := range raw {
+		switch {
+		case strings.HasPrefix(k, "/"):
+			in.Set[k] = v
+		case k == "fields" || settleKeys[k]:
+		default:
+			unknown = append(unknown, k)
+		}
+	}
+	if len(unknown) > 0 {
+		sort.Strings(unknown)
+		return in, fmt.Errorf("settle does not take %s: fields go under set, as JSON pointers such as /spec/summary/about", strings.Join(unknown, ", "))
+	}
+	return in, nil
+}
+
+// settleKeys are settle's own inputs.
+var settleKeys = map[string]bool{"changeSet": true, "kind": true, "id": true, "set": true, "unset": true, "open": true, "asked": true, "work": true}
+
+// withFields adds to each refused field what goes there, from the kind's
+// guide, so an agent sent "additional properties 'statement' not allowed"
+// learns the fields it meant: a refusal that teaches, not only refuses.
+func withFields(c call, kind string, err error) error {
+	var invalid *engine.ValidationError
+	if !errors.As(err, &invalid) {
+		return err
+	}
+	g, gerr := c.o.Engine.Guide(c.ctx, kind, "", "")
+	if gerr != nil {
+		return err
+	}
+	var paths []string
+	for _, st := range g.Steps {
+		for _, f := range st.Fields {
+			paths = append(paths, f.Path)
+		}
+	}
+	out := &engine.ValidationError{}
+	for _, p := range invalid.Problems {
+		var segs []string
+		for _, t := range strings.Split(strings.Trim(p.Path, "/"), "/") {
+			if _, num := strconv.Atoi(t); num == nil {
+				t = "-"
+			}
+			segs = append(segs, t)
+		}
+		at := "/" + strings.Join(segs, "/")
+		var here []string
+		for _, q := range paths {
+			if rest, ok := strings.CutPrefix(q, at+"/"); ok && rest != "" {
+				// A child, or a list's item's child: /spec/x/-/y.
+				// Two levels down at most, list items not counted, so a
+				// problem's fields reach problem/situation.
+				if strings.Count(strings.ReplaceAll(rest, "-/", ""), "/") <= 1 {
+					here = append(here, strings.Replace(q, "/-/", "/0/", -1))
+				}
+			}
+		}
+		if len(here) > 0 {
+			if len(here) > 12 {
+				here = here[:12]
+			}
+			p.Message += ". The fields there are: " + strings.Join(here, ", ")
+		}
+		out.Problems = append(out.Problems, p)
+	}
+	return out
 }

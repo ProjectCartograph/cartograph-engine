@@ -47,11 +47,14 @@ type StructurePiece struct {
 	ChangeOfItsOwn bool `json:"changeOfItsOwn,omitempty"`
 	// DependedOnBy names the pieces that depend on it.
 	DependedOnBy []string `json:"dependedOnBy,omitempty"`
+	// None says every question was asked and none is yes: the piece is
+	// work that ends with no other answer. A piece says it, or answers.
+	None bool `json:"none,omitempty"`
 }
 
 // StructureKeys are the keys a piece may carry: its name and the answers.
 var StructureKeys = map[string]bool{"name": true, "outOfScope": true, "policy": true, "ongoing": true, "runsToday": true, "groupsForFunding": true,
-	"coordinatesProjects": true, "outputOf": true, "changeOfItsOwn": true, "dependedOnBy": true}
+	"coordinatesProjects": true, "outputOf": true, "changeOfItsOwn": true, "dependedOnBy": true, "none": true}
 
 // StructureQuestion is one question, as people and agents are asked it.
 type StructureQuestion struct {
@@ -70,7 +73,7 @@ var StructureQuestions = []StructureQuestion{
 	{"coordinatesProjects", "Does it coordinate several projects, each with its own sponsor or budget, that together bring about one change?", "A Programme, with its theory of change; the projects are its components."},
 	{"outputOf", "Is it an output another piece of work hands over: a document, materials, a toolkit, a training delivered, an event?", "A deliverable of that piece of work, whoever leads it."},
 	{"changeOfItsOwn", "Does it bring about a change of its own that another piece of work depends on: a survey that sets a baseline, a system or portal people use, an app, a study?", "A Project of its own, with one objective, listed as a component of each piece that depends on it."},
-	{"", "None of these:", "A Project: work that ends, with one objective. A project the others are components of is the parent."},
+	{"", "None of these (answer none: true):", "A Project: work that ends, with one objective. A project the others are components of is the parent."},
 }
 
 // StructuredPiece is what one piece is, and where it goes.
@@ -120,6 +123,15 @@ func Classify(pieces []StructurePiece) Structure {
 			out.Problems = append(out.Problems, fmt.Sprintf("%q is named twice: name each piece once", p.Name))
 		}
 		byName[key] = i
+	}
+	// Every piece is answered, or says none is yes: a piece sent with no
+	// answer was never asked about, and would stand as a project of its own.
+	if len(pieces) > 1 {
+		for _, p := range pieces {
+			if !answered(p) {
+				out.Problems = append(out.Problems, fmt.Sprintf("%q has no answers: ask each question of it and give the yes answers, or none: true when no question is yes", p.Name))
+			}
+		}
 	}
 	kindOf := make([]string, len(pieces))
 	for i, p := range pieces {
@@ -195,6 +207,25 @@ func Classify(pieces []StructurePiece) Structure {
 				components[i] = append(components[i], j)
 			}
 		}
+	}
+	// One piece of work at the top: projects nothing depends on and no
+	// programme lists are each the whole of the work, and a document's
+	// work has one whole. Several mean their links were not answered.
+	var tops []string
+	for i, p := range pieces {
+		if kindOf[i] == "Project" && !listed[i] && !(p.ChangeOfItsOwn && len(p.DependedOnBy) > 0) {
+			tops = append(tops, p.Name)
+		}
+	}
+	programmes := 0
+	for i := range pieces {
+		if kindOf[i] == "Programme" || kindOf[i] == "Portfolio" {
+			programmes++
+		}
+	}
+	if len(tops) > 1 && programmes == 0 {
+		out.Problems = append(out.Problems, fmt.Sprintf("%s stand alone, each as the whole of the work: one is the parent; say for each other one "+
+			"changeOfItsOwn with dependedOnBy naming the parent, or outputOf it, or ongoing if it keeps running; or coordinatesProjects on a piece that groups them", quoteList(tops)))
 	}
 	out.Order = writingOrder(pieces, kindOf, components, &out.Problems)
 	// Ids are generated, never derived from names (AGENTS.md).
@@ -407,4 +438,22 @@ func clip(s string, n int) string {
 		return string(r[:len([]rune(string(r)[:i]))])
 	}
 	return string(r)
+}
+
+// answered reports whether a piece carries any answer, none included.
+func answered(p StructurePiece) bool {
+	return p.None || p.OutOfScope || p.Policy || p.Ongoing || p.RunsToday || p.GroupsForFunding || p.CoordinatesProjects ||
+		strings.TrimSpace(p.OutputOf) != "" || p.ChangeOfItsOwn || len(p.DependedOnBy) > 0
+}
+
+// quoteList is names quoted and joined: "a", "b" and "c".
+func quoteList(names []string) string {
+	q := make([]string, len(names))
+	for i, n := range names {
+		q[i] = fmt.Sprintf("%q", n)
+	}
+	if len(q) == 1 {
+		return q[0]
+	}
+	return strings.Join(q[:len(q)-1], ", ") + " and " + q[len(q)-1]
 }
