@@ -94,6 +94,66 @@
             };
           };
 
+          # The Laya decision model (docs/adr/0023): its ONNX bundle at one
+          # commit of its Hugging Face repository, each file a fixed-output
+          # fetch, so no run downloads it and every run reads the same
+          # weights. The sidecar reads it from the store (LAYA_MODEL_DIR).
+          layaRev = "68f27dfe5a27a54fb2b1fefc432f43f972e90868";
+          layaFile = file: hash: pkgs.fetchurl {
+            url = "https://huggingface.co/receptron/laya-onnx/resolve/${layaRev}/${file}";
+            inherit hash;
+          };
+          laya-model = pkgs.linkFarm "laya-model-${builtins.substring 0 7 layaRev}" [
+            { name = "laya.onnx"; path = layaFile "laya.onnx" "sha256-qHTrJUtYsPyx561W+7GIwp1k4IyaRraJQz4fUsZtuh4="; }
+            { name = "laya.onnx.data"; path = layaFile "laya.onnx.data" "sha256-SHdGNjqNpXvK20NFNSmX0ioPuQ1wqiLGhWZo0CMkKro="; }
+            { name = "laya_config.json"; path = layaFile "laya_config.json" "sha256-UEkAXcauPKXoLMfYXEITV9XFQ4FzAMjoxSgd28abtWE="; }
+            { name = "tokenizer/tokenizer.json"; path = layaFile "tokenizer/tokenizer.json" "sha256-bIqqmlQghPJFfqt3XU7rUfkqcMD9neKNXtsN3sPAjTA="; }
+            { name = "tokenizer/tokenizer_config.json"; path = layaFile "tokenizer/tokenizer_config.json" "sha256-UARN5g2qpz35fSYuFaQNT68BYOfXQt9ks3eHehMg3RI="; }
+          ];
+
+          # The Laya sidecar (deploy/laya): its packages from the lockfile,
+          # the ONNX runtime's CPU library patched to the store's, and the
+          # model above. `nix run .#laya` serves it; nothing is fetched at
+          # run time.
+          laya = pkgs.buildNpmPackage {
+            pname = "cartograph-laya";
+            version = "0.1.2";
+            src = ./deploy/laya;
+            npmDepsHash = "sha256-+AOa10zXnELlogbEVbdiIoOoSjMSUOzMXSKY3ZZxIlE=";
+            npmFlags = [ "--ignore-scripts" ];
+            dontNpmBuild = true;
+            nativeBuildInputs = [ pkgs.makeWrapper ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.autoPatchelfHook ];
+            buildInputs = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.stdenv.cc.cc.lib ];
+            installPhase = ''
+              runHook preInstall
+              mkdir -p $out/lib/laya $out/bin
+              cp -r node_modules server.mjs package.json $out/lib/laya/
+              # Only this platform's ONNX runtime is kept.
+              ort=$out/lib/laya/node_modules/onnxruntime-node/bin
+              for d in $ort/napi-v*/*; do
+                case "$(basename "$d")" in
+                  ${if pkgs.stdenv.hostPlatform.isLinux then "linux" else "darwin"}) ;;
+                  *) rm -rf "$d" ;;
+                esac
+              done
+              for d in $ort/napi-v*/*/*; do
+                case "$(basename "$d")" in
+                  ${if pkgs.stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}) ;;
+                  *) rm -rf "$d" ;;
+                esac
+              done
+              makeWrapper ${pkgs.nodejs_22}/bin/node $out/bin/cartograph-laya \
+                --add-flags $out/lib/laya/server.mjs \
+                --set-default LAYA_MODEL_DIR ${laya-model}
+              runHook postInstall
+            '';
+            meta = {
+              description = "The Laya decision model sidecar Cartograph asks (docs/adr/0023)";
+              mainProgram = "cartograph-laya";
+              license = lib.licenses.asl20;
+            };
+          };
+
           # A container image is a Linux root filesystem: the binary, CA
           # certificates, a writable /vault owned by the runtime user, and
           # the binary's own readiness check. No shell, no browser.
@@ -122,7 +182,7 @@
             };
           };
         in
-        { inherit cartograph automerge-wasm; default = cartograph; }
+        { inherit cartograph automerge-wasm laya laya-model; default = cartograph; }
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           image = imageFor { name = "cartograph"; };
           # The same, plus Chromium for PDF printing.

@@ -1,29 +1,11 @@
 #!/usr/bin/env bash
-# Run the Laya sidecar (deploy/laya, docs/adr/0023) with the flake's Node.
+# Run the Laya sidecar (deploy/laya, docs/adr/0023): the flake's package,
+# its packages from the lockfile and the model pinned to one commit of
+# its repository, all in the Nix store. Nothing is installed or fetched
+# at run time, and no cache outside the store is read.
 #
-# It is installed and run from a cache directory, never inside the
-# repository: node_modules and the model (about 1.7 GB, downloaded on the
-# first start) are not the product (just clean-tree). The install is
-# redone only when the lockfile changes.
-#
-#   CARTOGRAPH_LAYA_HOME  where it lives (~/.cache/cartograph/laya)
 #   LAYA_PORT, LAYA_HOST  where it listens (8411, 127.0.0.1)
 set -euo pipefail
 
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-src="$root/deploy/laya"
-home="${CARTOGRAPH_LAYA_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/cartograph/laya}"
-mkdir -p "$home"
-
-if [ ! -d "$home/node_modules" ] || ! cmp -s "$src/package-lock.json" "$home/package-lock.json"; then
-    echo "laya: installing into $home" >&2
-    cp "$src/package.json" "$src/package-lock.json" "$home/"
-    # onnxruntime-node's install script only fetches GPU binaries; the CPU
-    # ones ship in the package (deploy/laya/README.md).
-    (cd "$home" && npm ci --omit=dev --ignore-scripts --no-audit --no-fund >&2)
-fi
-cp "$src/server.mjs" "$home/server.mjs"
-
-cd "$home"
-export LAYA_CACHE="${LAYA_CACHE:-$home/model}"
-exec node server.mjs
+exec nix run "$root#laya"

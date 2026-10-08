@@ -24,20 +24,15 @@ an address to listen elsewhere (`just serve laya 0.0.0.0:8080`), and
 laya` does the same for your own vault, and `just laya` runs the
 sidecar on its own.
 
-The sidecar is installed with the flake's Node, from the lockfile here,
-into `~/.cache/cartograph/laya` (`CARTOGRAPH_LAYA_HOME`), never into the
-repository. The first start downloads the model (about 1.7 GB) there and
-takes a few minutes; later starts take seconds. onnxruntime-node's
-install script is skipped: the package ships its CPU binaries, and the
-script only fetches GPU ones.
+The sidecar is the flake's `laya` package: its packages built from the
+lockfile here, the ONNX runtime's CPU library patched to the store's,
+and the model pinned to one commit of its Hugging Face repository, each
+file a fixed-output fetch. `nix run .#laya` serves it; nothing is
+installed or downloaded when it starts, and no cache outside the Nix
+store is read. The first build fetches the model (about 1.7 GB) into the
+store, once.
 
-Without the recipes, Node 20 or later:
-
-    cd deploy/laya
-    npm ci --ignore-scripts
-    npm start
-
-and start Cartograph with:
+Start Cartograph beside it with:
 
     CARTOGRAPH_DECIDE=laya CARTOGRAPH_DECIDE_URL=http://127.0.0.1:8411 cartograph serve <vault>
 
@@ -52,8 +47,7 @@ Cartograph and keeps the model in a volume.
 |---|---|---|
 | `LAYA_HOST` | `127.0.0.1` | Where it listens. Keep it off any network people reach: it has no authentication of its own. |
 | `LAYA_PORT` | `8411` | The port. |
-| `LAYA_CHECKPOINT` | Laya's English checkpoint | `multilingual` for plans in other languages. |
-| `LAYA_CACHE` | Laya's own cache | Where the model is kept. |
+| `LAYA_MODEL_DIR` | the pinned model in the store | The model bundle read as it is. The flake's package sets it; nothing is downloaded. |
 
 It needs about 2 GB of memory and answers a call in roughly 30 to 150 ms
 on a server CPU. Cartograph gives each call `CARTOGRAPH_DECIDE_TIMEOUT`

@@ -9,7 +9,8 @@
 //
 // LAYA_HOST (127.0.0.1) and LAYA_PORT (8411) say where it listens;
 // LAYA_CHECKPOINT picks a checkpoint (multilingual, for one), left out
-// for Laya's default English one; LAYA_CACHE is where the model is kept.
+// for Laya's default English one; LAYA_CACHE is where the model is kept,
+// unless LAYA_MODEL_DIR names it (the flake's package does).
 import { createServer } from "node:http";
 import { Laya } from "@receptron/laya";
 
@@ -18,10 +19,16 @@ const port = Number(process.env.LAYA_PORT ?? 8411);
 const maxBody = 64 * 1024;
 
 let laya;
-const loading = Laya.load({
-  ...(process.env.LAYA_CHECKPOINT ? { subfolder: process.env.LAYA_CHECKPOINT } : {}),
-  ...(process.env.LAYA_CACHE ? { cacheDir: process.env.LAYA_CACHE } : {}),
-}).then((model) => {
+// LAYA_MODEL_DIR, set by the flake's package, is the model in the Nix
+// store: read as it is, never downloaded.
+const loading = Laya.load(
+  process.env.LAYA_MODEL_DIR
+    ? { modelDir: process.env.LAYA_MODEL_DIR }
+    : {
+        ...(process.env.LAYA_CHECKPOINT ? { subfolder: process.env.LAYA_CHECKPOINT } : {}),
+        ...(process.env.LAYA_CACHE ? { cacheDir: process.env.LAYA_CACHE } : {}),
+      },
+).then((model) => {
   laya = model;
   console.log(JSON.stringify({ msg: "laya ready", host, port }));
 });
