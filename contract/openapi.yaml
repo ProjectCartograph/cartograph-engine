@@ -769,6 +769,57 @@ paths:
               schema:
                 $ref: "#/components/schemas/Understanding"
 
+  /lineage:
+    post:
+      operationId: getLineage
+      summary: A project's data lineage, placed for drawing
+      description: >-
+        Where a project's data comes from and where it goes: the projects
+        producing what it uses, the data sources it uses, the project, the
+        data sources it produces into, and the KPIs and projects reading
+        those. The project's own data is sent as it is being edited, so the
+        lineage follows edits not saved yet; the rest is read as the change
+        set reads the workspace. The engine places every node in its
+        column, left to right as the data flows, so every interface draws
+        it alike. Nothing is stored.
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project, uses, produces]
+              properties:
+                project:
+                  type: string
+                  description: The project's id.
+                name:
+                  type: string
+                uses:
+                  type: array
+                  maxItems: 500
+                  description: The ids of the data sources it uses.
+                  items:
+                    type: string
+                produces:
+                  type: array
+                  maxItems: 500
+                  description: The ids of the data sources it produces into.
+                  items:
+                    type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lineage"
   /structure:
     get:
       operationId: structureQuestions
@@ -4299,6 +4350,38 @@ components:
           items:
             type: string
             maxLength: 200
+    Lineage:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/LineageNode"
+        edges:
+          type: array
+          description: Each in the direction the data flows.
+          items:
+            $ref: "#/components/schemas/GraphEdge"
+    LineageNode:
+      type: object
+      required: [kind, id, name, role, x, y]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [upstream, source, project, output, downstream]
+        x:
+          type: number
+          description: Its column, 0 to 4, left to right as the data flows.
+        y:
+          type: number
+          description: Its row in the column, centred on 0.
     StructuredPiece:
       type: object
       required: [name, kind, where]

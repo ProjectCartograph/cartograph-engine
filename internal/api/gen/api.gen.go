@@ -142,6 +142,33 @@ func (e GuidePlanItemWhen) Valid() bool {
 	}
 }
 
+// Defines values for LineageNodeRole.
+const (
+	LineageNodeRoleDownstream LineageNodeRole = "downstream"
+	LineageNodeRoleOutput     LineageNodeRole = "output"
+	LineageNodeRoleProject    LineageNodeRole = "project"
+	LineageNodeRoleSource     LineageNodeRole = "source"
+	LineageNodeRoleUpstream   LineageNodeRole = "upstream"
+)
+
+// Valid indicates whether the value is a known member of the LineageNodeRole enum.
+func (e LineageNodeRole) Valid() bool {
+	switch e {
+	case LineageNodeRoleDownstream:
+		return true
+	case LineageNodeRoleOutput:
+		return true
+	case LineageNodeRoleProject:
+		return true
+	case LineageNodeRoleSource:
+		return true
+	case LineageNodeRoleUpstream:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LinkKind.
 const (
 	GapGroup           LinkKind = "gap-group"
@@ -1240,6 +1267,30 @@ type KindCount struct {
 	Summary *string `json:"summary,omitempty"`
 }
 
+// Lineage defines model for Lineage.
+type Lineage struct {
+	// Edges Each in the direction the data flows.
+	Edges []GraphEdge   `json:"edges"`
+	Nodes []LineageNode `json:"nodes"`
+}
+
+// LineageNode defines model for LineageNode.
+type LineageNode struct {
+	Id   string          `json:"id"`
+	Kind string          `json:"kind"`
+	Name string          `json:"name"`
+	Role LineageNodeRole `json:"role"`
+
+	// X Its column, 0 to 4, left to right as the data flows.
+	X float32 `json:"x"`
+
+	// Y Its row in the column, centred on 0.
+	Y float32 `json:"y"`
+}
+
+// LineageNodeRole defines model for LineageNode.Role.
+type LineageNodeRole string
+
 // LinkCandidate defines model for LinkCandidate.
 type LinkCandidate struct {
 	Allowed bool   `json:"allowed"`
@@ -2047,6 +2098,26 @@ type GetGuideParams struct {
 	Locale *string `form:"locale,omitempty" json:"locale,omitempty"`
 }
 
+// GetLineageJSONBody defines parameters for GetLineage.
+type GetLineageJSONBody struct {
+	Name *string `json:"name,omitempty"`
+
+	// Produces The ids of the data sources it produces into.
+	Produces []string `json:"produces"`
+
+	// Project The project's id.
+	Project string `json:"project"`
+
+	// Uses The ids of the data sources it uses.
+	Uses []string `json:"uses"`
+}
+
+// GetLineageParams defines parameters for GetLineage.
+type GetLineageParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetLinkCandidatesParams defines parameters for GetLinkCandidates.
 type GetLinkCandidatesParams struct {
 	// From The id of the record the link starts from.
@@ -2309,6 +2380,9 @@ type ReopenChangeSetJSONRequestBody = ProposalDecision
 // FromIdeaJSONRequestBody defines body for FromIdea for application/json ContentType.
 type FromIdeaJSONRequestBody FromIdeaJSONBody
 
+// GetLineageJSONRequestBody defines body for GetLineage for application/json ContentType.
+type GetLineageJSONRequestBody GetLineageJSONBody
+
 // DeleteGoalJSONRequestBody defines body for DeleteGoal for application/json ContentType.
 type DeleteGoalJSONRequestBody = DeleteGoalRequest
 
@@ -2520,6 +2594,9 @@ type ServerInterface interface {
 	// ListKinds Every registered kind and how many manifests exist for it
 	// (GET /kinds)
 	ListKinds(w http.ResponseWriter, r *http.Request)
+	// GetLineage A project's data lineage, placed for drawing
+	// (POST /lineage)
+	GetLineage(w http.ResponseWriter, r *http.Request, params GetLineageParams)
 	// GetLinkCandidates What a link may join from one record, and why not the rest
 	// (GET /links/{link}/candidates)
 	GetLinkCandidates(w http.ResponseWriter, r *http.Request, link LinkKind, params GetLinkCandidatesParams)
@@ -3667,6 +3744,39 @@ func (siw *ServerInterfaceWrapper) ListKinds(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListKinds(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLineage operation middleware
+func (siw *ServerInterfaceWrapper) GetLineage(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetLineageParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLineage(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5710,6 +5820,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/order", wrapper.GetOrder)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/understand", wrapper.Understand)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/lineage", wrapper.GetLineage)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/structure", wrapper.StructureQuestions)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/structure", wrapper.ClassifyStructure)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/relevant", wrapper.Relevant)
@@ -7901,6 +8012,57 @@ func (response ListKinds401JSONResponse) VisitListKindsResponse(w http.ResponseW
 type ListKinds403JSONResponse struct{ ForbiddenJSONResponse }
 
 func (response ListKinds403JSONResponse) VisitListKindsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLineageRequestObject struct {
+	Params GetLineageParams
+	Body   *GetLineageJSONRequestBody
+}
+
+type GetLineageResponseObject interface {
+	VisitGetLineageResponse(w http.ResponseWriter) error
+}
+
+type GetLineage200JSONResponse Lineage
+
+func (response GetLineage200JSONResponse) VisitGetLineageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLineage401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetLineage401JSONResponse) VisitGetLineageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLineage403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetLineage403JSONResponse) VisitGetLineageResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -11669,6 +11831,9 @@ type StrictServerInterface interface {
 	// ListKinds Every registered kind and how many manifests exist for it
 	// (GET /kinds)
 	ListKinds(ctx context.Context, request ListKindsRequestObject) (ListKindsResponseObject, error)
+	// GetLineage A project's data lineage, placed for drawing
+	// (POST /lineage)
+	GetLineage(ctx context.Context, request GetLineageRequestObject) (GetLineageResponseObject, error)
 	// GetLinkCandidates What a link may join from one record, and why not the rest
 	// (GET /links/{link}/candidates)
 	GetLinkCandidates(ctx context.Context, request GetLinkCandidatesRequestObject) (GetLinkCandidatesResponseObject, error)
@@ -12817,6 +12982,39 @@ func (sh *strictHandler) ListKinds(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListKindsResponseObject); ok {
 		if err := validResponse.VisitListKindsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetLineage operation middleware
+func (sh *strictHandler) GetLineage(w http.ResponseWriter, r *http.Request, params GetLineageParams) {
+	var request GetLineageRequestObject
+
+	request.Params = params
+
+	var body GetLineageJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLineage(ctx, request.(GetLineageRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLineage")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetLineageResponseObject); ok {
+		if err := validResponse.VisitGetLineageResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

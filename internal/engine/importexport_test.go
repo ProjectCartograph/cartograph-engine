@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
@@ -219,4 +220,41 @@ func countManifestFiles(t *testing.T, dir string) int {
 		t.Fatalf("walking %s: %v", dir, err)
 	}
 	return n
+}
+
+// A project's data lineage: what it uses on the left, what it produces
+// and what reads that on the right, from the data as it is being edited.
+func TestLineageFollowsTheDataAsEdited(t *testing.T) {
+	t.Parallel()
+	e := newTestEngine(t)
+	if _, err := e.ImportDir(context.Background(), exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	l, err := e.LineageOf(context.Background(), "quality-check-rollout", "Quality Check Rollout", []string{"member-register"}, []string{"quality-check-tool"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	role := map[string]string{}
+	col := map[string]float64{}
+	for _, n := range l.Nodes {
+		role[n.Kind+"/"+n.ID], col[n.Kind+"/"+n.ID] = n.Role, n.X
+	}
+	if role["DataSource/member-register"] != "source" || role["Project/quality-check-rollout"] != "project" || role["DataSource/quality-check-tool"] != "output" {
+		t.Fatalf("roles: %v", role)
+	}
+	readers := 0
+	for k, r := range role {
+		if r == "downstream" && strings.HasPrefix(k, "KPI/") {
+			readers++
+			if col[k] != 4 {
+				t.Errorf("%s in column %v", k, col[k])
+			}
+		}
+	}
+	if readers == 0 {
+		t.Errorf("no KPI reads the output: %v", role)
+	}
+	if col["DataSource/member-register"] >= col["Project/quality-check-rollout"] || col["Project/quality-check-rollout"] >= col["DataSource/quality-check-tool"] {
+		t.Errorf("columns: %v", col)
+	}
 }
