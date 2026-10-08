@@ -57,7 +57,7 @@ func TestClassifySaysWhatIsInconsistent(t *testing.T) {
 		{Name: "B", ChangeOfItsOwn: true, DependedOnBy: []string{"A"}},
 	})
 	all := strings.Join(s.Problems, "\n")
-	for _, want := range []string{`"Handbook" is an output of "Nowhere"`, `"Survey" has a change of its own but names nothing`, "depend on each other"} {
+	for _, want := range []string{`"Handbook" is an output of "Nowhere"`, `"Survey" has a change of its own but names no piece that needs it`, "depend on each other"} {
 		if !strings.Contains(all, want) {
 			t.Errorf("problems lack %q: %s", want, all)
 		}

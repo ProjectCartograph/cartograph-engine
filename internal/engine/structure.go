@@ -186,7 +186,8 @@ func Classify(pieces []StructurePiece) Structure {
 				of = append(of, pieces[j].Name)
 			}
 			if len(of) == 0 {
-				out.Problems = append(out.Problems, fmt.Sprintf("%q has a change of its own but names nothing that depends on it: say which piece depends on it, or it is the parent project", p.Name))
+				out.Problems = append(out.Problems, fmt.Sprintf("%q has a change of its own but names no piece that needs it. If it is the main piece of work, send %s; "+
+					"if another piece needs it, send %s", p.Name, pieceJSON(p.Name, `"none":true`), pieceJSON(p.Name, `"changeOfItsOwn":true,"dependedOnBy":["<the piece that needs it>"]`)))
 			}
 		}
 		out.Pieces = append(out.Pieces, StructuredPiece{Name: p.Name, Kind: kindOf[i], Of: of, Where: whereOf(kindOf[i], p, of)})
@@ -224,8 +225,27 @@ func Classify(pieces []StructurePiece) Structure {
 		}
 	}
 	if len(tops) > 1 && programmes == 0 {
-		out.Problems = append(out.Problems, fmt.Sprintf("%s stand alone, each as the whole of the work: one is the parent; say for each other one "+
-			"changeOfItsOwn with dependedOnBy naming the parent, or outputOf it, or ongoing if it keeps running; or coordinatesProjects on a piece that groups them", quoteList(tops)))
+		// Say it with the pieces to send: the main piece is the one that
+		// says none, else the first named.
+		parent := tops[0]
+		for _, p := range pieces {
+			if p.None {
+				for _, t := range tops {
+					if t == p.Name {
+						parent = t
+					}
+				}
+			}
+		}
+		var fix []string
+		for _, t := range tops {
+			if t != parent {
+				fix = append(fix, pieceJSON(t, fmt.Sprintf(`"changeOfItsOwn":true,"dependedOnBy":[%q]`, parent)))
+			}
+		}
+		out.Problems = append(out.Problems, fmt.Sprintf("%s stand alone, each as the whole of the work, but a piece of work has one whole. If %q is the main piece, "+
+			"send it as %s and the others as %s (or outputOf it, for an output it hands over, or ongoing, for a service that keeps running)",
+			quoteList(tops), parent, pieceJSON(parent, `"none":true`), strings.Join(fix, " and ")))
 	}
 	out.Order = writingOrder(pieces, kindOf, components, &out.Problems)
 	// Ids are generated, never derived from names (AGENTS.md).
@@ -456,4 +476,9 @@ func quoteList(names []string) string {
 		return q[0]
 	}
 	return strings.Join(q[:len(q)-1], ", ") + " and " + q[len(q)-1]
+}
+
+// pieceJSON is a piece as an agent sends it, with the answers given.
+func pieceJSON(name, answers string) string {
+	return fmt.Sprintf(`{"name":%q,%s}`, name, answers)
 }
