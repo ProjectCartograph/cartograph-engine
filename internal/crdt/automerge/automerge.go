@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -40,9 +42,20 @@ var module []byte
 // longer than instantiating, and the result is immutable, so every
 // Engine in the process shares one: it is a cache, not state. The
 // runtime that owns it lives as long as the process.
+//
+// The compiled code is also kept on disk, in the user's cache directory,
+// keyed by the module and the runtime, so the next process (a server's
+// restart, the next package's tests) loads it instead of compiling
+// again. Where there is no cache directory, it compiles as before.
 var compiled = sync.OnceValues(func() (*shared, error) {
 	ctx := context.Background()
-	rt := wazero.NewRuntime(ctx)
+	cfg := wazero.NewRuntimeConfig()
+	if dir, err := os.UserCacheDir(); err == nil {
+		if cache, err := wazero.NewCompilationCacheWithDir(filepath.Join(dir, "cartograph", "wazero")); err == nil {
+			cfg = cfg.WithCompilationCache(cache)
+		}
+	}
+	rt := wazero.NewRuntimeWithConfig(ctx, cfg)
 	if _, err := wasi_snapshot_preview1.Instantiate(ctx, rt); err != nil {
 		return nil, fmt.Errorf("automerge: instantiate wasi: %w", err)
 	}
