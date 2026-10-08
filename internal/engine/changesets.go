@@ -177,6 +177,9 @@ func (e *Engine) SaveInChangeSet(ctx context.Context, set, kind, id string, text
 // a manifest, starting it from the record when the change set has none,
 // and returns the draft as it then stands.
 func (e *Engine) EditInChangeSet(ctx context.Context, set, kind, id string, put map[string]any, unset []string) ([]byte, error) {
+	// A list item keyed by id that arrives without one is given one,
+	// whoever writes it: ids are generated, never left to the writer.
+	e.withItemIDs(kind, put)
 	var out []byte
 	err := e.writeItem(ctx, set, kind, id, func(cur []byte) ([]byte, error) {
 		doc := map[string]any{"apiVersion": "cartograph/v1", "kind": kind, "metadata": map[string]any{"id": id}, "spec": map[string]any{}}

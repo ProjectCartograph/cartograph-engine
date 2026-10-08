@@ -302,3 +302,25 @@ func TestAnEmptyChangeSetIsReusedAndNotListed(t *testing.T) {
 		t.Fatal("a change set with work in it was reused for new work")
 	}
 }
+
+// A person's edit gets generated ids as an agent's does: a list item
+// keyed by id that arrives without one is given one.
+func TestAnEditGivesListItemsTheirIDs(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	ctx := actingAs(ada)
+	cs, err := e.StartChangeSet(ctx, "Risks", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text, err := e.EditInChangeSet(ctx, cs.ID, "Project", "p-ids", map[string]any{
+		"/metadata/name": "Rollout",
+		"/spec/risks":    []any{map[string]any{"description": "Graders short in harvest weeks", "type": "risk"}},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(text), "id: r1") {
+		t.Errorf("no generated id: %s", text)
+	}
+}

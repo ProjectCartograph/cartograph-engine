@@ -13,10 +13,10 @@ import (
 // WriteFields sets and clears fields on a change set's draft the way an
 // agent's write is applied (docs/adr/0027): a name where a register's
 // reference goes finds or drafts it, a value is read in its field's
-// format, a list item the schema keys by id is given one, and every field
-// that can be kept is kept. With merge, a list the draft already holds is
-// merged by id or name, never replaced, so what a port wrote into it is
-// never lost to a later write.
+// format, and every field that can be kept is kept (a list item keyed by
+// id is given one, as in every edit). With merge, a list the draft
+// already holds is merged by id or name, never replaced, so what a port
+// wrote into it is never lost to a later write.
 //
 // It answers the problems refused, field by field, and the records it
 // drafted (with lines cut prefixed "cut: " and names refused prefixed
@@ -35,7 +35,6 @@ func (e *Engine) WriteFields(ctx context.Context, set, kind, id string, put map[
 	if merge {
 		put = e.mergeLists(ctx, set, kind, id, put)
 	}
-	e.withItemIDs(kind, put)
 	_, err = e.EditInChangeSet(ctx, set, kind, id, put, unset)
 	if err == nil {
 		return nil, created, nil
