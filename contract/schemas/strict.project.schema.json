@@ -1,0 +1,20 @@
+{
+  "$id": "strict.project.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Project, strict profile",
+  "description": "A project as an agent may draft it (docs/adr/0027): its schema, with the shapes the discipline refuses refused outright rather than checked after. A project has one objective (TAXONOMY.md D54): a second change is a project of its own, listed as a component.",
+  "allOf": [
+    {
+      "$ref": "project.schema.json"
+    }
+  ],
+  "properties": {
+    "spec": {
+      "properties": {
+        "objectives": {
+          "maxItems": 1
+        }
+      }
+    }
+  }
+}

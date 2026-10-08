@@ -113,7 +113,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	}
 	for _, tl := range tools.Tools {
 		readOnly := tl.Annotations != nil && tl.Annotations.ReadOnlyHint
-		if !readOnly && tl.Name != "save_draft" && tl.Name != "save_drafts" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
+		if !readOnly && tl.Name != "save_draft" && tl.Name != "save_drafts" && tl.Name != "settle" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
 			t.Errorf("tool %s may change something and is neither a draft nor a proposal", tl.Name)
 		}
 	}
@@ -915,5 +915,35 @@ func TestNextFillsAWholeRecord(t *testing.T) {
 	_, text = callTool(t, cs, "next", map[string]any{"work": out.Work})
 	if !strings.Contains(text, `"fill":[`) || !strings.Contains(text, `"field":"/`) || !strings.Contains(text, "every check in fill at once") {
 		t.Fatalf("next: %s", text)
+	}
+}
+
+// One settle per record: the fields the documents give set, the checks
+// they do not answer left with their reason, what comes next handed over;
+// and the summary says what the change set really holds.
+func TestSettleARecordInOneCall(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{
+		map[string]any{"name": "Rollout"}, map[string]any{"name": "Survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
+	}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "work": out.Work,
+		"set":   map[string]any{"/spec/summary/about": "A survey of every depot", "/spec/team": "t1", "/spec/objectives/0/objective": "Faults are found at intake"},
+		"open":  []any{map[string]any{"check": "aim-mandate", "reason": "No mandate is named"}},
+		"asked": "not available"})
+	if res.IsError || !strings.Contains(text, `"then":`) || !strings.Contains(text, "aim-mandate") {
+		t.Fatalf("settle: %s", text)
+	}
+	// A second objective is refused, and nothing is saved.
+	res, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/objectives/1/objective": "Buyers are paid"}})
+	if !res.IsError || !strings.Contains(text, "objectives") {
+		t.Fatalf("a second objective: %s", text)
+	}
+	_, text = callTool(t, cs, "work_summary", map[string]any{})
+	if !strings.Contains(text, `"objectives":1`) || !strings.Contains(text, `"leftForPerson":1`) || !strings.Contains(text, `"components":1`) {
+		t.Fatalf("summary: %s", text)
 	}
 }

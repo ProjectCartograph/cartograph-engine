@@ -17,21 +17,21 @@ func TestAnEditReadsNullAndTheNextIndexAsMeant(t *testing.T) {
 	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
 	edit := func(set map[string]any) (string, error) {
 		t.Helper()
-		text, err := e.EditInChangeSet(agent, "", "Team", "t9", set, nil)
+		text, err := e.EditInChangeSet(agent, "", "Project", "p9", set, nil)
 		return string(text), err
 	}
-	if _, err := edit(map[string]any{"/metadata/name": "Team Nine", "/spec/description": "Runs the depots", "/spec/aliases": []any{"a", "b"}}); err != nil {
+	if _, err := edit(map[string]any{"/metadata/name": "Depot checks", "/spec/summary/about": "Checks at every depot", "/spec/summary/scopeOut": []any{"a", "b"}}); err != nil {
 		t.Fatal(err)
 	}
-	text, err := edit(map[string]any{"/spec/description": nil})
-	if err != nil || strings.Contains(text, "description") {
+	text, err := edit(map[string]any{"/spec/summary/about": nil})
+	if err != nil || strings.Contains(text, "about") {
 		t.Fatalf("null did not remove the field: %v\n%s", err, text)
 	}
-	if text, err = edit(map[string]any{"/spec/aliases/2": "c"}); err != nil || !strings.Contains(text, "- c") {
+	if text, err = edit(map[string]any{"/spec/summary/scopeOut/2": "c"}); err != nil || !strings.Contains(text, "- c") {
 		t.Fatalf("the next index did not add an item: %v\n%s", err, text)
 	}
-	_, err = edit(map[string]any{"/spec/aliases/9": "z"})
-	if !errors.Is(err, engine.ErrBadEdit) || !strings.Contains(err.Error(), "/spec/aliases/-") {
+	_, err = edit(map[string]any{"/spec/summary/scopeOut/9": "z"})
+	if !errors.Is(err, engine.ErrBadEdit) || !strings.Contains(err.Error(), "/spec/summary/scopeOut/-") {
 		t.Fatalf("an index past the end: %v", err)
 	}
 }

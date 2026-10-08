@@ -1,0 +1,22 @@
+{
+  "$id": "strict.resource.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resource, strict profile",
+  "description": "A resource as an agent may draft it (docs/adr/0027): a role or a body, never a person, so a name led by a person's title (Dr, Mr, Ms, Prof and the like) is refused. Name the post and leave out who holds it.",
+  "allOf": [
+    {
+      "$ref": "resource.schema.json"
+    }
+  ],
+  "properties": {
+    "metadata": {
+      "properties": {
+        "name": {
+          "not": {
+            "pattern": "(^|[,(]\\s*)([Dd][Rr]|[Mm][Rr][Ss]?|[Mm][Ss]|[Mm][Ii][Ss][Ss]|[Mm][Xx]|[Pp][Rr][Oo][Ff]([Ee][Ss][Ss][Oo][Rr])?|[Ss][Ii][Rr]|[Dd][Aa][Mm][Ee]|[Hh][Oo][Nn]|[Rr][Ee][Vv])\\.?\\s+\\S"
+          }
+        }
+      }
+    }
+  }
+}

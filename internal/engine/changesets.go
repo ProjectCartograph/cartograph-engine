@@ -242,6 +242,19 @@ func (e *Engine) writeItem(ctx context.Context, set, kind, id string, change fun
 		return &ValidationError{Problems: problems}
 	}
 	p := identity.PrincipalFrom(ctx)
+	// An agent's draft is held to the strict profile (docs/adr/0027): a
+	// shape the discipline refuses, such as a second objective, is never
+	// saved, so it cannot be built wrong however it is sent. What is only
+	// not finished yet is the checks' business.
+	if p.Agent != "" || p.Grant != "" {
+		problems, err := e.StructuralProblems(ctx, kind, text)
+		if err != nil {
+			return err
+		}
+		if len(problems) > 0 {
+			return &ValidationError{Problems: problems}
+		}
+	}
 	// An agent is held to the order of work (TAXONOMY.md D31): what it
 	// names is in the record or in its change set already, and it leaves
 	// no placeholder.

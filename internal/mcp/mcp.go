@@ -61,21 +61,26 @@ func ServeStdio(ctx context.Context, o Options) error {
 }
 
 const instructions = `Porting a document, or starting any new piece of work? Do this, in one pass:
-1. structure: list every piece of work named, answer its questions, call
-   structure, fix its problems.
-2. start_work with the same pieces: one change set for all of it, every
-   record already drafted, named and linked.
-3. next with work set to the work list start_work returned, exactly.
-   It names one record at a time with every check open on it (fill):
-   settle the whole record at once, one edit_draft setting every field
-   the documents give and a leave_open for each they do not, passing
-   the same work to every save; each answer says what comes next. Write the goals, outcomes, KPIs and registers a
-   project names with save_drafts, many in one call. Repeat until it
-   says every check is met. A port is often 30 to 60 records and a few
-   hundred calls: that is expected. Never stop part way, never hand the rest to
-   your person and never describe work you have not saved: what is not
-   saved does not exist.
+1. Read the document's contents and the parts that name pieces of work
+   (grep -n its headings; never read a long document whole). List
+   every piece of work it names: the whole, each workstream, phase,
+   survey, system, service, policy or scheme.
+2. start_work with a title and pieces, each piece an object with its
+   name and only its yes answers to the structure questions (structure
+   lists them). It decides what each piece is, refuses answers that
+   contradict each other, and drafts every record, named and linked.
+3. For each record next names, one settle: set every field the
+   documents give (read only the sections it needs) and leave open
+   each check they do not answer, with its reason, passing the work
+   list start_work returned. Its answer names the next record and
+   what it lacks. Repeat until it says every check is met. Never stop
+   part way and never hand the rest to your person.
 4. propose.
+5. Report from work_summary only: what is not in it was not done.
+
+A shape the discipline refuses (a second objective on a project, a
+person's name on a role, a field the schema does not have) is refused
+when you save it, and nothing is saved: fix it and save again.
 
 Cartograph is the organisation's record of what it has decided to do: its
 purpose, goals, objectives and outcomes, the gaps they close, the
@@ -669,6 +674,20 @@ type (
 	none     struct{}
 	kindOnly struct {
 		Kind string `json:"kind" jsonschema:"a kind, such as Goal or Project"`
+	}
+	settleIn struct {
+		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out"`
+		Kind      string         `json:"kind"`
+		ID        string         `json:"id"`
+		Set       map[string]any `json:"set,omitempty" jsonschema:"every field the documents give, by JSON pointer, such as {\"/spec/summary/about\": \"...\", \"/spec/objectives/0/objective\": \"...\"}"`
+		Unset     []string       `json:"unset,omitempty" jsonschema:"fields to clear, by JSON pointer"`
+		Open      []settleOpen   `json:"open,omitempty" jsonschema:"each check on this record the documents do not answer, with the reason your person will read"`
+		Asked     string         `json:"asked,omitempty" jsonschema:"what you asked your person and what they answered; \"not available\" when you were told to work without them. Required with open"`
+		Work      []string       `json:"work,omitempty" jsonschema:"the work list start_work returned: the answer then says what comes next across it"`
+	}
+	settleOpen struct {
+		Check  string `json:"check"`
+		Reason string `json:"reason"`
 	}
 	leaveIn struct {
 		ChangeSet string      `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out"`
@@ -1408,6 +1427,98 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return out, nil
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "settle", Description: "Settle one record in one call: set every field the documents give (by JSON pointer), " +
+		"leave open each check they do not answer with its reason, and get what comes next across the work, the next record's checks or draft included. " +
+		"The way to work through a port: one settle per record, in the order next gives.", Annotations: drafting},
+		func(c call, in settleIn) (any, error) {
+			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
+			if err != nil {
+				return nil, err
+			}
+			if len(in.Open) > 0 && strings.TrimSpace(in.Asked) == "" {
+				return nil, fmt.Errorf("pass asked: what you asked your person and what they answered, or \"not available\" when you were told to work without them")
+			}
+			if len(in.Set) > 0 || len(in.Unset) > 0 {
+				if _, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, in.Set, in.Unset); err != nil {
+					return nil, fmt.Errorf("%w; nothing was saved: fix those fields and call settle again", err)
+				}
+			}
+			var left []string
+			for _, o := range in.Open {
+				if strings.TrimSpace(o.Reason) == "" {
+					return nil, fmt.Errorf("check %s: give the reason your person will read", o.Check)
+				}
+				if err := e.LeaveOpen(c.ctx, cs.ID, in.Kind, in.ID, o.Check, o.Reason, false); err != nil {
+					return nil, err
+				}
+				left = append(left, o.Check)
+			}
+			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
+				return nil, err
+			}
+			problems, err := e.DraftProblems(c.ctx, in.Kind, in.ID)
+			if err != nil {
+				return nil, err
+			}
+			out := map[string]any{"changeSet": cs.ID, "record": in.Kind + "/" + in.ID, "left": left}
+			if len(problems) > 0 {
+				out["notValidYet"] = problems
+			}
+			work := in.Work
+			if len(work) == 0 {
+				work = []string{in.Kind + "/" + in.ID}
+			}
+			next, err := nextOf(c, cs.ID, true, work, "")
+			if err != nil {
+				return nil, err
+			}
+			out["then"] = next
+			return out, nil
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "work_summary", Description: "What your change set really holds, record by record: each record's name, how many objectives, " +
+		"deliverables, milestones, risks, components and key results it has, its checks still open and those left for your person. " +
+		"Report to your person from this answer only: never say a record holds what it does not show.", Annotations: readOnly},
+		func(c call, in readingIn) (any, error) {
+			cs, c, found, err := c.inChangeSet(in.ChangeSet, false)
+			if err != nil {
+				return nil, err
+			}
+			if !found {
+				return map[string]any{"records": []any{}, "said": "You have no change set yet: nothing is drafted."}, nil
+			}
+			view, err := e.ViewChangeSet(c.ctx, cs.ID)
+			if err != nil {
+				return nil, err
+			}
+			leftBy := map[string]int{}
+			for _, w := range view.ChangeSet.Waivers {
+				leftBy[w.On]++
+			}
+			var records []map[string]any
+			for _, it := range view.Items {
+				var doc map[string]any
+				_ = e.Codec().DecodeInto(it.Item.Text, &doc)
+				spec, _ := doc["spec"].(map[string]any)
+				r := map[string]any{"record": it.Item.Kind + "/" + it.Item.ID, "name": it.Name}
+				for _, f := range []string{"objectives", "deliverables", "milestones", "risks", "components", "keyResults", "costs", "kpis"} {
+					if l, ok := spec[f].([]any); ok && len(l) > 0 {
+						r[f] = len(l)
+					}
+				}
+				open := 0
+				for _, ch := range it.Checks {
+					if ch.Open() {
+						open++
+					}
+				}
+				r["openChecks"], r["leftForPerson"] = open, leftBy[it.Item.Kind+"/"+it.Item.ID]
+				records = append(records, r)
+			}
+			return map[string]any{"changeSet": cs.ID, "status": view.ChangeSet.Status, "records": records,
+				"said": "This is all the change set holds. Report from it only."}, nil
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "leave_open", Description: "Leave a check on one of your drafts for your person, with the reason they will read: only after asking them, for what they cannot settle yet, " +
 		"a figure or date no document gives, a score nobody has made, a choice that is theirs. next then passes it by, and propose waives it with this reason, " +
 		"so you say why once, as you go. An empty reason takes it back. Never leave a check you could meet from the documents.", Annotations: drafting},
@@ -2053,8 +2164,8 @@ func withFill(c call, out map[string]any, tasks []engine.Task) {
 	}
 	if len(fill) > 1 {
 		out["fill"] = fill
-		out["next"] = fmt.Sprintf("Settle %s/%s now, every check in fill at once: one edit_draft setting every field the documents give (set takes many JSON pointers), "+
-			"then one leave_open per check they do not answer; then go on as the answer says. %s", first.Kind, first.ID, firstNext(c.ctx, c.o.Engine, first))
+		out["next"] = fmt.Sprintf("Settle %s/%s now, every check in fill at once, with one settle call: set every field the documents give, "+
+			"open each check they do not answer with its reason, and pass the work list. %s", first.Kind, first.ID, firstNext(c.ctx, c.o.Engine, first))
 	}
 }
 

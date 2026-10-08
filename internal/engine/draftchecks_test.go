@@ -23,7 +23,7 @@ func TestChecksReadTheDraftsInTheirChangeSet(t *testing.T) {
 			t.Fatalf("save %s/%s: %v", kind, id, err)
 		}
 	}
-	save("Goal", "outcome-new", "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: outcome-new\n  name: Faults found at intake\nspec:\n  level: outcome\n  statement: Faults are found at intake\n")
+	save("Goal", "outcome-new", "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: outcome-new\n  name: Faults found at intake\nspec:\n  level: outcome\n  objective: Faults are found at intake\n")
 	save("Programme", "programme-new", programmeYAML("programme-new", ""))
 	save("Operation", "service-new", "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: service-new\n  name: Checks\nspec:\n  purpose: Check deliveries\n  team: t1\n  status: planned\n")
 	save("Segment", "rural", "apiVersion: cartograph/v1\nkind: Segment\nmetadata:\n  id: rural\n  name: Rural\nspec:\n  name: Rural\n  description: Depots outside the towns.\n")
@@ -76,7 +76,7 @@ func TestAGoalIsJudgedAgainstADraftedPurpose(t *testing.T) {
 	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
 	for _, d := range []struct{ kind, id, text string }{
 		{"Purpose", "default", "apiVersion: cartograph/v1\nkind: Purpose\nmetadata:\n  id: default\n  name: Purpose\nspec:\n  vision: Every member's produce reaches a buyer sound\n"},
-		{"Goal", "goal-new", "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: goal-new\n  name: Sound produce\nspec:\n  level: goal\n  statement: Sound produce\n"},
+		{"Goal", "goal-new", "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: goal-new\n  name: Sound produce\nspec:\n  level: goal\n  objective: Sound produce\n"},
 	} {
 		if err := e.SaveInChangeSet(agent, "", d.kind, d.id, []byte(d.text)); err != nil {
 			t.Fatal(err)
@@ -95,5 +95,30 @@ func TestAGoalIsJudgedAgainstADraftedPurpose(t *testing.T) {
 		if c.ID == "smart-relevant" && strings.Contains(c.Message, "no vision or mission") {
 			t.Fatalf("the drafted purpose was not read: %+v", c)
 		}
+	}
+}
+
+// An agent's draft is held to the strict profile (docs/adr/0027): a
+// second objective, or a person's name on a role, is never saved; a draft
+// that is only not finished is.
+func TestAnAgentCannotSaveAnImproperShape(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
+	two := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p-two\n  name: Two aims\nspec:\n  objectives:\n    - objective: Faults are found at intake\n    - objective: Buyers are paid on time\n"
+	if err := e.SaveInChangeSet(agent, "", "Project", "p-two", []byte(two)); err == nil || !strings.Contains(err.Error(), "/spec/objectives") {
+		t.Errorf("a second objective: %v", err)
+	}
+	person := "apiVersion: cartograph/v1\nkind: Resource\nmetadata:\n  id: r-lead\n  name: Dr. Ada Mensah\nspec:\n  category: personRole\n"
+	if err := e.SaveInChangeSet(agent, "", "Resource", "r-lead", []byte(person)); err == nil {
+		t.Error("a person's name on a role was saved")
+	}
+	if _, err := e.EditInChangeSet(agent, "", "Project", "p-one", map[string]any{"/metadata/name": "One aim"}, nil); err != nil {
+		t.Errorf("an unfinished draft: %v", err)
+	}
+	// A person is not held to it here: their drafts reach the record
+	// through a version save and the blocking checks, as before.
+	if err := e.SaveInChangeSet(actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org"}), "", "Project", "p-two", []byte(two)); err != nil {
+		t.Errorf("a person's draft: %v", err)
 	}
 }

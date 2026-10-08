@@ -26,6 +26,9 @@ type (
 type Problem struct {
 	Path    string `json:"path"`
 	Message string `json:"message"`
+	// Keyword is the JSON Schema keyword that failed, for a schema
+	// problem: what tells a draft not finished from one built wrong.
+	Keyword string `json:"-"`
 }
 
 // Change is one difference between two versions of a manifest, at Path (a

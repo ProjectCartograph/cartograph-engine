@@ -239,7 +239,7 @@ func (e *Engine) validate(ctx context.Context, kind string, yamlBytes []byte, ov
 	id, _ := docID(doc)
 	if spec.Rules != nil {
 		for _, p := range spec.Rules(doc, kit.RuleContext{ID: id, Lookup: l}) {
-			problems = append(problems, Problem(p))
+			problems = append(problems, Problem{Path: p.Path, Message: p.Message})
 		}
 	}
 	// The record stays a directed acyclic graph (TAXONOMY.md D28). A kind
@@ -278,7 +278,8 @@ func schemaProblems(err error) []Problem {
 	walk = func(u jsonschema.OutputUnit) {
 		if len(u.Errors) == 0 {
 			if u.Error != nil {
-				problems = append(problems, Problem{Path: u.InstanceLocation, Message: plainPattern(u.Error.String())})
+				kw := u.KeywordLocation[strings.LastIndex(u.KeywordLocation, "/")+1:]
+				problems = append(problems, Problem{Path: u.InstanceLocation, Message: plainPattern(u.Error.String()), Keyword: kw})
 			}
 			return
 		}

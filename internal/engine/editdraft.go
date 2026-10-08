@@ -130,11 +130,21 @@ func pointerSet(doc map[string]any, p string, v any) error {
 			}
 			next, ok := c[t]
 			if !ok || next == nil {
-				next = map[string]any{}
+				next = emptyFor(tokens[i+1])
 				c[t] = next
 			}
 			parent = next
 		case []any:
+			// The next index of a list, inside a pointer, starts a new item:
+			// /spec/objectives/0/objective on a project with none.
+			if n, err := strconv.Atoi(t); !last && (t == "-" || err == nil && n == len(c)) {
+				child := emptyFor(tokens[i+1])
+				if err := setInParent(doc, tokens[:i], append(c, child)); err != nil {
+					return err
+				}
+				parent = child
+				continue
+			}
 			if t == "-" && last {
 				return setInParent(doc, tokens[:i], append(c, v))
 			}
@@ -236,4 +246,16 @@ func applyEdit(doc map[string]any, id string, set map[string]any, unset []string
 		return fmt.Errorf("%w: metadata.id is %s's own and cannot change", ErrBadEdit, id)
 	}
 	return nil
+}
+
+// emptyFor is a new container for the token that will go in it: a list
+// for an index, else an object.
+func emptyFor(next string) any {
+	if next == "-" {
+		return []any{}
+	}
+	if _, err := strconv.Atoi(next); err == nil {
+		return []any{}
+	}
+	return map[string]any{}
 }
