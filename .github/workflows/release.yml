@@ -77,7 +77,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: build and push the image for this architecture
+      # The decision model gives on this architecture the answers recorded
+      # on x86_64 (docs/adr/0030) before its image is published.
+      - run: nix develop --command just decide-measure
+      - name: build and push the images for this architecture
         run: |
           version=$(cat VERSION)
           repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cartograph
@@ -88,6 +91,10 @@ jobs:
             docker tag "$name" "$repo:$version$suffix-${{ matrix.arch }}"
             docker push "$repo:$version$suffix-${{ matrix.arch }}"
           done
+          nix build .#image-laya --out-link result-laya
+          name=$(docker load < result-laya | sed -n 's/^Loaded image: //p')
+          docker tag "$name" "$repo-laya:$version-${{ matrix.arch }}"
+          docker push "$repo-laya:$version-${{ matrix.arch }}"
 
   manifest:
     needs: images
@@ -107,6 +114,8 @@ jobs:
             docker buildx imagetools create -t "$repo:$version$suffix" -t "$repo:latest$suffix" \
               "$repo:$version$suffix-amd64" "$repo:$version$suffix-arm64"
           done
+          docker buildx imagetools create -t "$repo-laya:$version" -t "$repo-laya:latest" \
+            "$repo-laya:$version-amd64" "$repo-laya:$version-arm64"
 
   # The Helm chart at VERSION, as an OCI artifact next to the images:
   # helm install cartograph oci://ghcr.io/<owner>/charts/cartograph --version <VERSION>

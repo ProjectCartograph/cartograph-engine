@@ -288,7 +288,8 @@ serve-vault dir *args: embed
 
 # Measure every System-1 judgement against its examples whose answer is
 # known, on the model the flake pins, and hold each to the score it was
-# kept at (docs/adr/0030). Locally, never in CI: it runs the real model.
+# kept at (docs/adr/0030), and every answer to the one recorded on
+# x86_64. Locally and at a release, never in CI: it runs the real model.
 decide-measure:
     #!{{toolchain}} bash
     set -euo pipefail

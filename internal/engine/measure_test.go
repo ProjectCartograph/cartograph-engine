@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,6 +20,11 @@ import (
 // the score it was kept at (docs/adr/0030). It needs the pinned model
 // (CARTOGRAPH_DECIDE_URL); just decide-measure starts it. Locally only:
 // CI runs the fakes.
+//
+// Every probability is also held to the one recorded on x86_64 Linux
+// (testdata/decide/answers.json), so the same model gives the same
+// answers on every platform it is built for: CARTOGRAPH_DECIDE_RECORD=1
+// records them again, after a change to the model or the questions.
 func TestMeasureJudgements(t *testing.T) {
 	url := os.Getenv("CARTOGRAPH_DECIDE_URL")
 	if url == "" {
@@ -57,6 +63,55 @@ func TestMeasureJudgements(t *testing.T) {
 			t.Errorf("%s scores %d of %d, below the %d it was kept at", name, right, of, j.Measured.Right)
 		}
 	}
+	holdToRecorded(t)
+}
+
+// answered is every probability measureExamples was given, by question
+// and text.
+var answered = map[string]float64{}
+
+// sameAnswer is how far a probability may move between platforms: the
+// floating-point order of one CPU against another, far below any
+// threshold's margin.
+const sameAnswer = 0.005
+
+// holdToRecorded compares answered with the recorded answers, or records
+// them.
+func holdToRecorded(t *testing.T) {
+	t.Helper()
+	path := filepath.Join("testdata", "decide", "answers.json")
+	if os.Getenv("CARTOGRAPH_DECIDE_RECORD") != "" {
+		b, err := json.MarshalIndent(answered, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, append(b, '\n'), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("recorded %d answers", len(answered))
+		return
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("no recorded answers: %v", err)
+	}
+	var recorded map[string]float64
+	if err := json.Unmarshal(b, &recorded); err != nil {
+		t.Fatal(err)
+	}
+	moved := 0
+	for k, want := range recorded {
+		got, ok := answered[k]
+		if !ok {
+			t.Errorf("not asked: %s", k)
+			continue
+		}
+		if math.Abs(got-want) > sameAnswer {
+			moved++
+			t.Errorf("%s: %.4f, recorded %.4f", k, got, want)
+		}
+	}
+	t.Logf("answers as recorded: %d of %d", len(recorded)-moved, len(recorded))
 }
 
 // measureExamples asks every known example of a question, and counts
@@ -79,6 +134,7 @@ func measureExamples(t *testing.T, name string, ask func(string) (Judged, bool))
 		if !ok {
 			t.Fatalf("%s: the model did not answer", name)
 		}
+		answered[name+": "+ex.Text] = math.Round(got.Sure*1e4) / 1e4
 		of++
 		if got.Holds == (ex.Answer == "yes" || ex.Answer == "target") {
 			right++
