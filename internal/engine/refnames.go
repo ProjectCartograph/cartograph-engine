@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
@@ -182,11 +183,25 @@ func (r *refResolver) id(kind, value string) string {
 	if id, ok := r.names[kind][strings.ToLower(value)]; ok {
 		return id
 	}
-	// A near enough name is the same record: "Members (all depots)"
-	// and "Members of all depots" are one group, not two.
+	// The same name spelt otherwise, or by its initials, is the same
+	// record for certain; whether a name otherwise worded is the same
+	// ("Members (all depots)", "Members of all depots") is the model's to
+	// judge, sure and clear of the next record, or not judged at all
+	// (docs/adr/0030).
+	var pool []Match
 	for name, id := range r.names[kind] {
-		if document.NearName(name, value) {
+		if sameName(name, value) {
 			return id
+		}
+		pool = append(pool, Match{Kind: kind, ID: id, Name: name})
+	}
+	if len(pool) > 0 {
+		sort.Slice(pool, func(i, j int) bool { return pool[i].ID < pool[j].ID })
+		if len(pool) > matchPool {
+			pool = pool[:matchPool]
+		}
+		if found, ok := r.e.sameAs(r.ctx, value, pool); ok && len(found) == 1 {
+			return found[0].ID
 		}
 	}
 	id := strings.ToLower(kind) + "-" + structure.NewID()

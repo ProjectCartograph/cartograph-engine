@@ -731,9 +731,10 @@ var minorWords = map[string]bool{"a": true, "an": true, "and": true, "for": true
 // sameName reports whether two names are one: the same once case, spacing
 // and punctuation are set aside ("Depot customers", "Depot Customers"),
 // or one the initials of the other ("SMS", "Student Management System"),
-// with or without its minor words.
+// with or without its minor words, or one the other with its own initials
+// after it ("Depot Services Unit (DSU)").
 func sameName(a, b string) bool {
-	na, nb := plainName(a), plainName(b)
+	na, nb := withoutOwnInitials(plainName(a)), withoutOwnInitials(plainName(b))
 	if len(na) == 0 || len(nb) == 0 {
 		return false
 	}
@@ -741,6 +742,15 @@ func sameName(a, b string) bool {
 		return true
 	}
 	return initialsOf(na, nb) || initialsOf(nb, na)
+}
+
+// withoutOwnInitials drops a last word that spells the words before it,
+// as a name given with its abbreviation does.
+func withoutOwnInitials(words []string) []string {
+	if n := len(words); n >= 3 && initialsOf(words[n-1:], words[:n-1]) {
+		return words[:n-1]
+	}
+	return words
 }
 
 // plainName is a name's words, lower-case, without punctuation.

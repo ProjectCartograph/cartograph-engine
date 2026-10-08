@@ -2,26 +2,6 @@ package document
 
 import "strings"
 
-// nearName reports whether two names say the same thing: most of their
-// words shared, once case, punctuation and short words are set aside.
-func nearName(a, b string) bool {
-	wa, wb := nameWords(a), nameWords(b)
-	if len(wa) == 0 || len(wb) == 0 {
-		return false
-	}
-	shared := 0
-	for w := range wa {
-		if wb[w] {
-			shared++
-		}
-	}
-	small := len(wa)
-	if len(wb) < small {
-		small = len(wb)
-	}
-	return float64(shared)/float64(small) >= 0.75 && shared >= 2
-}
-
 // ReadMonth reads a date as its month, YYYY-MM: from YYYY-MM, YYYY-MM-DD,
 // or DD/MM/YYYY.
 func ReadMonth(s string) (string, bool) {
@@ -55,18 +35,6 @@ func Clip(s string, n int) string {
 		return string(r[:len([]rune(string(r)[:i]))])
 	}
 	return string(r)
-}
-
-func nameWords(s string) map[string]bool {
-	out := map[string]bool{}
-	for _, w := range strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9')
-	}) {
-		if len(w) > 2 && w != "and" && w != "the" && w != "all" {
-			out[strings.TrimSuffix(w, "s")] = true
-		}
-	}
-	return out
 }
 
 // Slug reduces free text to the Slug pattern: lowercase, every run of

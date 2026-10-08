@@ -649,6 +649,3 @@ func WorkstreamNames(sections []Section) []string {
 	}
 	return out
 }
-
-// NearName reports whether two names say the same thing.
-func NearName(a, b string) bool { return nearName(a, b) }

@@ -126,7 +126,8 @@ func (e *Engine) PortPieces(ctx context.Context, set string, src Source, pieces 
 			continue
 		}
 		for _, ws := range document.WorkstreamNames(src.Sections) {
-			if document.NearName(p.Name, ws) {
+			// The same name, spelt otherwise: an exact rule, so a refusal.
+			if sameName(p.Name, ws) {
 				st.Problems = append(st.Problems, fmt.Sprintf("%q is the document's workstream %q, and Cartograph keeps no workstreams (TAXONOMY.md D49): "+
 					"send what it hands over as pieces with outputOf the work, and each piece inside it with a change of its own (a survey, a system) as a piece by itself", p.Name, ws))
 				break
