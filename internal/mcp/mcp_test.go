@@ -790,3 +790,15 @@ func TestAnAgentIsToldTheStructure(t *testing.T) {
 		}
 	}
 }
+
+// The work is a plan: next names the first record of it not written yet,
+// so an agent writes a whole port one record at a time.
+func TestNextLeadsThroughRecordsNotWrittenYet(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "Plan"})
+	res, text := callTool(t, cs, "next", map[string]any{"work": []any{"Team/t1", "Goal/new-goal", "Project/new-project"}})
+	if res.IsError || !strings.Contains(text, `"write":"Goal/new-goal"`) || !strings.Contains(text, "1 of 3") {
+		t.Fatalf("next: %s", text)
+	}
+}

@@ -185,8 +185,10 @@ func Classify(pieces []StructurePiece) Structure {
 		}
 	}
 	out.Order = writingOrder(pieces, kindOf, components, &out.Problems)
-	out.Next = "Open one change set (start_work) for the whole piece of work, then save_draft each record in this order, with work naming them all; " +
-		"write each deliverable inside its project and each scope-out line in the project that mentions it."
+	out.Next = "Fix every problem above and ask again until there are none. Then: open one change set (start_work); choose an id for each record " +
+		"(a few lowercase words joined by hyphens) and call next with work set to every record as Kind/id, in this order, the goals and " +
+		"registers it names first; do exactly what next says, one record at a time, until it says every check is met; then propose. " +
+		"Write each deliverable inside its project and each scope-out line in the project that mentions it."
 	return out
 }
 

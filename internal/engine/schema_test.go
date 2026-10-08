@@ -252,3 +252,31 @@ func TestPurposeLogoSchema(t *testing.T) {
 		{name: "not an image", kind: "Purpose", yaml: purpose("data:text/html;base64,PGI+"), wantProblem: true, wantSubstr: "logo"},
 	})
 }
+
+// A resource names a role or a body, never a person.
+func TestAResourceNamesARoleNotAPerson(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	check := func(name string) string {
+		y := "apiVersion: cartograph/v1\nkind: Resource\nmetadata:\n  id: r9\n  name: " + name + "\nspec:\n  category: role\n"
+		cs, err := e.ChecksOf(context.Background(), "Resource", "r9", []byte(y))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range cs {
+			if c.ID == "resource-role" {
+				return c.State
+			}
+		}
+		return "none"
+	}
+	if got := check("Dr. Ada Mensah"); got != "warn" {
+		t.Errorf("a person's name: %s", got)
+	}
+	if got := check("Head of quality, Dr. Ada Mensah"); got != "warn" {
+		t.Errorf("a post with a person's name: %s", got)
+	}
+	if got := check("Head of quality"); got != "ok" {
+		t.Errorf("a role: %s", got)
+	}
+}

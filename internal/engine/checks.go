@@ -48,6 +48,8 @@ func (e *Engine) ChecksOf(ctx context.Context, kind, id string, text []byte) ([]
 		advisory = e.kpiChecksOf
 	case "Purpose":
 		advisory = purposeChecksOf
+	case "Resource":
+		advisory = resourceChecksOf
 	case "Goal", "Project":
 	default:
 		return out, nil
@@ -238,6 +240,31 @@ func (e *Engine) withInPlay(ctx context.Context) context.Context {
 // against: whose purpose it is, its vision and its mission. Empty, they
 // show here, where they are written, rather than only as each goal's
 // relevance failing.
+// honorifics are the titles that start a person's name, never a role's or
+// a body's: a resource named with one names who holds a post.
+var honorifics = map[string]bool{"dr": true, "mr": true, "mrs": true, "ms": true, "miss": true, "mx": true, "prof": true, "professor": true, "sir": true, "dame": true, "hon": true, "rev": true}
+
+// resourceChecksOf checks a resource names a role or a body, never a
+// person (AGENTS.md: no person appears in Cartograph). A name that starts
+// with a person's title, or holds one after a comma, is flagged: a
+// document's "Dr. A. Smith (Project Lead)" is the post "Project lead".
+func resourceChecksOf(_ context.Context, _ string, doc map[string]any) ([]ProgrammeCheck, error) {
+	meta, _ := doc["metadata"].(map[string]any)
+	name, _ := meta["name"].(string)
+	person := false
+	for _, part := range strings.Split(name, ",") {
+		words := strings.Fields(strings.ToLower(part))
+		if len(words) > 1 && honorifics[strings.TrimSuffix(words[0], ".")] {
+			person = true
+		}
+	}
+	if person {
+		return []ProgrammeCheck{{ID: "resource-role", Section: "definition", State: programmeCheckWarn,
+			Message: "This names a person: Cartograph names roles and bodies, never people. Name the post (for example the head of the unit) and leave out who holds it."}}, nil
+	}
+	return []ProgrammeCheck{{ID: "resource-role", Section: "definition", State: programmeCheckOK, Message: "Names a role or a body."}}, nil
+}
+
 func purposeChecksOf(_ context.Context, _ string, doc map[string]any) ([]ProgrammeCheck, error) {
 	spec, _ := doc["spec"].(map[string]any)
 	var out []ProgrammeCheck

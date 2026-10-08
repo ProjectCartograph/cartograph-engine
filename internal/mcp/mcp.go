@@ -83,6 +83,17 @@ theirs: you never propose it; when nothing is open, tell them, and they
 propose and merge it.
 Recording a reading and moving a project are proposals of their own.
 
+The loop, for any document or new piece of work, in one pass:
+1. structure: list every piece of work named, answer its questions, call
+   structure, fix its problems.
+2. start_work: one change set for all of it.
+3. next with work (every record as Kind/id, in structure's order): do
+   exactly what it says (guide, save_draft, edit_draft, leave_open),
+   then call next again with the same work. Repeat until it says every
+   check is met. Never stop part way and never describe work you have
+   not saved: what is not saved does not exist.
+4. propose.
+
 Work this way, every time:
 - Structure first. Before you draft anything, list every piece of work
   the documents or your person name, answer the structure questions for
@@ -485,6 +496,9 @@ func structureDescription() string {
 		}
 		fmt.Fprintf(&b, "%d. %s (%s) %s\n", i+1, q.Question, q.Field, q.Then)
 	}
+	b.WriteString(`Example: {"pieces":[{"name":"Rollout"},{"name":"Handbook","outputOf":"Rollout"},` +
+		`{"name":"Baseline survey","changeOfItsOwn":true,"dependedOnBy":["Rollout"]},{"name":"Compliance checks","ongoing":true},` +
+		`{"name":"Standards policy","policy":true},{"name":"Farm supply scheme","outOfScope":true}]}. Leave out every answer that is no. `)
 	b.WriteString("Give outputOf as the name of the piece it is an output of, and dependedOnBy as the names of the pieces that depend on it. " +
 		"The answer says what each piece is, what it belongs to, and the order to write the records in; fix every problem it lists and " +
 		"call it again until there are none, then open one change set and write the records in that order.")
@@ -1182,7 +1196,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				"porting says where each part of a charter or plan goes, and what stays out.", "porting": porting}, nil
 		})
 
-	tool(s, o, person, &sdk.Tool{Name: "next", Description: "What to do next, in the order of work: the record is a directed acyclic graph, written from the top down " +
+	tool(s, o, person, &sdk.Tool{Name: "next", Description: "What to do next, one thing at a time. With work (the records of this piece of work as Kind/id, in the order structure gave), " +
+		"the first one not written yet, or else the next open check across them; call it after every save until it says every check is met. " +
+		"The record is a directed acyclic graph, written from the top down " +
 		"(purpose, goals, objectives, outcomes, KPIs, gaps, then portfolios, programmes, operations and projects), each thing naming only what comes before it. " +
 		"With work (every manifest you are working on), the next open check across it: each manifest is finished in one visit, what it is, its numbers " +
 		"(from the documents your person gave you), then its links to what is already there, before the next one down. Without work, the stage of the workspace " +
@@ -1209,6 +1225,30 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			if len(work) == 0 {
 				return workspaceNext(c.ctx, e)
+			}
+			// A record the work names that is not drafted yet is the next
+			// thing to write, in the order given (the structure's order):
+			// the work is a plan, written one record at a time.
+			var drafted []engine.Ref
+			for _, w := range work {
+				var err error
+				if found {
+					_, _, err = e.ChangeSetText(c.ctx, cs.ID, w.Kind, w.ID)
+				} else {
+					_, err = e.Get(c.ctx, w.Kind, w.ID)
+				}
+				if errors.Is(err, engine.ErrNotFound) || errors.Is(err, engine.ErrUnknownKind) {
+					written := len(drafted)
+					return map[string]any{
+						"next": fmt.Sprintf("Write %s/%s now (%d of %d in the work are written): call guide for %s, draft it from the documents with save_draft, "+
+							"passing the same work, then call next again with the same work.", w.Kind, w.ID, written, len(work), w.Kind),
+						"write": w.Kind + "/" + w.ID,
+					}, nil
+				}
+				if err != nil {
+					return nil, err
+				}
+				drafted = append(drafted, w)
 			}
 			w, err := e.Work(c.ctx, work, in.Locale)
 			if err != nil {
