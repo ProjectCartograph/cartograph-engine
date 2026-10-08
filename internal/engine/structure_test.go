@@ -82,7 +82,7 @@ func TestClassifyGivesAProgrammeItsProjects(t *testing.T) {
 func TestStructureKeysAreThePieceFields(t *testing.T) {
 	t.Parallel()
 	b, _ := json.Marshal(engine.StructurePiece{Name: "x", OutOfScope: true, Policy: true, Ongoing: true, RunsToday: true, GroupsForFunding: true,
-		CoordinatesProjects: true, OutputOf: "y", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"z"}, None: true})
+		CoordinatesProjects: true, OutputOf: "y", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"z"}, None: true, Deliverable: "D4"})
 	var m map[string]any
 	_ = json.Unmarshal(b, &m)
 	if len(m) != len(engine.StructureKeys) {

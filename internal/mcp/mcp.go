@@ -2994,6 +2994,7 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 			}
 		}
 	}
+	st.Problems = append(st.Problems, componentRows(c, set, src, pieces)...)
 	if len(st.Problems) > 0 {
 		return map[string]any{"problems": st.Problems, "next": "Fix every problem and call port again with the pieces; nothing was drafted."}, nil
 	}
@@ -3293,6 +3294,58 @@ func portRecords(c call, set string, records []portRecord) (any, error) {
 		out["next"] = "Every record is settled. Propose the change set with propose; report from work_summary."
 	}
 	return out, nil
+}
+
+// componentRows holds each component project to the document's own
+// deliverable register, where it has one: a piece with a change of its
+// own names the row that hands it over (D4), one row to one piece, so a
+// phase, a service or a theme cannot be made a project by renaming it.
+func componentRows(c call, set string, src engine.Source, pieces []engine.StructurePiece) []string {
+	var rows []map[string]any
+	for _, sec := range src.Sections {
+		for _, f := range sec.Feeds {
+			if f == "/spec/deliverables" {
+				if items, err := c.o.Engine.RegisterOf(c.ctx, set, sec.ID, f); err == nil {
+					rows = append(rows, items...)
+				}
+			}
+		}
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	codes := map[string]string{}
+	var listed []string
+	for _, r := range rows {
+		id, _ := r["id"].(string)
+		name, _ := r["name"].(string)
+		if id == "" {
+			continue
+		}
+		code := strings.ToUpper(id)
+		codes[code] = name
+		listed = append(listed, code+" "+name)
+	}
+	var problems []string
+	used := map[string]string{}
+	for _, p := range pieces {
+		if !p.ChangeOfItsOwn {
+			continue
+		}
+		code := strings.ToUpper(strings.TrimSpace(p.Deliverable))
+		switch {
+		case code == "":
+			problems = append(problems, fmt.Sprintf("%q has a change of its own: give deliverable, the code of the row in the document's deliverable register that hands it over. "+
+				"If no row hands it over, it is not a project: make it an output of the work, a service (ongoing) or leave it out. Rows: %s", p.Name, strings.Join(listed, "; ")))
+		case codes[code] == "":
+			problems = append(problems, fmt.Sprintf("%q names deliverable %s, which the register does not have. Rows: %s", p.Name, code, strings.Join(listed, "; ")))
+		case used[code] != "":
+			problems = append(problems, fmt.Sprintf("%q and %q both name deliverable %s: one row is one project", used[code], p.Name, code))
+		default:
+			used[code] = p.Name
+		}
+	}
+	return problems
 }
 
 // mergeLists makes setting a whole list that the draft already holds

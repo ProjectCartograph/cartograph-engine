@@ -1429,3 +1429,25 @@ func TestSettleKeepsItsFieldsWhenACheckCannotBeLeft(t *testing.T) {
 		t.Errorf("objective lost: %s", text)
 	}
 }
+
+// Where the document has a deliverable register, a component project
+// names the row that hands it over; a piece with no row is refused.
+func TestAComponentNamesItsDeliverableRow(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\nD1. Deliverable Register\n" +
+		"    Code    Deliverable                  Due           Owner\n\n" +
+		"    D1      Grading checklist            03/03/2026    Quality team\n\n" +
+		"    D2      Baseline survey report       06/05/2026    Quality team\n\n" +
+		"    D3      Inspection forms             01/06/2026    Inspection unit\n\n" +
+		"    D4      Dispute log                  01/09/2026    Inspection unit\n"
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
+	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{
+		map[string]any{"name": "Depot checks", "none": true},
+		map[string]any{"name": "Baseline survey", "changeOfItsOwn": true, "change": "sets the baseline", "dependedOnBy": []any{"Depot checks"}, "deliverable": "D2"},
+		map[string]any{"name": "Readiness phase", "changeOfItsOwn": true, "change": "depots are ready", "dependedOnBy": []any{"Depot checks"}},
+	}})
+	if !strings.Contains(text, `\"Readiness phase\" has a change of its own: give deliverable`) || strings.Contains(text, `\"Baseline survey\" has a change`) {
+		t.Fatalf("port: %s", text)
+	}
+}

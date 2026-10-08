@@ -52,6 +52,11 @@ type StructurePiece struct {
 	// published. A piece that can only say what it hands over is an
 	// output, not a project.
 	Change string `json:"change,omitempty"`
+	// Deliverable is, for a change of its own in a document with a
+	// deliverable register, the code of the row that hands it over (D4):
+	// a component project is work the document itself lists, never a
+	// phase, a service or a theme renamed.
+	Deliverable string `json:"deliverable,omitempty"`
 	// None says every question was asked and none is yes: the piece is
 	// work that ends with no other answer. A piece says it, or answers.
 	None bool `json:"none,omitempty"`
@@ -59,7 +64,7 @@ type StructurePiece struct {
 
 // StructureKeys are the keys a piece may carry: its name and the answers.
 var StructureKeys = map[string]bool{"name": true, "outOfScope": true, "policy": true, "ongoing": true, "runsToday": true, "groupsForFunding": true,
-	"coordinatesProjects": true, "outputOf": true, "changeOfItsOwn": true, "dependedOnBy": true, "none": true, "change": true}
+	"coordinatesProjects": true, "outputOf": true, "changeOfItsOwn": true, "dependedOnBy": true, "none": true, "change": true, "deliverable": true}
 
 // StructureQuestion is one question, as people and agents are asked it.
 type StructureQuestion struct {
@@ -76,7 +81,7 @@ var StructureQuestions = []StructureQuestion{
 	{"ongoing", "Does it keep running with no end date: a service or a function, whether it runs today or a project will set it up?", "An Operation: running if it runs today, otherwise planned and named by the project that sets it up as where it lands."},
 	{"groupsForFunding", "Does it group projects or programmes only to decide what to fund and in what order?", "A Portfolio, with its strategic objectives."},
 	{"coordinatesProjects", "Does it coordinate several projects, each with its own sponsor or budget, that together bring about one change?", "A Programme, with its theory of change; the projects are its components."},
-	{"changeOfItsOwn", "Does it bring about a change of its own that another piece of work depends on: a survey that sets a baseline, a system or portal people use, an app, a study? Yes even when it also hands over a report, a dataset or a list.", "A Project of its own, with one objective, listed as a component of each piece that depends on it."},
+	{"changeOfItsOwn", "Does it bring about a change of its own that another piece of work depends on: a survey that sets a baseline, a system or portal people use, an app, a study? Yes even when it also hands over a report, a dataset or a list. Where the document has a deliverable register, give deliverable, the code of the row that hands it over (D4).", "A Project of its own, with one objective, listed as a component of each piece that depends on it."},
 	{"outputOf", "Is it an output another piece of work hands over: a document, materials, a toolkit, a training delivered, an event?", "A deliverable of that piece of work, whoever leads it."},
 	{"", "None of these (answer none: true):", "A Project: work that ends, with one objective. A project the others are components of is the parent."},
 }
