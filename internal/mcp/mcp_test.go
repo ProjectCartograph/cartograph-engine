@@ -1206,3 +1206,24 @@ func TestAPortIsOneChain(t *testing.T) {
 		t.Fatalf("summary: %s", text)
 	}
 }
+
+// start_work after port's first call ends where port's second does: the
+// registers are written whichever the agent calls.
+func TestStartWorkAfterADocumentIsAPort(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\nG1. Milestone Plan\n" +
+		"No.        Milestone                     Owner                  Due Date\n\n" +
+		"M1         Checklist agreed              Quality team           15/09/2026\n\n" +
+		"M2         Graders trained               Training unit          20/10/2026\n\n" +
+		"M3         Pilot depots checking         Quality team           02/11/2026\n\n" +
+		"M4         Pilot season reviewed         Steering committee     15/12/2026\n"
+	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	if !strings.Contains(text, `"questions"`) || !strings.Contains(text, `"example"`) {
+		t.Fatalf("port's first answer lacks the questions: %s", text)
+	}
+	res, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
+	if res.IsError || !strings.Contains(text, `"field":"/spec/milestones"`) || !strings.Contains(text, `"added":4`) {
+		t.Fatalf("start_work after a document: %s", text)
+	}
+}

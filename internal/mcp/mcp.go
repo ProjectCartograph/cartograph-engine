@@ -1726,75 +1726,11 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			if len(in.Pieces) == 0 {
 				return map[string]any{"changeSet": cs.ID, "sections": srcs[0].Sections, "piecesIn": pieceSections,
-					"next": "Read sections " + strings.Join(pieceSections, ", ") + " with read_section, list every piece of work they name, answer the structure " +
-						"questions for each (structure lists them), and call port again with pieces."}, nil
+					"questions": engine.StructureQuestions, "example": json.RawMessage(structureExample),
+					"next": "Read sections " + strings.Join(pieceSections, ", ") + " with read_section, list every piece of work they name, answer the questions " +
+						"here for each, and call port again with title and pieces, shaped as example. Do not call structure or start_work: port does both, and writes the registers."}, nil
 			}
-			pieces, refused := piecesOf(in.Pieces)
-			if refused != nil {
-				return refused, nil
-			}
-			st := engine.Classify(pieces)
-			if len(st.Problems) > 0 {
-				return map[string]any{"problems": st.Problems, "next": "Fix every problem and call port again with the pieces; nothing was drafted."}, nil
-			}
-			for _, d := range st.Drafts() {
-				kind, _ := d["kind"].(string)
-				id, _ := d["metadata"].(map[string]any)["id"].(string)
-				if _, drafted, _ := e.ChangeSetText(c.ctx, cs.ID, kind, id); drafted {
-					continue
-				}
-				text, err := e.Codec().Encode(d)
-				if err != nil {
-					return nil, err
-				}
-				if err := e.SaveInChangeSet(c.ctx, cs.ID, kind, id, text); err != nil {
-					return nil, err
-				}
-				c.announce(step{Step: "draft", Kind: kind, ID: id, Text: text, ChangeSet: cs.ID})
-			}
-			// The main project takes the document's registers.
-			main := ""
-			for _, p := range st.Pieces {
-				if p.Kind == "Project" && len(p.Of) == 0 {
-					main = p.Record
-					break
-				}
-			}
-			var registers []map[string]any
-			if mk, mid, ok := strings.Cut(main, "/"); ok {
-				for _, sec := range srcs[0].Sections {
-					for _, f := range sec.Feeds {
-						if f != "/spec/milestones" && f != "/spec/deliverables" && f != "/spec/risks" && f != "/spec/kpis" {
-							continue
-						}
-						rows, added, refusedRows, drafted, err := registerInto(c, cs.ID, mk, mid, sec.ID, f)
-						if err != nil {
-							registers = append(registers, map[string]any{"section": sec.ID, "field": f, "error": err.Error()})
-							continue
-						}
-						if rows == 0 {
-							continue
-						}
-						reg := map[string]any{"section": sec.ID, "heading": sec.Heading, "field": f, "rows": rows, "added": added}
-						if len(refusedRows) > 0 {
-							reg["refused"] = refusedRows
-						}
-						if len(drafted) > 0 {
-							reg["drafted"] = len(drafted)
-						}
-						registers = append(registers, reg)
-					}
-				}
-			}
-			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
-				return nil, err
-			}
-			next, err := nextOf(c, cs.ID, true, st.Work, "")
-			if err != nil {
-				return nil, err
-			}
-			return map[string]any{"changeSet": cs.ID, "work": st.Work, "pieces": st.Pieces, "registers": registers, "then": next,
-				"next": "The structure is drafted and the registers written. Now one settle a record, as then says, passing work; then propose; report from work_summary."}, nil
+			return portPieces(c, cs.ID, srcs[0], in.Pieces)
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "bring_document", Description: "Bring the document you are porting into your change set, once, as its text: Cartograph keeps it with the work, " +
@@ -1990,6 +1926,13 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			cs, err := e.StartChangeSet(c.ctx, in.Title, in.Description)
 			if err != nil {
 				return nil, err
+			}
+			// A document brought into it makes this a port: the same chain
+			// as port's, registers and all.
+			if len(in.Pieces) > 0 {
+				if srcs, err := e.Sources(c.ctx, cs.ID); err == nil && len(srcs) > 0 {
+					return portPieces(c, cs.ID, srcs[0], in.Pieces)
+				}
 			}
 			out := map[string]any{"changeSet": cs.ID, "title": cs.Title, "next": "Draft into it with save_draft and edit_draft; propose it with propose when every check is met."}
 			if len(in.Pieces) == 0 {
@@ -2952,4 +2895,80 @@ func registerInto(c call, set, kind, id, section, field string) (int, int, []eng
 		added++
 	}
 	return len(items), added, refused, drafted, nil
+}
+
+// portPieces runs the rest of a port once its pieces are answered: it
+// decides the structure, drafts every record, writes every register the
+// document has into the main project, and hands over the first record to
+// settle. port and start_work both end here, so a port comes out the same
+// whichever an agent calls.
+func portPieces(c call, set string, src engine.Source, raws []any) (any, error) {
+	e := c.o.Engine
+	var err error
+	pieces, refused := piecesOf(raws)
+	if refused != nil {
+		return refused, nil
+	}
+	st := engine.Classify(pieces)
+	if len(st.Problems) > 0 {
+		return map[string]any{"problems": st.Problems, "next": "Fix every problem and call port again with the pieces; nothing was drafted."}, nil
+	}
+	for _, d := range st.Drafts() {
+		kind, _ := d["kind"].(string)
+		id, _ := d["metadata"].(map[string]any)["id"].(string)
+		if _, drafted, _ := e.ChangeSetText(c.ctx, set, kind, id); drafted {
+			continue
+		}
+		text, err := e.Codec().Encode(d)
+		if err != nil {
+			return nil, err
+		}
+		if err := e.SaveInChangeSet(c.ctx, set, kind, id, text); err != nil {
+			return nil, err
+		}
+		c.announce(step{Step: "draft", Kind: kind, ID: id, Text: text, ChangeSet: set})
+	}
+	// The main project takes the document's registers.
+	main := ""
+	for _, p := range st.Pieces {
+		if p.Kind == "Project" && len(p.Of) == 0 {
+			main = p.Record
+			break
+		}
+	}
+	var registers []map[string]any
+	if mk, mid, ok := strings.Cut(main, "/"); ok {
+		for _, sec := range src.Sections {
+			for _, f := range sec.Feeds {
+				if f != "/spec/milestones" && f != "/spec/deliverables" && f != "/spec/risks" && f != "/spec/kpis" {
+					continue
+				}
+				rows, added, refusedRows, drafted, err := registerInto(c, set, mk, mid, sec.ID, f)
+				if err != nil {
+					registers = append(registers, map[string]any{"section": sec.ID, "field": f, "error": err.Error()})
+					continue
+				}
+				if rows == 0 {
+					continue
+				}
+				reg := map[string]any{"section": sec.ID, "heading": sec.Heading, "field": f, "rows": rows, "added": added}
+				if len(refusedRows) > 0 {
+					reg["refused"] = refusedRows
+				}
+				if len(drafted) > 0 {
+					reg["drafted"] = len(drafted)
+				}
+				registers = append(registers, reg)
+			}
+		}
+	}
+	if c.ctx, err = e.InChangeSet(c.ctx, set); err != nil {
+		return nil, err
+	}
+	next, err := nextOf(c, set, true, st.Work, "")
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"changeSet": set, "work": st.Work, "pieces": st.Pieces, "registers": registers, "then": next,
+		"next": "The structure is drafted and the registers written. Now one settle a record, as then says, passing work; then propose; report from work_summary."}, nil
 }
