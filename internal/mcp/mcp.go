@@ -520,8 +520,8 @@ func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[strin
 // structureDescription is the structure tool's description: the questions
 // themselves, in order, so an agent answers them as a person would.
 // structureExample is a whole structure call, the shape a small agent copies.
-const structureExample = `{"pieces":[{"name":"Rollout"},{"name":"Handbook","outputOf":"Rollout"},` +
-	`{"name":"Baseline survey","changeOfItsOwn":true,"dependedOnBy":["Rollout"]},{"name":"Compliance checks","ongoing":true},` +
+const structureExample = `{"pieces":[{"name":"Rollout","none":true},{"name":"Handbook","outputOf":"Rollout"},` +
+	`{"name":"Baseline survey","changeOfItsOwn":true,"change":"sets the baseline the targets are set from","dependedOnBy":["Rollout"]},{"name":"Compliance checks","ongoing":true},` +
 	`{"name":"Standards policy","policy":true},{"name":"Farm supply scheme","outOfScope":true}]}`
 
 func structureDescription() string {

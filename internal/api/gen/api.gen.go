@@ -1957,6 +1957,8 @@ type Structure struct {
 
 // StructurePiece defines model for StructurePiece.
 type StructurePiece struct {
+	// Change For a change of its own, what it changes that the work depending on it needs; required with changeOfItsOwn.
+	Change              *string   `json:"change,omitempty"`
 	ChangeOfItsOwn      *bool     `json:"changeOfItsOwn,omitempty"`
 	CoordinatesProjects *bool     `json:"coordinatesProjects,omitempty"`
 	DependedOnBy        *[]string `json:"dependedOnBy,omitempty"`

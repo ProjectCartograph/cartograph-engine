@@ -1600,7 +1600,10 @@ questions (`GET /structure`, and the structure tool for agents):
    towards one change: a Programme.
 6. A change of its own that other work depends on: a Project, listed as
    a component of what depends on it (D46, D54), even when it also hands
-   over a report, a dataset or a list.
+   over a report, a dataset or a list. It says what that change is (a
+   baseline set, a system in use, a list published); a piece that can
+   only say what it hands over is an output. A workstream is never a
+   piece (D49): its outputs and its changes are.
 7. An output another piece of work hands over: a deliverable of it.
 8. Otherwise: a Project, the parent of those that are its components.
 

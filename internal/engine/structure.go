@@ -47,6 +47,11 @@ type StructurePiece struct {
 	ChangeOfItsOwn bool `json:"changeOfItsOwn,omitempty"`
 	// DependedOnBy names the pieces that depend on it.
 	DependedOnBy []string `json:"dependedOnBy,omitempty"`
+	// Change says, for a change of its own, what it changes that the work
+	// depending on it needs: a baseline set, a system in use, a list
+	// published. A piece that can only say what it hands over is an
+	// output, not a project.
+	Change string `json:"change,omitempty"`
 	// None says every question was asked and none is yes: the piece is
 	// work that ends with no other answer. A piece says it, or answers.
 	None bool `json:"none,omitempty"`
@@ -54,7 +59,7 @@ type StructurePiece struct {
 
 // StructureKeys are the keys a piece may carry: its name and the answers.
 var StructureKeys = map[string]bool{"name": true, "outOfScope": true, "policy": true, "ongoing": true, "runsToday": true, "groupsForFunding": true,
-	"coordinatesProjects": true, "outputOf": true, "changeOfItsOwn": true, "dependedOnBy": true, "none": true}
+	"coordinatesProjects": true, "outputOf": true, "changeOfItsOwn": true, "dependedOnBy": true, "none": true, "change": true}
 
 // StructureQuestion is one question, as people and agents are asked it.
 type StructureQuestion struct {
@@ -133,6 +138,17 @@ func Classify(pieces []StructurePiece) Structure {
 			}
 		}
 	}
+	for _, p := range pieces {
+		// A workstream groups work; it is not a piece of it (D49).
+		if isWorkstream(p.Name) {
+			out.Problems = append(out.Problems, fmt.Sprintf("%q is a workstream, and Cartograph keeps no workstreams (TAXONOMY.md D49): send what it hands over as pieces "+
+				"with outputOf the work, any piece inside it with a change of its own as a piece by itself, and leave the workstream out", p.Name))
+		}
+		if p.ChangeOfItsOwn && strings.TrimSpace(p.Change) == "" {
+			out.Problems = append(out.Problems, fmt.Sprintf("%q is answered a change of its own but says no change: give change, what it changes that the work needing it "+
+				"depends on (such as \"sets the baseline the targets are set from\"); if all it does is hand something over, it is outputOf that work", p.Name))
+		}
+	}
 	kindOf := make([]string, len(pieces))
 	for i, p := range pieces {
 		switch {
@@ -195,7 +211,7 @@ func Classify(pieces []StructurePiece) Structure {
 			}
 			if len(of) == 0 {
 				out.Problems = append(out.Problems, fmt.Sprintf("%q has a change of its own but names no piece that needs it. If it is the main piece of work, send %s; "+
-					"if another piece needs it, send %s", p.Name, pieceJSON(p.Name, `"none":true`), pieceJSON(p.Name, `"changeOfItsOwn":true,"dependedOnBy":["<the piece that needs it>"]`)))
+					"if another piece needs it, send %s", p.Name, pieceJSON(p.Name, `"none":true`), pieceJSON(p.Name, `"changeOfItsOwn":true,"change":"<what it changes>","dependedOnBy":["<the piece that needs it>"]`)))
 			}
 		}
 		out.Pieces = append(out.Pieces, StructuredPiece{Name: p.Name, Kind: kindOf[i], Of: of, Where: whereOf(kindOf[i], p, of)})
@@ -248,7 +264,7 @@ func Classify(pieces []StructurePiece) Structure {
 		var fix []string
 		for _, t := range tops {
 			if t != parent {
-				fix = append(fix, pieceJSON(t, fmt.Sprintf(`"changeOfItsOwn":true,"dependedOnBy":[%q]`, parent)))
+				fix = append(fix, pieceJSON(t, fmt.Sprintf(`"changeOfItsOwn":true,"change":"<what it changes>","dependedOnBy":[%q]`, parent)))
 			}
 		}
 		out.Problems = append(out.Problems, fmt.Sprintf("%s stand alone, each as the whole of the work, but a piece of work has one whole. If %q is the main piece, "+
@@ -499,4 +515,14 @@ func containsFold(names []string, name string) bool {
 		}
 	}
 	return false
+}
+
+// isWorkstream reports whether a name is a workstream's: "Workstream 3",
+// "WS2 Materials", "Materials workstream".
+func isWorkstream(name string) bool {
+	n := strings.ToLower(strings.TrimSpace(name))
+	if strings.Contains(n, "workstream") || strings.Contains(n, "work stream") {
+		return true
+	}
+	return len(n) > 2 && n[:2] == "ws" && (n[2] >= '0' && n[2] <= '9' || n[2] == ' ' && len(n) > 3 && n[3] >= '0' && n[3] <= '9')
 }

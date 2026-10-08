@@ -791,7 +791,7 @@ func TestAnAgentIsToldTheStructure(t *testing.T) {
 	res, text := callTool(t, cs, "structure", map[string]any{"pieces": []any{
 		map[string]any{"name": "Rollout", "none": true},
 		map[string]any{"name": "Handbook", "outputOf": "Rollout"},
-		map[string]any{"name": "Survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
+		map[string]any{"name": "Survey", "changeOfItsOwn": true, "change": "sets the baseline", "dependedOnBy": []any{"Rollout"}},
 	}})
 	if res.IsError || !strings.Contains(text, `"order":["Survey","Rollout"]`) || !strings.Contains(text, `"kind":"Deliverable"`) {
 		t.Fatalf("structure: %s", text)
@@ -830,7 +830,7 @@ func TestStructureTeachesItsShapeAndHandsOverTheWork(t *testing.T) {
 	}
 	res, text = callTool(t, cs, "structure", map[string]any{"pieces": []any{
 		map[string]any{"name": "Rollout", "none": true}, map[string]any{"name": "Handbook", "outputOf": "Rollout"},
-		map[string]any{"name": "Survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
+		map[string]any{"name": "Survey", "changeOfItsOwn": true, "change": "sets the baseline", "dependedOnBy": []any{"Rollout"}},
 	}})
 	var out struct{ Work []string }
 	if res.IsError || json.Unmarshal([]byte(text), &out) != nil || len(out.Work) != 2 || !strings.HasPrefix(out.Work[0], "Project/project-") {
@@ -885,7 +885,7 @@ func TestStartWorkDraftsTheStructure(t *testing.T) {
 	res, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{
 		map[string]any{"name": "Rollout", "none": true},
 		map[string]any{"name": "Handbook", "outputOf": "Rollout"},
-		map[string]any{"name": "Baseline survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
+		map[string]any{"name": "Baseline survey", "changeOfItsOwn": true, "change": "sets the baseline", "dependedOnBy": []any{"Rollout"}},
 		map[string]any{"name": "Compliance checks", "ongoing": true},
 		map[string]any{"name": "Farm supply scheme", "outOfScope": true},
 	}})
@@ -932,7 +932,7 @@ func TestSettleARecordInOneCall(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
 	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{
-		map[string]any{"name": "Rollout", "none": true}, map[string]any{"name": "Survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
+		map[string]any{"name": "Rollout", "none": true}, map[string]any{"name": "Survey", "changeOfItsOwn": true, "change": "sets the baseline", "dependedOnBy": []any{"Rollout"}},
 	}})
 	var out struct{ Work []string }
 	_ = json.Unmarshal([]byte(text), &out)

@@ -19,9 +19,9 @@ func TestClassifyPutsEachPieceWhereItBelongs(t *testing.T) {
 		{Name: "Standards rollout", None: true},
 		{Name: "Grading handbook", OutputOf: "Standards rollout"},
 		{Name: "Grader training", OutputOf: "Standards rollout"},
-		{Name: "Baseline survey", ChangeOfItsOwn: true, DependedOnBy: []string{"Standards rollout"}},
-		{Name: "Tablet app", ChangeOfItsOwn: true, DependedOnBy: []string{"Baseline survey"}},
-		{Name: "Supplier portal", ChangeOfItsOwn: true, DependedOnBy: []string{"Standards rollout"}},
+		{Name: "Baseline survey", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"Standards rollout"}},
+		{Name: "Tablet app", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"Baseline survey"}},
+		{Name: "Supplier portal", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"Standards rollout"}},
 		{Name: "Compliance checks", Ongoing: true},
 		{Name: "Farm supply scheme", OutOfScope: true},
 	})
@@ -52,9 +52,9 @@ func TestClassifySaysWhatIsInconsistent(t *testing.T) {
 	t.Parallel()
 	s := engine.Classify([]engine.StructurePiece{
 		{Name: "Handbook", OutputOf: "Nowhere"},
-		{Name: "Survey", ChangeOfItsOwn: true},
-		{Name: "A", ChangeOfItsOwn: true, DependedOnBy: []string{"B"}},
-		{Name: "B", ChangeOfItsOwn: true, DependedOnBy: []string{"A"}},
+		{Name: "Survey", ChangeOfItsOwn: true, Change: "sets the baseline"},
+		{Name: "A", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"B"}},
+		{Name: "B", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"A"}},
 	})
 	all := strings.Join(s.Problems, "\n")
 	for _, want := range []string{`"Handbook" is an output of "Nowhere"`, `"Survey" has a change of its own but names no piece that needs it`, "depend on each other"} {
@@ -71,7 +71,7 @@ func TestClassifyGivesAProgrammeItsProjects(t *testing.T) {
 		{Name: "Cleaner water", CoordinatesProjects: true},
 		{Name: "Pipes"},
 		{Name: "Treatment works"},
-		{Name: "Meters", ChangeOfItsOwn: true, DependedOnBy: []string{"Pipes"}},
+		{Name: "Meters", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"Pipes"}},
 	})
 	if got := strings.Join(s.Order, " > "); got != "Meters > Pipes > Treatment works > Cleaner water" {
 		t.Errorf("order %s", got)
@@ -82,7 +82,7 @@ func TestClassifyGivesAProgrammeItsProjects(t *testing.T) {
 func TestStructureKeysAreThePieceFields(t *testing.T) {
 	t.Parallel()
 	b, _ := json.Marshal(engine.StructurePiece{Name: "x", OutOfScope: true, Policy: true, Ongoing: true, RunsToday: true, GroupsForFunding: true,
-		CoordinatesProjects: true, OutputOf: "y", ChangeOfItsOwn: true, DependedOnBy: []string{"z"}, None: true})
+		CoordinatesProjects: true, OutputOf: "y", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"z"}, None: true})
 	var m map[string]any
 	_ = json.Unmarshal(b, &m)
 	if len(m) != len(engine.StructureKeys) {
@@ -105,7 +105,7 @@ func TestStructureRefusesUnansweredAndUnlinkedPieces(t *testing.T) {
 	if !strings.Contains(text, `"Rollout" has no answers`) || !strings.Contains(text, `"Survey" has no answers`) || !strings.Contains(text, "stand alone") {
 		t.Fatalf("problems: %v", s.Problems)
 	}
-	ok := engine.Classify([]engine.StructurePiece{{Name: "Rollout", None: true}, {Name: "Survey", ChangeOfItsOwn: true, DependedOnBy: []string{"Rollout"}}, {Name: "Checks", Ongoing: true}})
+	ok := engine.Classify([]engine.StructurePiece{{Name: "Rollout", None: true}, {Name: "Survey", ChangeOfItsOwn: true, Change: "sets the baseline", DependedOnBy: []string{"Rollout"}}, {Name: "Checks", Ongoing: true}})
 	if len(ok.Problems) > 0 {
 		t.Fatalf("a linked port: %v", ok.Problems)
 	}
@@ -118,7 +118,7 @@ func TestAChangeOfItsOwnIsAskedBeforeAnOutput(t *testing.T) {
 	t.Parallel()
 	s := engine.Classify([]engine.StructurePiece{
 		{Name: "Rollout", None: true},
-		{Name: "Baseline survey", ChangeOfItsOwn: true, OutputOf: "Rollout"},
+		{Name: "Baseline survey", ChangeOfItsOwn: true, Change: "sets the baseline", OutputOf: "Rollout"},
 		{Name: "Handbook", OutputOf: "Rollout"},
 	})
 	if len(s.Problems) > 0 {
@@ -130,5 +130,20 @@ func TestAChangeOfItsOwnIsAskedBeforeAnOutput(t *testing.T) {
 	}
 	if kinds["Baseline survey"] != "Project" || kinds["Handbook"] != engine.PieceDeliverable {
 		t.Fatalf("pieces: %+v", s.Pieces)
+	}
+}
+
+// A workstream is not a piece of work (D49), and a change of its own says
+// what it changes: neither is taken on a bare yes.
+func TestAWorkstreamIsRefusedAndAChangeIsSaid(t *testing.T) {
+	t.Parallel()
+	s := engine.Classify([]engine.StructurePiece{
+		{Name: "Rollout", None: true},
+		{Name: "WS2 Technical materials", ChangeOfItsOwn: true, DependedOnBy: []string{"Rollout"}},
+		{Name: "Survey", ChangeOfItsOwn: true, DependedOnBy: []string{"Rollout"}},
+	})
+	text := strings.Join(s.Problems, "\n")
+	if !strings.Contains(text, `"WS2 Technical materials" is a workstream`) || !strings.Contains(text, `"Survey" is answered a change of its own but says no change`) {
+		t.Fatalf("problems: %v", s.Problems)
 	}
 }
