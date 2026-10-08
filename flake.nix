@@ -150,6 +150,7 @@
               gnused
               curl
               git
+              jujutsu # version control: colocated with git, the one agents use
               postgresql # `just test-postgres` starts a throwaway server
               # The Laya sidecar (deploy/laya): `just serve laya`
               # starts it beside the server (docs/adr/0023).
