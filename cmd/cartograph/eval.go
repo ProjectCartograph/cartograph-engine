@@ -175,11 +175,32 @@ func evalServeCmd(args []string) error {
 		return err
 	}
 	fmt.Printf("run %s on build %s, serving %s\n\nThe agent's prompt:\n\n", name, short(b.Commit), endpoint)
-	fmt.Printf("Port the document in %s into Cartograph, and propose the change set. Your person is not available; work from the document alone.\n\n", doc)
-	fmt.Printf("Cartograph's MCP server is reached with `%s eval call -as %s %s` (`--init` for its instructions, `--tools`, or `<tool> '<json>'`; `@file.json` for long arguments).\n\n", bin, *agent, endpoint)
-	fmt.Printf("Run every other command inside the flake (`nix develop %s -c <command>`), never a tool installed on the machine. ", *flake)
-	fmt.Printf("Keep scratch files under %s and touch nothing else. Report the change set id.\n", filepath.Join(rd, "work"))
+	fmt.Print(agentPrompt(doc, bin, *agent, endpoint, *flake, name))
 	return nil
+}
+
+// agentPrompt is the minimal prompt for the agent under test: the
+// document, the server, the goal, and where it may run things. In the
+// test environment (scripts/dev, docs/CONTAINERS.md), every command goes
+// through the command that reaches it, and scratch files sit in the
+// workspace on the host, which the environment reads at /src.
+func agentPrompt(doc, bin, agent, endpoint, flake, run string) string {
+	var b strings.Builder
+	hostRun, hostWorkspace := os.Getenv("CARTOGRAPH_HOST_RUN"), os.Getenv("CARTOGRAPH_HOST_WORKSPACE")
+	if hostRun == "" || hostWorkspace == "" {
+		fmt.Fprintf(&b, "Port the document in %s into Cartograph, and propose the change set. Your person is not available; work from the document alone.\n\n", doc)
+		fmt.Fprintf(&b, "Cartograph's MCP server is reached with `%s eval call -as %s %s` (`--init` for its instructions, `--tools`, or `<tool> '<json>'`; `@file.json` for long arguments).\n\n", bin, agent, endpoint)
+		fmt.Fprintf(&b, "Run every other command inside the flake (`nix develop %s -c <command>`), never a tool installed on the machine. ", flake)
+		fmt.Fprintf(&b, "Keep scratch files under %s and touch nothing else. Report the change set id.\n", filepath.Join(filepath.Dir(doc), "work"))
+		return b.String()
+	}
+	work := filepath.Join(hostWorkspace, ".eval", filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(doc)))), run)
+	inside := "/src" + strings.TrimPrefix(work, hostWorkspace)
+	fmt.Fprintf(&b, "Port the document at %s in the test environment into Cartograph, and propose the change set. Your person is not available; work from the document alone.\n\n", doc)
+	fmt.Fprintf(&b, "Every command runs in the test environment: prefix it with `%s` (read the document with `%s cat %s`). ", hostRun, hostRun, doc)
+	fmt.Fprintf(&b, "Cartograph's MCP server is reached with `%s %s eval call -as %s %s` (`--init` for its instructions, `--tools`, or `<tool> '<json>'`; `@file.json` for long arguments).\n\n", hostRun, bin, agent, endpoint)
+	fmt.Fprintf(&b, "Keep scratch files under %s on this machine; the test environment reads them at %s (pass `@%s/<file>.json` to a call). Touch nothing else. Report the change set id.\n", work, inside, inside)
+	return b.String()
 }
 
 func evalCallCmd(args []string) error {
