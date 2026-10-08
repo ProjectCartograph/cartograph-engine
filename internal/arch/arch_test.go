@@ -73,7 +73,7 @@ func adapter(own string) []string {
 		"internal/crdt/automerge", "internal/crdt/conformance",
 		"internal/reporting/postgres", "internal/reporting/conformance",
 		"internal/layout/force", "internal/layout/layered", "internal/layout/conformance",
-		"internal/decide/laya", "internal/decide/conformance",
+		"internal/decide/laya", "internal/decide/fake", "internal/decide/conformance",
 		"internal/semantic/dbt", "internal/semantic/conformance",
 		"internal/trace/jsonl",
 	}
@@ -174,7 +174,9 @@ var rules = map[string][]string{
 	"internal/layout/layered": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/layered")),
 	// A decider asks a model; it knows its port and the network, nothing
 	// of the record (docs/adr/0023).
-	"internal/decide/laya":        join([]string{"internal/store", "internal/codec"}, without(drivers, "net/http"), adapter("internal/decide/laya")),
+	"internal/decide/laya": join([]string{"internal/store", "internal/codec"}, without(drivers, "net/http"), adapter("internal/decide/laya")),
+	// The gate's stand-in for a model: its port, nothing else.
+	"internal/decide/fake":        join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/decide/fake")),
 	"internal/decide/conformance": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/decide/conformance")),
 	"internal/layout/conformance": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/layout/conformance")),
 	// A semantic layer exporter writes one tool's syntax; it knows its port

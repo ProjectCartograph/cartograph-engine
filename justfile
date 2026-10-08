@@ -138,7 +138,7 @@ arch: embed
 words:
     #!{{toolchain}} bash
     set -uo pipefail
-    n=$(grep -rniE '\b(ministry|school|schools|pupil|cabinet|circular|vote|district|teacher|ecce)\b' --include='*.go' --include='*.json' --include='*.yaml' --include='*.yml' --include='*.md' . | grep -v '/dist/' | grep -vE '^./docs/(TAXONOMY|DESIGN_RULES).md' | wc -l)
+    n=$(grep -rniE '\b(ministry|school|schools|pupil|cabinet|circular|vote|district|teacher|ecce)\b' --include='*.go' --include='*.json' --include='*.jsonl' --include='*.yaml' --include='*.yml' --include='*.md' . | grep -v '/dist/' | grep -vE '^./docs/(TAXONOMY|DESIGN_RULES).md' | wc -l)
     d=$(grep -rnE '—' examples/ contract/guidance/ contract/flows/ 2>/dev/null | wc -l)
     echo "domain words: $n, em dashes in the example: $d"
     test "$n" -eq 0 && test "$d" -eq 0
@@ -285,6 +285,27 @@ serve *args: embed
 # Serve any vault directory, with the arguments serve takes
 serve-vault dir *args: embed
     scripts/serve "{{dir}}" {{args}}
+
+# Measure every System-1 judgement against its examples whose answer is
+# known, on the model the flake pins, and hold each to the score it was
+# kept at (docs/adr/0030). Locally, never in CI: it runs the real model.
+decide-measure:
+    #!{{toolchain}} bash
+    set -euo pipefail
+    # Built first: the model is fetched into the store once, however long
+    # that takes; starting it then takes seconds.
+    laya=$(nix build .#laya --no-link --print-out-paths)
+    port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')
+    LAYA_PORT=$port "$laya/bin/cartograph-laya" >/tmp/cartograph-laya-$port.log 2>&1 &
+    pid=$!
+    trap 'kill $pid 2>/dev/null || true' EXIT
+    ready=
+    for _ in $(seq 1 120); do
+      curl -sf "http://127.0.0.1:$port/ready" >/dev/null && { ready=1; break; }
+      sleep 1
+    done
+    [ -n "$ready" ] || { echo "the model did not start:"; tail -5 /tmp/cartograph-laya-$port.log; exit 1; }
+    CARTOGRAPH_DECIDE_URL="http://127.0.0.1:$port" go test -count=1 -tags decide -run TestMeasureJudgements -v ./internal/engine/ | grep -E "^\s+measure_test|^(--- |ok|FAIL)"
 
 # Run the Laya sidecar on its own (deploy/laya, docs/adr/0023)
 laya port="8411":

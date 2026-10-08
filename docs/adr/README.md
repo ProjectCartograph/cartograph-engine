@@ -39,6 +39,7 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0027](0027-agents-draft-to-a-strict-profile.md) | Agents draft to a strict profile, and settle a record in one call | Accepted |
 | [0028](0028-agents-calls-are-traced.md) | Every agent's call is traced by its shape | Accepted |
 | [0029](0029-no-version-brings-in-a-refused-shape.md) | No version brings in a shape the strict profile refuses | Accepted |
+| [0030](0030-meaning-is-system-one.md) | Meaning in text is judged by a System-1 model, or not at all | Accepted |
 
 ## Writing one
 
