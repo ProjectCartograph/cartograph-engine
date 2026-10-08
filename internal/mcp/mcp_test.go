@@ -566,7 +566,7 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 func TestTheTaxonomySaysWhereEachPartOfADocumentGoes(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
-	res, text := callTool(t, cs, "taxonomy", map[string]any{})
+	res, text := callTool(t, cs, "taxonomy", map[string]any{"full": true})
 	if res.IsError {
 		t.Fatal(text)
 	}
@@ -574,6 +574,15 @@ func TestTheTaxonomySaysWhereEachPartOfADocumentGoes(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Errorf("the porting map lacks %q", want)
 		}
+	}
+	// By default, where each part goes and no more; how, by part.
+	_, brief := callTool(t, cs, "taxonomy", map[string]any{})
+	if strings.Contains(brief, `"how":"`+porting0How()) || len(brief) > len(text)/2 {
+		t.Errorf("the default map is %d long against %d in full", len(brief), len(text))
+	}
+	_, part := callTool(t, cs, "taxonomy", map[string]any{"part": "workstream"})
+	if !strings.Contains(part, "A workstream or strand whose result is an output") || strings.Contains(part, `"kinds"`) {
+		t.Errorf("by part: %s", part)
 	}
 }
 
@@ -856,3 +865,6 @@ func TestSaveDraftsWritesManyAndSaysWhatComesNext(t *testing.T) {
 		t.Fatalf("save_drafts: %s", text)
 	}
 }
+
+// porting0How is a phrase only the how of the porting map holds.
+func porting0How() string { return "Ask in the document's own words" }

@@ -83,6 +83,11 @@ theirs: you never propose it; when nothing is open, tell them, and they
 propose and merge it.
 Recording a reading and moving a project are proposals of their own.
 
+A long document does not fit in your context with the work: never read
+it whole. Read its contents list and the parts that name the pieces of
+work first, for structure; then read each section only when you write
+what it gives, and let it go.
+
 The loop, for any document or new piece of work, in one pass:
 1. structure: list every piece of work named, answer its questions, call
    structure, fix its problems.
@@ -702,8 +707,10 @@ type (
 		From int    `json:"from" jsonschema:"the earlier version"`
 		To   int    `json:"to" jsonschema:"the later version"`
 	}
-	localeOnly struct {
+	taxonomyIn struct {
 		Locale string `json:"locale,omitempty"`
+		Part   string `json:"part,omitempty" jsonschema:"a few words of the parts to port now, such as milestone or budget: answers with how to write each part that matches"`
+		Full   bool   `json:"full,omitempty" jsonschema:"true for the whole porting map with how to write every part; long"`
 	}
 	matchIn struct {
 		Kind  string `json:"kind" jsonschema:"the kind to look in"`
@@ -1302,15 +1309,40 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 
 	tool(s, o, person, &sdk.Tool{Name: "taxonomy", Description: "Every kind Cartograph keeps, in the order of the strategy: what each is in one sentence, its levels, " +
 		"and what plans and documents often call it instead. Read it before recording anything from a document, and map each thing the document says " +
-		"onto the kind it is by definition, whatever the document calls it.", Annotations: readOnly},
-		func(c call, in localeOnly) (any, error) {
+		"onto the kind it is by definition, whatever the document calls it. Its porting map says where each part of a document goes; " +
+		"ask with part for how to write the parts you are porting now.", Annotations: readOnly},
+		func(c call, in taxonomyIn) (any, error) {
 			t, err := e.Taxonomy(in.Locale)
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"kinds": t, "rule": "Map by what a thing is, against each summary and the guide's definition, never by the word a document uses. " +
+			out := map[string]any{"kinds": t, "rule": "Map by what a thing is, against each summary and the guide's definition, never by the word a document uses. " +
 				"Record it as Cartograph's kind and level, keep the document's wording in its statement, and cite the document as its source. " +
-				"porting says where each part of a charter or plan goes, and what stays out.", "porting": porting}, nil
+				"porting says where each part of a charter or plan goes, and what stays out."}
+			// The whole map is long: a small agent's context is better spent
+			// on the document. Where each part goes, by default; how, for
+			// the parts asked about.
+			switch {
+			case in.Full:
+				out["porting"] = porting
+			case strings.TrimSpace(in.Part) != "":
+				var hit []portingRule
+				for _, r := range porting {
+					if containsFold(r.Part+" "+r.Goes, in.Part) {
+						hit = append(hit, r)
+					}
+				}
+				out["porting"] = hit
+				delete(out, "kinds")
+			default:
+				brief := make([]map[string]string, len(porting))
+				for i, r := range porting {
+					brief[i] = map[string]string{"part": r.Part, "goes": r.Goes}
+				}
+				out["porting"] = brief
+				out["how"] = "Call taxonomy with part set to a few words of a part (such as milestone, budget or workstream) for how to write it, before you write it."
+			}
+			return out, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "next", Description: "What to do next, one thing at a time. With work (the records of this piece of work as Kind/id, in the order structure gave), " +
@@ -1985,4 +2017,9 @@ func firstUnwritten(c call, set string, found bool, work []engine.Ref, locale st
 		drafted = append(drafted, w)
 	}
 	return nil, nil
+}
+
+// containsFold reports whether s holds sub, ignoring case.
+func containsFold(s, sub string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(strings.TrimSpace(sub)))
 }
