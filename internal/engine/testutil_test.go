@@ -1,8 +1,9 @@
 package engine_test
 
 import (
-	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"testing"
+
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"

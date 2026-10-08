@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds/kit"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/timing"
 )
 
 // Smart is how far one goal, objective or outcome meets the SMART criteria
@@ -50,10 +52,10 @@ func measureOf(m map[string]any) measure {
 		_, v := b["value"]
 		_, u := b["unknownReason"]
 		out.baseline = v || u
-		out.baseValue, out.hasBase = toFloat(b["value"])
+		out.baseValue, out.hasBase = document.Number(b["value"])
 		out.baseDate = monthOf(b["date"], false)
 	}
-	if t := readTarget(m["target"]); t.Set || t.HasValue {
+	if t := timing.ReadTarget(m["target"]); t.Set || t.HasValue {
 		out.target = t.Set && !t.Timing.Late
 		out.targetValue, out.hasTarget = t.Value, t.HasValue
 		out.targetDate = t.Month
@@ -79,18 +81,6 @@ func (m measure) wrongWay() bool {
 // outOfOrder reports a target dated on or before today's figure.
 func (m measure) outOfOrder() bool {
 	return m.baseDate != "" && m.targetDate != "" && m.targetDate <= m.baseDate
-}
-
-func toFloat(v any) (float64, bool) {
-	switch n := v.(type) {
-	case int:
-		return float64(n), true
-	case int64:
-		return float64(n), true
-	case float64:
-		return n, true
-	}
-	return 0, false
 }
 
 // monthOf reads a date as "YYYY-MM". A bare year reads as its January, or

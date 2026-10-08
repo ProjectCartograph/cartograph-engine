@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"fmt"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/timing"
 )
 
 // ScheduleItem is one milestone placed on time (TAXONOMY.md D48): the
@@ -40,7 +42,7 @@ func (e *Engine) Schedule(ctx context.Context, id string) ([]ScheduleItem, error
 		return nil, fmt.Errorf("%w: Project/%s", ErrNotFound, id)
 	}
 	ms, _ := spec["milestones"].([]any)
-	chain := readMilestones(spec)
+	chain := timing.Milestones(spec)
 	order := []string{}
 	byID := map[string]map[string]any{}
 	for _, it := range ms {
@@ -83,13 +85,13 @@ func (e *Engine) Schedule(ctx context.Context, id string) ([]ScheduleItem, error
 	var out []ScheduleItem
 	for _, mid := range order {
 		m := byID[mid]
-		t := readTiming(m["timing"])
+		t := timing.Read(m["timing"])
 		tm, _ := m["timing"].(map[string]any)
 		nb, _ := tm["notBefore"].(string)
 		na, _ := tm["notAfter"].(string)
 		name, _ := m["name"].(string)
 		out = append(out, ScheduleItem{
-			ID: mid, Name: name, Form: t.Form, Month: month(mid), NotBefore: trimMonth(nb), NotAfter: trimMonth(na),
+			ID: mid, Name: name, Form: t.Form, Month: month(mid), NotBefore: timing.TrimMonth(nb), NotAfter: timing.TrimMonth(na),
 			WaitsOn: chain.Waits[mid], Pending: t.Form == "when", Late: t.Late, Critical: critical[mid],
 			Unplaced: month(mid) == "",
 		})
@@ -144,7 +146,7 @@ func (p *placer) item(project, list, id string) map[string]any {
 
 // due is the month a deliverable or condition is due, by its timing.
 func (p *placer) due(project, list, id string) string {
-	return readTiming(p.item(project, list, id)["due"]).Month
+	return timing.Read(p.item(project, list, id)["due"]).Month
 }
 
 // place is the month a project's milestone falls in, "" when it cannot be
@@ -162,7 +164,7 @@ func (p *placer) place(project, mid string) string {
 		return ""
 	}
 	p.state[at] = 1
-	t := readTiming(m["timing"])
+	t := timing.Read(m["timing"])
 	out := t.Month
 	follow := func(ev map[string]any, lagMonths, lagDays int) {
 		on, _ := ev["on"].(map[string]any)
@@ -216,11 +218,4 @@ func (p *placer) place(project, mid string) string {
 	p.month[at] = out
 	p.state[at] = 2
 	return out
-}
-
-func trimMonth(s string) string {
-	if len(s) >= 7 {
-		return s[:7]
-	}
-	return s
 }

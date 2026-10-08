@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/spc"
 )
 
@@ -26,10 +27,10 @@ func (e *Engine) ControlChartOf(ctx context.Context, kpi string) (spc.Chart, err
 	}
 	cc := spc.Chart{KPI: kpi, Points: []spc.Point{}}
 	if lim, ok := specOf(doc)["specLimits"].(map[string]any); ok {
-		if f, ok := number(lim["lower"]); ok {
+		if f, ok := document.Number(lim["lower"]); ok {
 			cc.SpecLower = &f
 		}
-		if f, ok := number(lim["upper"]); ok {
+		if f, ok := document.Number(lim["upper"]); ok {
 			cc.SpecUpper = &f
 		}
 	}
@@ -43,7 +44,7 @@ func (e *Engine) ControlChartOf(ctx context.Context, kpi string) (spc.Chart, err
 			continue
 		}
 		for _, r := range listOf(sp["readings"]) {
-			val, ok := number(r["value"])
+			val, ok := document.Number(r["value"])
 			period, _ := r["period"].(string)
 			if !ok || period == "" {
 				continue
@@ -55,18 +56,4 @@ func (e *Engine) ControlChartOf(ctx context.Context, kpi string) (spc.Chart, err
 	sort.Slice(cc.Points, func(i, j int) bool { return cc.Points[i].Period < cc.Points[j].Period })
 	spc.XmR(&cc)
 	return cc, nil
-}
-
-func number(v any) (float64, bool) {
-	switch n := v.(type) {
-	case float64:
-		return n, true
-	case int:
-		return float64(n), true
-	case int64:
-		return float64(n), true
-	case uint64:
-		return float64(n), true
-	}
-	return 0, false
 }

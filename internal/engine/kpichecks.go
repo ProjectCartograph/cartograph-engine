@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/timing"
 )
 
 // kpiChecksOf checks an indicator (TAXONOMY.md D25, D26): a measure is
@@ -42,11 +44,11 @@ func (e *Engine) kpiChecksOf(_ context.Context, _ string, doc map[string]any) ([
 	default:
 		add("kpi-baseline", "baseline-target", false, "", "No baseline yet: today's figure and its date, or why it is not known.")
 	}
-	switch t := readTarget(spec["target"]); {
+	switch t := timing.ReadTarget(spec["target"]); {
 	case t.Pending && t.Set && !t.Timing.Late:
-		add("kpi-target", "baseline-target", true, "The target "+pendingWords(t)+".", "")
+		add("kpi-target", "baseline-target", true, "The target "+timing.Pending(t)+".", "")
 	case t.Pending && t.Timing.Late:
-		add("kpi-target", "baseline-target", false, "", "The target "+pendingWords(t)+".")
+		add("kpi-target", "baseline-target", false, "", "The target "+timing.Pending(t)+".")
 	default:
 		add("kpi-target", "baseline-target", t.Set && t.Dated,
 			"A target is set, with when it is to be reached.", "No dated target yet: the figure to reach and by when, or the event that sets it.")

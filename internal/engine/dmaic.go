@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
 )
 
 // Whether a project can be taken through DMAIC, Lean Six Sigma's Define,
@@ -169,7 +171,7 @@ func (e *Engine) DMAICOf(ctx context.Context, id string) (DMAIC, error) {
 	})
 	add(PhaseMeasure, "data-collection", ok2,
 		"A data collection plan for each: its sources, its cycle and its owner.", "KPI /spec/sources", "Missing a source, cycle or owner: "+strings.Join(lack, ", "))
-	ok3, lack := everyKPI(func(k map[string]any) bool { _, has := number(mapOf(k["baseline"])["value"]); return has })
+	ok3, lack := everyKPI(func(k map[string]any) bool { _, has := document.Number(mapOf(k["baseline"])["value"]); return has })
 	add(PhaseMeasure, "baseline", ok3,
 		"A baseline for each: today's figure, dated.", "KPI /spec/baseline", "No baseline figure: "+strings.Join(lack, ", "))
 	ok4, lack := everyKPI(func(k map[string]any) bool { return k["specLimits"] != nil })

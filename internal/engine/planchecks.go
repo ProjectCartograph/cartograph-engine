@@ -3,6 +3,8 @@ package engine
 import (
 	"fmt"
 	"strings"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/timing"
 )
 
 // addPlanChecks are the checks on what TAXONOMY.md D47 to D52 added: the
@@ -32,15 +34,15 @@ func addPlanChecks(c checkAdder, spec map[string]any) {
 
 	// Milestones: each says when it falls, and the chain has no loop.
 	if ms := list("milestones"); len(ms) > 0 {
-		chain := readMilestones(spec)
+		chain := timing.Milestones(spec)
 		var open, late, dangling []string
 		for _, m := range ms {
-			t := readTiming(m["timing"])
+			t := timing.Read(m["timing"])
 			switch {
 			case !t.Complete:
 				open = append(open, name(m, "name"))
 			case t.Late:
-				late = append(late, fmt.Sprintf("%s (expected by %s)", name(m, "name"), monthWords(t.Month)))
+				late = append(late, fmt.Sprintf("%s (expected by %s)", name(m, "name"), timing.MonthWords(t.Month)))
 			}
 			id, _ := m["id"].(string)
 			for _, to := range chain.Waits[id] {
@@ -80,7 +82,7 @@ func addPlanChecks(c checkAdder, spec map[string]any) {
 		var missing []string
 		for _, d := range ds {
 			_, owner := d["owner"].(map[string]any)
-			due := readTiming(d["due"]).Complete
+			due := timing.Read(d["due"]).Complete
 			if !owner || !due {
 				missing = append(missing, name(d, "name"))
 			}
@@ -124,7 +126,7 @@ func addPlanChecks(c checkAdder, spec map[string]any) {
 		var missing []string
 		for _, cd := range cds {
 			_, owner := cd["owner"].(map[string]any)
-			if !owner || !readTiming(cd["due"]).Complete {
+			if !owner || !timing.Read(cd["due"]).Complete {
 				missing = append(missing, name(cd, "action"))
 			}
 		}

@@ -3,11 +3,12 @@ package engine_test
 import (
 	"context"
 	"errors"
-	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
+
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/sqlite"

@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
-	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
 	"sort"
 	"strings"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 

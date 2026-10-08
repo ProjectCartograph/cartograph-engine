@@ -99,3 +99,19 @@ func Slug(s string) string {
 	}
 	return out
 }
+
+// Number reads a JSON or YAML value as a number, whichever numeric type
+// its decoder gave it.
+func Number(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case uint64:
+		return float64(n), true
+	}
+	return 0, false
+}

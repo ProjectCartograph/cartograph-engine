@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/timing"
 )
 
 const (
@@ -1105,7 +1107,7 @@ func keyResultHasBaseline(kr map[string]any) bool {
 // value, or one set when an event happens whose expected month has not
 // passed (TAXONOMY.md D47).
 func keyResultHasTarget(kr map[string]any) bool {
-	t := readTarget(kr["target"])
+	t := timing.ReadTarget(kr["target"])
 	return t.Set && !t.Timing.Late
 }
 

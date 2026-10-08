@@ -391,6 +391,7 @@ A change that needs a new edge gets a new port, not an exception
 | `internal/spc` | Statistical process control (TAXONOMY.md D58): a measure's XmR chart, its limits, the signals that the process changed, and its capability. Pure arithmetic | nothing |
 | `internal/legacy` | Reads manifests stored in an earlier release's shape: rewrites retired names and shapes into the current ones, and says which deprecated fields a document still holds. Pure | `internal/document`, `internal/sentence`, `internal/units` |
 | `internal/units` | The standard units every vault starts with (TAXONOMY.md D10), seeded by the engine | nothing |
+| `internal/timing` | When things fall (TAXONOMY.md D47, D48): a timing in its four forms, a target in its shapes, a project's milestones as a chain of what waits on what. Pure | `internal/document` |
 | `internal/kinds`, `internal/kinds/<kind>` | The registry of kinds and each kind's rules beyond its schema | `kinds/kit` |
 | `internal/kinds/kit` | The small types rules need (`Problem`, `Lookup`) so kind packages never import the engine | nothing |
 | `internal/engine` | The core: validation, commits, versions, diffs, references, checks, state, apply gate, handoff, the shared drafts (`Shared`, and `Shape`, which maps a kind's schema onto the document), the access list and the team checks at every write, the event bus | `store`, `codec`, `crdt`, `fanout`, `identity`, `kinds`, `kinds/kit`, `contract`, `sentence`; a JSON Schema validator |

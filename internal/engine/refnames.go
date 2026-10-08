@@ -116,7 +116,7 @@ func (r *refResolver) resolve(file string, node map[string]any, v any) any {
 				return m
 			}
 		}
-		if max, ok := number(node["maxLength"]); ok && len([]rune(s)) > int(max) {
+		if max, ok := document.Number(node["maxLength"]); ok && len([]rune(s)) > int(max) {
 			cut := document.Clip(s, int(max))
 			r.clipped = append(r.clipped, fmt.Sprintf("%q cut to %q", s, cut))
 			return cut

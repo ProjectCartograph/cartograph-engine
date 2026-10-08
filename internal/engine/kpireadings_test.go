@@ -2,11 +2,12 @@ package engine_test
 
 import (
 	"context"
-	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
 // A KPI's readings are their own file, and the one thing the schema cannot
