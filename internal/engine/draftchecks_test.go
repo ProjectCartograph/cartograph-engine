@@ -122,3 +122,38 @@ func TestAnAgentCannotSaveAnImproperShape(t *testing.T) {
 		t.Errorf("a person's draft: %v", err)
 	}
 }
+
+// A register drafted from a name gets what it needs to be valid, read
+// from the name; a near enough name is the same record.
+func TestNamedRegistersAreReadFromTheirNames(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
+	if _, err := e.EditInChangeSet(agent, "", "Project", "p-reg", map[string]any{"/metadata/name": "Rollout"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	sets, err := e.ChangeSets(agent, "", false)
+	if err != nil || len(sets) == 0 {
+		t.Fatalf("change sets: %v", err)
+	}
+	set := sets[0].ID
+	fields, created, err := e.NamedRefs(agent, set, "Project", map[string]any{
+		"/spec/resources": []any{
+			map[string]any{"role": "sponsor", "resource": "Steering Committee"},
+			map[string]any{"role": "manager", "resource": "Education Health Services Unit"},
+			map[string]any{"role": "teamMember", "resource": "Education Health Services Unit (EHSU)"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(created) != 2 {
+		t.Fatalf("drafted %v from %v", created, fields)
+	}
+	for _, r := range created {
+		text, _, _ := e.ChangeSetText(agent, set, "Resource", strings.TrimPrefix(r, "Resource/"))
+		if !strings.Contains(string(text), "category: governanceBody") && !strings.Contains(string(text), "category: orgUnit") {
+			t.Errorf("%s: %s", r, text)
+		}
+	}
+}

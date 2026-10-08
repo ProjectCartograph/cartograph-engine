@@ -946,7 +946,7 @@ func TestSettleARecordInOneCall(t *testing.T) {
 	}
 	// A second objective is refused, and nothing is saved.
 	res, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/objectives/1/objective": "Buyers are paid"}})
-	if !res.IsError || !strings.Contains(text, "objectives") {
+	if res.IsError || !strings.Contains(text, `"refused":[{"path":"/spec/objectives"`) {
 		t.Fatalf("a second objective: %s", text)
 	}
 	_, text = callTool(t, cs, "work_summary", map[string]any{})
@@ -969,7 +969,7 @@ func TestSettleReadsFieldsWhereverSentAndTeachesTheShape(t *testing.T) {
 		t.Fatalf("pointers beside kind and id: %s", text)
 	}
 	res, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/summary/problems": []any{map[string]any{"statement": "Faults reach buyers"}}}})
-	if !res.IsError || !strings.Contains(text, "/spec/summary/problems/0/problem/situation") {
+	if res.IsError || !strings.Contains(text, `"refused"`) || !strings.Contains(text, "/spec/summary/problems/0/problem/situation") {
 		t.Fatalf("a made-up shape: %s", text)
 	}
 }
@@ -1033,5 +1033,28 @@ func TestSettleFindsOrDraftsTheRegistersItNames(t *testing.T) {
 	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
 	if !strings.Contains(text, "team: t1") {
 		t.Errorf("the existing team, found by its name: %s", text)
+	}
+}
+
+// A settle with one field built wrong keeps the rest: a refused field
+// costs only itself.
+func TestSettleKeepsWhatItCan(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	_, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{
+		"/spec/summary/about":   "Checks at every depot",
+		"/spec/summary/scopeIn": []any{"Every depot"},
+		"/spec/deliverables":    []any{map[string]any{"title": "A made-up field"}},
+	}})
+	if !strings.Contains(text, `"refused":[{"path":"/spec/deliverables/0"`) {
+		t.Fatalf("settle: %s", text)
+	}
+	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
+	if !strings.Contains(text, "Checks at every depot") || !strings.Contains(text, "Every depot") {
+		t.Errorf("the fields that could be kept were not: %s", text)
 	}
 }

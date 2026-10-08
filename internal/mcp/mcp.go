@@ -668,10 +668,16 @@ func (o Options) record(name string, req *sdk.CallToolRequest, c call, in, out a
 			tc.OutputBytes = len(b)
 		}
 		// An answer that lists problems, and nothing else done, is a
-		// refusal in all but name: structure and start_work answer so.
+		// refusal in all but name: structure and start_work answer so. A
+		// settle that kept some fields and refused others is a partial
+		// defect, its refused fields traced.
 		if m, ok := out.(map[string]any); ok {
 			if ps, ok := m["problems"].([]string); ok && len(ps) > 0 {
 				tc.Outcome, tc.Defect, tc.Problems = trace.Refused, "structure", len(ps)
+			}
+			if ps, ok := m["refused"].([]engine.Problem); ok && len(ps) > 0 {
+				tc.Outcome, tc.Defect, tc.Problems = trace.Refused, "partial", len(ps)
+				tc.Paths = problemPaths(ps)
 			}
 		}
 	}
@@ -680,21 +686,7 @@ func (o Options) record(name string, req *sdk.CallToolRequest, c call, in, out a
 		var invalid *engine.ValidationError
 		if errors.As(err, &invalid) {
 			tc.Problems = len(invalid.Problems)
-			seen := map[string]bool{}
-			for _, p := range invalid.Problems {
-				var segs []string
-				for _, t := range strings.Split(strings.Trim(p.Path, "/"), "/") {
-					if _, num := strconv.Atoi(t); num == nil {
-						t = "-"
-					}
-					segs = append(segs, t)
-				}
-				if path := "/" + strings.Join(segs, "/"); !seen[path] {
-					seen[path] = true
-					tc.Paths = append(tc.Paths, path)
-				}
-			}
-			sort.Strings(tc.Paths)
+			tc.Paths = problemPaths(invalid.Problems)
 		}
 		if tc.Defect == "other" {
 			tc.Outcome = trace.Failed
@@ -1579,9 +1571,37 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 					return nil, withFields(c, in.Kind, err)
 				}
 			}
+			// Every field that can be kept is kept: a refused field costs
+			// only itself, not the rest of the record sent with it.
+			var refused []engine.Problem
 			if len(in.Set) > 0 || len(in.Unset) > 0 {
 				if _, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, in.Set, in.Unset); err != nil {
-					return nil, withFields(c, in.Kind, err)
+					var invalid *engine.ValidationError
+					if !errors.As(err, &invalid) {
+						return nil, withFields(c, in.Kind, err)
+					}
+					keys := make([]string, 0, len(in.Set))
+					for k := range in.Set {
+						keys = append(keys, k)
+					}
+					// Parents before children, as one edit would set them.
+					sort.Slice(keys, func(i, j int) bool {
+						return len(keys[i]) < len(keys[j]) || len(keys[i]) == len(keys[j]) && keys[i] < keys[j]
+					})
+					for _, k := range keys {
+						if _, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, map[string]any{k: in.Set[k]}, nil); err != nil {
+							if taught, ok := withFields(c, in.Kind, err).(*engine.ValidationError); ok {
+								refused = append(refused, taught.Problems...)
+							} else {
+								refused = append(refused, engine.Problem{Path: k, Message: err.Error()})
+							}
+						}
+					}
+					if len(in.Unset) > 0 {
+						if _, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, nil, in.Unset); err != nil {
+							refused = append(refused, engine.Problem{Message: err.Error()})
+						}
+					}
 				}
 			}
 			var left []string
@@ -1604,6 +1624,10 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			out := map[string]any{"changeSet": cs.ID, "record": in.Kind + "/" + in.ID, "left": left}
 			if len(created) > 0 {
 				out["drafted"] = created
+			}
+			if len(refused) > 0 {
+				out["refused"] = refused
+				out["fix"] = "Every other field was kept. Send the refused ones again, in the shape each says, with the next settle of this record."
 			}
 			if len(problems) > 0 {
 				out["notValidYet"] = problems
@@ -2508,5 +2532,27 @@ func withFields(c call, kind string, err error) error {
 		}
 		out.Problems = append(out.Problems, p)
 	}
+	return out
+}
+
+// problemPaths are the fields problems name, list items as "-", once
+// each: where a defect is, never what was sent there.
+func problemPaths(ps []engine.Problem) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, p := range ps {
+		var segs []string
+		for _, t := range strings.Split(strings.Trim(p.Path, "/"), "/") {
+			if _, num := strconv.Atoi(t); num == nil {
+				t = "-"
+			}
+			segs = append(segs, t)
+		}
+		if path := "/" + strings.Join(segs, "/"); !seen[path] {
+			seen[path] = true
+			out = append(out, path)
+		}
+	}
+	sort.Strings(out)
 	return out
 }

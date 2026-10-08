@@ -143,8 +143,15 @@ func (r *refResolver) id(kind, value string) string {
 	if id, ok := r.names[kind][strings.ToLower(value)]; ok {
 		return id
 	}
+	// A near enough name is the same record: "Members (all depots)"
+	// and "Members of all depots" are one group, not two.
+	for name, id := range r.names[kind] {
+		if nearName(name, value) {
+			return id
+		}
+	}
 	id := strings.ToLower(kind) + "-" + shortID()
-	doc := map[string]any{"apiVersion": "cartograph/v1", "kind": kind, "metadata": map[string]any{"id": id, "name": value}, "spec": map[string]any{}}
+	doc := map[string]any{"apiVersion": "cartograph/v1", "kind": kind, "metadata": map[string]any{"id": id, "name": value}, "spec": registerDefaults(kind, value)}
 	text, err := r.e.codec.Encode(doc)
 	if err == nil {
 		err = r.e.SaveInChangeSet(r.ctx, r.set, kind, id, text)
@@ -156,4 +163,58 @@ func (r *refResolver) id(kind, value string) string {
 	r.names[kind][strings.ToLower(value)], r.ids[kind][id] = id, true
 	r.created = append(r.created, kind+"/"+id)
 	return id
+}
+
+// registerDefaults are what a register drafted from a name needs to be
+// valid, read from the name where it can be: a role's category (a body
+// or a unit by its words, else a role), for the person to correct.
+func registerDefaults(kind, name string) map[string]any {
+	if kind != "Resource" {
+		return map[string]any{}
+	}
+	n := " " + strings.ToLower(name) + " "
+	category := "personRole"
+	for _, w := range []string{" committee ", " board ", " council ", " task force ", " steering "} {
+		if strings.Contains(n, w) {
+			return map[string]any{"category": "governanceBody"}
+		}
+	}
+	for _, w := range []string{" unit ", " division ", " department ", " office ", " agency ", " authority ", " services ", " limited ", " inspectorate ", " directorate ", " team ", " branch ", " section "} {
+		if strings.Contains(n, w) {
+			category = "orgUnit"
+		}
+	}
+	return map[string]any{"category": category}
+}
+
+// nearName reports whether two names say the same thing: most of their
+// words shared, once case, punctuation and short words are set aside.
+func nearName(a, b string) bool {
+	wa, wb := nameWords(a), nameWords(b)
+	if len(wa) == 0 || len(wb) == 0 {
+		return false
+	}
+	shared := 0
+	for w := range wa {
+		if wb[w] {
+			shared++
+		}
+	}
+	small := len(wa)
+	if len(wb) < small {
+		small = len(wb)
+	}
+	return float64(shared)/float64(small) >= 0.75 && shared >= 2
+}
+
+func nameWords(s string) map[string]bool {
+	out := map[string]bool{}
+	for _, w := range strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9')
+	}) {
+		if len(w) > 2 && w != "and" && w != "the" && w != "all" {
+			out[strings.TrimSuffix(w, "s")] = true
+		}
+	}
+	return out
 }
