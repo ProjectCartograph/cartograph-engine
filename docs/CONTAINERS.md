@@ -67,6 +67,18 @@ To start again from nothing: `scripts/dev --down`, then
 `docker volume rm cartograph-workspace cartograph-home` (keep
 `cartograph-nix` unless you want to fetch everything again).
 
+## In CI
+
+CI runs the same environment: the `ci` and `commits` jobs are
+`scripts/dev just ci` and `scripts/dev just commit-check`, on both
+architectures. There, `CARTOGRAPH_NIX_STORE` names a directory that is
+`/nix` instead of the volume, seeded from the image's own on first use,
+and the Actions cache saves and restores it; a run whose flake changed
+roots the development shell and collects the rest before it is saved.
+From an empty store the gate takes under three minutes, nearly all of
+it fetching the toolchain. The jobs that build and start the image, and
+the Helm chart on kind, need the runner's own Docker and stay on it.
+
 ## Deploying
 
 Deployment uses images the flake builds, never a Containerfile:
