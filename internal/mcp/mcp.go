@@ -486,6 +486,16 @@ func (c call) reading(set string) call {
 // proposeChangeSet proposes the change set, and announces it.
 func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[string]map[string]string) (any, error) {
 	e := c.o.Engine
+	// What a document states is written, or left open with the person's
+	// own answer through leave_open; never waived in passing here.
+	for rec, checks := range waive {
+		for check := range checks {
+			if writtenFromTheDocument[check] {
+				return nil, fmt.Errorf("%w: %s on %s is what the document itself says: write it with settle, or leave it open with leave_open "+
+					"saying what your person answered", engine.ErrBadEdit, check, rec)
+			}
+		}
+	}
 	out, err := e.ProposeChangeSet(c.ctx, cs.ID, reason, waive)
 	if err != nil {
 		return nil, err
@@ -1609,6 +1619,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				if strings.TrimSpace(o.Reason) == "" {
 					return nil, fmt.Errorf("check %s: give the reason your person will read", o.Check)
 				}
+				if err := mayLeave(o.Check, in.Asked); err != nil {
+					return nil, err
+				}
 				if err := e.LeaveOpen(c.ctx, cs.ID, in.Kind, in.ID, o.Check, o.Reason, false); err != nil {
 					return nil, err
 				}
@@ -1622,8 +1635,19 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, err
 			}
 			out := map[string]any{"changeSet": cs.ID, "record": in.Kind + "/" + in.ID, "left": left}
-			if len(created) > 0 {
-				out["drafted"] = created
+			var drafted, cut []string
+			for _, c := range created {
+				if note, ok := strings.CutPrefix(c, "cut: "); ok {
+					cut = append(cut, note)
+				} else {
+					drafted = append(drafted, c)
+				}
+			}
+			if len(drafted) > 0 {
+				out["drafted"] = drafted
+			}
+			if len(cut) > 0 {
+				out["cut"] = cut
 			}
 			if len(refused) > 0 {
 				out["refused"] = refused
@@ -1710,6 +1734,11 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			}
 			var left []string
 			for _, it := range items {
+				if strings.TrimSpace(in.Reason) != "" {
+					if err := mayLeave(it.Check, in.Asked); err != nil {
+						return nil, err
+					}
+				}
 				if err := e.LeaveOpen(c.ctx, cs.ID, it.Kind, it.ID, it.Check, in.Reason, in.Correct); err != nil {
 					return nil, err
 				}
@@ -2555,4 +2584,25 @@ func problemPaths(ps []engine.Problem) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// writtenFromTheDocument are checks on what a document itself states: its
+// objective, problem and change, who it serves, its scope, what it hands
+// over, how success is known, its schedule and what authorises it. An
+// agent working from documents without its person writes these; it
+// cannot leave them open as not available (docs/adr/0027), so a port is
+// never proposed hollow with its content waived.
+var writtenFromTheDocument = map[string]bool{
+	"goals-objective": true, "aim-problem-change": true, "beneficiaries-named": true, "scope-in": true,
+	"deliverables-count": true, "success-criteria": true, "timeline-start-phases": true, "aim-mandate": true,
+}
+
+// mayLeave refuses leaving open, with no person to ask, a check the
+// document answers.
+func mayLeave(check, asked string) error {
+	if writtenFromTheDocument[check] && strings.EqualFold(strings.TrimSpace(asked), "not available") {
+		return fmt.Errorf("%w: %s is what the document itself says: write it from the document with settle, rather than leave it open. "+
+			"If the document truly does not say it, do not propose: tell your person what it lacks", engine.ErrBadEdit, check)
+	}
+	return nil
 }

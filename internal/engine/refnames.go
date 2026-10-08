@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
@@ -32,7 +33,11 @@ func (e *Engine) NamedRefs(ctx context.Context, set, kind string, fields map[str
 			return nil, nil, r.err
 		}
 	}
-	return out, r.created, nil
+	created := r.created
+	for _, c := range r.clipped {
+		created = append(created, "cut: "+c)
+	}
+	return out, created, nil
 }
 
 // nodeAt is the schema node at a JSON pointer in a kind's manifest.
@@ -70,6 +75,7 @@ type refResolver struct {
 	names   map[string]map[string]string // kind: lower name: id
 	ids     map[string]map[string]bool   // kind: id
 	created []string
+	clipped []string
 	err     error
 }
 
@@ -89,6 +95,26 @@ func (r *refResolver) resolve(file string, node map[string]any, v any) any {
 		}
 	}
 	props, _ := node["properties"].(map[string]any)
+	// Formats, never shapes: a day where a month goes is that month, a
+	// date where a timing goes is a timing on that date, and a line
+	// longer than its field is cut at a word, said so in the answer.
+	if s, isText := v.(string); isText {
+		if _, timing := props["form"]; timing && props["date"] != nil {
+			if m, ok := readMonth(s); ok {
+				return map[string]any{"form": "date", "date": m}
+			}
+		}
+		if pat, _ := node["pattern"].(string); strings.Contains(pat, "[0-9]{4}-(0[1-9]|1[0-2])") {
+			if m, ok := readMonth(s); ok {
+				return m
+			}
+		}
+		if max, ok := number(node["maxLength"]); ok && len([]rune(s)) > int(max) {
+			cut := clip(s, int(max))
+			r.clipped = append(r.clipped, fmt.Sprintf("%q cut to %q", s, cut))
+			return cut
+		}
+	}
 	// A reference written as an object ({kind, id}, {local, id} or
 	// {external}) given as a name is a role: a Resource.
 	if _, hasID := props["id"]; hasID && props["external"] != nil {
@@ -122,7 +148,7 @@ func (r *refResolver) resolve(file string, node map[string]any, v any) any {
 // value itself when it is an id, the record of that name, or a new draft.
 func (r *refResolver) id(kind, value string) string {
 	value = strings.TrimSpace(value)
-	if value == "" || !registerKinds[kind] {
+	if value == "" || !(registerKinds[kind] || kind == "KPI") {
 		return value
 	}
 	if r.names[kind] == nil {
@@ -217,4 +243,26 @@ func nameWords(s string) map[string]bool {
 		}
 	}
 	return out
+}
+
+// readMonth reads a date as its month, YYYY-MM: from YYYY-MM, YYYY-MM-DD,
+// or DD/MM/YYYY.
+func readMonth(s string) (string, bool) {
+	s = strings.TrimSpace(s)
+	if len(s) >= 7 && s[4] == '-' && isDigits(s[:4]) && isDigits(s[5:7]) && s[5:7] >= "01" && s[5:7] <= "12" {
+		return s[:7], len(s) == 7 || len(s) == 10 && s[7] == '-'
+	}
+	if len(s) == 10 && s[2] == '/' && s[5] == '/' && isDigits(s[:2]) && isDigits(s[3:5]) && isDigits(s[6:]) && s[3:5] >= "01" && s[3:5] <= "12" {
+		return s[6:] + "-" + s[3:5], true
+	}
+	return "", false
+}
+
+func isDigits(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return s != ""
 }

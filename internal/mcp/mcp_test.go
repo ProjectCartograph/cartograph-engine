@@ -939,9 +939,9 @@ func TestSettleARecordInOneCall(t *testing.T) {
 	kind, id, _ := strings.Cut(out.Work[0], "/")
 	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "work": out.Work,
 		"set":   map[string]any{"/spec/summary/about": "A survey of every depot", "/spec/team": "t1", "/spec/objectives/0/objective": "Faults are found at intake"},
-		"open":  []any{map[string]any{"check": "aim-mandate", "reason": "No mandate is named"}},
+		"open":  []any{map[string]any{"check": "resources-funding", "reason": "No budget is given"}},
 		"asked": "not available"})
-	if res.IsError || !strings.Contains(text, `"then":`) || !strings.Contains(text, "aim-mandate") {
+	if res.IsError || !strings.Contains(text, `"then":`) || !strings.Contains(text, "resources-funding") {
 		t.Fatalf("settle: %s", text)
 	}
 	// A second objective is refused, and nothing is saved.
@@ -1056,5 +1056,35 @@ func TestSettleKeepsWhatItCan(t *testing.T) {
 	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
 	if !strings.Contains(text, "Checks at every depot") || !strings.Contains(text, "Every depot") {
 		t.Errorf("the fields that could be kept were not: %s", text)
+	}
+}
+
+// With no person to ask, what the document itself says is written, not
+// left open: a port is not proposed hollow.
+func TestAnAgentCannotWaiveWhatTheDocumentSays(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "asked": "not available",
+		"open": []any{map[string]any{"check": "deliverables-count", "reason": "Deferred"}}})
+	if !res.IsError || !strings.Contains(text, "what the document itself says") {
+		t.Fatalf("leaving the deliverables open: %s", text)
+	}
+	res, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{
+		"/spec/summary/scopeIn": []any{"Every depot in the network, from the coast to the hill stations, through the whole season"},
+		"/spec/deliverables":    []any{map[string]any{"id": "d1", "name": "Checklist", "due": "2026-09-04"}},
+		"/spec/milestones":      []any{map[string]any{"id": "m1", "name": "Pilot ends", "timing": "15/10/2026"}},
+		"/spec/summary/about":   "Checks at intake",
+		"/spec/team":            "t1",
+	}})
+	if res.IsError || strings.Contains(text, `"refused"`) || !strings.Contains(text, `"cut"`) {
+		t.Fatalf("formats: %s", text)
+	}
+	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
+	if !strings.Contains(text, "date: 2026-09") || !strings.Contains(text, "date: 2026-10") {
+		t.Errorf("dates read as months: %s", text)
 	}
 }
