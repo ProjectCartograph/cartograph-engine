@@ -3038,16 +3038,31 @@ func mergeLists(c call, set, kind, id string, put map[string]any) map[string]any
 		if !ok || len(have) == 0 {
 			continue
 		}
+		// An item is known by its id, else by what names it: its name,
+		// description, KPI or statement.
 		idOf := func(item any) string {
 			m, _ := item.(map[string]any)
-			s, _ := m["id"].(string)
-			return s
+			for _, k := range []string{"id", "name", "description", "kpi", "statement", "item"} {
+				if s, _ := m[k].(string); strings.TrimSpace(s) != "" {
+					return k + ":" + strings.ToLower(strings.TrimSpace(s))
+				}
+			}
+			return ""
 		}
 		merged := append([]any(nil), have...)
 		index := map[string]int{}
 		for i, it := range merged {
 			if k := idOf(it); k != "" {
 				index[k] = i
+			}
+			// An item with an id is also known by its name, so one sent
+			// again without its id still finds it.
+			if m, ok := it.(map[string]any); ok {
+				for _, f := range []string{"name", "description", "kpi", "statement", "item"} {
+					if s, _ := m[f].(string); strings.TrimSpace(s) != "" {
+						index[f+":"+strings.ToLower(strings.TrimSpace(s))] = i
+					}
+				}
 			}
 		}
 		keyed := true
@@ -3058,13 +3073,29 @@ func mergeLists(c call, set, kind, id string, put map[string]any) map[string]any
 				break
 			}
 			if i, ok := index[k]; ok {
-				merged[i] = it
+				// The item as it was, with what was sent over it: an id or
+				// a field not sent again is kept.
+				old, oldOK := merged[i].(map[string]any)
+				nw, newOK := it.(map[string]any)
+				if oldOK && newOK {
+					both := make(map[string]any, len(old)+len(nw))
+					for f, v := range old {
+						both[f] = v
+					}
+					for f, v := range nw {
+						both[f] = v
+					}
+					merged[i] = both
+				} else {
+					merged[i] = it
+				}
 			} else {
 				index[k] = len(merged)
 				merged = append(merged, it)
 			}
 		}
-		// A list without ids is set as sent: there is nothing to merge by.
+		// A list of plain values (scope lines, references) is set as sent;
+		// a list of items never shrinks by being sent again.
 		if keyed {
 			out[p] = merged
 		}

@@ -1270,3 +1270,23 @@ func TestSettleMergesAListByID(t *testing.T) {
 		}
 	}
 }
+
+// Items sent again without ids still merge, by their names: a register
+// written by the server is never shrunk by a settle.
+func TestSettleMergesItemsByName(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/risks": []any{
+		map[string]any{"id": "r1", "description": "Graders short in harvest weeks", "type": "risk"},
+		map[string]any{"id": "r2", "description": "Forms arrive late", "type": "issue"}}}})
+	callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/risks": []any{
+		map[string]any{"description": "Forms arrive late", "type": "issue", "impact": "high"}}}})
+	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
+	if !strings.Contains(text, "Graders short") || strings.Count(text, "Forms arrive late") != 1 || !strings.Contains(text, "impact: high") {
+		t.Errorf("risks: %s", text)
+	}
+}
