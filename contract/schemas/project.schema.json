@@ -732,6 +732,15 @@
               "type"
             ],
             "properties": {
+              "detection": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "description": "How likely the risk is to be caught before it does harm: high when it would surely be seen in time. With impact and likelihood it gives a failure mode's risk priority (FMEA, TAXONOMY.md D58)."
+              },
               "id": {
                 "$ref": "common.schema.json#/$defs/Slug"
               },

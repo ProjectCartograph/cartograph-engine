@@ -1647,3 +1647,48 @@ a data source's id its semantic model's, hyphens as underscores. The
 same port takes an importer, so metrics defined in the warehouse can
 later come back as KPIs.
 
+### D58. A project can be taken through DMAIC. *(resolved)*
+
+**The problem.** A project improving a process (fewer faults, faster
+service, less waste) is often run as Lean Six Sigma's DMAIC: Define,
+Measure, Analyze, Improve, Control, each closed by a tollgate that asks
+for its deliverables. Cartograph held most of them under its own names,
+but not the statistical half: the requirement a measure must meet, the
+causes found and the evidence for them, how likely a failure is to be
+caught, and what is done when the process drifts after the work is
+handed over.
+
+**What Cartograph does.** Each deliverable is where it already belongs,
+and the missing ones are optional fields of the records they describe:
+
+- Define: the problem (summary.problems), one goal (the objective, D54),
+  the customers (beneficiaries), scope in and out, sponsor and lead
+  (resources), the business case (mandate, the goals it serves), the
+  milestones.
+- Measure: each KPI the project names, with its operational definition
+  (its definition and its metric, D57), its data collection plan
+  (sources, cycle, owner), its baseline, and its `specLimits`, the
+  requirement it must meet (critical to quality); each source's capture
+  and known issues, as its measurement system.
+- Analyze: a problem's `causes`, each with its evidence and whether it
+  is `verified` as a root cause, beside the one-line cause a charter
+  gives; the gap each problem is.
+- Improve: the change each problem needs, the deliverables, and each
+  risk rated for impact, likelihood and `detection`, which together give
+  a failure mode's risk priority (FMEA).
+- Control: the landing operation and its service owner (the process
+  owner), each KPI's `response` plan (what sets it off, what is done, by
+  which role, within how many days), readings enough to chart, and
+  success criteria with who confirms each.
+
+`GET /manifests/Project/{id}/dmaic` (and the dmaic tool) says, phase by
+phase, which are held and what is lacking; it asks nothing of a project
+not being improved this way. `GET /manifests/KPI/{id}/control` reads a
+KPI's readings as an individuals and moving range chart: centre line,
+natural process limits (2.66 average moving ranges either side), the
+readings that signal a change (beyond a limit, eight in a row on one
+side, six rising or falling), and, with specification limits, Cp, Cpk
+and the short-term sigma level. The limits are worked out from the
+readings, never entered: specification limits say what is required,
+control limits what the process does.
+

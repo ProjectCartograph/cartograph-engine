@@ -305,3 +305,42 @@ func TestTheExampleAsASemanticLayer(t *testing.T) {
 		}
 	}
 }
+
+// The example's quality check rollout through DMAIC's tollgates, and its
+// pass rate as a control chart with its capability against the floor
+// buyers accept (TAXONOMY.md D58).
+func TestTheExampleThroughDMAIC(t *testing.T) {
+	t.Parallel()
+	e := newTestEngine(t)
+	if _, err := e.ImportDir(context.Background(), exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	d, err := e.DMAICOf(context.Background(), "quality-check-rollout")
+	if err != nil {
+		t.Fatal(err)
+	}
+	met := map[string]bool{}
+	for _, p := range d.Phases {
+		for _, it := range p.Items {
+			met[it.Key] = it.Met
+		}
+	}
+	for _, key := range []string{"problem", "goal", "causes", "evidence", "root-cause", "solution"} {
+		if !met[key] {
+			t.Errorf("%s is not met in the example", key)
+		}
+	}
+	if len(d.Phases) != 5 {
+		t.Fatalf("phases: %+v", d.Phases)
+	}
+	cc, err := e.ControlChartOf(context.Background(), "quality-pass-rate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cc.Points) != 6 || cc.Upper <= cc.Centre || cc.Lower >= cc.Centre || cc.Cpk == nil || cc.Cp != nil || cc.Enough {
+		t.Fatalf("control chart: %+v", cc)
+	}
+	if *cc.SigmaLevel != 3**cc.Cpk && *cc.SigmaLevel-3**cc.Cpk > 0.02 {
+		t.Errorf("sigma level %v against Cpk %v", *cc.SigmaLevel, *cc.Cpk)
+	}
+}

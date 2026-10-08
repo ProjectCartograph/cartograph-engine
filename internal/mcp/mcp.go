@@ -1132,6 +1132,18 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return map[string]any{"format": format, "files": out, "notes": notes}, nil
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "dmaic", Description: "Whether a project can be taken through DMAIC, Lean Six Sigma's Define, Measure, Analyze, Improve and Control " +
+		"(TAXONOMY.md D58): each phase's deliverables, which the project holds, where each is held and what is lacking; and for a KPI, its readings " +
+		"as a control chart with its limits, the readings that signal a change and its capability against its specification limits. " +
+		"Ask it when your person wants to improve a process, or to know whether a project is ready to be.", Annotations: readOnly},
+		func(c call, in manifestRef) (any, error) {
+			c = c.reading(in.ChangeSet)
+			if in.Kind == "KPI" {
+				return e.ControlChartOf(c.ctx, in.ID)
+			}
+			return e.DMAICOf(c.ctx, in.ID)
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "components", Description: "The graph of components across every project and programme (TAXONOMY.md D46), as your change set reads it: " +
 		"who depends on whom (edges run from the work that depends to the work it depends on), how many months each runs, how widely each is depended on, " +
 		"any loops, and the critical path, the chain that runs longest on the calendar. Ask it when your person asks what holds the work up, what a delay would move, " +

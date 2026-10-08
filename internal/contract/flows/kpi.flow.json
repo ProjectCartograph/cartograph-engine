@@ -307,6 +307,45 @@
             "hint": "Only the rows it counts, as a dbt filter. Leave it empty to count every row."
           }
         ]
+      },
+      {
+        "key": "control",
+        "title": "Holding the gain",
+        "optional": true,
+        "phase": "measure",
+        "guide": "The values a reading must stay within, and what is done when one does not, so the gain is held once the work is done.",
+        "fields": [
+          {
+            "path": "/spec/specLimits/lower",
+            "control": "number",
+            "hint": "The lowest value that still meets the requirement. Leave it empty if there is no floor."
+          },
+          {
+            "path": "/spec/specLimits/upper",
+            "control": "number",
+            "hint": "The highest value that still meets the requirement. Leave it empty if there is no ceiling."
+          },
+          {
+            "path": "/spec/response/trigger",
+            "control": "sentence",
+            "hint": "What sets the response off: a reading outside the limits, a run of readings on one side, a trend."
+          },
+          {
+            "path": "/spec/response/action",
+            "control": "sentence",
+            "hint": "What is done first."
+          },
+          {
+            "path": "/spec/response/by",
+            "control": "reference",
+            "hint": "The role that acts."
+          },
+          {
+            "path": "/spec/response/withinDays",
+            "control": "number",
+            "hint": "How many days it has to act."
+          }
+        ]
       }
     ],
     "review": true

@@ -547,6 +547,37 @@
       ],
       "description": "What a group cannot do today, in the parts the interface builds it from: the situation, and the one thing behind it. The sentence is not stored, because it is not an input: it is `<the groups> <situation>, because <cause>`, composed the same way by the interface, the renderer and anything the CLI grows later. Storing the composed sentence instead meant the subject lived in two places, every reader had to split the text back into parts to edit it, and the splitting was wrong twice in one day. A situation written with its own subject is left as written: composition never doubles a subject the text already names.",
       "properties": {
+        "causes": {
+          "type": "array",
+          "maxItems": 12,
+          "description": "The causes found behind the problem, each with the evidence for it and whether it was verified (a DMAIC analysis, TAXONOMY.md D58). cause above stays the one line a charter says; these are what analysis found.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "cause"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Slug"
+              },
+              "cause": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "evidence": {
+                "type": "string",
+                "maxLength": 300,
+                "description": "What shows it: the data, the test, the observation."
+              },
+              "verified": {
+                "type": "boolean",
+                "description": "True once the evidence confirms it is a root cause, not only a likely one."
+              }
+            }
+          }
+        },
         "situation": {
           "type": "string",
           "minLength": 1,

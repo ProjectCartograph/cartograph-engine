@@ -29,6 +29,51 @@
         "direction"
       ],
       "properties": {
+        "specLimits": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "description": "The values a reading must stay within to meet the requirement of those it serves, in the KPI's unit: the specification limits a critical-to-quality measure carries (TAXONOMY.md D58). With them, the engine reports the process capability (Cp, Cpk) and sigma level from the readings. Not the control limits, which the engine works out from the readings themselves.",
+          "properties": {
+            "lower": {
+              "type": "number"
+            },
+            "upper": {
+              "type": "number"
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "trigger",
+            "action"
+          ],
+          "description": "What is done when a reading signals trouble, so the gain is held (a DMAIC control plan's response plan, TAXONOMY.md D58): what sets it off, what is done, which role does it and how soon.",
+          "properties": {
+            "trigger": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "What sets it off: a reading outside the control or specification limits, a run on one side, a trend."
+            },
+            "action": {
+              "type": "string",
+              "maxLength": 300,
+              "description": "What is done, first."
+            },
+            "by": {
+              "$ref": "common.schema.json#/$defs/Ref",
+              "description": "The role that acts. Never a person."
+            },
+            "withinDays": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 365,
+              "description": "How many days it has to act."
+            }
+          }
+        },
         "metric": {
           "type": "object",
           "additionalProperties": false,

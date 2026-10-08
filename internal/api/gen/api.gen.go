@@ -106,6 +106,54 @@ func (e ComponentNodeKind) Valid() bool {
 	}
 }
 
+// Defines values for ControlChartPointsSignals.
+const (
+	Beyond ControlChartPointsSignals = "beyond"
+	Run    ControlChartPointsSignals = "run"
+	Trend  ControlChartPointsSignals = "trend"
+)
+
+// Valid indicates whether the value is a known member of the ControlChartPointsSignals enum.
+func (e ControlChartPointsSignals) Valid() bool {
+	switch e {
+	case Beyond:
+		return true
+	case Run:
+		return true
+	case Trend:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DMAICPhasesPhase.
+const (
+	Analyze DMAICPhasesPhase = "analyze"
+	Control DMAICPhasesPhase = "control"
+	Define  DMAICPhasesPhase = "define"
+	Improve DMAICPhasesPhase = "improve"
+	Measure DMAICPhasesPhase = "measure"
+)
+
+// Valid indicates whether the value is a known member of the DMAICPhasesPhase enum.
+func (e DMAICPhasesPhase) Valid() bool {
+	switch e {
+	case Analyze:
+		return true
+	case Control:
+		return true
+	case Define:
+		return true
+	case Improve:
+		return true
+	case Measure:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GoalCheckState.
 const (
 	GoalCheckStateOk   GoalCheckState = "ok"
@@ -877,6 +925,34 @@ type ConflictResponse struct {
 	Theirs string `json:"theirs"`
 }
 
+// ControlChart defines model for ControlChart.
+type ControlChart struct {
+	Centre float32  `json:"centre"`
+	Cp     *float32 `json:"cp,omitempty"`
+	Cpk    *float32 `json:"cpk,omitempty"`
+
+	// Enough Twenty readings or more, the fewest the limits are usually trusted from.
+	Enough bool    `json:"enough"`
+	Kpi    string  `json:"kpi"`
+	Lower  float32 `json:"lower"`
+	Note   *string `json:"note,omitempty"`
+	Points []struct {
+		Period      string                       `json:"period"`
+		Provisional *bool                        `json:"provisional,omitempty"`
+		Signals     *[]ControlChartPointsSignals `json:"signals,omitempty"`
+		Value       float32                      `json:"value"`
+	} `json:"points"`
+	Sigma      float32  `json:"sigma"`
+	SigmaLevel *float32 `json:"sigmaLevel,omitempty"`
+	SpecLower  *float32 `json:"specLower,omitempty"`
+	SpecUpper  *float32 `json:"specUpper,omitempty"`
+	Stable     bool     `json:"stable"`
+	Upper      float32  `json:"upper"`
+}
+
+// ControlChartPointsSignals defines model for ControlChart.Points.Signals.
+type ControlChartPointsSignals string
+
 // CyclePeriod One period of a reporting cycle.
 type CyclePeriod struct {
 	// Due The day the period's reading is due.
@@ -894,6 +970,27 @@ type CyclePeriod struct {
 	// Start The month it starts, YYYY-MM.
 	Start string `json:"start"`
 }
+
+// DMAIC defines model for DMAIC.
+type DMAIC struct {
+	Phases []struct {
+		Items []struct {
+			Field   string  `json:"field"`
+			Key     string  `json:"key"`
+			Lacking *string `json:"lacking,omitempty"`
+			Met     bool    `json:"met"`
+			Phase   string  `json:"phase"`
+			Says    string  `json:"says"`
+		} `json:"items"`
+		Met   int              `json:"met"`
+		Of    int              `json:"of"`
+		Phase DMAICPhasesPhase `json:"phase"`
+	} `json:"phases"`
+	Project string `json:"project"`
+}
+
+// DMAICPhasesPhase defines model for DMAIC.Phases.Phase.
+type DMAICPhasesPhase string
 
 // DecisionModel defines model for DecisionModel.
 type DecisionModel struct {
@@ -2156,6 +2253,12 @@ type GetGoalChecksParams struct {
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
+// GetKPIControlChartParams defines parameters for GetKPIControlChart.
+type GetKPIControlChartParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetOperationCharterHtmlParams defines parameters for GetOperationCharterHtml.
 type GetOperationCharterHtmlParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -2197,6 +2300,12 @@ type GetProjectCharterHtmlParams struct {
 
 // GetProjectChecksParams defines parameters for GetProjectChecks.
 type GetProjectChecksParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
+// GetProjectDMAICParams defines parameters for GetProjectDMAIC.
+type GetProjectDMAICParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
@@ -2635,6 +2744,9 @@ type ServerInterface interface {
 	// GetGoalChecks Whether a goal can be assessed. Checks never block a save.
 	// (GET /manifests/Goal/{id}/checks)
 	GetGoalChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetGoalChecksParams)
+	// GetKPIControlChart A KPI's readings as a control chart, with its capability
+	// (GET /manifests/KPI/{id}/control)
+	GetKPIControlChart(w http.ResponseWriter, r *http.Request, id IdParam, params GetKPIControlChartParams)
 	// GetOperationCharterHtml Operation charter rendered as HTML from the working copy: what the service does and when, who runs it, what it is part of, how it is measured, what it uses and produces, and which projects will hand over to it. Derived, like every other view.
 	// (GET /manifests/Operation/{id}/charter.html)
 	GetOperationCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetOperationCharterHtmlParams)
@@ -2656,6 +2768,9 @@ type ServerInterface interface {
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
 	GetProjectChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectChecksParams)
+	// GetProjectDMAIC Whether a project can be taken through DMAIC, phase by phase
+	// (GET /manifests/Project/{id}/dmaic)
+	GetProjectDMAIC(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectDMAICParams)
 	// GetProjectSchedule A project's milestones placed on time
 	// (GET /manifests/Project/{id}/schedule)
 	GetProjectSchedule(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectScheduleParams)
@@ -4016,6 +4131,48 @@ func (siw *ServerInterfaceWrapper) GetGoalChecks(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// GetKPIControlChart operation middleware
+func (siw *ServerInterfaceWrapper) GetKPIControlChart(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetKPIControlChartParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetKPIControlChart(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetOperationCharterHtml operation middleware
 func (siw *ServerInterfaceWrapper) GetOperationCharterHtml(w http.ResponseWriter, r *http.Request) {
 
@@ -4314,6 +4471,48 @@ func (siw *ServerInterfaceWrapper) GetProjectChecks(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProjectChecks(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProjectDMAIC operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectDMAIC(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectDMAICParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProjectDMAIC(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5880,6 +6079,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Portfolio/{id}/checks", wrapper.GetPortfolioChecks)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/manifests/Goal/{id}", wrapper.DeleteGoal)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/checks", wrapper.GetProjectChecks)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/dmaic", wrapper.GetProjectDMAIC)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/KPI/{id}/control", wrapper.GetKPIControlChart)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.GetProjectState)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.TransitionProjectState)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/charter.html", wrapper.GetProjectCharterHtml)
@@ -8493,6 +8694,71 @@ func (response GetGoalChecks404JSONResponse) VisitGetGoalChecksResponse(w http.R
 	return err
 }
 
+type GetKPIControlChartRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetKPIControlChartParams
+}
+
+type GetKPIControlChartResponseObject interface {
+	VisitGetKPIControlChartResponse(w http.ResponseWriter) error
+}
+
+type GetKPIControlChart200JSONResponse ControlChart
+
+func (response GetKPIControlChart200JSONResponse) VisitGetKPIControlChartResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetKPIControlChart401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetKPIControlChart401JSONResponse) VisitGetKPIControlChartResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetKPIControlChart403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetKPIControlChart403JSONResponse) VisitGetKPIControlChartResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetKPIControlChart404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetKPIControlChart404JSONResponse) VisitGetKPIControlChartResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetOperationCharterHtmlRequestObject struct {
 	Id     IdParam `json:"id"`
 	Params GetOperationCharterHtmlParams
@@ -8955,6 +9221,71 @@ func (response GetProjectChecks403JSONResponse) VisitGetProjectChecksResponse(w 
 type GetProjectChecks404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response GetProjectChecks404JSONResponse) VisitGetProjectChecksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectDMAICRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetProjectDMAICParams
+}
+
+type GetProjectDMAICResponseObject interface {
+	VisitGetProjectDMAICResponse(w http.ResponseWriter) error
+}
+
+type GetProjectDMAIC200JSONResponse DMAIC
+
+func (response GetProjectDMAIC200JSONResponse) VisitGetProjectDMAICResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectDMAIC401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetProjectDMAIC401JSONResponse) VisitGetProjectDMAICResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectDMAIC403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProjectDMAIC403JSONResponse) VisitGetProjectDMAICResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectDMAIC404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProjectDMAIC404JSONResponse) VisitGetProjectDMAICResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -11986,6 +12317,9 @@ type StrictServerInterface interface {
 	// GetGoalChecks Whether a goal can be assessed. Checks never block a save.
 	// (GET /manifests/Goal/{id}/checks)
 	GetGoalChecks(ctx context.Context, request GetGoalChecksRequestObject) (GetGoalChecksResponseObject, error)
+	// GetKPIControlChart A KPI's readings as a control chart, with its capability
+	// (GET /manifests/KPI/{id}/control)
+	GetKPIControlChart(ctx context.Context, request GetKPIControlChartRequestObject) (GetKPIControlChartResponseObject, error)
 	// GetOperationCharterHtml Operation charter rendered as HTML from the working copy: what the service does and when, who runs it, what it is part of, how it is measured, what it uses and produces, and which projects will hand over to it. Derived, like every other view.
 	// (GET /manifests/Operation/{id}/charter.html)
 	GetOperationCharterHtml(ctx context.Context, request GetOperationCharterHtmlRequestObject) (GetOperationCharterHtmlResponseObject, error)
@@ -12007,6 +12341,9 @@ type StrictServerInterface interface {
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
 	GetProjectChecks(ctx context.Context, request GetProjectChecksRequestObject) (GetProjectChecksResponseObject, error)
+	// GetProjectDMAIC Whether a project can be taken through DMAIC, phase by phase
+	// (GET /manifests/Project/{id}/dmaic)
+	GetProjectDMAIC(ctx context.Context, request GetProjectDMAICRequestObject) (GetProjectDMAICResponseObject, error)
 	// GetProjectSchedule A project's milestones placed on time
 	// (GET /manifests/Project/{id}/schedule)
 	GetProjectSchedule(ctx context.Context, request GetProjectScheduleRequestObject) (GetProjectScheduleResponseObject, error)
@@ -13302,6 +13639,33 @@ func (sh *strictHandler) GetGoalChecks(w http.ResponseWriter, r *http.Request, i
 	}
 }
 
+// GetKPIControlChart operation middleware
+func (sh *strictHandler) GetKPIControlChart(w http.ResponseWriter, r *http.Request, id IdParam, params GetKPIControlChartParams) {
+	var request GetKPIControlChartRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetKPIControlChart(ctx, request.(GetKPIControlChartRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetKPIControlChart")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetKPIControlChartResponseObject); ok {
+		if err := validResponse.VisitGetKPIControlChartResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetOperationCharterHtml operation middleware
 func (sh *strictHandler) GetOperationCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetOperationCharterHtmlParams) {
 	var request GetOperationCharterHtmlRequestObject
@@ -13484,6 +13848,33 @@ func (sh *strictHandler) GetProjectChecks(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProjectChecksResponseObject); ok {
 		if err := validResponse.VisitGetProjectChecksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProjectDMAIC operation middleware
+func (sh *strictHandler) GetProjectDMAIC(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectDMAICParams) {
+	var request GetProjectDMAICRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProjectDMAIC(ctx, request.(GetProjectDMAICRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProjectDMAIC")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProjectDMAICResponseObject); ok {
+		if err := validResponse.VisitGetProjectDMAICResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

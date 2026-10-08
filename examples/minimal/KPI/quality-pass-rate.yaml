@@ -25,3 +25,11 @@ spec:
     type: ratio
     numerator: {source: quality-check-tool, agg: sum, expr: "case when passed then 1 else 0 end"}
     denominator: {source: quality-check-tool, agg: count}
+  # What holding the gain asks of it (TAXONOMY.md D58): the share buyers
+  # accept, and what the quality lead does when a season falls below it.
+  specLimits: {lower: 60}
+  response:
+    trigger: A season's pass rate below the lower limit, or below the centre line eight seasons running
+    action: Review that season's rejected deliveries with each depot and retrain the graders who passed them
+    by: {kind: Resource, id: quality-reviewer}
+    withinDays: 14

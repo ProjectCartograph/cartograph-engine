@@ -149,6 +149,13 @@
                 "hint": "What you think lies behind the problem."
               },
               {
+                "path": "/problem/causes",
+                "control": "list",
+                "title": "Causes found",
+                "hint": "What analysis found behind the problem, each with its evidence, and whether the evidence confirms it.",
+                "phase": "measure"
+              },
+              {
                 "path": "/change/what",
                 "control": "sentence",
                 "title": "Intended change",
@@ -858,6 +865,10 @@
               },
               {
                 "path": "/likelihood",
+                "control": "choice"
+              },
+              {
+                "path": "/detection",
                 "control": "choice"
               },
               {

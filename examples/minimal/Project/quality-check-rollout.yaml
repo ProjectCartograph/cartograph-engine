@@ -27,6 +27,12 @@ spec:
         problem:
           situation: learn of a failed delivery a season late
           cause: checks happen after dispatch and the produce has already left the depot
+          # What analysis found (TAXONOMY.md D58), with its evidence.
+          causes:
+            - id: cause-late-check
+              cause: The check is made after dispatch
+              evidence: Depot logs show every failed delivery of last season was found at the buyer
+              verified: true
         change:
           what: Every delivery is checked at intake against one published standard
           gain: learn of a failure the same day and can rework it
@@ -39,6 +45,11 @@ spec:
         problem:
           situation: are told a different answer each time they ask what a passing delivery looks like
           cause: each depot keeps its own checklist and none of them agree
+          causes:
+            - id: cause-uneven-standard
+              cause: Depots grade against checklists of their own
+              evidence: Two depots graded the same sample differently in the spring trial
+              verified: true
         change:
           what: One published standard is what a check is run against
           gain: give the same answer whoever asks
@@ -191,6 +202,7 @@ spec:
       type: risk
       impact: medium
       likelihood: low
+      detection: high
       mitigation: Order a second season of forms before the pilot starts.
     - id: late-transcription
       description: Some quality check forms arrive at the depot office after the season closes.

@@ -440,6 +440,60 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /manifests/Project/{id}/dmaic:
+    get:
+      operationId: getProjectDMAIC
+      summary: Whether a project can be taken through DMAIC, phase by phase
+      description: >-
+        Lean Six Sigma's Define, Measure, Analyze, Improve and Control
+        (TAXONOMY.md D58): each phase's tollgate deliverables, whether the
+        project and the records it names hold them, where each is held,
+        and what is lacking. Advisory: nothing is asked of a project that
+        is not being improved this way.
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DMAIC"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/KPI/{id}/control:
+    get:
+      operationId: getKPIControlChart
+      summary: A KPI's readings as a control chart, with its capability
+      description: >-
+        The individuals and moving range chart of a KPI's readings
+        (TAXONOMY.md D58): the centre line and natural process limits, the
+        readings that signal a change (beyond a limit, a run of eight on
+        one side, a trend of six), and, with the KPI's specification
+        limits, the process capability (Cp, Cpk) and sigma level.
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ControlChart"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /manifests/Project/{id}/state:
     get:
       operationId: getProjectState
@@ -4445,6 +4499,91 @@ components:
           type: array
           items:
             type: string
+    DMAIC:
+      type: object
+      required: [project, phases]
+      properties:
+        project:
+          type: string
+        phases:
+          type: array
+          items:
+            type: object
+            required: [phase, met, of, items]
+            properties:
+              phase:
+                type: string
+                enum: [define, measure, analyze, improve, control]
+              met:
+                type: integer
+              of:
+                type: integer
+              items:
+                type: array
+                items:
+                  type: object
+                  required: [phase, key, met, says, field]
+                  properties:
+                    phase:
+                      type: string
+                    key:
+                      type: string
+                    met:
+                      type: boolean
+                    says:
+                      type: string
+                    field:
+                      type: string
+                    lacking:
+                      type: string
+    ControlChart:
+      type: object
+      required: [kpi, points, centre, lower, upper, sigma, stable, enough]
+      properties:
+        kpi:
+          type: string
+        points:
+          type: array
+          items:
+            type: object
+            required: [period, value]
+            properties:
+              period:
+                type: string
+              value:
+                type: number
+              signals:
+                type: array
+                items:
+                  type: string
+                  enum: [beyond, run, trend]
+              provisional:
+                type: boolean
+        centre:
+          type: number
+        lower:
+          type: number
+        upper:
+          type: number
+        sigma:
+          type: number
+        stable:
+          type: boolean
+        enough:
+          type: boolean
+          description: Twenty readings or more, the fewest the limits are usually trusted from.
+        specLower:
+          type: number
+        specUpper:
+          type: number
+        cp:
+          type: number
+        cpk:
+          type: number
+        sigmaLevel:
+          type: number
+        note:
+          type: string
     StructuredPiece:
       type: object
       required: [name, kind, where]
