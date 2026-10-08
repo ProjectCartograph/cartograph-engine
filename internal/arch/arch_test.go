@@ -106,6 +106,11 @@ var rules = map[string][]string{
 	"internal/sentence":  leaf,
 	"internal/document":  leaf,
 	"internal/spc":       leaf,
+	"internal/units":     leaf,
+	// Earlier releases' shapes read the text and sentence helpers and the
+	// standard units, nothing else.
+	"internal/legacy": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/codec", "internal/printer", "internal/auth",
+		"internal/contract", "internal/structure", "pkg", "cmd"}, outer, adapters, drivers),
 	// The structure questions read the document helpers and nothing else.
 	"internal/structure": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/codec", "internal/printer", "internal/auth",
 		"internal/contract", "internal/sentence", "pkg", "cmd"}, outer, adapters, drivers),

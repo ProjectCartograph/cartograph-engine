@@ -68,3 +68,34 @@ func nameWords(s string) map[string]bool {
 	}
 	return out
 }
+
+// Slug reduces free text to the Slug pattern: lowercase, every run of
+// anything else a single hyphen, trimmed, and short enough to read. It
+// matches the interface's own slug helper so an id generated on either
+// side of the wire comes out the same.
+func Slug(s string) string {
+	var b strings.Builder
+	lastHyphen := true // leading hyphens are not allowed, so start as if one was just written
+	for _, r := range strings.ToLower(strings.TrimSpace(s)) {
+		switch {
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+			b.WriteRune(r)
+			lastHyphen = false
+		case !lastHyphen:
+			b.WriteByte('-')
+			lastHyphen = true
+		}
+	}
+	out := strings.Trim(b.String(), "-")
+	// An id is derived from an item's text only when that text is a name.
+	// A field that holds a sentence — an objective, a problem — slugs into
+	// something long and cut off mid-word ("catch-faults-at-intake-by-
+	// checking-every-deliver"), which is worse than a plain numbered id at
+	// the one job an id has: being recognisable. Those fall back instead.
+	// The Slug pattern also needs two characters, and a one-character id
+	// is not a name anybody would read.
+	if len(out) < 2 || len(out) > 32 {
+		return ""
+	}
+	return out
+}

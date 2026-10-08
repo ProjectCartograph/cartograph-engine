@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
@@ -275,7 +276,7 @@ func (e *Engine) ApplyDirectory(ctx context.Context, actor string) ([]string, er
 		}
 		// The interface's own rule: a short name is the id, a long one
 		// a numbered id.
-		base := slugify(name)
+		base := document.Slug(name)
 		if base == "" {
 			base = "team"
 		}
