@@ -67,10 +67,11 @@ func ServeStdio(ctx context.Context, o Options) error {
 }
 
 const instructions = `Porting a document, or starting any new piece of work? Do this, in one pass:
-1. Read the document's contents and the parts that name pieces of work
-   (grep -n its headings; never read a long document whole). List
-   every piece of work it names: the whole, each workstream, phase,
-   survey, system, service, policy or scheme.
+1. bring_document, once, with the document's text straight from its
+   file (never retyped, never read whole): it answers with the
+   document's outline. Read the sections it says name pieces of work,
+   with read_section, and list every piece of work they name: the
+   whole, each survey, system, service, policy or scheme.
 2. start_work with a title and pieces, each piece an object with its
    name and only its yes answers to the structure questions (structure
    lists them). It decides what each piece is, refuses answers that
@@ -78,7 +79,8 @@ const instructions = `Porting a document, or starting any new piece of work? Do 
 3. For each record next names, one settle: set every field the
    documents give, for each check in fill and each list in
    alsoFromTheDocuments (milestones, risks, costs and the like), in the
-   shape each shows, reading only the sections it needs; leave open
+   shape each shows, reading with read_section only the sections each
+   names under read; leave open
    each check they do not answer, with its reason; pass the work list
    start_work returned. Where a team, a role, a group served, a source
    of funds or of data goes, write its name (a role, never a person):
@@ -786,6 +788,15 @@ type (
 	none     struct{}
 	kindOnly struct {
 		Kind string `json:"kind" jsonschema:"a kind, such as Goal or Project"`
+	}
+	bringIn struct {
+		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to keep it in; your latest open one when left out, and a new one when you have none"`
+		Title     string `json:"title" jsonschema:"the document's title"`
+		Text      string `json:"text" jsonschema:"the document's whole text, straight from its file"`
+	}
+	readSectionIn struct {
+		ChangeSet string   `json:"changeSet,omitempty" jsonschema:"the change set the document is in; your latest open one when left out"`
+		IDs       []string `json:"ids" jsonschema:"the sections to read, by the ids the outline gave"`
 	}
 	settleIn struct {
 		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out"`
@@ -1670,6 +1681,45 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return out, nil
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "bring_document", Description: "Bring the document you are porting into your change set, once, as its text: Cartograph keeps it with the work, " +
+		"splits it into sections by its headings and answers with its outline, each section marked with what it feeds. From then on read only the sections a step needs, " +
+		"with read_section: every check next and settle hand over names the sections that answer it. Pass the text straight from the file (with a command line helper, " +
+		"have a script build the JSON from the file): never retype or paste a long document, and never read it whole.", Annotations: drafting},
+		func(c call, in bringIn) (any, error) {
+			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
+			if err != nil {
+				return nil, err
+			}
+			src, err := e.BringSource(c.ctx, cs.ID, in.Title, in.Text)
+			if err != nil {
+				return nil, err
+			}
+			var first []string
+			for _, sec := range src.Sections {
+				for _, f := range sec.Feeds {
+					if f == "pieces" {
+						first = append(first, sec.ID)
+						break
+					}
+				}
+			}
+			return map[string]any{"changeSet": cs.ID, "title": src.Title, "sections": src.Sections,
+				"next": fmt.Sprintf("Read sections %s with read_section: they name the pieces of work. Then start_work with the pieces, in this change set.", strings.Join(first, ", "))}, nil
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "read_section", Description: "Read sections of the document brought into your change set, by the ids its outline gave (s4, or 2:s4 for a second document). " +
+		"Read only those a step needs: every check names the sections that answer it.", Annotations: readOnly},
+		func(c call, in readSectionIn) (any, error) {
+			cs, c, found, err := c.inChangeSet(in.ChangeSet, false)
+			if err != nil {
+				return nil, err
+			}
+			if !found {
+				return nil, fmt.Errorf("%w: no change set yet: bring the document in with bring_document", engine.ErrNotFound)
+			}
+			return e.ReadSections(c.ctx, cs.ID, in.IDs)
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "work_summary", Description: "What your change set really holds, record by record: each record's name, how many objectives, " +
 		"deliverables, milestones, risks, components and key results it has, its checks still open and those left for your person. " +
 		"Report to your person from this answer only: never say a record holds what it does not show.", Annotations: readOnly},
@@ -2356,6 +2406,9 @@ func withFill(c call, out map[string]any, tasks []engine.Task) {
 		f := map[string]any{"check": t.Check, "do": t.Do, "now": t.Message}
 		if t.Field != "" {
 			f["field"] = t.Field
+			if read := sectionsFor(c, t.Field); len(read) > 0 {
+				f["read"] = read
+			}
 			// What goes there, when it is a list or an object, so the whole
 			// of it is written in one settle without reading the guide;
 			// once a field.
@@ -2383,7 +2436,11 @@ func withFill(c call, out map[string]any, tasks []engine.Task) {
 				continue
 			}
 			if sh, ok := c.o.Engine.FieldShapeAt(first.Kind, f); ok {
-				also[f] = sh
+				if read := sectionsFor(c, f); len(read) > 0 {
+					also[f] = map[string]any{"example": sh.Example, "optional": sh.Optional, "read": read}
+				} else {
+					also[f] = sh
+				}
 			}
 		}
 		if len(also) > 0 {
@@ -2675,4 +2732,14 @@ func schemaOnly(ps []engine.Problem) bool {
 		}
 	}
 	return len(ps) > 0
+}
+
+// sectionsFor are the sections of the change set's documents that most
+// likely answer a field, when a document was brought in.
+func sectionsFor(c call, field string) []string {
+	view, ok := engine.ChangeSetOf(c.ctx)
+	if !ok {
+		return nil
+	}
+	return c.o.Engine.SectionsFor(c.ctx, view, field)
 }

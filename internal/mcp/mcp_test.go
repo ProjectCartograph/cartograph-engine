@@ -120,7 +120,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	}
 	for _, tl := range tools.Tools {
 		readOnly := tl.Annotations != nil && tl.Annotations.ReadOnlyHint
-		if !readOnly && tl.Name != "save_draft" && tl.Name != "save_drafts" && tl.Name != "settle" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
+		if !readOnly && tl.Name != "save_draft" && tl.Name != "save_drafts" && tl.Name != "settle" && tl.Name != "bring_document" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
 			t.Errorf("tool %s may change something and is neither a draft nor a proposal", tl.Name)
 		}
 	}
@@ -1086,5 +1086,41 @@ func TestAnAgentCannotWaiveWhatTheDocumentSays(t *testing.T) {
 	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
 	if !strings.Contains(text, "date: 2026-09") || !strings.Contains(text, "date: 2026-10") {
 		t.Errorf("dates read as months: %s", text)
+	}
+}
+
+// A document brought in is kept with the work and read a section at a
+// time: its outline marks what each section feeds, the work starts in
+// the same change set, and each check names the sections that answer it.
+func TestADocumentIsBroughtInAndReadBySection(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\nA. Background and Authority\nThe board decided in March to check every delivery at intake, and asked the quality lead to run the work across the network this season.\n\n" +
+		"D. Scope and Deliverables\nEvery depot is in scope. The work hands over a checklist, a training session for graders and a weekly report to the board from the first month.\n\n" +
+		"K. Risks and Issues\nGraders may be short in the harvest weeks; forms may arrive late at the office; the scanner supply may run low during the pilot weeks.\n"
+	res, text := callTool(t, cs, "bring_document", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	if res.IsError || !strings.Contains(text, `"heading":"D. Scope and Deliverables"`) || !strings.Contains(text, `"/spec/risks"`) {
+		t.Fatalf("bring_document: %s", text)
+	}
+	var brought struct{ ChangeSet string }
+	_ = json.Unmarshal([]byte(text), &brought)
+	_, text = callTool(t, cs, "read_section", map[string]any{"ids": []any{"s3"}})
+	if !strings.Contains(text, "hands over a checklist") || strings.Contains(text, "Graders may be short") {
+		t.Fatalf("read_section: %s", text)
+	}
+	_, text = callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
+	var started struct {
+		ChangeSet string
+		Work      []string
+	}
+	_ = json.Unmarshal([]byte(text), &started)
+	if started.ChangeSet != brought.ChangeSet || !strings.Contains(text, `"read":["s3"]`) {
+		t.Fatalf("start_work in the document's change set, with sections to read: %s", text)
+	}
+	// The document is the work's, never a draft: nothing proposes or
+	// merges it.
+	_, text = callTool(t, cs, "work_summary", map[string]any{})
+	if strings.Contains(text, "_Source") {
+		t.Errorf("the document shows as a draft: %s", text)
 	}
 }

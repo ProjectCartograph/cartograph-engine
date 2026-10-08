@@ -40,6 +40,15 @@ decides the structure and drafts every record, so a port is one call to
 start, one per record, and one to propose. `work_summary` says what the
 change set holds; an agent reports from it, not from memory.
 
+**A document is brought in once and read a section at a time.** A
+long document read whole spends a small agent's room before it writes
+anything. `bring_document` keeps the document in the change set, as an
+item hidden from every reader of drafts (it is never proposed, merged or
+shown as a draft, and it goes with the change set), split into sections
+at its headings, each marked with the fields it most likely answers.
+`read_section` reads the sections a step needs, and every check `next`
+and `settle` hand over names them.
+
 ## Consequences
 
 - An improper structure cannot be saved by an agent, however it is

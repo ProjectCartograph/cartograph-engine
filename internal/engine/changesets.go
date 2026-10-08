@@ -38,7 +38,9 @@ func (e *Engine) changeSetStore() (store.ChangeSetStore, error) {
 	if !ok {
 		return nil, ErrNoChangeSets
 	}
-	return cs, nil
+	// Documents brought in to port are the work's, not drafts: hidden
+	// from every reader of drafts (sources.go).
+	return sourceHiding{cs}, nil
 }
 
 // ownerOf is who works in a change set: an agent's grant, else the person
@@ -1080,6 +1082,15 @@ func (e *Engine) ReopenChangeSet(ctx context.Context, id, reason string) (store.
 // work) reads the change set's draft where it has one.
 type changeSetKey struct{}
 
+// changeSetIDKey carries the id of the change set a context reads as.
+type changeSetIDKey struct{}
+
+// ChangeSetOf is the change set a context reads as, if any.
+func ChangeSetOf(ctx context.Context) (string, bool) {
+	id, ok := ctx.Value(changeSetIDKey{}).(string)
+	return id, ok && id != ""
+}
+
 // InChangeSet returns ctx reading the change set's drafts first.
 func (e *Engine) InChangeSet(ctx context.Context, set string) (context.Context, error) {
 	s, err := e.changeSetStore()
@@ -1121,7 +1132,7 @@ func (e *Engine) InChangeSet(ctx context.Context, set string) (context.Context, 
 	// The drafts parsed too, so whatever reads the record on this context
 	// (a lookup, a check, a guide's plan, relevance) reads them as if
 	// saved.
-	return e.withInPlay(context.WithValue(ctx, changeSetKey{}, texts)), nil
+	return e.withInPlay(context.WithValue(context.WithValue(ctx, changeSetKey{}, texts), changeSetIDKey{}, set)), nil
 }
 
 // Preview reads as if a change set were accepted: every read on the
