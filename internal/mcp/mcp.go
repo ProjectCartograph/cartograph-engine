@@ -1359,8 +1359,32 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				// changed since, the person's edits among them.
 				return nil, fmt.Errorf("%s/%s is already drafted in this change set: change its fields with edit_draft, or pass replace true to put this whole manifest in its place", in.Kind, in.ID)
 			}
+			var refused []engine.Problem
+			var created []string
 			if err := e.SaveInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, text); err != nil {
-				return nil, withFields(c, in.Kind, err)
+				var invalid *engine.ValidationError
+				if !errors.As(err, &invalid) || !schemaOnly(invalid.Problems) {
+					return nil, withFields(c, in.Kind, err)
+				}
+				// Refused whole, it is built field by field as every agent
+				// write is: names found or drafted, formats read as meant,
+				// every field that can be kept kept.
+				meta, _ := in.Manifest["metadata"].(map[string]any)
+				name, _ := meta["name"].(string)
+				start := map[string]any{"apiVersion": "cartograph/v1", "kind": in.Kind, "metadata": map[string]any{"id": in.ID, "name": name}, "spec": map[string]any{}}
+				first, _ := e.Codec().Encode(start)
+				if err := e.SaveInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, first); err != nil {
+					return nil, withFields(c, in.Kind, err)
+				}
+				spec, _ := in.Manifest["spec"].(map[string]any)
+				put := map[string]any{}
+				for k, v := range spec {
+					put["/spec/"+k] = v
+				}
+				if refused, created, err = applyFields(c, cs.ID, in.Kind, in.ID, put, nil); err != nil {
+					return nil, err
+				}
+				text, _, _ = e.ChangeSetText(c.ctx, cs.ID, in.Kind, in.ID)
 			}
 			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
 				return nil, err
@@ -1378,6 +1402,13 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			out["saved"], out["problems"], out["changeSet"] = "draft", problems, cs.ID
 			if len(problems) > 0 {
 				out["saved"] = "draft, not valid yet: kept as you sent it, and propose refuses it until each problem is fixed with edit_draft"
+			}
+			if len(refused) > 0 {
+				out["refused"] = refused
+				out["fix"] = "Every other field was kept. Send the refused ones again with settle, in the shape each says."
+			}
+			if len(created) > 0 {
+				out["drafted"] = created
 			}
 			return out, nil
 		})
@@ -1514,10 +1545,11 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
-			text, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, in.Set, in.Unset)
+			refused, created, err := applyFields(c, cs.ID, in.Kind, in.ID, in.Set, in.Unset)
 			if err != nil {
-				return nil, withFields(c, in.Kind, err)
+				return nil, err
 			}
+			text, _, _ := e.ChangeSetText(c.ctx, cs.ID, in.Kind, in.ID)
 			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
 				return nil, err
 			}
@@ -1540,6 +1572,13 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			// The whole draft, as everyone in the change set now has it:
 			// what the person changed is in here to build on.
 			out["saved"], out["problems"], out["draft"], out["changeSet"] = "draft", problems, string(text), cs.ID
+			if len(refused) > 0 {
+				out["refused"] = refused
+				out["fix"] = "Every other field was kept. Send the refused ones again, in the shape each says."
+			}
+			if len(created) > 0 {
+				out["drafted"] = created
+			}
 			if len(text) > draftEcho {
 				// A large draft echoed whole on every edit buries the answer;
 				// get reads it when the agent needs to build on it.
@@ -1573,46 +1612,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if len(in.Open) > 0 && strings.TrimSpace(in.Asked) == "" {
 				return nil, fmt.Errorf("pass asked: what you asked your person and what they answered, or \"not available\" when you were told to work without them")
 			}
-			// A name where a register's reference goes finds that register,
-			// or drafts it: the team, the role, the group, the source.
-			var created []string
-			if len(in.Set) > 0 {
-				if in.Set, created, err = e.NamedRefs(c.ctx, cs.ID, in.Kind, in.Set); err != nil {
-					return nil, withFields(c, in.Kind, err)
-				}
-			}
-			// Every field that can be kept is kept: a refused field costs
-			// only itself, not the rest of the record sent with it.
-			var refused []engine.Problem
-			if len(in.Set) > 0 || len(in.Unset) > 0 {
-				if _, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, in.Set, in.Unset); err != nil {
-					var invalid *engine.ValidationError
-					if !errors.As(err, &invalid) {
-						return nil, withFields(c, in.Kind, err)
-					}
-					keys := make([]string, 0, len(in.Set))
-					for k := range in.Set {
-						keys = append(keys, k)
-					}
-					// Parents before children, as one edit would set them.
-					sort.Slice(keys, func(i, j int) bool {
-						return len(keys[i]) < len(keys[j]) || len(keys[i]) == len(keys[j]) && keys[i] < keys[j]
-					})
-					for _, k := range keys {
-						if _, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, map[string]any{k: in.Set[k]}, nil); err != nil {
-							if taught, ok := withFields(c, in.Kind, err).(*engine.ValidationError); ok {
-								refused = append(refused, taught.Problems...)
-							} else {
-								refused = append(refused, engine.Problem{Path: k, Message: err.Error()})
-							}
-						}
-					}
-					if len(in.Unset) > 0 {
-						if _, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, nil, in.Unset); err != nil {
-							refused = append(refused, engine.Problem{Message: err.Error()})
-						}
-					}
-				}
+			refused, created, err := applyFields(c, cs.ID, in.Kind, in.ID, in.Set, in.Unset)
+			if err != nil {
+				return nil, err
 			}
 			var left []string
 			for _, o := range in.Open {
@@ -2605,4 +2607,72 @@ func mayLeave(check, asked string) error {
 			"If the document truly does not say it, do not propose: tell your person what it lacks", engine.ErrBadEdit, check)
 	}
 	return nil
+}
+
+// applyFields sets and clears fields on a draft the way every agent write
+// does (docs/adr/0027): a name where a register's reference goes finds or
+// drafts it, a value is read in its field's format, and every field that
+// can be kept is kept, the refused ones returned with what goes there.
+// It answers the problems refused and the records drafted (and lines cut,
+// prefixed "cut: ").
+func applyFields(c call, set, kind, id string, put map[string]any, unset []string) ([]engine.Problem, []string, error) {
+	e := c.o.Engine
+	var created []string
+	var err error
+	if len(put) > 0 {
+		if put, created, err = e.NamedRefs(c.ctx, set, kind, put); err != nil {
+			return nil, nil, withFields(c, kind, err)
+		}
+	}
+	if len(put) == 0 && len(unset) == 0 {
+		return nil, created, nil
+	}
+	_, err = e.EditInChangeSet(c.ctx, set, kind, id, put, unset)
+	if err == nil {
+		return nil, created, nil
+	}
+	var invalid *engine.ValidationError
+	if !errors.As(err, &invalid) {
+		return nil, nil, withFields(c, kind, err)
+	}
+	var refused []engine.Problem
+	keys := make([]string, 0, len(put))
+	for k := range put {
+		keys = append(keys, k)
+	}
+	// Parents before children, as one edit would set them.
+	sort.Slice(keys, func(i, j int) bool {
+		return len(keys[i]) < len(keys[j]) || len(keys[i]) == len(keys[j]) && keys[i] < keys[j]
+	})
+	for _, k := range keys {
+		if _, err := e.EditInChangeSet(c.ctx, set, kind, id, map[string]any{k: put[k]}, nil); err != nil {
+			if taught, ok := withFields(c, kind, err).(*engine.ValidationError); ok {
+				refused = append(refused, taught.Problems...)
+			} else {
+				refused = append(refused, engine.Problem{Path: k, Message: err.Error()})
+			}
+		}
+	}
+	if len(unset) > 0 {
+		if _, err := e.EditInChangeSet(c.ctx, set, kind, id, nil, unset); err != nil {
+			refused = append(refused, engine.Problem{Message: err.Error()})
+		}
+	}
+	// Nothing kept is a refusal, as it was before any field was tried.
+	if len(refused) >= len(keys) && len(keys) > 0 && len(unset) == 0 {
+		return nil, nil, withFields(c, kind, &engine.ValidationError{Problems: refused})
+	}
+	return refused, created, nil
+}
+
+// schemaOnly reports whether every problem is the schema's: only then is
+// a whole manifest built field by field, so the order of work and the
+// rule against an agent's placeholder still refuse it whole.
+func schemaOnly(ps []engine.Problem) bool {
+	for _, p := range ps {
+		if p.Keyword == "" {
+			return false
+		}
+	}
+	return len(ps) > 0
 }

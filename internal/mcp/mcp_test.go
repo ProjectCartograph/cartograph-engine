@@ -946,7 +946,7 @@ func TestSettleARecordInOneCall(t *testing.T) {
 	}
 	// A second objective is refused, and nothing is saved.
 	res, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/objectives/1/objective": "Buyers are paid"}})
-	if res.IsError || !strings.Contains(text, `"refused":[{"path":"/spec/objectives"`) {
+	if !res.IsError || !strings.Contains(text, "/spec/objectives: maxItems") {
 		t.Fatalf("a second objective: %s", text)
 	}
 	_, text = callTool(t, cs, "work_summary", map[string]any{})
@@ -969,7 +969,7 @@ func TestSettleReadsFieldsWhereverSentAndTeachesTheShape(t *testing.T) {
 		t.Fatalf("pointers beside kind and id: %s", text)
 	}
 	res, text = callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/summary/problems": []any{map[string]any{"statement": "Faults reach buyers"}}}})
-	if res.IsError || !strings.Contains(text, `"refused"`) || !strings.Contains(text, "/spec/summary/problems/0/problem/situation") {
+	if !res.IsError || !strings.Contains(text, "/spec/summary/problems/0/problem/situation") {
 		t.Fatalf("a made-up shape: %s", text)
 	}
 }
@@ -1004,7 +1004,7 @@ func TestEveryToolCallIsTracedByItsShape(t *testing.T) {
 	if start.Method != "tools/call" || start.Operation != "execute_tool" || start.Tool != "start_work" || start.Outcome != trace.OK || start.Session == "" {
 		t.Errorf("start_work: %+v", start)
 	}
-	if edit.Record != "Project/p1" || edit.Outcome != trace.Refused || edit.Defect != "schema" || edit.ErrorType != "tool_error" || edit.Problems == 0 {
+	if edit.Record != "Project/p1" || edit.Outcome != trace.Refused || edit.Defect != "partial" || edit.Problems == 0 || len(edit.Paths) == 0 {
 		t.Errorf("a refused edit: %+v", edit)
 	}
 	b, _ := json.Marshal(rec.seen)
