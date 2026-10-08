@@ -114,38 +114,55 @@
           # The Laya sidecar (deploy/laya): its packages from the lockfile,
           # the ONNX runtime's CPU library patched to the store's, and the
           # model above. `nix run .#laya` serves it; nothing is fetched at
-          # run time.
-          laya = pkgs.buildNpmPackage {
+          # run time. layaFor takes the packages of the platform it runs
+          # on: nothing of that platform runs while it is put together, so
+          # Linux on x86_64 assembles arm64's from arm64's own packages
+          # (docs/CROSS.md).
+          layaFor = target: pkgs.buildNpmPackage {
             pname = "cartograph-laya";
             version = "0.1.2";
             src = ./deploy/laya;
             npmDepsHash = "sha256-+AOa10zXnELlogbEVbdiIoOoSjMSUOzMXSKY3ZZxIlE=";
             npmFlags = [ "--ignore-scripts" ];
             dontNpmBuild = true;
-            nativeBuildInputs = [ pkgs.makeWrapper ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.autoPatchelfHook ];
-            buildInputs = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.stdenv.cc.cc.lib ];
+            nativeBuildInputs = lib.optionals target.stdenv.hostPlatform.isLinux [ pkgs.autoPatchelfHook ];
+            buildInputs = lib.optionals target.stdenv.hostPlatform.isLinux [ target.stdenv.cc.cc.lib ];
             installPhase = ''
               runHook preInstall
               mkdir -p $out/lib/laya $out/bin
               cp -r node_modules server.mjs package.json $out/lib/laya/
-              # Only this platform's ONNX runtime is kept.
+              # Only the target's ONNX runtime is kept.
               ort=$out/lib/laya/node_modules/onnxruntime-node/bin
               for d in $ort/napi-v*/*; do
                 case "$(basename "$d")" in
-                  ${if pkgs.stdenv.hostPlatform.isLinux then "linux" else "darwin"}) ;;
+                  ${if target.stdenv.hostPlatform.isLinux then "linux" else "darwin"}) ;;
                   *) rm -rf "$d" ;;
                 esac
               done
               for d in $ort/napi-v*/*/*; do
                 case "$(basename "$d")" in
-                  ${if pkgs.stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}) ;;
+                  ${if target.stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}) ;;
                   *) rm -rf "$d" ;;
                 esac
               done
-              makeWrapper ${pkgs.nodejs_22}/bin/node $out/bin/cartograph-laya \
-                --add-flags $out/lib/laya/server.mjs \
-                --set-default LAYA_MODEL_DIR ${laya-model}
+              # The target's own shell and Node: a wrapper made by this
+              # machine's tools would start this machine's shell.
+              {
+                echo '#!${target.runtimeShell}'
+                echo ': "''${LAYA_MODEL_DIR:=${laya-model}}"'
+                echo 'export LAYA_MODEL_DIR'
+                echo "exec ${target.nodejs-slim_22}/bin/node $out/lib/laya/server.mjs \"\$@\""
+              } > $out/bin/cartograph-laya
+              chmod +x $out/bin/cartograph-laya
               runHook postInstall
+            '';
+            dontStrip = pkgs.stdenv.hostPlatform != target.stdenv.hostPlatform;
+            # autoPatchelf leaves another architecture's libraries alone: the
+            # target's C++ runtime goes on their path by hand.
+            postFixup = lib.optionalString (target.stdenv.hostPlatform.isLinux && pkgs.stdenv.hostPlatform != target.stdenv.hostPlatform) ''
+              for f in $(find $out/lib/laya/node_modules/onnxruntime-node/bin -name '*.node' -o -name 'libonnxruntime.so*' -type f); do
+                patchelf --add-rpath ${target.stdenv.cc.cc.lib}/lib "$f"
+              done
             '';
             meta = {
               description = "The Laya decision model sidecar Cartograph asks (docs/adr/0023)";
@@ -153,61 +170,117 @@
               license = lib.licenses.asl20;
             };
           };
+          laya = layaFor pkgs;
+
+          # The binary for another platform, built here: Go cross-compiles
+          # without a C toolchain (CGO_ENABLED=0), so every target is one
+          # build on this machine. Tests run in the native build only.
+          binaryFor = goos: goarch: cartograph.overrideAttrs (o: {
+            pname = "cartograph-${goos}-${goarch}";
+            env = o.env // { GOOS = goos; GOARCH = goarch; };
+            doCheck = false;
+            postBuild = ''
+              dir=$GOPATH/bin/${goos}_${goarch}
+              if [ -d "$dir" ]; then mv "$dir"/* "$dir"/.. && rmdir "$dir"; fi
+            '';
+            dontFixup = true;
+          });
+          # Every platform a release ships, by its Go name.
+          targets = {
+            linux-amd64 = [ "linux" "amd64" ]; linux-arm64 = [ "linux" "arm64" ]; linux-riscv64 = [ "linux" "riscv64" ];
+            darwin-amd64 = [ "darwin" "amd64" ]; darwin-arm64 = [ "darwin" "arm64" ];
+            windows-amd64 = [ "windows" "amd64" ]; windows-arm64 = [ "windows" "arm64" ];
+            freebsd-amd64 = [ "freebsd" "amd64" ];
+          };
+          binaries = lib.mapAttrs (_: t: binaryFor (builtins.elemAt t 0) (builtins.elemAt t 1)) targets;
+          # All of them, named as a release names them, with their sums.
+          release = pkgs.runCommand "cartograph-${version}-release" { } ''
+            mkdir -p $out
+            ${lib.concatStrings (lib.mapAttrsToList (t: b: ''
+              for f in ${b}/bin/*; do
+                cp "$f" "$out/cartograph-${t}$(case "$f" in *.exe) echo .exe;; esac)"
+              done
+            '') binaries)}
+            cd $out && sha256sum cartograph-* > SHA256SUMS
+          '';
+
+          # The Linux packages of each architecture an image is made for,
+          # whatever this machine is: their store paths are fetched, never
+          # run here.
+          linuxOf = { amd64 = nixpkgs.legacyPackages.x86_64-linux; arm64 = nixpkgs.legacyPackages.aarch64-linux; };
 
           # A container image is a Linux root filesystem: the binary, CA
           # certificates, a writable /vault owned by the runtime user, and
           # the binary's own readiness check. No shell, no browser.
-          imageFor = { name, extra ? [ ], env ? [ ] }: pkgs.dockerTools.buildLayeredImage {
+          imageFor = { name, arch ? pkgs.go.GOARCH, extra ? [ ], env ? [ ] }:
+            let bin = if arch == pkgs.go.GOARCH && pkgs.stdenv.hostPlatform.isLinux then cartograph else binaries."linux-${arch}"; in
+            pkgs.dockerTools.buildLayeredImage {
             inherit name;
             tag = version;
-            contents = [ cartograph pkgs.cacert ] ++ extra;
+            architecture = arch;
+            contents = [ bin linuxOf.${arch}.cacert ] ++ extra;
             fakeRootCommands = ''
               mkdir -p ./vault ./tmp
               chown 65532:65532 ./vault
               chmod 1777 ./tmp
             '';
             config = {
-              Entrypoint = [ "${cartograph}/bin/cartograph" ];
+              Entrypoint = [ "${bin}/bin/cartograph" ];
               Cmd = [ "serve" ];
               User = "65532:65532";
               Env = [ "CARTOGRAPH_VAULT=/vault" "CARTOGRAPH_LOG_FORMAT=json" "HOME=/tmp" ] ++ env;
               ExposedPorts = { "8080/tcp" = { }; };
               Volumes = { "/vault" = { }; };
               Healthcheck = {
-                Test = [ "CMD" "${cartograph}/bin/cartograph" "ready" ];
+                Test = [ "CMD" "${bin}/bin/cartograph" "ready" ];
                 Interval = 10000000000;
                 Timeout = 3000000000;
                 StartPeriod = 5000000000;
               };
             };
           };
+          imageChromium = arch: imageFor {
+            name = "cartograph-chromium";
+            inherit arch;
+            extra = [ linuxOf.${arch}.chromium ];
+            env = [ "CARTOGRAPH_CHROMIUM=${linuxOf.${arch}.chromium}/bin/chromium" ];
+          };
+          layaOn = arch: if arch == pkgs.go.GOARCH then laya else layaFor linuxOf.${arch};
+          imageLaya = arch:
+            let l = layaOn arch; in
+            pkgs.dockerTools.buildLayeredImage {
+              name = "cartograph-laya";
+              tag = version;
+              architecture = arch;
+              contents = [ l linuxOf.${arch}.cacert ];
+              fakeRootCommands = ''
+                mkdir -p ./tmp
+                chmod 1777 ./tmp
+              '';
+              config = {
+                Entrypoint = [ "${l}/bin/cartograph-laya" ];
+                User = "65532:65532";
+                Env = [ "LAYA_HOST=0.0.0.0" "LAYA_PORT=8411" "HOME=/tmp" ];
+                ExposedPorts = { "8411/tcp" = { }; };
+              };
+            };
         in
-        { inherit cartograph automerge-wasm laya laya-model; default = cartograph; }
+        { inherit cartograph automerge-wasm laya laya-model release; default = cartograph; }
+        // lib.mapAttrs' (t: b: lib.nameValuePair "cartograph-${t}" b) binaries
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           image = imageFor { name = "cartograph"; };
-          # The Laya sidecar, its model inside: no download when it starts.
-          image-laya = pkgs.dockerTools.buildLayeredImage {
-            name = "cartograph-laya";
-            tag = version;
-            contents = [ laya pkgs.cacert ];
-            fakeRootCommands = ''
-              mkdir -p ./tmp
-              chmod 1777 ./tmp
-            '';
-            config = {
-              Entrypoint = [ "${laya}/bin/cartograph-laya" ];
-              User = "65532:65532";
-              Env = [ "LAYA_HOST=0.0.0.0" "LAYA_PORT=8411" "HOME=/tmp" ];
-              ExposedPorts = { "8411/tcp" = { }; };
-            };
-          };
           # The same, plus Chromium for PDF printing.
-          image-chromium = imageFor {
-            name = "cartograph-chromium";
-            extra = [ pkgs.chromium ];
-            env = [ "CARTOGRAPH_CHROMIUM=${pkgs.chromium}/bin/chromium" ];
-          };
-        });
+          image-chromium = imageChromium pkgs.go.GOARCH;
+          # The Laya sidecar, its model inside: no download when it starts.
+          image-laya = imageLaya pkgs.go.GOARCH;
+        }
+        # Every architecture's images, built on this one (docs/CROSS.md).
+        // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux (lib.concatMapAttrs (arch: _: {
+          "image-linux-${arch}" = imageFor { name = "cartograph"; inherit arch; };
+          "image-chromium-linux-${arch}" = imageChromium arch;
+          "image-laya-linux-${arch}" = imageLaya arch;
+          "laya-linux-${arch}" = layaOn arch;
+        }) linuxOf));
 
       devShells = forEachSystem (pkgs:
         let haveChromium = pkgs.stdenv.hostPlatform.isLinux; in {

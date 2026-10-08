@@ -37,25 +37,19 @@ jobs:
           purge-last-accessed: P1DT12H
           purge-primary-key: never
       - run: test "v$(cat VERSION)" = "${GITHUB_REF_NAME}" || (echo "tag ${GITHUB_REF_NAME} does not match VERSION $(cat VERSION)" && exit 1)
+      # Every platform's binary and SHA256SUMS, cross-compiled on this
+      # one Linux runner (docs/CROSS.md).
       - run: nix develop --command just release
-      - run: cd dist && sha256sum cartograph-linux-* > SHA256SUMS
       - uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/cartograph-linux-amd64
-            dist/cartograph-linux-arm64
-            dist/SHA256SUMS
+          files: dist/*
           generate_release_notes: true
 
+  # Every image for both architectures, built on one x86_64 runner: an
+  # image is files, and an arm64 one is put together from arm64's own
+  # packages without running any of them (docs/CROSS.md).
   images:
-    strategy:
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            arch: amd64
-          - runner: ubuntu-24.04-arm
-            arch: arm64
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
@@ -77,27 +71,56 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # The decision model gives on this architecture the answers recorded
-      # on x86_64 (docs/adr/0030) before its image is published.
-      - run: nix develop --command just decide-measure
-      - name: build and push the images for this architecture
+      - name: build and push every image for both architectures
         run: |
           version=$(cat VERSION)
           repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cartograph
-          for target in image image-chromium; do
-            nix build .#$target --out-link result-$target
-            name=$(docker load < result-$target | sed -n 's/^Loaded image: //p')
-            suffix=""; [ "$target" = "image-chromium" ] && suffix="-chromium"
-            docker tag "$name" "$repo:$version$suffix-${{ matrix.arch }}"
-            docker push "$repo:$version$suffix-${{ matrix.arch }}"
+          for arch in amd64 arm64; do
+            for target in image image-chromium image-laya; do
+              case "$target" in
+                image) tag="$repo:$version-$arch" ;;
+                image-chromium) tag="$repo:$version-chromium-$arch" ;;
+                image-laya) tag="$repo-laya:$version-$arch" ;;
+              esac
+              nix build ".#$target-linux-$arch" --out-link "result-$target-$arch"
+              name=$(docker load < "result-$target-$arch" | sed -n 's/^Loaded image: //p')
+              docker tag "$name" "$tag"
+              docker push "$tag"
+            done
           done
-          nix build .#image-laya --out-link result-laya
-          name=$(docker load < result-laya | sed -n 's/^Loaded image: //p')
-          docker tag "$name" "$repo-laya:$version-${{ matrix.arch }}"
-          docker push "$repo-laya:$version-${{ matrix.arch }}"
+
+  # Each architecture's images, pulled and run on that architecture: the
+  # binary answers ready, and the decision model gives the answers
+  # recorded on x86_64 (docs/adr/0030), before any tag names them.
+  verify:
+    needs: images
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: the binary answers ready
+        run: |
+          repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cartograph
+          docker run -d --name cartograph -p 8080:8080 "$repo:$(cat VERSION)-${{ matrix.arch }}"
+          for _ in $(seq 1 60); do curl -sf http://localhost:8080/readyz && exit 0; sleep 0.5; done
+          docker logs cartograph; exit 1
+      - name: the decision model answers as recorded
+        run: |
+          repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cartograph-laya
+          docker run -d --name laya -p 8411:8411 "$repo:$(cat VERSION)-${{ matrix.arch }}"
+          for _ in $(seq 1 120); do curl -sf http://localhost:8411/ready && break; sleep 1; done
+          nix develop --command just decide-measure http://localhost:8411
 
   manifest:
-    needs: images
+    needs: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

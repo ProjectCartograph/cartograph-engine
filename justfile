@@ -183,15 +183,16 @@ build: embed
 bin: embed
     mkdir -p bin && go build -trimpath -ldflags="-s -w -X main.version={{version}}" -o bin/cartograph ./cmd/cartograph
 
-# Release binaries for both architectures (pure Go, static)
-release: embed
+# Release binaries for every platform, cross-compiled here (pure Go, static)
+release:
     #!{{toolchain}} bash
     set -euo pipefail
-    mkdir -p dist
-    for arch in amd64 arm64; do
-      CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags="-s -w -X main.version={{version}}" -o dist/cartograph-linux-$arch ./cmd/cartograph
-      echo "dist/cartograph-linux-$arch"
-    done
+    # Every platform's binary, cross-compiled here by the flake
+    # (docs/CROSS.md), with SHA256SUMS.
+    rm -rf dist && mkdir -p dist
+    cp "$(nix build .#release --no-link --print-out-paths)"/* dist/
+    chmod u+w dist/*
+    ls dist
 
 # The container image, from the flake, for this machine's architecture;
 # loads into docker as cartograph:<version> and cartograph:local, the tag
@@ -291,9 +292,15 @@ serve-vault dir *args: embed
 # known, on the model the flake pins, and hold each to the score it was
 # kept at (docs/adr/0030), and every answer to the one recorded on
 # x86_64. Locally and at a release, never in CI: it runs the real model.
-decide-measure:
+decide-measure url="":
     #!{{toolchain}} bash
     set -euo pipefail
+    # A sidecar already running (an image a release is about to publish)
+    # is measured where it is.
+    if [ -n "{{url}}" ]; then
+      CARTOGRAPH_DECIDE_URL="{{url}}" go test -count=1 -tags decide -run TestMeasureJudgements -v ./internal/engine/ | grep -E "^\s+measure_test|^(--- |ok|FAIL)"
+      exit
+    fi
     # Built first: the model is fetched into the store once, however long
     # that takes; starting it then takes seconds.
     laya=$(nix build .#laya --no-link --print-out-paths)

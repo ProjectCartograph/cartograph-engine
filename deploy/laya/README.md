@@ -41,13 +41,16 @@ Start Cartograph beside it with:
 
 ## Platforms
 
-The package and its image build for x86_64 and arm64 Linux, each with
-the ONNX runtime's library for that platform, and a release publishes
-one tag for both: `ghcr.io/projectcartograph/cartograph-laya:<version>`
-(set `CARTOGRAPH_LAYA_IMAGE` to it for compose). Before it publishes,
-each platform runs `just decide-measure`, which holds every answer to
-the one recorded on x86_64 (`internal/engine/testdata/decide/
-answers.json`) within 0.005: the same model answers the same on both.
+The package and its image are built for x86_64 and arm64 Linux on one
+x86_64 machine (`laya-linux-<arch>`, `image-laya-linux-<arch>`;
+docs/CROSS.md), each with the ONNX runtime's library for that platform.
+A release publishes one tag for both:
+`ghcr.io/projectcartograph/cartograph-laya:<version>` (set
+`CARTOGRAPH_LAYA_IMAGE` to it for compose). Before the tag is made, a
+runner of each architecture runs the image and `just decide-measure
+<url>` against it, which holds every answer to the one recorded on
+x86_64 (`internal/engine/testdata/decide/answers.json`) within 0.005:
+the same model answers the same on both.
 
 With compose, `docker compose --profile decide up -d` starts it beside
 Cartograph and keeps the model in a volume.

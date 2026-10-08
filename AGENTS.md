@@ -27,7 +27,7 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 | Regenerate from the contract | `just generate` |
 | Format, lint, dependency rule | `just fmt`, `just lint`, `just arch` |
 | Serve a copy of the example | `just serve` (`just serve laya` with the decision model) |
-| Release binaries for both architectures | `just release` |
+| Release binaries for every platform, cross-compiled here | `just release` |
 | The container image, from the flake | `just image` |
 | How agents used the MCP server: defects, sigma, waste, variance | `cartograph traces [-agent name] <trace file>` |
 
@@ -85,6 +85,7 @@ Run one agent at a time. Several at once only with the person's leave.
 - `docs/DESIGN_RULES.md`: how Cartograph behaves. `docs/TAXONOMY.md`: what the nouns mean.
 - `docs/EVALUATING.md`: judging a change agents use, by DMAIC, from the server and the trace.
 - `docs/CONTAINERS.md`: the test environment every command builds, tests and serves in.
+- `docs/CROSS.md`: every platform's binary and image, built on one Linux machine.
 - `STYLE.md`: code and commits. `CONTRIBUTING.md`: the loop.
 - `pkg/`: the public surface other repositories import (`client`, `uiconformance`), under the module path `github.com/ProjectCartograph/cartograph-engine/v2`. Changing a signature there is a breaking change; say so.
 

@@ -47,7 +47,7 @@ on x86_64 or aarch64.
 ```
 just test     # the gate: fake adapters, a few seconds
 just ci       # everything CI runs, in CI's order
-just release  # static binaries for linux/amd64 and linux/arm64
+just release  # static binaries for every platform (docs/CROSS.md)
 just image    # the container image, from the flake, loaded into docker
 ```
 
