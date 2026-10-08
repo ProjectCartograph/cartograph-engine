@@ -91,7 +91,8 @@ what it gives, and let it go.
 The loop, for any document or new piece of work, in one pass:
 1. structure: list every piece of work named, answer its questions, call
    structure, fix its problems.
-2. start_work: one change set for all of it.
+2. start_work with the same pieces: one change set for all of it, every
+   record already drafted, named and linked.
 3. next with work set to the work list structure returned, exactly:
    do what it says (save_draft the draft it hands you, edit_draft,
    leave_open), passing the same work to every save; each answer says
@@ -733,6 +734,7 @@ type (
 	startWorkIn struct {
 		Title       string `json:"title" jsonschema:"what this piece of work is, as your person would say it"`
 		Description string `json:"description,omitempty" jsonschema:"what it is for, and what it will hold"`
+		Pieces      []any  `json:"pieces,omitempty" jsonschema:"the pieces of work with their answers, as you gave them to structure: every record they make is written as a first draft"`
 	}
 	proposeIn struct {
 		ChangeSet  string                       `json:"changeSet,omitempty" jsonschema:"the change set to propose; your latest open one when left out"`
@@ -988,38 +990,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 
 	tool(s, o, person, &sdk.Tool{Name: "structure", Description: structureDescription(), Annotations: readOnly},
 		func(_ call, in structureIn) (any, error) {
-			// A small agent sends names where pieces go: say how, by example,
-			// rather than refusing in the words of a schema.
-			pieces := make([]engine.StructurePiece, 0, len(in.Pieces))
-			var bad, problems []string
-			for _, raw := range in.Pieces {
-				b, _ := json.Marshal(raw)
-				var p engine.StructurePiece
-				m, isObject := raw.(map[string]any)
-				if !isObject || json.Unmarshal(b, &p) != nil {
-					bad = append(bad, string(b))
-					continue
-				}
-				// What a piece is, is the answer, never the agent's to say:
-				// a key the questions do not ask is refused, not ignored.
-				for k := range m {
-					if !engine.StructureKeys[k] {
-						problems = append(problems, fmt.Sprintf("%q: %q is not an answer; give only name and the yes answers", p.Name, k))
-					}
-				}
-				if k, _ := m["kind"].(string); k != "" && k != "Project" && k != "Programme" && k != "Portfolio" && k != "Operation" {
-					problems = append(problems, fmt.Sprintf("%q is a %s, not a piece of work: leave it out, it is written inside the records", p.Name, k))
-				}
-				pieces = append(pieces, p)
-			}
-			if len(bad) > 0 {
-				problems = append(problems, "each piece is an object with its name and its yes answers, not text: "+strings.Join(bad, ", "))
-			}
-			if len(problems) > 0 {
-				sort.Strings(problems)
-				return map[string]any{"problems": problems,
-					"next": "Call structure again. A piece is a piece of work (the project, each workstream, phase, survey, system, service, policy or scheme), " +
-						"each an object with name and only the answers that are yes, like " + structureExample + "."}, nil
+			pieces, refused := piecesOf(in.Pieces)
+			if refused != nil {
+				return refused, nil
 			}
 			return engine.Classify(pieces), nil
 		})
@@ -1484,13 +1457,53 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "start_work", Description: "Open a new change set for a new piece of work, with a title and a description of what it is for, as you would open a branch for a task. " +
-		"Everything you draft afterwards goes into it, apart from your other work and every other agent's, and your person reviews and accepts it whole.", Annotations: drafting},
+		"Everything you draft afterwards goes into it, apart from your other work and every other agent's, and your person reviews and accepts it whole. " +
+		"Pass pieces, the same answers you gave structure, and it also writes the first draft of every record the structure names (each named, with its components, " +
+		"its deliverables and its scope-out lines) and says what to fill in first.", Annotations: drafting},
 		func(c call, in startWorkIn) (any, error) {
+			var st engine.Structure
+			if len(in.Pieces) > 0 {
+				pieces, refused := piecesOf(in.Pieces)
+				if refused != nil {
+					return refused, nil
+				}
+				if st = engine.Classify(pieces); len(st.Problems) > 0 {
+					return map[string]any{"problems": st.Problems, "next": "Fix every problem and call start_work again with the pieces; nothing was started."}, nil
+				}
+			}
 			cs, err := e.StartChangeSet(c.ctx, in.Title, in.Description)
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"changeSet": cs.ID, "title": cs.Title, "next": "Draft into it with save_draft and edit_draft; propose it with propose when every check is met."}, nil
+			out := map[string]any{"changeSet": cs.ID, "title": cs.Title, "next": "Draft into it with save_draft and edit_draft; propose it with propose when every check is met."}
+			if len(in.Pieces) == 0 {
+				return out, nil
+			}
+			// The structure's records, written as first drafts: the agent fills
+			// them in, never lays them out.
+			for _, d := range st.Drafts() {
+				kind, _ := d["kind"].(string)
+				id, _ := d["metadata"].(map[string]any)["id"].(string)
+				text, err := e.Codec().Encode(d)
+				if err != nil {
+					return nil, err
+				}
+				if err := e.SaveInChangeSet(c.ctx, cs.ID, kind, id, text); err != nil {
+					return nil, err
+				}
+				c.announce(step{Step: "draft", Kind: kind, ID: id, Text: text, ChangeSet: cs.ID})
+			}
+			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
+				return nil, err
+			}
+			next, err := nextOf(c, cs.ID, true, st.Work, "")
+			if err != nil {
+				return nil, err
+			}
+			out["work"], out["written"], out["then"] = st.Work, st.Pieces, next
+			out["next"] = "Every record the structure names is drafted. Pass work, exactly as here, to every save and edit; each answer says what to fill in next, " +
+				"until every check is met. Then propose."
+			return out, nil
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "propose", Description: "Propose your change set for your person to review and accept in Cartograph, whole: every draft in it is checked with the others, " +
@@ -2048,4 +2061,44 @@ func firstUnwritten(c call, set string, found bool, work []engine.Ref, locale st
 // containsFold reports whether s holds sub, ignoring case.
 func containsFold(s, sub string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(strings.TrimSpace(sub)))
+}
+
+// piecesOf reads structure answers as an agent sent them, strictly: a
+// piece sent as text, a key the questions do not ask or a kind that is
+// not work is refused with what to send instead, never ignored.
+func piecesOf(raws []any) ([]engine.StructurePiece, map[string]any) {
+	// A small agent sends names where pieces go: say how, by example,
+	// rather than refusing in the words of a schema.
+	pieces := make([]engine.StructurePiece, 0, len(raws))
+	var bad, problems []string
+	for _, raw := range raws {
+		b, _ := json.Marshal(raw)
+		var p engine.StructurePiece
+		m, isObject := raw.(map[string]any)
+		if !isObject || json.Unmarshal(b, &p) != nil {
+			bad = append(bad, string(b))
+			continue
+		}
+		// What a piece is, is the answer, never the agent's to say:
+		// a key the questions do not ask is refused, not ignored.
+		for k := range m {
+			if !engine.StructureKeys[k] {
+				problems = append(problems, fmt.Sprintf("%q: %q is not an answer; give only name and the yes answers", p.Name, k))
+			}
+		}
+		if k, _ := m["kind"].(string); k != "" && k != "Project" && k != "Programme" && k != "Portfolio" && k != "Operation" {
+			problems = append(problems, fmt.Sprintf("%q is a %s, not a piece of work: leave it out, it is written inside the records", p.Name, k))
+		}
+		pieces = append(pieces, p)
+	}
+	if len(bad) > 0 {
+		problems = append(problems, "each piece is an object with its name and its yes answers, not text: "+strings.Join(bad, ", "))
+	}
+	if len(problems) > 0 {
+		sort.Strings(problems)
+		return nil, map[string]any{"problems": problems,
+			"next": "Call structure again. A piece is a piece of work (the project, each workstream, phase, survey, system, service, policy or scheme), " +
+				"each an object with name and only the answers that are yes, like " + structureExample + "."}
+	}
+	return pieces, nil
 }

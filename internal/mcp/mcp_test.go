@@ -868,3 +868,38 @@ func TestSaveDraftsWritesManyAndSaysWhatComesNext(t *testing.T) {
 
 // porting0How is a phrase only the how of the porting map holds.
 func porting0How() string { return "Ask in the document's own words" }
+
+// start_work with the structure's answers drafts every record, linked:
+// the survey a component of the rollout, the handbook its deliverable,
+// the outside scheme a scope-out line, the checks service an operation.
+func TestStartWorkDraftsTheStructure(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	res, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{
+		map[string]any{"name": "Rollout"},
+		map[string]any{"name": "Handbook", "outputOf": "Rollout"},
+		map[string]any{"name": "Baseline survey", "changeOfItsOwn": true, "dependedOnBy": []any{"Rollout"}},
+		map[string]any{"name": "Compliance checks", "ongoing": true},
+		map[string]any{"name": "Farm supply scheme", "outOfScope": true},
+	}})
+	var out struct {
+		ChangeSet string
+		Work      []string
+	}
+	if res.IsError || json.Unmarshal([]byte(text), &out) != nil || len(out.Work) != 3 {
+		t.Fatalf("start_work: %s", text)
+	}
+	var rollout, survey string
+	for _, w := range out.Work {
+		_, text := callTool(t, cs, "get", map[string]any{"kind": strings.Split(w, "/")[0], "id": strings.Split(w, "/")[1], "changeSet": out.ChangeSet})
+		switch {
+		case strings.Contains(text, "Rollout"):
+			rollout = text
+		case strings.Contains(text, "Baseline survey"):
+			survey = w
+		}
+	}
+	if !strings.Contains(rollout, strings.TrimPrefix(survey, "Project/")) || !strings.Contains(rollout, "Handbook") || !strings.Contains(rollout, "Farm supply scheme") {
+		t.Errorf("the rollout's draft: %s", rollout)
+	}
+}

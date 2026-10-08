@@ -217,9 +217,9 @@ func Classify(pieces []StructurePiece) Structure {
 		out.Next = "Fix every problem above and call structure again until there are none."
 		return out
 	}
-	out.Next = "Call start_work once, then call next with work set to the work list above, exactly as it is, and do what next says; " +
-		"call next again with the same work after every save, until it says every check is met; then propose. " +
-		"Write each deliverable inside its project and each scope-out line in the project that mentions it."
+	out.Next = "Call start_work with a title and these same pieces: it drafts every record here, named and linked, with each deliverable " +
+		"in its project and each scope-out line in the work at the top. Then fill them in from the documents as its answer says, passing the work " +
+		"list to every save, until every check is met; then propose."
 	return out
 }
 
@@ -304,4 +304,107 @@ func shortID() string {
 	b := make([]byte, 4)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// Drafts are the records a structure says to write, as first drafts in
+// its order: each named, with a goal's level, an operation's status, the
+// components each piece lists, each deliverable inside the work it is an
+// output of, and each scope-out line in the work at the top. What only the
+// documents can say is left for the checks to ask for, one at a time.
+func (s Structure) Drafts() []map[string]any {
+	recordOf := map[string]string{}
+	for _, p := range s.Pieces {
+		if p.Record != "" {
+			recordOf[strings.ToLower(strings.TrimSpace(p.Name))] = p.Record
+		}
+	}
+	idOf := func(name string) (string, string, bool) {
+		r, ok := recordOf[strings.ToLower(strings.TrimSpace(name))]
+		if !ok {
+			return "", "", false
+		}
+		k, id, _ := strings.Cut(r, "/")
+		return k, id, true
+	}
+	drafts := map[string]map[string]any{}
+	specOfDraft := func(r string) map[string]any {
+		d := drafts[r]
+		sp, _ := d["spec"].(map[string]any)
+		return sp
+	}
+	for _, p := range s.Pieces {
+		if p.Record == "" {
+			continue
+		}
+		kind, id, _ := strings.Cut(p.Record, "/")
+		spec := map[string]any{}
+		switch kind {
+		case "Goal":
+			spec["level"] = "goal"
+		case "Operation":
+			spec["status"] = "planned"
+			if strings.Contains(p.Where, "running") {
+				spec["status"] = "running"
+			}
+		}
+		drafts[p.Record] = map[string]any{"apiVersion": "cartograph/v1", "kind": kind, "metadata": map[string]any{"id": id, "name": p.Name}, "spec": spec}
+	}
+	var tops []string
+	for _, p := range s.Pieces {
+		if p.Kind == "Project" && len(p.Of) == 0 {
+			tops = append(tops, p.Record)
+		}
+	}
+	for _, p := range s.Pieces {
+		switch p.Kind {
+		case "Project":
+			for _, of := range p.Of {
+				if k, _, ok := idOf(of); ok && (k == "Project" || k == "Programme") {
+					_, id, _ := strings.Cut(p.Record, "/")
+					sp := specOfDraft(recordOf[strings.ToLower(strings.TrimSpace(of))])
+					cs, _ := sp["components"].([]any)
+					sp["components"] = append(cs, map[string]any{"kind": "Project", "id": id})
+				}
+			}
+		case PieceDeliverable:
+			for _, of := range p.Of {
+				if k, _, ok := idOf(of); ok && k == "Project" {
+					sp := specOfDraft(recordOf[strings.ToLower(strings.TrimSpace(of))])
+					ds, _ := sp["deliverables"].([]any)
+					sp["deliverables"] = append(ds, map[string]any{"id": fmt.Sprintf("d%d", len(ds)+1), "name": clip(p.Name, 60)})
+				}
+			}
+		case PieceScopeOut:
+			for _, r := range tops {
+				sp := specOfDraft(r)
+				summary, _ := sp["summary"].(map[string]any)
+				if summary == nil {
+					summary = map[string]any{}
+					sp["summary"] = summary
+				}
+				out, _ := summary["scopeOut"].([]any)
+				summary["scopeOut"] = append(out, clip(p.Name, 60))
+			}
+		}
+	}
+	out := make([]map[string]any, 0, len(s.Work))
+	for _, r := range s.Work {
+		if d, ok := drafts[r]; ok {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+// clip shortens text to n characters, whole words where it can.
+func clip(s string, n int) string {
+	s = strings.TrimSpace(s)
+	if len([]rune(s)) <= n {
+		return s
+	}
+	r := []rune(s)[:n]
+	if i := strings.LastIndex(string(r), " "); i > n/2 {
+		return string(r[:len([]rune(string(r)[:i]))])
+	}
+	return string(r)
 }
