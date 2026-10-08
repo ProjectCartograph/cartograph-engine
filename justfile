@@ -274,11 +274,13 @@ clean:
 # criteria file. Every run serves the frozen build from the Nix store, so
 # nothing changing in the working tree touches it.
 
-# Freeze the build under test: the flake built at a commit (the last described change, @-, by default)
+# Freeze the build under test: the flake built at a revision (@-, the last described change, by default)
 eval-build dir rev="":
     #!{{toolchain}} bash
     set -euo pipefail
-    rev="{{rev}}"; rev="${rev:-$(jj log -r @- --no-graph -T commit_id)}"
+    # Any revision jj names (a change or commit id, short or whole, @-, a
+    # bookmark), resolved to the whole commit id nix builds from.
+    rev="$(jj log -r "{{ if rev == "" { "@-" } else { rev } }}" --no-graph -T commit_id)"
     mkdir -p "{{dir}}"
     out="$(nix build "git+file://{{justfile_directory()}}?rev=$rev#cartograph" --print-out-paths --out-link "{{dir}}/build")"
     "$out/bin/cartograph" eval build "{{dir}}" -commit "$rev" -store "$out"
