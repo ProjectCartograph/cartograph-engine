@@ -21,20 +21,39 @@ script can run against the server.
   criterion and say so.
 - Name the bar: how many fresh runs in a row must pass, and on which
   model. Three in a row is the default.
-- Keep the scorer and the evaluation outside the repository: it holds
-  the product and nothing else (`just clean-tree`).
+- The machinery is in the repository (`cartograph eval`, the `just
+  eval-*` recipes); a document's criteria file, the document and the
+  runs are kept outside it, beside each other. A real organisation's
+  document never enters the repository (`just words`).
+
+A criteria file is JSON: what is judged, the agent's name, the bar, and
+the checks (`wholeDocument`, `proposed`, `oneObjectiveEach`,
+`noPeople`, `structure` with the component and operation patterns,
+`totals` across projects, and the `kpis` that must and must not exist).
+`internal/evaluate` defines it.
 
 ## Measure
 
-- Serve a fresh vault per run, with `CARTOGRAPH_MCP_TRACE` set to a file
-  of its own. Never reuse a vault between runs.
-- Give the agent a minimal prompt: the document, how to reach the
-  server, and the goal. What it needs to know comes from the server's
+Everything runs through the flake, the agent's calls included:
+
+| Do | Run |
+|---|---|
+| Freeze the build under test, the flake built at a commit | `just eval-build <dir> [rev]` |
+| Serve a fresh traced run; print the agent's prompt | `just eval-serve <dir> <document> [agent]` |
+| Score a run from the server and its trace | `just eval-score <dir> <run> <criteria> <change set>` |
+| Every run, its figures, and the streak | `just eval-status <dir> [criteria]` |
+| Stop a run's server, or every run's | `just eval-stop <dir> [run]` |
+
+- Each run is a fresh vault and trace of its own, served from the frozen
+  build's Nix store path; never reuse one.
+- Give the agent the minimal prompt `eval-serve` prints: the document,
+  the server, the goal, and `cartograph eval call` from the same store
+  path to reach it. What it needs to know comes from the server's
   instructions and answers, or the server is what needs fixing.
-- The evaluator reads through the same server, so it names itself
-  (its client's name or user agent) and is left out of the analysis:
-  `cartograph traces -agent <the agent's name> <trace file>`.
-- Score every run with the script, every criterion, pass or fail.
+- The scorer reads through the same server as a client named `Scorer`,
+  and the trace figures are the agent's calls only
+  (`cartograph traces -agent <name>` reads them the same way).
+- Score every run, every criterion, pass or fail.
 
 ## Analyse
 
@@ -65,8 +84,10 @@ Read the trace as a value stream, and the runs as a process.
 
 ## Control
 
-- Freeze the build under test: one binary, built from one commit, for
-  every run that counts. A change to the code resets the count.
+- Freeze the build under test: the flake built at one commit, a Nix
+  store path, for every run that counts. A change to the code is a new
+  build, and resets the count (`just eval-status` counts on the latest
+  run's build).
 - Run the counted runs one at a time, each scored before the next
   starts. Never several agents at once without the person's leave: it
   spends tokens for nothing a sequence would not show.

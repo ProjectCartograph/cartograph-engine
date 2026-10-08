@@ -268,3 +268,33 @@ roundtrip dir="examples/minimal": embed
 
 clean:
     rm -rf bin dist result result-image internal/spa/dist internal/spa/dist.stamp
+
+# --- judging a change agents use (docs/EVALUATING.md) ---------------------
+# An evaluation directory lives outside the repository, beside its
+# criteria file. Every run serves the frozen build from the Nix store, so
+# nothing changing in the working tree touches it.
+
+# Freeze the build under test: the flake built at a commit (the last described change, @-, by default)
+eval-build dir rev="":
+    #!{{toolchain}} bash
+    set -euo pipefail
+    rev="{{rev}}"; rev="${rev:-$(jj log -r @- --no-graph -T commit_id)}"
+    mkdir -p "{{dir}}"
+    out="$(nix build "git+file://{{justfile_directory()}}?rev=$rev#cartograph" --print-out-paths --out-link "{{dir}}/build")"
+    "$out/bin/cartograph" eval build "{{dir}}" -commit "$rev" -store "$out"
+
+# Serve a fresh traced run of the frozen build, and print the agent's prompt
+eval-serve dir document agent="Agent":
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval serve "{{dir}}" -document "{{document}}" -agent "{{agent}}"
+
+# Score a run from the server and its trace against the criteria
+eval-score dir run criteria change_set:
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval score "{{dir}}" "{{run}}" -criteria "{{criteria}}" -change-set "{{change_set}}"
+
+# Every run, its score and trace figures, and the streak against the bar
+eval-status dir criteria="":
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval status "{{dir}}" {{ if criteria != "" { "-criteria " + quote(criteria) } else { "" } }}
+
+# Stop a run's server, or every run's
+eval-stop dir run="":
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval stop "{{dir}}" {{run}}

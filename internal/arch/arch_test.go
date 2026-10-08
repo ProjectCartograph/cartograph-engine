@@ -200,6 +200,10 @@ var rules = map[string][]string{
 	// handler, and the MCP SDK, which no one else uses. The SDK's package
 	// also holds its client, which can start a server as a process, so
 	// os/exec comes with it; the adapter starts none.
+	// Judging a change agents use: the trace port and an MCP client, never
+	// the engine (docs/EVALUATING.md).
+	"internal/evaluate": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/api", "internal/spa", "internal/render",
+		"internal/config", "internal/mcp", "internal/oauth", "internal/syncserver", "cmd"}, adapters, without(drivers, "net/http", "os/exec")),
 	"internal/mcp": join([]string{"internal/api", "internal/spa", "internal/render", "internal/config", "internal/syncserver", "cmd"}, adapters, without(drivers, "net/http", "os/exec")),
 	// The authorization server for agents is an adapter of the identity
 	// port, outside the engine: it knows the engine only through the port

@@ -57,6 +57,8 @@ func main() {
 		err = runMCP(os.Args[2:])
 	case "traces":
 		err = runTraces(os.Args[2:])
+	case "eval":
+		err = runEval(os.Args[2:])
 	case "access":
 		err = runAccess(os.Args[2:])
 	case "ready":
@@ -102,7 +104,8 @@ Usage:
   cartograph recover <Kind/id> <vault-dir> --reason "..."
   cartograph unapplied <vault-dir>
   cartograph excluded <vault-dir>
-  cartograph traces [-json] <trace file>...                     (Lean Six Sigma over MCP call traces)
+  cartograph traces [-json] [-agent name] <trace file>...       (Lean Six Sigma over MCP call traces)
+  cartograph eval build|serve|call|score|status|stop ...        (judge a change agents use, docs/EVALUATING.md)
   cartograph report <projects|kpi-readings|alignment|teams> <vault, file or postgres:// URL> [-format csv|json]
   cartograph mcp <vault, file or postgres:// URL>               (MCP over stdio, for a local agent)
   cartograph access apply <access file> -store <vault, file or postgres:// URL>
