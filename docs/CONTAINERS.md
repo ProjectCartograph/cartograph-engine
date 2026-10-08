@@ -33,8 +33,10 @@ repository you are in:
     scripts/dev                     # a shell inside
     scripts/dev --down              # stop the environment
 
-From `cartograph-ui`, `../cartograph-engine/scripts/dev just test` runs
-the interface's gate in its own flake.
+The interface has an environment of its own, `scripts/dev` in
+`cartograph-ui`, on the same `cartograph-nix` volume: what either
+fetches, both use. This one still runs the interface's recipes too,
+when both repositories are in the workspace.
 
 The first command builds the image and fetches the toolchain, a few
 minutes; later ones start in about two seconds. The environment keeps
