@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -51,9 +52,39 @@ type Options struct {
 // authentication middleware put on the request: the person the agent
 // acts for.
 func Handler(o Options) http.Handler {
+	servers := &serverCache{byPerson: map[string]*sdk.Server{}}
 	return sdk.NewStreamableHTTPHandler(func(r *http.Request) *sdk.Server {
-		return newServer(o, auth.PrincipalFrom(r.Context()))
+		person := auth.PrincipalFrom(r.Context())
+		return servers.get(person, func() *sdk.Server { return newServer(o, person) })
 	}, &sdk.StreamableHTTPOptions{Stateless: true, JSONResponse: true})
+}
+
+// serverCache keeps a built server for each person who calls. The
+// handler is stateless, so it asked for a server, and built one with all
+// its tools, for every request; what a server holds is the options and
+// the person, both fixed, and the agent is read from each request. A
+// cache of built handlers, not state: dropping it costs only the build.
+type serverCache struct {
+	mu       sync.Mutex
+	byPerson map[string]*sdk.Server
+}
+
+// serverCacheSize bounds the people kept; past it the cache starts over.
+const serverCacheSize = 1024
+
+func (c *serverCache) get(person identity.Principal, build func() *sdk.Server) *sdk.Server {
+	key := fmt.Sprintf("%#v", person)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if s, ok := c.byPerson[key]; ok {
+		return s
+	}
+	if len(c.byPerson) >= serverCacheSize {
+		c.byPerson = map[string]*sdk.Server{}
+	}
+	s := build()
+	c.byPerson[key] = s
+	return s
 }
 
 // ServeStdio serves MCP over stdin and stdout, for an agent on the
@@ -667,8 +698,14 @@ var (
 
 func ptr[T any](v T) *T { return &v }
 
+// toolSchemas keeps every tool's input schema, inferred and resolved once
+// a process: a server is built for each session, and building its tools'
+// schemas again was most of what a session cost to start. A cache, not
+// state.
+var toolSchemas = sdk.NewSchemaCache()
+
 func newServer(o Options, person identity.Principal) *sdk.Server {
-	s := sdk.NewServer(&sdk.Implementation{Name: "cartograph", Version: o.Version}, &sdk.ServerOptions{Instructions: instructions})
+	s := sdk.NewServer(&sdk.Implementation{Name: "cartograph", Version: o.Version}, &sdk.ServerOptions{Instructions: instructions, SchemaCache: toolSchemas})
 
 	registerReadTools(s, o, person)
 	registerDraftTools(s, o, person)
