@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -320,6 +321,15 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 			case 12:
 				extra["/spec/cycle"] = "Yearly"
 			}
+			if b := baselineOf(byRole["baseline"]); b != nil {
+				extra["/spec/baseline"] = b
+			}
+			if t := registerTarget(byRole["date"]); t != nil {
+				extra["/spec/target"] = t
+			}
+			if w := strings.ToLower(byRole["date"]); strings.Contains(w, "decline") || strings.Contains(w, "reduc") || strings.Contains(w, "fewer") || strings.Contains(w, "lower") {
+				extra["/spec/direction"] = "decrease"
+			}
 			// The body that owns the indicator keeps its source.
 			if team := leadOf(byRole["owner"]); team != "" && extra["/spec/sources"] != nil {
 				extra["_team"] = clip(team, 120)
@@ -351,6 +361,9 @@ func cellTiming(cell string) map[string]any {
 			last = m
 		}
 	}
+	if last == "" {
+		last = namedMonth(cell)
+	}
 	if last != "" {
 		return map[string]any{"form": "date", "date": last}
 	}
@@ -361,6 +374,70 @@ func cellTiming(cell string) map[string]any {
 		return map[string]any{"form": "window", "notBefore": years[0] + "-01", "notAfter": years[len(years)-1] + "-12", "note": clip(cell, 240)}
 	}
 	return nil
+}
+
+// monthNamed is a month named in words with its year (June 2026, Jul
+// 2026).
+var monthNamed = regexp.MustCompile(`(?i)\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+((?:19|20)[0-9]{2})\b`)
+
+// namedMonth is the last month a cell names in words, as YYYY-MM, or "".
+func namedMonth(cell string) string {
+	all := monthNamed.FindAllStringSubmatch(cell, -1)
+	if len(all) == 0 {
+		return ""
+	}
+	m := all[len(all)-1]
+	months := "janfebmaraprmayjunjulaugsepoctnovdec"
+	n := strings.Index(months, strings.ToLower(m[1]))/3 + 1
+	return fmt.Sprintf("%s-%02d", m[2], n)
+}
+
+// leadingFigure is the figure a cell starts with (0, 100%, 49.4), the
+// value it states; a cell that starts in words states none.
+var leadingFigure = regexp.MustCompile(`^\s*(-?[0-9]+(?:\.[0-9]+)?)\s*%?(?:\s|$|[-(;,])`)
+
+func figureOf(cell string) (float64, bool) {
+	m := leadingFigure.FindStringSubmatch(cell)
+	if m == nil {
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(m[1], 64)
+	return v, err == nil
+}
+
+// baselineOf reads a register's baseline cell: a figure with its month,
+// else the cell's words kept as why there is no figure with a date yet.
+func baselineOf(cell string) map[string]any {
+	cell = strings.TrimSpace(cell)
+	if cell == "" {
+		return nil
+	}
+	month := namedMonth(cell)
+	if t := cellTiming(cell); t != nil && t["form"] == "date" {
+		month, _ = t["date"].(string)
+	}
+	if v, ok := figureOf(cell); ok && month != "" {
+		return map[string]any{"value": v, "date": month}
+	}
+	return map[string]any{"unknownReason": clip("No figure with a date yet; the document says: "+cell, 240)}
+}
+
+// registerTarget reads a register's target cell: a figure by a month, or by a
+// window of years; nil when the cell gives no figure (a target to be set).
+func registerTarget(cell string) map[string]any {
+	v, ok := figureOf(cell)
+	if !ok {
+		return nil
+	}
+	t := cellTiming(cell)
+	switch {
+	case t == nil:
+		return nil
+	case t["form"] == "date":
+		return map[string]any{"value": v, "date": t["date"]}
+	default:
+		return map[string]any{"value": v, "due": t}
+	}
 }
 
 func level(cell string) string {

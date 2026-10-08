@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -75,10 +76,12 @@ const instructions = `Porting a document? Do exactly this, in one pass:
    workstream), answer the structure questions for each, and call port
    again with the pieces. It drafts every record and writes every
    register (milestones, deliverables, risks, indicators) for you.
-3. For each record its answer names, one settle: set every field in
-   fill, in the shape each shows, reading only the sections each names
-   under read; leave open, with its reason, only what the document does
-   not say. Its answer names the next record.
+3. port a third time with records: every record its answer lists,
+   each with set (every field in its fill, in the shape each shows,
+   read from the sections each names under read) and open (only the
+   checks the document does not answer, each with its reason). One
+   call for every record; it answers what is still open, and you call
+   it again for that until nothing is.
 4. propose. Report from work_summary only.
 Use no other tool unless an answer tells you to.
 
@@ -793,10 +796,16 @@ type (
 		Work      []string `json:"work,omitempty" jsonschema:"the work list start_work returned"`
 	}
 	portIn struct {
-		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to port into; your latest open one when left out, and a new one when you have none"`
-		Title     string `json:"title" jsonschema:"the document's title"`
-		Text      string `json:"text,omitempty" jsonschema:"the document's whole text, straight from its file: on the first call only"`
-		Pieces    []any  `json:"pieces,omitempty" jsonschema:"on the second call: every piece of work the document names, each with its name and only its yes answers to the structure questions"`
+		ChangeSet string       `json:"changeSet,omitempty" jsonschema:"the change set to port into; your latest open one when left out, and a new one when you have none"`
+		Title     string       `json:"title" jsonschema:"the document's title"`
+		Text      string       `json:"text,omitempty" jsonschema:"the document's whole text, straight from its file: on the first call only"`
+		Pieces    []any        `json:"pieces,omitempty" jsonschema:"on the second call: every piece of work the document names, each with its name and only its yes answers to the structure questions"`
+		Records   []portRecord `json:"records,omitempty" jsonschema:"on the third call: every record the second call listed, each with set (every field the document gives, by JSON pointer) and open (each check it does not answer, with the reason)"`
+	}
+	portRecord struct {
+		Record string         `json:"record" jsonschema:"the record, as Kind/id"`
+		Set    map[string]any `json:"set,omitempty" jsonschema:"every field the document gives, by JSON pointer"`
+		Open   []settleOpen   `json:"open,omitempty" jsonschema:"each check the document does not answer, with the reason your person will read"`
 	}
 	bringIn struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to keep it in; your latest open one when left out, and a new one when you have none"`
@@ -1723,6 +1732,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 						break
 					}
 				}
+			}
+			if len(in.Records) > 0 {
+				return portRecords(c, cs.ID, in.Records)
 			}
 			if len(in.Pieces) == 0 {
 				return map[string]any{"changeSet": cs.ID, "sections": srcs[0].Sections, "piecesIn": pieceSections,
@@ -3007,12 +3019,209 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 	if c.ctx, err = e.InChangeSet(c.ctx, set); err != nil {
 		return nil, err
 	}
-	next, err := nextOf(c, set, true, st.Work, "")
+	all, err := portWork(c, set, st.Work)
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"changeSet": set, "work": st.Work, "pieces": st.Pieces, "registers": registers, "then": next,
-		"next": "The structure is drafted and the registers written. Now one settle a record, as then says, passing work; then propose; report from work_summary."}, nil
+	records, err := fillsOf(c, set, all)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"changeSet": set, "work": st.Work, "pieces": st.Pieces, "registers": registers, "records": records,
+		"next": "The structure is drafted and the registers written. Now call port a third time with records: every record listed here, " +
+			"each with set (every field in its fill, written from the sections read names) and open (each check the document does not answer, with its reason). " +
+			"One call for all of them; then propose; report from work_summary."}, nil
+}
+
+// fillsOf is what each record of the work still needs, field by field:
+// the checks open on it, each with the field that meets it, what to
+// write and the sections that say it, and the shape of each list or
+// object once. A port writes every record from it in one call.
+func fillsOf(c call, set string, work []string) ([]map[string]any, error) {
+	e := c.o.Engine
+	var out []map[string]any
+	for _, w := range work {
+		k, id, ok := strings.Cut(w, "/")
+		if !ok {
+			continue
+		}
+		wk, err := e.Work(c.ctx, []engine.Ref{{Kind: k, ID: id}}, "")
+		if err != nil {
+			return nil, err
+		}
+		var fill []map[string]any
+		seen := map[string]bool{}
+		for _, t := range wk.Tasks {
+			if t.Kind != k || t.ID != id {
+				continue
+			}
+			f := map[string]any{"check": t.Check, "do": t.Do}
+			if t.Field != "" {
+				f["field"] = t.Field
+				if read := sectionsFor(c, t.Field); len(read) > 0 {
+					f["read"] = read
+				}
+				if sh, ok := e.FieldShapeAt(k, t.Field); ok && !seen[t.Field] {
+					seen[t.Field] = true
+					switch sh.Example.(type) {
+					case []any, map[string]any:
+						f["shape"] = sh
+					}
+				}
+			}
+			fill = append(fill, f)
+		}
+		// What the schema requires is filled the same way: a field a
+		// draft lacks is in the fill beside the checks.
+		problems, err := e.DraftProblems(c.ctx, k, id)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range problems {
+			if p.Keyword != "required" {
+				fill = append(fill, map[string]any{"check": "schema", "field": p.Path, "do": p.Message})
+				continue
+			}
+			for _, m := range quotedName.FindAllStringSubmatch(p.Message, -1) {
+				field := strings.TrimSuffix(p.Path, "/") + "/" + m[1]
+				if seen[field] {
+					continue
+				}
+				seen[field] = true
+				f := map[string]any{"check": "required", "field": field, "do": "Required: write it from the document."}
+				if read := sectionsFor(c, field); len(read) > 0 {
+					f["read"] = read
+				}
+				if sh, ok := e.FieldShapeAt(k, field); ok {
+					f["shape"] = sh
+				}
+				fill = append(fill, f)
+			}
+		}
+		if len(fill) > 0 {
+			rec := map[string]any{"record": w, "fill": fill}
+			if text, found, _ := e.ChangeSetText(c.ctx, set, k, id); found {
+				var doc struct {
+					Metadata struct{ Name string } `json:"metadata"`
+				}
+				if e.Codec().DecodeInto(text, &doc) == nil && doc.Metadata.Name != "" {
+					rec["name"] = doc.Metadata.Name
+				}
+			}
+			out = append(out, rec)
+		}
+	}
+	return out, nil
+}
+
+// quotedName is a name a schema message quotes ('team').
+var quotedName = regexp.MustCompile(`'([^']+)'`)
+
+// portWork is a port's work and every other record its change set
+// drafted that is not valid yet (a data source a register named), so
+// the records step finishes them all.
+func portWork(c call, set string, work []string) ([]string, error) {
+	view, err := c.o.Engine.ViewChangeSet(c.ctx, set)
+	if err != nil {
+		return nil, err
+	}
+	have := map[string]bool{}
+	for _, w := range work {
+		have[w] = true
+	}
+	out := append([]string(nil), work...)
+	for _, it := range view.Items {
+		ref := it.Item.Kind + "/" + it.Item.ID
+		if have[ref] || strings.HasPrefix(it.Item.Kind, "_") {
+			continue
+		}
+		problems, err := c.o.Engine.DraftProblems(c.ctx, it.Item.Kind, it.Item.ID)
+		if err != nil {
+			return nil, err
+		}
+		if len(problems) > 0 {
+			have[ref] = true
+			out = append(out, ref)
+		}
+	}
+	return out, nil
+}
+
+// portRecords writes every record of a port in one call, as one settle
+// each: the fields the document gives set, the checks it does not answer
+// left open with their reasons. It answers, record by record, what was
+// refused and what is still open, so one more call finishes the port.
+func portRecords(c call, set string, records []portRecord) (any, error) {
+	e := c.o.Engine
+	var results []map[string]any
+	var work []string
+	for _, r := range records {
+		k, id, ok := strings.Cut(r.Record, "/")
+		if !ok {
+			results = append(results, map[string]any{"record": r.Record, "error": "name the record as Kind/id, as the second call listed it"})
+			continue
+		}
+		work = append(work, r.Record)
+		res := map[string]any{"record": r.Record}
+		refused, created, err := applyFields(c, set, k, id, r.Set, nil)
+		if err != nil {
+			res["error"] = err.Error()
+			results = append(results, res)
+			continue
+		}
+		for _, cr := range created {
+			if why, ok := strings.CutPrefix(cr, "refused: "); ok {
+				refused = append(refused, engine.Problem{Message: why})
+			}
+		}
+		if len(refused) > 0 {
+			res["refused"] = refused
+		}
+		var left, notLeft []string
+		for _, o := range r.Open {
+			if strings.TrimSpace(o.Reason) == "" {
+				notLeft = append(notLeft, o.Check+": give the reason your person will read")
+				continue
+			}
+			if err := mayLeave(o.Check, "not available"); err != nil {
+				notLeft = append(notLeft, err.Error())
+				continue
+			}
+			if err := e.LeaveOpen(c.ctx, set, k, id, o.Check, o.Reason, false); err != nil {
+				notLeft = append(notLeft, o.Check+": "+err.Error())
+				continue
+			}
+			left = append(left, o.Check)
+		}
+		if len(left) > 0 {
+			res["left"] = left
+		}
+		if len(notLeft) > 0 {
+			res["notLeft"] = notLeft
+		}
+		results = append(results, res)
+	}
+	var err error
+	if c.ctx, err = e.InChangeSet(c.ctx, set); err != nil {
+		return nil, err
+	}
+	all, err := portWork(c, set, work)
+	if err != nil {
+		return nil, err
+	}
+	still, err := fillsOf(c, set, all)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]any{"changeSet": set, "records": results}
+	if len(still) > 0 {
+		out["stillOpen"] = still
+		out["next"] = "Call port again with records for what is still open: set it from the document, or open it with the reason the document does not say it. " +
+			"Refused fields are sent again in the shape each says. Then propose."
+	} else {
+		out["next"] = "Every record is settled. Propose the change set with propose; report from work_summary."
+	}
+	return out, nil
 }
 
 // mergeLists makes setting a whole list that the draft already holds

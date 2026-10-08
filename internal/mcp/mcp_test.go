@@ -1308,3 +1308,65 @@ func TestAnAppendedItemMergesWithItsTwin(t *testing.T) {
 		t.Errorf("deliverables: %s", text)
 	}
 }
+
+// A port's third call writes every record at once, and says what is
+// still open on each.
+func TestAPortWritesEveryRecordInOneCall(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\nA. Purpose\nGraders at every depot apply one checklist, so produce is graded the same everywhere.\n"
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{
+		map[string]any{"name": "Depot checks", "none": true},
+		map[string]any{"name": "Weekly inspection", "ongoing": true},
+	}})
+	var out struct {
+		Records []struct {
+			Record string
+			Fill   []struct{ Check, Field string }
+		}
+	}
+	if err := json.Unmarshal([]byte(text), &out); err != nil || len(out.Records) != 2 {
+		t.Fatalf("records: %s", text)
+	}
+	project := out.Records[0].Record
+	if !strings.HasPrefix(project, "Project/") {
+		project = out.Records[1].Record
+	}
+	_, text = callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "records": []any{
+		map[string]any{"record": project, "set": map[string]any{"/spec/objectives/0/objective": "Produce is graded the same at every depot"},
+			"open": []any{map[string]any{"check": "resources-funding", "reason": "The charter names no funding"}}},
+	}})
+	if !strings.Contains(text, `"left":["resources-funding"]`) || !strings.Contains(text, "stillOpen") {
+		t.Fatalf("third call: %s", text)
+	}
+	_, text = callTool(t, cs, "get", map[string]any{"kind": "Project", "id": strings.TrimPrefix(project, "Project/")})
+	if !strings.Contains(text, "graded the same at every depot") {
+		t.Errorf("objective not written: %s", text)
+	}
+}
+
+// A register's indicator row gives its KPI a baseline and a target.
+func TestARegisterGivesItsKPIsBaselinesAndTargets(t *testing.T) {
+	t.Parallel()
+	e, _, cs := setup(t, nil)
+	if _, err := e.SeedStandardUnits(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	doc := "Depot Checks Charter\n\nH1. KPI Register\n" +
+		"    Indicator                    Baseline              Target / Date             Data Source         Frequency    Owner\n\n" +
+		"    Depots grading to checklist  0 (March 2026)        100% by June 2027         Inspection forms    Quarterly    Quality team\n\n" +
+		"    Grading disputes             Not counted yet       Set after the pilot       Dispute log         Monthly      Dr. Ada Mensah / Quality team\n"
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	_, ported := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
+	_, text := callTool(t, cs, "work_summary", map[string]any{})
+	if !strings.Contains(text, "KPI/") {
+		t.Fatalf("no KPIs: %s\nport: %s", text, ported[strings.Index(ported, `"registers"`):])
+	}
+	_, text = callTool(t, cs, "propose", map[string]any{"reason": "check"})
+	for _, bad := range []string{"kpi-baseline", "missing property 'team'", "periodMonths"} {
+		if strings.Contains(text, bad) && !strings.Contains(text, "Grading disputes") {
+			t.Errorf("%s still open: %s", bad, text)
+		}
+	}
+}
