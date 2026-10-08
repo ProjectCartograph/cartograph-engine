@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ProjectCartograph/cartograph-engine/v2/internal/api/gen"
+	apigen "github.com/ProjectCartograph/cartograph-engine/v2/internal/api/gen"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 )
 
