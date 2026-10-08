@@ -268,7 +268,7 @@ func registerDraftTools(s *sdk.Server, o Options, person identity.Principal) {
 				case strings.TrimSpace(o.Reason) == "":
 					notLeft = append(notLeft, o.Check+": give the reason your person will read")
 				default:
-					if err := mayLeave(o.Check, in.Asked); err != nil {
+					if err := engine.MayLeave(o.Check, in.Asked); err != nil {
 						notLeft = append(notLeft, err.Error())
 					} else if err := e.LeaveOpen(c.ctx, cs.ID, in.Kind, in.ID, o.Check, o.Reason, false); err != nil {
 						notLeft = append(notLeft, o.Check+": "+err.Error())
@@ -347,7 +347,7 @@ func registerDraftTools(s *sdk.Server, o Options, person identity.Principal) {
 			var left []string
 			for _, it := range items {
 				if strings.TrimSpace(in.Reason) != "" {
-					if err := mayLeave(it.Check, in.Asked); err != nil {
+					if err := engine.MayLeave(it.Check, in.Asked); err != nil {
 						return nil, err
 					}
 				}

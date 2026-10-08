@@ -1,5 +1,7 @@
 package mcp
 
+import "github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
+
 // The tools' inputs.
 
 // Inputs.
@@ -17,18 +19,12 @@ type (
 		Work      []string `json:"work,omitempty" jsonschema:"the work list start_work returned"`
 	}
 	portIn struct {
-		ChangeSet string       `json:"changeSet,omitempty" jsonschema:"the change set to port into; your latest open one when left out, and a new one when you have none"`
-		Title     string       `json:"title" jsonschema:"the document's title"`
-		Text      string       `json:"text,omitempty" jsonschema:"the document's whole text, straight from its file: on the first call only"`
-		FileSize  int          `json:"fileSize,omitempty" jsonschema:"with text: the file's size, a number of bytes (wc -c, os.path.getsize): a text that is not the whole file is refused"`
-		Pieces    []any        `json:"pieces,omitempty" jsonschema:"on the second call: every piece of work the document names, each with its name and only its yes answers to the structure questions"`
-		Records   []portRecord `json:"records,omitempty" jsonschema:"on the third call: every record the second call listed, each with set (every field the document gives, by JSON pointer) and open (each check it does not answer, with the reason)"`
-	}
-	portRecord struct {
-		Record string         `json:"record" jsonschema:"the record, as Kind/id"`
-		Set    map[string]any `json:"set,omitempty" jsonschema:"every field the document gives, by JSON pointer"`
-		Unset  []string       `json:"unset,omitempty" jsonschema:"fields to clear, by JSON pointer"`
-		Open   []settleOpen   `json:"open,omitempty" jsonschema:"each check the document does not answer, with the reason your person will read"`
+		ChangeSet string              `json:"changeSet,omitempty" jsonschema:"the change set to port into; your latest open one when left out, and a new one when you have none"`
+		Title     string              `json:"title" jsonschema:"the document's title"`
+		Text      string              `json:"text,omitempty" jsonschema:"the document's whole text, straight from its file: on the first call only"`
+		FileSize  int                 `json:"fileSize,omitempty" jsonschema:"with text: the file's size, a number of bytes (wc -c, os.path.getsize): a text that is not the whole file is refused"`
+		Pieces    []any               `json:"pieces,omitempty" jsonschema:"on the second call: every piece of work the document names, each with its name and only its yes answers to the structure questions"`
+		Records   []engine.PortRecord `json:"records,omitempty" jsonschema:"on the third call: every record the second call listed, each with set (every field the document gives, by JSON pointer) and open (each check it does not answer, with the reason)"`
 	}
 	bringIn struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to keep it in; your latest open one when left out, and a new one when you have none"`

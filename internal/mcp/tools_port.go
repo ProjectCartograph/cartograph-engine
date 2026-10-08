@@ -31,7 +31,7 @@ func registerPortTools(s *sdk.Server, o Options, person identity.Principal) {
 				if strings.TrimSpace(in.Text) == "" {
 					return nil, fmt.Errorf("%w: give the document's text, straight from its file, on the first call", engine.ErrBadEdit)
 				}
-				if err := wholeFile(in.Text, in.FileSize); err != nil {
+				if err := engine.WholeFile(in.Text, in.FileSize); err != nil {
 					return nil, err
 				}
 				src, err := e.BringSource(c.ctx, cs.ID, in.Title, in.Text)
@@ -70,7 +70,7 @@ func registerPortTools(s *sdk.Server, o Options, person identity.Principal) {
 			if err != nil {
 				return nil, err
 			}
-			if err := wholeFile(in.Text, in.FileSize); err != nil {
+			if err := engine.WholeFile(in.Text, in.FileSize); err != nil {
 				return nil, err
 			}
 			src, err := e.BringSource(c.ctx, cs.ID, in.Title, in.Text)
@@ -112,10 +112,11 @@ func registerPortTools(s *sdk.Server, o Options, person identity.Principal) {
 			if err != nil {
 				return nil, err
 			}
-			rows, added, refused, drafted, _, err := registerInto(c, cs.ID, in.Kind, in.ID, in.Section, in.Field, nil)
+			reg, err := e.RegisterInto(c.ctx, cs.ID, in.Kind, in.ID, in.Section, in.Field, nil)
 			if err != nil {
 				return nil, err
 			}
+			rows, added, refused, drafted := reg.Rows, reg.Added, taught(c, in.Kind, reg.Refused), reg.Drafted
 			if rows == 0 {
 				return nil, fmt.Errorf("%w: section %s holds no rows Cartograph can read as %s: write them with settle", engine.ErrNotFound, in.Section, in.Field)
 			}
@@ -123,7 +124,7 @@ func registerPortTools(s *sdk.Server, o Options, person identity.Principal) {
 				return nil, err
 			}
 			out := map[string]any{"changeSet": cs.ID, "record": in.Kind + "/" + in.ID, "field": in.Field, "rows": rows, "added": added}
-			if len(drafted) > 0 {
+			if drafted > 0 {
 				out["drafted"] = drafted
 			}
 			if len(refused) > 0 {

@@ -488,7 +488,7 @@ func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[strin
 	// own answer through leave_open; never waived in passing here.
 	for rec, checks := range waive {
 		for check := range checks {
-			if writtenFromTheDocument[check] {
+			if engine.WrittenFromTheDocument(check) {
 				return nil, fmt.Errorf("%w: %s on %s is what the document itself says: write it with settle, or leave it open with leave_open "+
 					"saying what your person answered", engine.ErrBadEdit, check, rec)
 			}
