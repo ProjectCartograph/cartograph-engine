@@ -52,8 +52,11 @@ type Call struct {
 	// Defect classifies a refusal or failure, low in cardinality: schema,
 	// structure, open-checks, not-found, conflict, input, access, other.
 	Defect string `json:"cartograph.defect,omitempty"`
-	// Problems counts what a refusal, or an answer, says is wrong.
-	Problems int `json:"cartograph.problems,omitempty"`
+	// Problems counts what a refusal, or an answer, says is wrong, and
+	// Paths are the fields it names, list items as "-": where the defect
+	// is, never what was sent there.
+	Problems int      `json:"cartograph.problems,omitempty"`
+	Paths    []string `json:"cartograph.problem.paths,omitempty"`
 }
 
 // Recorder keeps calls. Record never fails the call it records.

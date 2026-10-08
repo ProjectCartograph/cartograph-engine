@@ -1012,3 +1012,26 @@ func TestEveryToolCallIsTracedByItsShape(t *testing.T) {
 		t.Errorf("a trace carried an argument's value, or lacks the conventions' names: %s", b)
 	}
 }
+
+// A name where a register's reference goes finds the register, or drafts
+// it: the team, and the sponsor's role, come into being as the project is
+// settled, and the same name a second time is the same record.
+func TestSettleFindsOrDraftsTheRegistersItNames(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{
+		"/spec/team":      "Team One",
+		"/spec/resources": []any{map[string]any{"role": "sponsor", "resource": "Permanent Secretary"}, map[string]any{"role": "manager", "resource": "Permanent Secretary"}},
+	}})
+	if res.IsError || strings.Contains(text, "Team/") || strings.Count(text, "Resource/resource-") != 1 {
+		t.Fatalf("settle: %s", text)
+	}
+	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
+	if !strings.Contains(text, "team: t1") {
+		t.Errorf("the existing team, found by its name: %s", text)
+	}
+}

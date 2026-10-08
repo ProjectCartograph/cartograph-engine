@@ -80,7 +80,9 @@ const instructions = `Porting a document, or starting any new piece of work? Do 
    alsoFromTheDocuments (milestones, risks, costs and the like), in the
    shape each shows, reading only the sections it needs; leave open
    each check they do not answer, with its reason; pass the work list
-   start_work returned. Its answer names the next record and
+   start_work returned. Where a team, a role, a group served, a source
+   of funds or of data goes, write its name (a role, never a person):
+   settle finds that record or drafts it, and says what it drafted. Its answer names the next record and
    what it lacks. Repeat until it says every check is met. Never stop
    part way and never hand the rest to your person.
 4. propose.
@@ -678,6 +680,21 @@ func (o Options) record(name string, req *sdk.CallToolRequest, c call, in, out a
 		var invalid *engine.ValidationError
 		if errors.As(err, &invalid) {
 			tc.Problems = len(invalid.Problems)
+			seen := map[string]bool{}
+			for _, p := range invalid.Problems {
+				var segs []string
+				for _, t := range strings.Split(strings.Trim(p.Path, "/"), "/") {
+					if _, num := strconv.Atoi(t); num == nil {
+						t = "-"
+					}
+					segs = append(segs, t)
+				}
+				if path := "/" + strings.Join(segs, "/"); !seen[path] {
+					seen[path] = true
+					tc.Paths = append(tc.Paths, path)
+				}
+			}
+			sort.Strings(tc.Paths)
 		}
 		if tc.Defect == "other" {
 			tc.Outcome = trace.Failed
@@ -1554,6 +1571,14 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if len(in.Open) > 0 && strings.TrimSpace(in.Asked) == "" {
 				return nil, fmt.Errorf("pass asked: what you asked your person and what they answered, or \"not available\" when you were told to work without them")
 			}
+			// A name where a register's reference goes finds that register,
+			// or drafts it: the team, the role, the group, the source.
+			var created []string
+			if len(in.Set) > 0 {
+				if in.Set, created, err = e.NamedRefs(c.ctx, cs.ID, in.Kind, in.Set); err != nil {
+					return nil, withFields(c, in.Kind, err)
+				}
+			}
 			if len(in.Set) > 0 || len(in.Unset) > 0 {
 				if _, err := e.EditInChangeSet(c.ctx, cs.ID, in.Kind, in.ID, in.Set, in.Unset); err != nil {
 					return nil, withFields(c, in.Kind, err)
@@ -1577,6 +1602,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 				return nil, err
 			}
 			out := map[string]any{"changeSet": cs.ID, "record": in.Kind + "/" + in.ID, "left": left}
+			if len(created) > 0 {
+				out["drafted"] = created
+			}
 			if len(problems) > 0 {
 				out["notValidYet"] = problems
 			}

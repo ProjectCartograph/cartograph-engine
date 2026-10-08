@@ -38,6 +38,8 @@ type ToolStats struct {
 	FirstPassYield float64        `json:"firstPassYield"`
 	MeanBytes      int            `json:"meanInputBytes"`
 	ByDefect       map[string]int `json:"byDefect,omitempty"`
+	// ByPath counts the fields this tool\'s refusals named.
+	ByPath map[string]int `json:"byPath,omitempty"`
 }
 
 // SessionStats is one session's line.
@@ -110,6 +112,12 @@ func Analyse(calls []Call) Report {
 			if c.Outcome != OK {
 				ts.Defects++
 				ts.ByDefect[or(c.Defect, "other")]++
+				for _, p := range c.Paths {
+					if ts.ByPath == nil {
+						ts.ByPath = map[string]int{}
+					}
+					ts.ByPath[p]++
+				}
 			}
 		}
 		ts.DPMO, ts.Sigma = dpmo(ts.Defects, ts.Calls)
@@ -250,7 +258,9 @@ func dpmo(defects, calls int) (float64, float64) {
 	if rate >= 1 {
 		rate = 1 - 1e-9
 	}
-	return round(float64(defects)/float64(calls)*1e6, 0), round(normInv(1-rate)+1.5, 2)
+	// A process failing every time has no sigma to speak of: zero, not a
+	// negative level.
+	return round(float64(defects)/float64(calls)*1e6, 0), math.Max(0, round(normInv(1-rate)+1.5, 2))
 }
 
 func percentile(ms []int64, p int) int64 {

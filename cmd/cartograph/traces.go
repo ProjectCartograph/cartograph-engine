@@ -66,6 +66,29 @@ func printReport(w io.Writer, r trace.Report) {
 		sort.Strings(kinds)
 		fmt.Fprintf(w, "%-16s %6d %7d %9.0f %6.2f %5.0f%% %7d %7d  %s\n", t.Tool, t.Calls, t.Defects, t.DPMO, t.Sigma, t.FirstPassYield*100, t.P50Millis, t.P95Millis, strings.Join(kinds, ", "))
 	}
+	fmt.Fprintf(w, "\nFields most refused:\n")
+	type pathCount struct {
+		tool, path string
+		n          int
+	}
+	var paths []pathCount
+	for _, t := range r.Tools {
+		for p, n := range t.ByPath {
+			paths = append(paths, pathCount{t.Tool, p, n})
+		}
+	}
+	sort.Slice(paths, func(i, j int) bool {
+		if paths[i].n != paths[j].n {
+			return paths[i].n > paths[j].n
+		}
+		return paths[i].tool+paths[i].path < paths[j].tool+paths[j].path
+	})
+	if len(paths) > 10 {
+		paths = paths[:10]
+	}
+	for _, p := range paths {
+		fmt.Fprintf(w, "  %-16s %-48s %d\n", p.tool, p.path, p.n)
+	}
 	fmt.Fprintf(w, "\nMost taken steps:\n")
 	for _, t := range r.Transitions {
 		fmt.Fprintf(w, "  %-16s -> %-16s %d\n", t.From, t.To, t.Count)
