@@ -13,6 +13,7 @@
     "name": { "type": "string", "maxLength": 128, "description": "The display name, where there is one." },
     "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "description": "The colour this session is drawn in, chosen by the sender so every screen draws it alike." },
     "route": { "type": "string", "maxLength": 512, "description": "The screen, as the interface's own route (for the web, the path)." },
+    "changeSet": { "type": "string", "maxLength": 64, "description": "The change set the session works in, if any. On a record's presence document, a receiver shows a session in another change set as present with a way to join it, and draws its focus, caret and pointer only when the change sets match, since those point into one draft." },
     "focus": {
       "description": "The field being edited, by JSON pointer into the manifest; null when none.",
       "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/field" }]

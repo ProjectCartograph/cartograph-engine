@@ -2164,6 +2164,12 @@ type GetOrderParams struct {
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
+// GetPresenceDocumentParams defines parameters for GetPresenceDocument.
+type GetPresenceDocumentParams struct {
+	Kind *string `form:"kind,omitempty" json:"kind,omitempty"`
+	Id   *string `form:"id,omitempty" json:"id,omitempty"`
+}
+
 // ListProposalsParams defines parameters for ListProposals.
 type ListProposalsParams struct {
 	Kind *string `form:"kind,omitempty" json:"kind,omitempty"`
@@ -2560,9 +2566,9 @@ type ServerInterface interface {
 	// GetOrder The order of work, and how far the workspace has got along it
 	// (GET /order)
 	GetOrder(w http.ResponseWriter, r *http.Request, params GetOrderParams)
-	// GetPresenceDocument The document that carries presence for screens not about one manifest
+	// GetPresenceDocument The document that carries presence, for a record or for every other screen
 	// (GET /presence)
-	GetPresenceDocument(w http.ResponseWriter, r *http.Request)
+	GetPresenceDocument(w http.ResponseWriter, r *http.Request, params GetPresenceDocumentParams)
 	// ListProposals What agents have proposed (docs/adr/0016). An agent reads and edits drafts, and proposes what makes the record (a version, a reading, a state change); the person it acts for accepts or declines. By default, the open proposals made for the caller; with kind and id, every proposal on that manifest, for everyone who may read it.
 	// (GET /proposals)
 	ListProposals(w http.ResponseWriter, r *http.Request, params ListProposalsParams)
@@ -5010,8 +5016,40 @@ func (siw *ServerInterfaceWrapper) GetOrder(w http.ResponseWriter, r *http.Reque
 // GetPresenceDocument operation middleware
 func (siw *ServerInterfaceWrapper) GetPresenceDocument(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPresenceDocumentParams
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "id", r.URL.Query(), &params.Id, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetPresenceDocument(w, r)
+		siw.Handler.GetPresenceDocument(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -10175,6 +10213,7 @@ func (response GetOrder403JSONResponse) VisitGetOrderResponse(w http.ResponseWri
 }
 
 type GetPresenceDocumentRequestObject struct {
+	Params GetPresenceDocumentParams
 }
 
 type GetPresenceDocumentResponseObject interface {
@@ -10219,6 +10258,20 @@ func (response GetPresenceDocument403JSONResponse) VisitGetPresenceDocumentRespo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPresenceDocument404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetPresenceDocument404JSONResponse) VisitGetPresenceDocumentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -11553,7 +11606,7 @@ type StrictServerInterface interface {
 	// GetOrder The order of work, and how far the workspace has got along it
 	// (GET /order)
 	GetOrder(ctx context.Context, request GetOrderRequestObject) (GetOrderResponseObject, error)
-	// GetPresenceDocument The document that carries presence for screens not about one manifest
+	// GetPresenceDocument The document that carries presence, for a record or for every other screen
 	// (GET /presence)
 	GetPresenceDocument(ctx context.Context, request GetPresenceDocumentRequestObject) (GetPresenceDocumentResponseObject, error)
 	// ListProposals What agents have proposed (docs/adr/0016). An agent reads and edits drafts, and proposes what makes the record (a version, a reading, a state change); the person it acts for accepts or declines. By default, the open proposals made for the caller; with kind and id, every proposal on that manifest, for everyone who may read it.
@@ -13548,8 +13601,10 @@ func (sh *strictHandler) GetOrder(w http.ResponseWriter, r *http.Request, params
 }
 
 // GetPresenceDocument operation middleware
-func (sh *strictHandler) GetPresenceDocument(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) GetPresenceDocument(w http.ResponseWriter, r *http.Request, params GetPresenceDocumentParams) {
 	var request GetPresenceDocumentRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetPresenceDocument(ctx, request.(GetPresenceDocumentRequestObject))

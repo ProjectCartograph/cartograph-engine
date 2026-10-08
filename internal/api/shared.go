@@ -31,12 +31,28 @@ func (s *Server) GetSharedDocument(ctx context.Context, req apigen.GetSharedDocu
 	return apigen.GetSharedDocument200JSONResponse(sharedDocument(docID)), nil
 }
 
-// GetPresenceDocument names the document that routes presence on screens
-// not about one manifest.
-func (s *Server) GetPresenceDocument(ctx context.Context, _ apigen.GetPresenceDocumentRequestObject) (apigen.GetPresenceDocumentResponseObject, error) {
+// GetPresenceDocument names the document that routes presence: a
+// record's, or the one for screens not about one manifest.
+func (s *Server) GetPresenceDocument(ctx context.Context, req apigen.GetPresenceDocumentRequestObject) (apigen.GetPresenceDocumentResponseObject, error) {
 	shared := s.Engine.Shared()
 	if shared == nil {
 		return nil, engine.ErrNoShared
+	}
+	// A record's own presence document, for whoever may read the record:
+	// people on it see each other in any change set.
+	if req.Params.Kind != nil && req.Params.Id != nil {
+		kind, id := *req.Params.Kind, *req.Params.Id
+		if _, err := s.Engine.Get(ctx, kind, id); err != nil {
+			if errors.Is(err, engine.ErrUnknownKind) || errors.Is(err, engine.ErrNotFound) {
+				return apigen.GetPresenceDocument404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+			}
+			return nil, err
+		}
+		docID, err := shared.RecordPresence(ctx, kind, id)
+		if err != nil {
+			return nil, err
+		}
+		return apigen.GetPresenceDocument200JSONResponse(sharedDocument(docID)), nil
 	}
 	docID, err := shared.PresenceDocument(ctx)
 	if err != nil {

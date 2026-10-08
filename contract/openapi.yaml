@@ -1275,19 +1275,36 @@ paths:
   /presence:
     get:
       operationId: getPresenceDocument
-      summary: The document that carries presence for screens not about one manifest
+      summary: The document that carries presence, for a record or for every other screen
       description: >-
         Presence travels as ephemeral messages on a document
-        (contract/schemas/presence.schema.json). On a manifest's screen
-        that is the manifest's own document; everywhere else (lists, the
-        goal tree, the snapshots page) it is this one, which holds no
-        content and exists only to route presence. Nothing about presence
-        is stored.
+        (contract/schemas/presence.schema.json). With kind and id, it is
+        that record's presence document: every screen about the record
+        routes presence on it, in any change set or none, so two people on
+        the same record see each other and the change set each is in. Read
+        access to the record is needed to join it. Without them, it is the
+        one document for every other screen (lists, the goal tree, the
+        snapshots page). Neither holds content; nothing about presence is
+        stored. Before 2.10.0 a manifest's screen routed presence on the
+        manifest's own document, which still relays it.
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "200":
           description: OK
           content:

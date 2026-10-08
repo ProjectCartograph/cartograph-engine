@@ -240,11 +240,20 @@ flowchart LR
 ## 8. Presence
 
 Presence is ephemeral. It travels as automerge-repo `ephemeral`
-messages on the document of the screen a person is on: a manifest's own
-document, or the presence document (`GET /presence`) on screens that are
-not about one manifest. The engine relays each one to the document's
-other peers on this replica, and through the fan-out port to the other
-replicas. It never reads, stores or logs them.
+messages on the document of the screen a person is on: a record's
+presence document (`GET /presence?kind=&id=`) on a screen about one
+manifest, or the presence document (`GET /presence`) on screens that are
+not. A record's presence document holds no content and is the same
+whatever change set a person works in, so two people on one record see
+each other even when each edits a draft of their own; joining it needs
+read access to the record. The engine relays each message to the
+document's other peers on this replica, and through the fan-out port to
+the other replicas. It never reads, stores or logs them.
+
+Each message names the change set its session works in. A person in
+another change set is shown as present, with a way to join their change
+set; their focus, caret and pointer are drawn only for sessions in the
+same change set, because those point into one draft.
 
 The payload is `contract/schemas/presence.schema.json`: the session, the
 principal and display name, a colour, the route, the focused field (a

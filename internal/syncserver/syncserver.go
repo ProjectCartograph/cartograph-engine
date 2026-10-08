@@ -532,6 +532,12 @@ func (c *conn) open(ctx context.Context, docID string) (*peerDoc, error) {
 	if engine.IsPresence(kind, id) {
 		read, write = auth.Action{Verb: auth.VerbRead}, auth.Action{Verb: auth.VerbRead}
 	}
+	// A record's presence document is for whoever may read the record;
+	// nobody writes it.
+	if k, i, ok := engine.RecordPresenceOf(kind, id); ok {
+		read = auth.Action{Verb: auth.VerbRead, Kind: k, ID: i}
+		write = read
+	}
 	if err := c.s.authz.Authorize(ctx, c.principal, read); err != nil {
 		return nil, errUnavailable // not knowing and not being allowed look the same
 	}

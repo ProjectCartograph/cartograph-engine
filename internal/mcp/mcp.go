@@ -362,10 +362,11 @@ func (c call) announce(st step) {
 	if len(st.Fields) > 0 {
 		focus = st.Fields[0]
 	}
-	// On the manifest's shared draft only when the step was there: work in
-	// a change set is not on the shared draft, and is followed on the feed.
+	// On the record's presence document only when the step was outside a
+	// change set: work in a change set is its person's, and is followed on
+	// the feed (docs/adr/0018).
 	if st.Kind != "" && st.ID != "" && st.ChangeSet == "" {
-		if docID, err := sh.DocumentFor(c.ctx, st.Kind, st.ID); err == nil {
+		if docID, err := sh.RecordPresence(c.ctx, st.Kind, st.ID); err == nil {
 			c.o.Presence.AnnounceAgent(c.ctx, docID, c.actor(), label, focus, agent)
 		}
 	}

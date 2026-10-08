@@ -211,6 +211,34 @@ func (s *Shared) AgentFeed(ctx context.Context, person string) (string, error) {
 	return s.liveDocument(ctx, agentFeedPrefix+person)
 }
 
+// recordPresencePrefix starts the id of a record's presence document:
+// the document every screen about one manifest routes presence on, in
+// any change set or none, so two people on the same record see each other
+// wherever they are working (docs/MULTIPLAYER.md).
+const recordPresencePrefix = "record:"
+
+// RecordPresence returns the id of a manifest's presence document, making
+// it on first use. Like the presence document it holds no content.
+func (s *Shared) RecordPresence(ctx context.Context, kind, id string) (string, error) {
+	if _, ok := kinds.ByName(kind); !ok {
+		return "", fmt.Errorf("%w: %s", ErrUnknownKind, kind)
+	}
+	return s.liveDocument(ctx, recordPresencePrefix+kind+"/"+id)
+}
+
+// RecordPresenceOf reports which manifest a presence document is for,
+// given the name ManifestFor returns, if it is a record's.
+func RecordPresenceOf(kind, id string) (manifestKind, manifestID string, ok bool) {
+	if kind != presenceKind {
+		return "", "", false
+	}
+	rest, ok := strings.CutPrefix(id, recordPresencePrefix)
+	if !ok {
+		return "", "", false
+	}
+	return strings.Cut(rest, "/")
+}
+
 // AgentFeedOwner reports whose agent feed a manifest name returned by
 // ManifestFor is, if it is one.
 func AgentFeedOwner(kind, id string) (person string, ok bool) {

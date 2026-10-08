@@ -432,6 +432,47 @@ func testPresenceCrossesReplicas(t *testing.T, ports backend) {
 	}
 }
 
+// Presence on a record travels on the record's own presence document,
+// so two people on the same record meet whatever change set each is in.
+func TestRecordPresenceIsRelayed(t *testing.T) {
+	for name, b := range backends {
+		t.Run(name, func(t *testing.T) { testRecordPresenceIsRelayed(t, b(t)) })
+	}
+}
+
+func testRecordPresenceIsRelayed(t *testing.T, ports backend) {
+	replicaEngines = nil
+	srvs := replicas(t, 2, nil, ports)
+	docID, err := replicaEngines[0].Shared().RecordPresence(context.Background(), "Team", "field-team")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again, _ := replicaEngines[1].Shared().RecordPresence(context.Background(), "Team", "field-team"); again != docID {
+		t.Fatalf("each replica names its own document: %s, %s", docID, again)
+	}
+	if _, err := replicaEngines[0].Shared().RecordPresence(context.Background(), "Nonsense", "x"); err == nil {
+		t.Fatal("a presence document for an unknown kind")
+	}
+	a := connect(t, srvs[0], "peer-a", docID)
+	b := connect(t, srvs[1], "peer-b", docID)
+	a.until(func() bool { return a.syncs > 0 })
+	b.until(func() bool { return b.syncs > 0 })
+	payload := []byte(`{"v":1,"session":"tab-a-0001","actor":"analyst","at":1,"changeSet":"cs-1"}`)
+	a.send(msg{Type: "ephemeral", SenderID: "peer-a", TargetID: "server", DocumentID: docID, Count: 1, SessionID: "tab-a-0001", Data: payload})
+	var got msg
+	b.until(func() bool {
+		select {
+		case got = <-b.eph:
+			return true
+		default:
+			return false
+		}
+	})
+	if string(got.Data) != string(payload) {
+		t.Errorf("relayed %+v", got)
+	}
+}
+
 // A principal who may only read can sync and read, and a change from
 // them is refused rather than applied.
 func TestReadersCannotWrite(t *testing.T) {
