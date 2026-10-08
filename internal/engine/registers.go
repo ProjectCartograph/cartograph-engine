@@ -308,8 +308,21 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 			if src := leadOf(byRole["source"]); src != "" {
 				extra["/spec/sources"] = []any{clip(src, 120)}
 			}
-			if cyc := strings.TrimSpace(byRole["cycle"]); cyc != "" {
-				extra["/spec/cycle"] = clip(cyc, 60)
+			// A cycle of equal periods is named by its period; one in other
+			// words (termly, once) is left for the person to set.
+			switch cyclePeriod(byRole["cycle"]) {
+			case 1:
+				extra["/spec/cycle"] = "Monthly"
+			case 3:
+				extra["/spec/cycle"] = "Quarterly"
+			case 6:
+				extra["/spec/cycle"] = "Half-yearly"
+			case 12:
+				extra["/spec/cycle"] = "Yearly"
+			}
+			// The body that owns the indicator keeps its source.
+			if team := leadOf(byRole["owner"]); team != "" && extra["/spec/sources"] != nil {
+				extra["_team"] = clip(team, 120)
 			}
 			if len(extra) > 0 {
 				item["_kpi"] = extra
@@ -412,13 +425,35 @@ func hasHeading(b []string) bool {
 // NMD-MoH / NSDSL"): the first, so one role is drafted for it, not one
 // for every combination.
 func leadOf(cell string) string {
-	cell = strings.TrimSpace(cell)
-	for _, sep := range []string{" / ", "/", ";", ","} {
-		if i := strings.Index(cell, sep); i > 0 {
-			cell = strings.TrimSpace(cell[:i])
+	parts := regexp.MustCompile(`\s*[/;,]\s*`).Split(strings.TrimSpace(cell), -1)
+	for _, p := range parts {
+		// A person (Dr. Ada Mensah) is never an owner: Cartograph names
+		// roles and bodies, so the first body the cell names leads.
+		if p = strings.TrimSpace(p); p != "" && !personLed.MatchString(p) {
+			return p
 		}
 	}
-	return cell
+	return ""
+}
+
+// personLed matches a name led by a person's title.
+var personLed = regexp.MustCompile(`^(?i:dr|mr|mrs|ms|miss|mx|prof|professor|sir|dame|hon)\.?\s`)
+
+// cyclePeriod is the length in months of a cycle a register names in
+// words, or 0 when the words name no equal period (termly, once).
+func cyclePeriod(words string) int {
+	w := strings.ToLower(words)
+	switch {
+	case strings.Contains(w, "month"):
+		return 1
+	case strings.Contains(w, "quarter"):
+		return 3
+	case strings.Contains(w, "half-year") || strings.Contains(w, "biannual") || strings.Contains(w, "semi-annual") || strings.Contains(w, "six-month"):
+		return 6
+	case strings.Contains(w, "annual") || strings.Contains(w, "year"):
+		return 12
+	}
+	return 0
 }
 
 // WorkstreamNames are the names a document's workstream plan gives its

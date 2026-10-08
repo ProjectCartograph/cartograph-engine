@@ -218,6 +218,13 @@ func registerDefaults(kind, name string) map[string]any {
 		}
 		return map[string]any{"definition": clip(name, 300), "unit": unit, "direction": "increase"}
 	}
+	if kind == "ReportingCycle" {
+		// Named by its period (Yearly); its year starts in January until
+		// the person says otherwise.
+		if n := cyclePeriod(name); n > 0 {
+			return map[string]any{"periodMonths": n, "startMonth": 1}
+		}
+	}
 	if kind != "Resource" {
 		return map[string]any{}
 	}

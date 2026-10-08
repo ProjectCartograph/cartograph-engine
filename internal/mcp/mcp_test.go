@@ -1290,3 +1290,21 @@ func TestSettleMergesItemsByName(t *testing.T) {
 		t.Errorf("risks: %s", text)
 	}
 }
+
+// An item appended with an id or a name the list already holds is merged
+// into that item, never added twice.
+func TestAnAppendedItemMergesWithItsTwin(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/deliverables": []any{
+		map[string]any{"id": "d1", "name": "Checklist"}}}})
+	callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/deliverables/-": map[string]any{"id": "d1", "name": "Grading checklist"}}})
+	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
+	if strings.Count(text, "id: d1") != 1 || !strings.Contains(text, "Grading checklist") {
+		t.Errorf("deliverables: %s", text)
+	}
+}

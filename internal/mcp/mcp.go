@@ -2857,6 +2857,8 @@ func registerInto(c call, set, kind, id, section, field string) (int, int, []eng
 	for _, it := range items {
 		extra, _ := it["_kpi"].(map[string]any)
 		delete(it, "_kpi")
+		team, _ := extra["_team"].(string)
+		delete(extra, "_team")
 		r, created, err := applyFields(c, set, kind, id, map[string]any{field + "/-": it}, nil)
 		// A KPI drafted from the row gets what the row says of it: its
 		// source and its cycle, found or drafted by name.
@@ -2865,6 +2867,15 @@ func registerInto(c call, set, kind, id, section, field string) (int, int, []eng
 				if k, kid, ok := strings.Cut(d, "/"); ok && k == "KPI" {
 					more, moreCreated, _ := applyFields(c, set, "KPI", kid, extra, nil)
 					r = append(r, more...)
+					// A source drafted for it is kept by the body that owns
+					// the indicator.
+					for _, m := range moreCreated {
+						if mk, mid, ok := strings.Cut(m, "/"); ok && mk == "DataSource" && team != "" {
+							teamed, teamCreated, _ := applyFields(c, set, "DataSource", mid, map[string]any{"/spec/team": team}, nil)
+							r = append(r, teamed...)
+							created = append(created, teamCreated...)
+						}
+					}
 					created = append(created, moreCreated...)
 					break
 				}
@@ -3022,6 +3033,17 @@ func mergeLists(c call, set, kind, id string, put map[string]any) map[string]any
 	for p, v := range put {
 		out[p] = v
 		next, isList := v.([]any)
+		// An item added to the end of a list is merged the same way, so
+		// one the list already holds (by id or name) is not added twice.
+		appended := false
+		if base, ok := strings.CutSuffix(p, "/-"); ok {
+			if _, isItem := v.(map[string]any); isItem {
+				if _, both := put[base]; !both {
+					next, isList, appended = []any{v}, true, true
+					p = base
+				}
+			}
+		}
 		if !isList {
 			continue
 		}
@@ -3098,6 +3120,9 @@ func mergeLists(c call, set, kind, id string, put map[string]any) map[string]any
 		// a list of items never shrinks by being sent again.
 		if keyed {
 			out[p] = merged
+			if appended {
+				delete(out, p+"/-")
+			}
 		}
 	}
 	return out
