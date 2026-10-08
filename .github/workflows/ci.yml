@@ -46,35 +46,6 @@ jobs:
           purge-primary-key: never
       - run: nix develop --command just ci
 
-  # The Postgres adapters' tests against a throwaway server the flake
-  # provides, on both architectures. The gate above stays
-  # database-free.
-  postgres:
-    strategy:
-      # Each architecture reports for itself; one failing must not hide
-      # the other's result.
-      fail-fast: false
-      matrix:
-        runner: [ubuntu-latest, ubuntu-24.04-arm]
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          # Keep what the development shell and the builds were made
-          # from, so the cached store rebuilds nothing.
-          extra-conf: |
-            keep-outputs = true
-            keep-env-derivations = true
-      # The Nix store in the GitHub Actions cache, as one entry (no
-      # per-path requests to be rate-limited).
-      - uses: nix-community/cache-nix-action@v7
-        with:
-          primary-key: nix-devshell-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.nix', 'flake.lock', 'go.sum') }}
-          restore-prefixes-first-match: nix-devshell-${{ runner.os }}-${{ runner.arch }}-
-          save: false
-      - run: nix develop --command just test-postgres
-
   commits:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

@@ -210,7 +210,7 @@ Drivers:
   `data-cartograph-field`, steps by key, actions by accessible name.
 
 In CI, the engine repository already runs the reference driver in the
-ten-second gate. An interface repository runs its driver against a copy
+gate. An interface repository runs its driver against a copy
 of the example in its own job, with the engine from the cartograph
 binary (in-process for the terminal, served over a socket for the web).
 A new interface is a new driver and one line in a job.

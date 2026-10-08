@@ -67,9 +67,8 @@ editing and presence are what such a platform cannot host.
 ## 3. What was built, and what is left
 
 Each step is one adapter proven by a conformance suite, then selected
-by configuration. The Postgres suites run against a real database in
-CI (`just test-postgres`), and the ten-second gate stays
-database-free.
+by configuration. The Postgres suites run against a real database
+locally (`just test-integration`), and the gate stays database-free.
 
 1. `store/postgres`, `ManifestStore` and `OperationalStore`. Pass
    `conformance.RunManifestStore` and `RunOperationalStore`. No

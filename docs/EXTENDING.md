@@ -91,7 +91,7 @@ the one place a path or a URL becomes an adapter. The Postgres adapter
 (`internal/store/postgres`) is the worked example. `CARTOGRAPH_STORE`
 holds its URL, and `compose` builds every store from one pool. Tests
 that need a server skip unless `CARTOGRAPH_TEST_POSTGRES` is set, and
-`just test-postgres` starts a throwaway one, so `just test` stays fast.
+`just test-integration` starts a throwaway one, so `just test` stays fast.
 
 A store where every row is live does not implement `store.StateStore`,
 and the state endpoints answer "this store has no state manifest". A
@@ -296,5 +296,6 @@ promises (`VERSIONING.md`). Read ADR 0007 first.
 - An adapter has a conformance test or it is not done.
 - No adapter writes to stdout; use `log/slog`.
 - No organisation's words anywhere in the repository (`just words`).
-- `just test` stays under ten seconds.
+- `just test` stays within a few seconds: the adapter's own tests carry the
+  `integration` build tag.
 - Say in the pull request what you ran and what it printed.

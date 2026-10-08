@@ -33,6 +33,9 @@ for vol in /nix /home/dev /workspace; do
   fi
 done
 
+# A name for the host user inside, which some tools ask for (initdb).
+"${compose[@]}" exec -T --user 0 dev sh -c "grep -q '^[^:]*:[^:]*:$CARTOGRAPH_UID:' /etc/passwd || echo 'dev:x:$CARTOGRAPH_UID:$CARTOGRAPH_GID:dev:/home/dev:/bin/sh' >> /etc/passwd"
+
 # The same directory in the copy, when the caller is in the workspace.
 here=$(pwd)
 case "$here" in

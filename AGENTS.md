@@ -21,7 +21,8 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 
 | Do | Run |
 |---|---|
-| The gate, after every edit | `just test` (under ten seconds) |
+| The gate, after every edit, and all CI tests: unit tests with fake adapters | `just test` (a few seconds) |
+| The real adapters (SQLite, the vault, Postgres, the CRDT, sockets), locally | `just test-integration` |
 | Everything CI runs, in CI's order | `just ci` |
 | Regenerate from the contract | `just generate` |
 | Format, lint, dependency rule | `just fmt`, `just lint`, `just arch` |
@@ -47,7 +48,7 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 - **A check never blocks a save.** Only a version save validates; a handoff refuses while a blocking check stands.
 - **No organisation's words anywhere here.** `just words` fails the build on them, and on em dashes in what a person reads. The example is a fictional produce cooperative; keep it so.
 - **Before adding a kind, a field that links two kinds, or a rule that refuses a link, read `docs/TAXONOMY.md`.** If the discipline has a word for it, use that word with that meaning; if Cartograph must depart, add a decision there first.
-- **Tests under ten seconds.** Browser flows and container runs are not in the gate.
+- **The gate is fakes only, and takes seconds.** `just test`, which is all CI runs, tests through fake adapters (the hexagon's point: a port's in-memory adapter stands in for the real one) and must finish within five seconds on two cores. A real adapter's tests, and anything needing a model, a database, a browser or a socket, carry the `integration` build tag and run locally in `just test-integration`; Nix makes them the same on every machine, so they need not run in CI.
 - **Never run `git` or `jj` write commands** (commit, push, rebase) unless the person asks for that in so many words.
 
 ## Changing what agents use

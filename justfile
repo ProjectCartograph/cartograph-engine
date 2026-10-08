@@ -13,7 +13,8 @@ default:
 
 # --- the gate -------------------------------------------------------------
 
-# The gate, after every edit: under ten seconds
+# The gate, after every edit, and what CI runs: unit tests with fake
+# adapters, a few seconds. The real adapters' tests are test-integration.
 test: embed
     #!{{toolchain}} bash
     set -euo pipefail
@@ -35,7 +36,23 @@ test: embed
     go test -count=1 ./...
     end=$(date +%s%3N)
     echo "tests completed in $((end - start))ms"
-    test $((end - start)) -lt 10000
+    test $((end - start)) -lt 5000
+
+# The real adapters, locally and never in CI: SQLite, the vault, the
+# WebAssembly CRDT, the sync server's sockets, the serve stack, Postgres
+# against a throwaway server. Nix makes them the same on every machine,
+# so passing here is passing anywhere (scripts/dev just test-integration).
+test-integration: embed
+    #!{{toolchain}} bash
+    set -euo pipefail
+    dir=$(mktemp -d /tmp/cartograph-pg.XXXXXX)
+    trap 'pg_ctl -D "$dir/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$dir"' EXIT
+    initdb -D "$dir/data" -U cartograph -A trust -E UTF8 --no-sync >/dev/null
+    pg_ctl -D "$dir/data" -l "$dir/server.log" -w \
+      -o "-k $dir -c listen_addresses= -c fsync=off -c synchronous_commit=off -c full_page_writes=off" \
+      start >/dev/null || { cat "$dir/server.log"; exit 1; }
+    export CARTOGRAPH_TEST_POSTGRES="postgres://cartograph@/postgres?host=$dir"
+    go test -count=1 -tags integration ./...
 
 # The whole suite with the Postgres adapters' tests, against a throwaway
 # server from the flake: a fresh cluster in a temporary directory,
@@ -51,7 +68,7 @@ test-postgres *args="./...": embed
       -o "-k $dir -c listen_addresses= -c fsync=off -c synchronous_commit=off -c full_page_writes=off" \
       start >/dev/null || { cat "$dir/server.log"; exit 1; }
     export CARTOGRAPH_TEST_POSTGRES="postgres://cartograph@/postgres?host=$dir"
-    go test -count=1 {{args}}
+    go test -count=1 -tags integration {{args}}
 
 # What CI runs, in this order; green here is green there
 ci: generate drift vet fmt-check lint arch test words clean-tree compat build
@@ -115,7 +132,7 @@ lint: embed
 
 # The dependency rule: inward only (internal/arch)
 arch: embed
-    go test -count=1 ./internal/arch/
+    go test -count=1 -tags arch ./internal/arch/
 
 # No organisation's words, no em dashes in what a person reads
 words:

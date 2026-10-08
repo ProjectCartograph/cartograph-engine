@@ -1,3 +1,5 @@
+//go:build arch
+
 // Package arch holds the dependency rule as a test, so the shape of the
 // system is checked in the ten-second gate and not by review alone.
 //
