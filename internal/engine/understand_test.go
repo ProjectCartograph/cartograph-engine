@@ -155,8 +155,16 @@ func TestUnderstandingWhatAPersonTyped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if u.Available || len(u.Routes) != 0 || len(u.Matches) == 0 || u.Matches[0].By != "words" || u.Matches[0].ID != "faults-found-before-dispatch" {
-		t.Fatalf("without a model: %+v", u)
+	// Without a model only the exact rule matches: the record's own name.
+	if u.Available || len(u.Routes) != 0 || len(u.Matches) != 1 || u.Matches[0].By != "name" || u.Matches[0].ID != "faults-found-before-dispatch" {
+		t.Fatalf("without a model, the name: %+v", u)
+	}
+	u, err = engineWith(t, nil).Understand(ctx, "Faults found before produce leaves", "en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Available || len(u.Matches) != 0 {
+		t.Fatalf("without a model, words are not a match: %+v", u)
 	}
 }
 
@@ -164,7 +172,7 @@ func TestUnderstandingWhatAPersonTyped(t *testing.T) {
 // on its own whether the work is about the same thing, that answer and
 // the words it shares with the work weighed evenly, the likeliest few of
 // each kind at an even chance or more, and nothing below it; without a
-// model, by shared words alone.
+// model, nothing is judged relevant (docs/adr/0030).
 func TestRelevantRanksTheWorkspace(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -202,7 +210,7 @@ func TestRelevantRanksTheWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Available || len(r.Matches) == 0 || r.Matches[0].By != "words" {
+	if r.Available || len(r.Matches) != 0 {
 		t.Fatalf("without a model: %+v", r)
 	}
 	if s := plain.DecisionModel(ctx); s.Configured || s.Ready {

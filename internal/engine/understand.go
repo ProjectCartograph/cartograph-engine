@@ -342,25 +342,10 @@ func (e *Engine) sameAs(ctx context.Context, text string, pool []Match) ([]Match
 	return []Match{m}, true
 }
 
-// byWords keeps the candidates that share enough words with the text,
-// best first: the answer without a model.
-func byWords(pool []Match) []Match {
-	out := []Match{}
-	for _, m := range pool {
-		if m.Likelihood >= 0.2 {
-			out = append(out, m)
-		}
-	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Likelihood > out[j].Likelihood })
-	if len(out) > maxMatches {
-		out = out[:maxMatches]
-	}
-	return out
-}
-
 // MatchExisting returns the existing records of kind (and level) that say
-// what text says, most likely first: judged by the model where there is
-// one, else by the words they share.
+// what text says, most likely first, as the model judges (docs/adr/0030).
+// Without a model only the exact rule matches: the same name spelt
+// otherwise, or by its initials. Shared words only find whom to ask.
 func (e *Engine) MatchExisting(ctx context.Context, kind, level, text string) []Match {
 	pool := e.matchCandidates(ctx, kind, level, text, matchPool)
 	if len(pool) == 0 || strings.TrimSpace(text) == "" {
@@ -373,16 +358,28 @@ func (e *Engine) MatchExisting(ctx context.Context, kind, level, text string) []
 	if out, ok := e.sameAs(ctx, text, pool); ok {
 		return out
 	}
-	return byWords(pool)
+	return []Match{}
+}
+
+// exactMatches are the candidates whose name is the text's, spelt
+// otherwise or by its initials: what is certain without a model.
+func exactMatches(text string, pool []Match) []Match {
+	out := []Match{}
+	for _, m := range pool {
+		if sameName(text, m.Name) {
+			m.Likelihood, m.By = 1, "name"
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 // Understanding is what Cartograph makes of a text a person typed: the
 // existing record that says the same, and the flows likeliest to define
 // it.
 type Understanding struct {
-	// Available is false when no decision model answered: Matches are
-	// then the records that share the text's words, and there are no
-	// Routes.
+	// Available is false when no decision model answered: there are
+	// then no Matches but a name's exact match, and no Routes.
 	Available bool    `json:"available"`
 	Matches   []Match `json:"matches"`
 	Routes    []Route `json:"routes"`
@@ -498,12 +495,12 @@ func (e *Engine) Understand(ctx context.Context, text, locale string) (Understan
 	}
 	found, ok := e.sameAs(ctx, text, pool)
 	if !ok {
-		out.Matches = byWords(pool)
+		out.Matches = exactMatches(text, pool)
 		return out, nil
 	}
 	routes, ok := e.routesFor(ctx, text, locale)
 	if !ok {
-		out.Matches = byWords(pool)
+		out.Matches = exactMatches(text, pool)
 		return out, nil
 	}
 	out.Available, out.Matches, out.Routes = true, found, routes
@@ -614,10 +611,11 @@ func (e *Engine) Relevant(ctx context.Context, text string, kinds []string, leve
 			pool[i].By = "model"
 		}
 	}
-	floor := relevantFloor
 	if !ok {
-		floor = 0.2 // shared words, as a match falls back to them
+		// Without a model nothing is judged relevant (docs/adr/0030).
+		return out, nil
 	}
+	floor := relevantFloor
 	byKind := map[string][]Match{}
 	for _, m := range pool {
 		if m.Likelihood >= floor {
