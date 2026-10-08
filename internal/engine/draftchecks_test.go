@@ -1,11 +1,18 @@
 package engine_test
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 // An agent defines several manifests in one change set, each naming the
@@ -166,5 +173,98 @@ func TestAnAgentCannotNameATeamAfterAPerson(t *testing.T) {
 	team := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t-person\n  name: Dr. Ada Mensah\nspec: {}\n"
 	if err := e.SaveInChangeSet(agent, "", "Team", "t-person", []byte(team)); err == nil {
 		t.Error("a team named after a person was saved")
+	}
+}
+
+// A second objective is refused by the engine for everyone, at every
+// version save and every proposal: the rule rests on no writer, person
+// or model, getting it right. A project stored with two before the rule
+// keeps them and may drop one, never add a third.
+func TestNoVersionBringsInASecondObjective(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	e := seededEngine(t)
+	two := func(id string, n int) []byte {
+		objs := ""
+		for i := 0; i < n; i++ {
+			objs += fmt.Sprintf("    - objective: A change %s happens\n", strings.Repeat("again ", i))
+		}
+		return []byte("apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: " + id + "\n  name: Rollout " + id + "\nspec:\n  objectives:\n" + objs)
+	}
+	onObjectives := func(err error) bool {
+		var invalid *engine.ValidationError
+		if !errors.As(err, &invalid) {
+			return false
+		}
+		for _, p := range invalid.Problems {
+			if strings.HasSuffix(p.Path, "/spec/objectives") {
+				return true
+			}
+		}
+		return false
+	}
+	if _, err := e.Commit(ctx, "Project", "p-two", two("p-two", 2), "ada@example.org", "two"); !onObjectives(err) {
+		t.Fatalf("a person's save of two objectives: %v", err)
+	}
+	agent := actingAs(identity.Principal{Subject: "ada@example.org", Email: "ada@example.org", Name: "Ada", Agent: "Claude", Grant: "g1"})
+	if _, err := e.ProposeSave(agent, "Project", "p-two", two("p-two", 2), "two", map[string]string{"goals-objective": "we want two"}); !onObjectives(err) {
+		t.Fatalf("a waived proposal of two objectives: %v", err)
+	}
+}
+
+// A deployed vault that already holds a project with two objectives still
+// imports and saves: the project may keep or drop one, never gain a third.
+func TestAProjectStoredWithTwoObjectivesMayOnlyShed(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(exampleDir(t))); err != nil {
+		t.Fatal(err)
+	}
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ImportDir(ctx, dir, "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	v, err := e.Get(ctx, "Project", "quality-check-rollout")
+	if err != nil {
+		t.Fatal(err)
+	}
+	one := string(v.YAML)
+	at := strings.Index(one, "  objectives:\n")
+	if at < 0 {
+		t.Fatalf("no objectives in %s", one)
+	}
+	at += len("  objectives:\n")
+	with := func(n int) []byte {
+		extra := ""
+		for i := 2; i <= n; i++ {
+			extra += fmt.Sprintf("    - id: objective-%d\n      objective: Another change %s happens at every depot\n", i, strings.Repeat("again ", i))
+		}
+		return []byte(one[:at] + extra + one[at:])
+	}
+	// A vault written before the rule, with two: it still imports.
+	if err := os.WriteFile(filepath.Join(dir, "Project", "quality-check-rollout.yaml"), with(2), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	e, err = engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep, err := e.ImportDir(ctx, dir, "alice-nkemah", "restore"); err != nil || len(rep.Problems) > 0 {
+		t.Fatalf("a vault with two objectives no longer imports: %v %+v", err, rep.Problems)
+	}
+	if _, err := e.Commit(ctx, "Project", "quality-check-rollout", with(2), "alice-nkemah", "keep"); err != nil {
+		t.Errorf("keeping the two it had: %v", err)
+	}
+	if _, err := e.Commit(ctx, "Project", "quality-check-rollout", with(3), "alice-nkemah", "grow"); err == nil {
+		t.Error("a third objective was saved")
+	}
+	if _, err := e.Commit(ctx, "Project", "quality-check-rollout", []byte(one), "alice-nkemah", "shed"); err != nil {
+		var iv *engine.ValidationError
+		errors.As(err, &iv)
+		t.Errorf("dropping to one: %+v", iv.Problems[:3])
 	}
 }

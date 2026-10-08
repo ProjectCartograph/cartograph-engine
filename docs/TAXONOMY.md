@@ -1549,8 +1549,11 @@ to three key results; a second objective is a blocking check. Each other
 change the document names is either a key result of the one objective or
 a project of its own, which this one lists as a component (D46), with its
 own objective, lead, schedule and risks. The `objectives` list stays a list
-in the 2.x contract, and a definition saved with several is read and
-flagged, never refused.
+in the 2.x contract. No version may bring in a second objective, whoever
+writes it and whatever reason is given (docs/adr/0029): the engine refuses
+it at every save and proposal, so the rule never rests on a writer getting
+it right. A definition stored with several before that rule is read and
+flagged, and may drop to one, never gain another.
 
 ### D55. The charter is a brief. *(resolved)*
 

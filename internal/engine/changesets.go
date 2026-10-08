@@ -756,6 +756,33 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 	if p := identity.PrincipalFrom(ctx); p.Agent != "" && cs.Owner != ownerOf(p) {
 		return store.ChangeSet{}, ErrTheirsToPropose
 	}
+	// A shape the strict profile refuses is never proposed, whoever drafted
+	// it and whatever reason is given: no waiver reaches it (docs/adr/0029).
+	items, err := s.ListChangeItems(ctx, cs.ID)
+	if err != nil {
+		return store.ChangeSet{}, err
+	}
+	var built []Problem
+	for _, it := range items {
+		if !it.Included || strings.HasPrefix(it.Kind, "_") {
+			continue
+		}
+		var doc map[string]any
+		if e.codec.DecodeInto(it.Text, &doc) != nil {
+			continue
+		}
+		more, err := e.introducedProblems(ctx, it.Kind, doc, it.Text)
+		if err != nil {
+			return store.ChangeSet{}, err
+		}
+		for _, p := range more {
+			p.Path = it.Kind + "/" + it.ID + p.Path
+			built = append(built, p)
+		}
+	}
+	if len(built) > 0 {
+		return store.ChangeSet{}, &ValidationError{Problems: built}
+	}
 	left := map[string]string{}
 	for _, w := range cs.Waivers {
 		left[w.On+"#"+w.Check] = w.Reason

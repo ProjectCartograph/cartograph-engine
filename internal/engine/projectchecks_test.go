@@ -867,12 +867,21 @@ func TestAProjectHasOneObjective(t *testing.T) {
 	y := strings.Replace(fullProjectYAML("two-aims"), "  objectives:\n", "  objectives:\n"+
 		"    - objective: Operators are trained in every region\n      keyResults:\n"+
 		"        - {id: kr-2, metric: operators trained, kind: percent, direction: increase, baseline: {value: 0, date: \"2025-09\"}, target: {value: 90, date: \"2026-03\"}, source: d1}\n", 1)
-	mustCommit(t, e, "Project", "two-aims", "p1", y)
-	checks, err := e.ProjectChecks(context.Background(), "two-aims", false)
+	// No version may bring in a second objective (docs/adr/0029); one
+	// stored before that rule is still read, and flagged.
+	if _, err := e.Commit(context.Background(), "Project", "two-aims", []byte(y), "p1", "two"); err == nil {
+		t.Fatal("a second objective was saved")
+	}
+	checks, err := e.ChecksOf(context.Background(), "Project", "two-aims", []byte(y))
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := checksByID(checks.Items)["goals-objective"]
+	var got engine.Check
+	for _, c := range checks {
+		if c.ID == "goals-objective" {
+			got = c
+		}
+	}
 	if got.State != "block" || !strings.Contains(got.Message, "a project has one") || !strings.Contains(got.Message, "component") {
 		t.Fatalf("goals-objective: %+v", got)
 	}

@@ -17,6 +17,12 @@ func (e *Engine) CommitProject(ctx context.Context, id string, yamlBytes []byte,
 	if err != nil {
 		return Version{}, err
 	}
+	if more, err := e.introducedProblems(ctx, "Project", doc, yamlBytes); err != nil {
+		return Version{}, err
+	} else {
+		problems = append(problems, more...)
+	}
+
 	if metaID, ok := docID(doc); !ok || metaID != id {
 		return Version{}, fmt.Errorf("%w: manifest metadata.id %q does not match %q", ErrConflict, metaID, id)
 	}

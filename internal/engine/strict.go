@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // unfinished are the schema keywords a draft fails only for lacking
@@ -43,4 +44,58 @@ func (e *Engine) StructuralProblems(_ context.Context, kind string, text []byte)
 		}
 	}
 	return out, nil
+}
+
+// introducedProblems are the strict profile's problems a version would
+// bring in, for anyone who saves it (docs/adr/0029): a second objective,
+// a person's name where a role goes. The engine refuses them however the
+// version was written, so the rule never rests on a writer, person or
+// model, getting it right. A record stored so before this rule keeps what
+// it has and may shed it: a list over its limit may shrink, never grow,
+// and a problem it already had is not new.
+func (e *Engine) introducedProblems(ctx context.Context, kind string, doc map[string]any, text []byte) ([]Problem, error) {
+	now, err := e.StructuralProblems(ctx, kind, text)
+	if err != nil || len(now) == 0 {
+		return nil, err
+	}
+	var before map[string]any
+	had := map[string]bool{}
+	if id, ok := docID(doc); ok {
+		if v, err := e.Get(ctx, kind, id); err == nil {
+			_ = e.codec.DecodeInto(v.YAML, &before)
+			old, err := e.StructuralProblems(ctx, kind, v.YAML)
+			if err != nil {
+				return nil, err
+			}
+			for _, p := range old {
+				had[p.Path+"\x00"+p.Keyword] = true
+			}
+		}
+	}
+	var out []Problem
+	for _, p := range now {
+		if had[p.Path+"\x00"+p.Keyword] {
+			// Already over its limit: it may stay or shrink.
+			if p.Keyword != "maxItems" || listLen(doc, p.Path) <= listLen(before, p.Path) {
+				continue
+			}
+		}
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+// listLen is the length of the list at a JSON pointer in doc, 0 when
+// there is none.
+func listLen(doc map[string]any, pointer string) int {
+	var cur any = doc
+	for _, seg := range strings.Split(strings.Trim(pointer, "/"), "/") {
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return 0
+		}
+		cur = m[seg]
+	}
+	list, _ := cur.([]any)
+	return len(list)
 }

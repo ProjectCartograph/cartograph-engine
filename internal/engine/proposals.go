@@ -224,6 +224,11 @@ func (e *Engine) checkMembers(ctx context.Context, members []SetMember) ([]SetMe
 		if err != nil {
 			return nil, nil, err
 		}
+		more, err := e.introducedProblems(ctx, m.Kind, doc, m.Text)
+		if err != nil {
+			return nil, nil, err
+		}
+		ps = append(ps, more...)
 		for _, p := range ps {
 			if len(members) > 1 {
 				p.Path = m.Kind + "/" + m.ID + p.Path
@@ -288,6 +293,11 @@ func (e *Engine) ProposeAppend(ctx context.Context, kind, id, series string, ite
 	doc, problems, err := e.validate(ctx, kind, text, nil)
 	if err != nil {
 		return store.Proposal{}, err
+	}
+	if more, err := e.introducedProblems(ctx, kind, doc, text); err != nil {
+		return store.Proposal{}, err
+	} else {
+		problems = append(problems, more...)
 	}
 	if len(problems) > 0 {
 		return store.Proposal{}, &ValidationError{Problems: problems}
