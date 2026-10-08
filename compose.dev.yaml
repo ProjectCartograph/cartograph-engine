@@ -14,9 +14,7 @@
 # from the flake.
 #
 # /nix is the cartograph-nix volume, shared by every instance and run:
-# the toolchain, the model and every build are fetched once. Where
-# CARTOGRAPH_NIX_STORE names a directory, /nix is that directory instead,
-# which CI saves and restores between runs. /tmp is a
+# the toolchain, the model and every build are fetched once. /tmp is a
 # tmpfs (the tests' temporary files). Host networking lets a browser on
 # the host reach a server started inside.
 
@@ -35,7 +33,7 @@ services:
     volumes:
       - ..:/src:ro
       - cartograph-workspace:/workspace
-      - ${CARTOGRAPH_NIX_STORE:-cartograph-nix}:/nix
+      - cartograph-nix:/nix
       - cartograph-home:/home/dev
     tmpfs:
       - /tmp:exec,mode=1777

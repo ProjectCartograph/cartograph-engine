@@ -24,14 +24,6 @@ if [ "${1:-}" = "--down" ]; then
   exec "${compose[@]}" down
 fi
 
-# A store in a directory (CARTOGRAPH_NIX_STORE, as CI keeps it) starts as
-# a copy of the image's own /nix, as a new volume does.
-if [ -n "${CARTOGRAPH_NIX_STORE:-}" ] && [ ! -e "$CARTOGRAPH_NIX_STORE/var/nix/db" ]; then
-  mkdir -p "$CARTOGRAPH_NIX_STORE"
-  "${compose[@]}" build --quiet dev
-  "$runtime" run --rm --user 0 -v "$CARTOGRAPH_NIX_STORE:/seed" cartograph-dev:local cp -a /nix/. /seed/
-fi
-
 "${compose[@]}" up -d --build --quiet-pull dev >/dev/null 2>&1 || "${compose[@]}" up -d --build dev
 # The container's volumes belong to whoever runs in it: the host user.
 for vol in /nix /home/dev /workspace; do

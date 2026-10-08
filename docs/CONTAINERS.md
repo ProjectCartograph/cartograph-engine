@@ -1,10 +1,11 @@
 # Working in containers
 
-Everything that builds, tests or serves Cartograph runs in the test
-environment: a container with Nix and nothing else, where every tool
-comes from the repository's flake. A person, CI and an agent work in the
-same environment, the host keeps nothing but a container runtime, and
-one run is never touched by another or by the code changing beside it.
+Everything that builds, tests or serves Cartograph on your machine runs
+in the test environment: a container with Nix and nothing else, where
+every tool comes from the repository's flake. A person and an agent work
+in the same environment as CI (which runs the same flake on its runner),
+the host keeps nothing but a container runtime, and one run is never
+touched by another or by the code changing beside it.
 
 The environment is for testing. It never makes a change: changes are
 made, described and pushed on the host, with `jj` from the flake.
@@ -69,17 +70,28 @@ To start again from nothing: `scripts/dev --down`, then
 `docker volume rm cartograph-workspace cartograph-home` (keep
 `cartograph-nix` unless you want to fetch everything again).
 
-## In CI
+## CI
 
-CI runs the same environment: the `ci` and `commits` jobs are
-`scripts/dev just ci` and `scripts/dev just commit-check`, on both
-architectures. There, `CARTOGRAPH_NIX_STORE` names a directory that is
-`/nix` instead of the volume, seeded from the image's own on first use,
-and the Actions cache saves and restores it; a run whose flake changed
-roots the development shell and collects the rest before it is saved.
-From an empty store the gate takes under three minutes, nearly all of
-it fetching the toolchain. The jobs that build and start the image, and
-the Helm chart on kind, need the runner's own Docker and stay on it.
+CI does not use this environment. A GitHub runner is a clean machine
+already, and Nix makes it the same environment as this one: every job
+runs `nix develop --command just ...` on the runner, on both
+architectures.
+
+Its store is cached by store path, so a run fetches what an earlier one
+built and builds only what changed. There are two caches, each behind
+its own switch, so both may be on at once:
+
+| Cache | Switch (repository variable) | Default |
+|---|---|---|
+| The Actions cache, through magic-nix-cache: no account, and pull requests from forks read it too | `CARTOGRAPH_CACHE_GHA` | `on`; `off` turns it off |
+| Cachix, readable by any machine | `CARTOGRAPH_CACHIX`, a cache name, with the secret `CACHIX_AUTH_TOKEN` to push | off |
+
+Cachix is not sent image tarballs: the images live in the registry.
+Paths cache.nixos.org holds, which are most of the development shell,
+come from there in either case.
+
+Locally neither is needed: the `cartograph-nix` volume keeps every
+path once fetched or built.
 
 ## Deploying
 
