@@ -147,9 +147,37 @@ func (r *refResolver) resolve(file string, node map[string]any, v any) any {
 				out[k] = it
 			}
 		}
+		r.keepWhole(props, val, out)
 		return out
 	}
 	return v
+}
+
+// keepWhole keeps a text cut to its field whole where the item has a
+// longer one for it, a description, that was left empty: a deliverable
+// named by a long line keeps the line, and its name is the line's head.
+func (r *refResolver) keepWhole(props, in, out map[string]any) {
+	desc, ok := props["description"].(map[string]any)
+	if !ok || out["description"] != nil {
+		return
+	}
+	for _, k := range []string{"name", "title", "statement"} {
+		whole, isText := in[k].(string)
+		cut, _ := out[k].(string)
+		if !isText || cut == strings.TrimSpace(whole) {
+			continue
+		}
+		if max, ok := document.Number(desc["maxLength"]); ok && len([]rune(whole)) > int(max) {
+			return
+		}
+		out["description"] = strings.TrimSpace(whole)
+		for i, c := range r.clipped {
+			if strings.HasPrefix(c, fmt.Sprintf("%q cut", whole)) {
+				r.clipped[i] += ", the whole kept as its description"
+			}
+		}
+		return
+	}
 }
 
 // id is the id for a value given where a reference to kind goes: the

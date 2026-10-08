@@ -24,18 +24,45 @@ func isDigits(s string) bool {
 	return s != ""
 }
 
-// Clip shortens text to n characters, whole words where it can.
+// Clip shortens text to n characters at the latest boundary that keeps
+// at least half of it: the end of a sentence, else of a clause, else of
+// a word; never mid-phrase where a boundary will do. A clause's
+// trailing joining word ("and", "of") goes with it.
 func Clip(s string, n int) string {
 	s = strings.TrimSpace(s)
 	if len([]rune(s)) <= n {
 		return s
 	}
-	r := []rune(s)[:n]
-	if i := strings.LastIndex(string(r), " "); i > n/2 {
-		return string(r[:len([]rune(string(r)[:i]))])
+	head := string([]rune(s)[:n+1]) // one more: a boundary may sit just past n
+	for _, marks := range [][]string{{". ", "; ", "? ", "! "}, {", ", ": ", " - ", " (", " / "}, {" "}} {
+		at := -1
+		for _, m := range marks {
+			if i := strings.LastIndex(head, m); i > at {
+				at = i
+			}
+		}
+		if at < 0 || len([]rune(head[:at])) < n/2 {
+			continue
+		}
+		cut := strings.TrimRight(head[:at], " ,;:-(/")
+		if marks[0] != " " {
+			cut = strings.TrimRight(strings.TrimSuffix(cut, "."), " ")
+		}
+		for {
+			i := strings.LastIndex(cut, " ")
+			if i < 0 || !joiningWords[strings.ToLower(cut[i+1:])] || len([]rune(cut[:i])) < n/2 {
+				break
+			}
+			cut = strings.TrimRight(cut[:i], " ,;:")
+		}
+		return cut
 	}
-	return string(r)
+	return string([]rune(s)[:n])
 }
+
+// joiningWords end a clause that goes on: a cut text does not end on
+// one.
+var joiningWords = map[string]bool{"a": true, "an": true, "and": true, "or": true, "of": true, "the": true, "to": true, "for": true, "in": true, "on": true, "with": true, "by": true, "at": true, "from": true}
 
 // Slug reduces free text to the Slug pattern: lowercase, every run of
 // anything else a single hyphen, trimmed, and short enough to read. It
