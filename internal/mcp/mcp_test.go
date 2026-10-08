@@ -120,7 +120,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	}
 	for _, tl := range tools.Tools {
 		readOnly := tl.Annotations != nil && tl.Annotations.ReadOnlyHint
-		if !readOnly && tl.Name != "save_draft" && tl.Name != "save_drafts" && tl.Name != "settle" && tl.Name != "bring_document" && tl.Name != "settle_register" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
+		if !readOnly && tl.Name != "save_draft" && tl.Name != "save_drafts" && tl.Name != "settle" && tl.Name != "bring_document" && tl.Name != "port" && tl.Name != "settle_register" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
 			t.Errorf("tool %s may change something and is neither a draft nor a proposal", tl.Name)
 		}
 	}
@@ -1174,5 +1174,35 @@ func TestARegisterIsSettledFromItsSection(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Errorf("lacks %q: %s", want, text)
 		}
+	}
+}
+
+// A port in one chain: the document in, then the pieces, and the server
+// drafts the structure and writes the registers into the main project.
+func TestAPortIsOneChain(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\n" +
+		"D. Scope and Deliverables\nEvery depot is in scope; the baseline survey of depots is run first, as a piece of its own, and the checks then begin.\n\n" +
+		"G1. Milestone Plan\n" +
+		"No.        Milestone                     Owner                  Due Date\n\n" +
+		"M1         Checklist agreed              Quality team           15/09/2026\n\n" +
+		"M2         Graders trained               Training unit          20/10/2026\n\n" +
+		"M3         Pilot depots checking         Quality team           02/11/2026\n\n" +
+		"M4         Pilot season reviewed         Steering committee     15/12/2026\n"
+	res, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	if res.IsError || !strings.Contains(text, `"piecesIn":["s2"]`) {
+		t.Fatalf("port, first call: %s", text)
+	}
+	res, text = callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{
+		map[string]any{"name": "Depot checks", "none": true},
+		map[string]any{"name": "Baseline survey", "changeOfItsOwn": true, "change": "sets the baseline the checks are judged against", "dependedOnBy": []any{"Depot checks"}},
+	}})
+	if res.IsError || !strings.Contains(text, `"field":"/spec/milestones"`) || !strings.Contains(text, `"added":4`) || !strings.Contains(text, `"fill"`) {
+		t.Fatalf("port, second call: %s", text)
+	}
+	_, text = callTool(t, cs, "work_summary", map[string]any{})
+	if !strings.Contains(text, `"milestones":4`) || !strings.Contains(text, `"components":1`) {
+		t.Fatalf("summary: %s", text)
 	}
 }

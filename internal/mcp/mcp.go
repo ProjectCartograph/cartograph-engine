@@ -66,32 +66,24 @@ func ServeStdio(ctx context.Context, o Options) error {
 	return newServer(o, identity.Anonymous).Run(ctx, &sdk.StdioTransport{})
 }
 
-const instructions = `Porting a document, or starting any new piece of work? Do this, in one pass:
-1. bring_document, once, with the document's text straight from its
-   file (never retyped, never read whole): it answers with the
-   document's outline. Read the sections it says name pieces of work,
-   with read_section, and list every piece of work they name: the
-   whole, each survey, system, service, policy or scheme.
-2. start_work with a title and pieces, each piece an object with its
-   name and only its yes answers to the structure questions (structure
-   lists them). It decides what each piece is, refuses answers that
-   contradict each other, and drafts every record, named and linked.
-3. For each record next names, one settle: set every field the
-   documents give, for each check in fill and each list in
-   alsoFromTheDocuments (milestones, risks, costs and the like), in the
-   shape each shows, reading with read_section only the sections each
-   names under read; leave open
-   each check they do not answer, with its reason; pass the work list
-   start_work returned. For each register the document has (its
-   milestones, deliverables, risks, indicators), call settle_register
-   with its section instead of retyping its rows. Where a team, a role,
-   a group served, a source of funds or of data goes, write its name (a
-   role, never a person): settle finds that record or drafts it, and
-   says what it drafted. Its answer names the next record and
-   what it lacks. Repeat until it says every check is met. Never stop
-   part way and never hand the rest to your person.
-4. propose.
-5. Report from work_summary only: what is not in it was not done.
+const instructions = `Porting a document? Do exactly this, in one pass:
+1. port with the document's title and its text, straight from its file
+   (never retyped, never read whole). It answers with the sections
+   that name pieces of work.
+2. read_section those sections; list every piece of work they name
+   (the whole, each survey, system, service, policy or scheme; never a
+   workstream), answer the structure questions for each, and call port
+   again with the pieces. It drafts every record and writes every
+   register (milestones, deliverables, risks, indicators) for you.
+3. For each record its answer names, one settle: set every field in
+   fill, in the shape each shows, reading only the sections each names
+   under read; leave open, with its reason, only what the document does
+   not say. Its answer names the next record.
+4. propose. Report from work_summary only.
+Use no other tool unless an answer tells you to.
+
+Starting new work, not from a document: structure, then start_work with
+the pieces, then settle each record, then propose.
 
 A shape the discipline refuses (a second objective on a project, a
 person's name on a role, a field the schema does not have) is refused
@@ -799,6 +791,12 @@ type (
 		Field     string   `json:"field" jsonschema:"the list to write: /spec/milestones, /spec/deliverables, /spec/risks or /spec/kpis"`
 		Section   string   `json:"section" jsonschema:"the section holding the table, by the id the outline gave"`
 		Work      []string `json:"work,omitempty" jsonschema:"the work list start_work returned"`
+	}
+	portIn struct {
+		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to port into; your latest open one when left out, and a new one when you have none"`
+		Title     string `json:"title" jsonschema:"the document's title"`
+		Text      string `json:"text,omitempty" jsonschema:"the document's whole text, straight from its file: on the first call only"`
+		Pieces    []any  `json:"pieces,omitempty" jsonschema:"on the second call: every piece of work the document names, each with its name and only its yes answers to the structure questions"`
 	}
 	bringIn struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to keep it in; your latest open one when left out, and a new one when you have none"`
@@ -1694,6 +1692,111 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return out, nil
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "port", Description: "Port a document in one chain: the way to begin any port. First call it with the document's title and text " +
+		"(straight from its file): it keeps the document, splits it into sections and names the ones that list pieces of work. Read those with read_section, " +
+		"then call port again with the pieces (no text needed): it decides the structure, drafts every record, writes every register the document has " +
+		"(milestones, deliverables, risks, indicators) into the main project, and hands you the first record to settle. After it: one settle a record, then propose.", Annotations: drafting},
+		func(c call, in portIn) (any, error) {
+			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
+			if err != nil {
+				return nil, err
+			}
+			srcs, err := e.Sources(c.ctx, cs.ID)
+			if err != nil {
+				return nil, err
+			}
+			if len(srcs) == 0 {
+				if strings.TrimSpace(in.Text) == "" {
+					return nil, fmt.Errorf("%w: give the document's text, straight from its file, on the first call", engine.ErrBadEdit)
+				}
+				src, err := e.BringSource(c.ctx, cs.ID, in.Title, in.Text)
+				if err != nil {
+					return nil, err
+				}
+				srcs = append(srcs, src)
+			}
+			var pieceSections []string
+			for _, sec := range srcs[0].Sections {
+				for _, f := range sec.Feeds {
+					if f == "pieces" {
+						pieceSections = append(pieceSections, sec.ID)
+						break
+					}
+				}
+			}
+			if len(in.Pieces) == 0 {
+				return map[string]any{"changeSet": cs.ID, "sections": srcs[0].Sections, "piecesIn": pieceSections,
+					"next": "Read sections " + strings.Join(pieceSections, ", ") + " with read_section, list every piece of work they name, answer the structure " +
+						"questions for each (structure lists them), and call port again with pieces."}, nil
+			}
+			pieces, refused := piecesOf(in.Pieces)
+			if refused != nil {
+				return refused, nil
+			}
+			st := engine.Classify(pieces)
+			if len(st.Problems) > 0 {
+				return map[string]any{"problems": st.Problems, "next": "Fix every problem and call port again with the pieces; nothing was drafted."}, nil
+			}
+			for _, d := range st.Drafts() {
+				kind, _ := d["kind"].(string)
+				id, _ := d["metadata"].(map[string]any)["id"].(string)
+				if _, drafted, _ := e.ChangeSetText(c.ctx, cs.ID, kind, id); drafted {
+					continue
+				}
+				text, err := e.Codec().Encode(d)
+				if err != nil {
+					return nil, err
+				}
+				if err := e.SaveInChangeSet(c.ctx, cs.ID, kind, id, text); err != nil {
+					return nil, err
+				}
+				c.announce(step{Step: "draft", Kind: kind, ID: id, Text: text, ChangeSet: cs.ID})
+			}
+			// The main project takes the document's registers.
+			main := ""
+			for _, p := range st.Pieces {
+				if p.Kind == "Project" && len(p.Of) == 0 {
+					main = p.Record
+					break
+				}
+			}
+			var registers []map[string]any
+			if mk, mid, ok := strings.Cut(main, "/"); ok {
+				for _, sec := range srcs[0].Sections {
+					for _, f := range sec.Feeds {
+						if f != "/spec/milestones" && f != "/spec/deliverables" && f != "/spec/risks" && f != "/spec/kpis" {
+							continue
+						}
+						rows, added, refusedRows, drafted, err := registerInto(c, cs.ID, mk, mid, sec.ID, f)
+						if err != nil {
+							registers = append(registers, map[string]any{"section": sec.ID, "field": f, "error": err.Error()})
+							continue
+						}
+						if rows == 0 {
+							continue
+						}
+						reg := map[string]any{"section": sec.ID, "heading": sec.Heading, "field": f, "rows": rows, "added": added}
+						if len(refusedRows) > 0 {
+							reg["refused"] = refusedRows
+						}
+						if len(drafted) > 0 {
+							reg["drafted"] = len(drafted)
+						}
+						registers = append(registers, reg)
+					}
+				}
+			}
+			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
+				return nil, err
+			}
+			next, err := nextOf(c, cs.ID, true, st.Work, "")
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"changeSet": cs.ID, "work": st.Work, "pieces": st.Pieces, "registers": registers, "then": next,
+				"next": "The structure is drafted and the registers written. Now one settle a record, as then says, passing work; then propose; report from work_summary."}, nil
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "bring_document", Description: "Bring the document you are porting into your change set, once, as its text: Cartograph keeps it with the work, " +
 		"splits it into sections by its headings and answers with its outline, each section marked with what it feeds. From then on read only the sections a step needs, " +
 		"with read_section: every check next and settle hand over names the sections that answer it. Pass the text straight from the file (with a command line helper, " +
@@ -1742,38 +1845,17 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
-			items, err := e.RegisterOf(c.ctx, cs.ID, in.Section, in.Field)
+			rows, added, refused, drafted, err := registerInto(c, cs.ID, in.Kind, in.ID, in.Section, in.Field)
 			if err != nil {
 				return nil, err
 			}
-			if len(items) == 0 {
+			if rows == 0 {
 				return nil, fmt.Errorf("%w: section %s holds no rows Cartograph can read as %s: write them with settle", engine.ErrNotFound, in.Section, in.Field)
-			}
-			var refused []engine.Problem
-			var drafted []string
-			added := 0
-			for _, it := range items {
-				r, created, err := applyFields(c, cs.ID, in.Kind, in.ID, map[string]any{in.Field + "/-": it}, nil)
-				if err != nil {
-					var invalid *engine.ValidationError
-					if errors.As(err, &invalid) {
-						refused = append(refused, invalid.Problems...)
-						continue
-					}
-					return nil, err
-				}
-				refused = append(refused, r...)
-				for _, d := range created {
-					if !strings.HasPrefix(d, "cut: ") && !strings.HasPrefix(d, "refused: ") {
-						drafted = append(drafted, d)
-					}
-				}
-				added++
 			}
 			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
 				return nil, err
 			}
-			out := map[string]any{"changeSet": cs.ID, "record": in.Kind + "/" + in.ID, "field": in.Field, "rows": len(items), "added": added}
+			out := map[string]any{"changeSet": cs.ID, "record": in.Kind + "/" + in.ID, "field": in.Field, "rows": rows, "added": added}
 			if len(drafted) > 0 {
 				out["drafted"] = drafted
 			}
@@ -2815,4 +2897,36 @@ func sectionsFor(c call, field string) []string {
 		return nil
 	}
 	return c.o.Engine.SectionsFor(c.ctx, view, field)
+}
+
+// registerInto settles a section's register into a record's list, row by
+// row through the field pipeline: it answers how many rows the section
+// holds, how many were added, what was refused and what was drafted.
+func registerInto(c call, set, kind, id, section, field string) (int, int, []engine.Problem, []string, error) {
+	items, err := c.o.Engine.RegisterOf(c.ctx, set, section, field)
+	if err != nil {
+		return 0, 0, nil, nil, err
+	}
+	var refused []engine.Problem
+	var drafted []string
+	added := 0
+	for _, it := range items {
+		r, created, err := applyFields(c, set, kind, id, map[string]any{field + "/-": it}, nil)
+		if err != nil {
+			var invalid *engine.ValidationError
+			if errors.As(err, &invalid) {
+				refused = append(refused, invalid.Problems...)
+				continue
+			}
+			return 0, 0, nil, nil, err
+		}
+		refused = append(refused, r...)
+		for _, d := range created {
+			if !strings.HasPrefix(d, "cut: ") && !strings.HasPrefix(d, "refused: ") {
+				drafted = append(drafted, d)
+			}
+		}
+		added++
+	}
+	return len(items), added, refused, drafted, nil
 }
