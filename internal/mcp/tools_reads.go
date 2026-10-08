@@ -37,11 +37,49 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 			return map[string]any{"items": page, "more": more}, err
 		})
 
-	tool(s, o, person, &sdk.Tool{Name: "get", Description: "One manifest as it stands for you: your change set's draft of it, where you have one, else the record, as YAML.", Annotations: readOnly},
-		func(c call, in manifestRef) (any, error) {
+	tool(s, o, person, &sdk.Tool{Name: "get", Description: "Manifests as they stand for you: your change set's draft of each, where you have one, else the record, as YAML. " +
+		"Give kind and id for one, or records (each Kind/id) for every one you need in a single call.", Annotations: readOnly},
+		func(c call, in getIn) (any, error) {
 			cs, c, found, err := c.inChangeSet(in.ChangeSet, false)
 			if err != nil {
 				return nil, err
+			}
+			// Many at once: one call, never one a record (a read repeated
+			// per record is a port's largest waste).
+			if len(in.Records) > 0 {
+				if len(in.Records) > 100 {
+					return nil, fmt.Errorf("%w: at most 100 records a call", engine.ErrBadEdit)
+				}
+				items := make([]map[string]any, 0, len(in.Records))
+				for _, r := range in.Records {
+					kind, id, ok := strings.Cut(r, "/")
+					if !ok {
+						items = append(items, map[string]any{"record": r, "error": "want Kind/id"})
+						continue
+					}
+					item := map[string]any{"record": r}
+					if found {
+						text, inSet, err := e.ChangeSetText(c.ctx, cs.ID, kind, id)
+						if err != nil {
+							item["error"] = err.Error()
+						} else {
+							item["yaml"], item["inChangeSet"] = string(text), inSet
+						}
+					} else if v, err := e.Get(c.ctx, kind, id); err != nil {
+						item["error"] = err.Error()
+					} else {
+						item["yaml"], item["version"] = string(v.YAML), v.Number
+					}
+					items = append(items, item)
+				}
+				out := map[string]any{"items": items}
+				if found {
+					out["changeSet"] = cs.ID
+				}
+				return out, nil
+			}
+			if in.Kind == "" || in.ID == "" {
+				return nil, fmt.Errorf("%w: give kind and id, or records", engine.ErrBadEdit)
 			}
 			if found {
 				text, inSet, err := e.ChangeSetText(c.ctx, cs.ID, in.Kind, in.ID)

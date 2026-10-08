@@ -75,6 +75,12 @@ type (
 	readingIn struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to read in: your own, or your person's when they ask you to help with it; your latest open one when left out"`
 	}
+	getIn struct {
+		ChangeSet string   `json:"changeSet,omitempty" jsonschema:"the change set to read in; your latest open one when left out"`
+		Kind      string   `json:"kind,omitempty" jsonschema:"one manifest's kind"`
+		ID        string   `json:"id,omitempty" jsonschema:"one manifest's id"`
+		Records   []string `json:"records,omitempty" jsonschema:"several manifests at once, each as Kind/id: read every record you need in one call"`
+	}
 	manifestRef struct {
 		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
 		Kind      string `json:"kind" jsonschema:"the manifest's kind"`

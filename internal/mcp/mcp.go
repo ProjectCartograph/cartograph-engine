@@ -81,6 +81,8 @@ const instructions = `Porting a document? Do exactly this, in one pass:
    call for every record; it answers what is still open, and you call
    it again for that until nothing is.
 4. propose. Report from work_summary only.
+To look at records, read them all in one get with records ["Kind/id",
+...], never one call a record.
 Use no other tool unless an answer tells you to.
 
 Starting new work, not from a document: structure, then start_work with

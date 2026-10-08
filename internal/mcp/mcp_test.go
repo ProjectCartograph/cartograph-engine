@@ -1521,3 +1521,17 @@ func TestARegisterIsPortedAsThePortingMapSays(t *testing.T) {
 		t.Errorf("the form after the register was read as rows: %s", text)
 	}
 }
+
+// Every record needed is read in one call.
+func TestGetReadsManyRecordsInOneCall(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{
+		map[string]any{"name": "Rollout", "none": true}, map[string]any{"name": "Weekly checks", "ongoing": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	_, text = callTool(t, cs, "get", map[string]any{"records": out.Work})
+	if strings.Count(text, `"yaml"`) != len(out.Work) || len(out.Work) != 2 {
+		t.Fatalf("get: %s", text)
+	}
+}
