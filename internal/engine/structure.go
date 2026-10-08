@@ -49,6 +49,10 @@ type StructurePiece struct {
 	DependedOnBy []string `json:"dependedOnBy,omitempty"`
 }
 
+// StructureKeys are the keys a piece may carry: its name and the answers.
+var StructureKeys = map[string]bool{"name": true, "outOfScope": true, "policy": true, "ongoing": true, "runsToday": true, "groupsForFunding": true,
+	"coordinatesProjects": true, "outputOf": true, "changeOfItsOwn": true, "dependedOnBy": true}
+
 // StructureQuestion is one question, as people and agents are asked it.
 type StructureQuestion struct {
 	Field    string `json:"field"`

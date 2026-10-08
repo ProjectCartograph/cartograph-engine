@@ -89,9 +89,13 @@ The loop, for any document or new piece of work, in one pass:
 2. start_work: one change set for all of it.
 3. next with work set to the work list structure returned, exactly:
    do what it says (save_draft the draft it hands you, edit_draft,
-   leave_open), then call next again with the same work. Repeat until it says every
-   check is met. Never stop part way and never describe work you have
-   not saved: what is not saved does not exist.
+   leave_open), passing the same work to every save; each answer says
+   what comes next. Write the goals, outcomes, KPIs and registers a
+   project names with save_drafts, many in one call. Repeat until it
+   says every check is met. A port is often 30 to 60 records and a few
+   hundred calls: that is expected. Never stop part way, never hand the rest to
+   your person and never describe work you have not saved: what is not
+   saved does not exist.
 4. propose.
 
 Work this way, every time:
@@ -744,6 +748,11 @@ type (
 		Manifest  map[string]any `json:"manifest" jsonschema:"the whole manifest: apiVersion, kind, metadata and spec"`
 		Work      []string       `json:"work,omitempty" jsonschema:"every other manifest you are defining with this one, as Kind/id (the ones you will propose together): their drafts are read and checked with it, and what they still lack is reported in around"`
 	}
+	saveManyIn struct {
+		ChangeSet string           `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out, and a new one when you have none"`
+		Manifests []map[string]any `json:"manifests" jsonschema:"the whole manifests, each with apiVersion, kind, metadata (with id and name) and spec"`
+		Work      []string         `json:"work,omitempty" jsonschema:"the work list structure returned, as Kind/id: the answer then says what to do next across it"`
+	}
 	saveIn struct {
 		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
 		Kind      string         `json:"kind"`
@@ -971,19 +980,35 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			// A small agent sends names where pieces go: say how, by example,
 			// rather than refusing in the words of a schema.
 			pieces := make([]engine.StructurePiece, 0, len(in.Pieces))
-			var bad []string
+			var bad, problems []string
 			for _, raw := range in.Pieces {
 				b, _ := json.Marshal(raw)
 				var p engine.StructurePiece
-				if _, isText := raw.(string); isText || json.Unmarshal(b, &p) != nil {
+				m, isObject := raw.(map[string]any)
+				if !isObject || json.Unmarshal(b, &p) != nil {
 					bad = append(bad, string(b))
 					continue
+				}
+				// What a piece is, is the answer, never the agent's to say:
+				// a key the questions do not ask is refused, not ignored.
+				for k := range m {
+					if !engine.StructureKeys[k] {
+						problems = append(problems, fmt.Sprintf("%q: %q is not an answer; give only name and the yes answers", p.Name, k))
+					}
+				}
+				if k, _ := m["kind"].(string); k != "" && k != "Project" && k != "Programme" && k != "Portfolio" && k != "Operation" {
+					problems = append(problems, fmt.Sprintf("%q is a %s, not a piece of work: leave it out, it is written inside the records", p.Name, k))
 				}
 				pieces = append(pieces, p)
 			}
 			if len(bad) > 0 {
-				return map[string]any{"problems": []string{"each piece is an object with its name and its yes answers, not text: " + strings.Join(bad, ", ")},
-					"next": "Call structure again with every piece as an object, like " + structureExample + "."}, nil
+				problems = append(problems, "each piece is an object with its name and its yes answers, not text: "+strings.Join(bad, ", "))
+			}
+			if len(problems) > 0 {
+				sort.Strings(problems)
+				return map[string]any{"problems": problems,
+					"next": "Call structure again. A piece is a piece of work (the project, each workstream, phase, survey, system, service, policy or scheme), " +
+						"each an object with name and only the answers that are yes, like " + structureExample + "."}, nil
 			}
 			return engine.Classify(pieces), nil
 		})
@@ -1207,6 +1232,74 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			return out, nil
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "save_drafts", Description: "Create several manifests in your change set in one call, as save_draft does each: " +
+		"for writing a whole piece of work quickly, such as every outcome, KPI or register entry a document gives. Each manifest carries its kind and metadata.id. " +
+		"Answers with what each saved, its problems and open checks, and with work, what to do next across it.", Annotations: drafting},
+		func(c call, in saveManyIn) (any, error) {
+			if len(in.Manifests) == 0 {
+				return nil, fmt.Errorf("give at least one manifest")
+			}
+			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
+			if err != nil {
+				return nil, err
+			}
+			var saved []map[string]any
+			for _, m := range in.Manifests {
+				kind, _ := m["kind"].(string)
+				meta, _ := m["metadata"].(map[string]any)
+				id, _ := meta["id"].(string)
+				if kind == "" || id == "" {
+					saved = append(saved, map[string]any{"error": "a manifest needs kind and metadata.id"})
+					continue
+				}
+				text, err := e.Codec().Encode(m)
+				if err == nil {
+					if _, drafted, _ := e.ChangeSetText(c.ctx, cs.ID, kind, id); drafted {
+						err = fmt.Errorf("already drafted in this change set: change its fields with edit_draft")
+					} else {
+						err = e.SaveInChangeSet(c.ctx, cs.ID, kind, id, text)
+					}
+				}
+				if err != nil {
+					saved = append(saved, map[string]any{"record": kind + "/" + id, "error": err.Error()})
+					continue
+				}
+				c.announce(step{Step: "draft", Kind: kind, ID: id, Text: text, ChangeSet: cs.ID})
+				saved = append(saved, map[string]any{"record": kind + "/" + id})
+			}
+			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
+				return nil, err
+			}
+			for _, sv := range saved {
+				r, _ := sv["record"].(string)
+				kind, id, ok := strings.Cut(r, "/")
+				if !ok || sv["error"] != nil {
+					continue
+				}
+				problems, _ := e.DraftProblems(c.ctx, kind, id)
+				checks, _ := e.DraftChecks(c.ctx, kind, id)
+				open := 0
+				for _, ch := range checks {
+					if ch.Open() {
+						open++
+					}
+				}
+				sv["saved"], sv["openChecks"] = "draft", open
+				if len(problems) > 0 {
+					sv["saved"], sv["problems"] = "draft, not valid yet: fix each problem with edit_draft", problems
+				}
+			}
+			out := map[string]any{"changeSet": cs.ID, "saved": saved}
+			if len(in.Work) > 0 {
+				next, err := nextOf(c, cs.ID, true, in.Work, "")
+				if err != nil {
+					return nil, err
+				}
+				out["then"] = next
+			}
+			return out, nil
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "taxonomy", Description: "Every kind Cartograph keeps, in the order of the strategy: what each is in one sentence, its levels, " +
 		"and what plans and documents often call it instead. Read it before recording anything from a document, and map each thing the document says " +
 		"onto the kind it is by definition, whatever the document calls it.", Annotations: readOnly},
@@ -1232,73 +1325,7 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if err != nil {
 				return nil, err
 			}
-			if found && len(in.Work) == 0 {
-				view, err := e.ViewChangeSet(c.ctx, cs.ID)
-				if err != nil {
-					return nil, err
-				}
-				for _, it := range view.Items {
-					in.Work = append(in.Work, it.Item.Kind+"/"+it.Item.ID)
-				}
-			}
-			var work []engine.Ref
-			for _, w := range in.Work {
-				if k, i, ok := strings.Cut(w, "/"); ok && k != "" && i != "" {
-					work = append(work, engine.Ref{Kind: k, ID: i})
-				}
-			}
-			if len(work) == 0 {
-				return workspaceNext(c.ctx, e)
-			}
-			// A record the work names that is not drafted yet is the next
-			// thing to write, in the order given (the structure's order):
-			// the work is a plan, written one record at a time.
-			var drafted []engine.Ref
-			for _, w := range work {
-				var err error
-				if found {
-					_, _, err = e.ChangeSetText(c.ctx, cs.ID, w.Kind, w.ID)
-				} else {
-					_, err = e.Get(c.ctx, w.Kind, w.ID)
-				}
-				if errors.Is(err, engine.ErrNotFound) || errors.Is(err, engine.ErrUnknownKind) {
-					written := len(drafted)
-					out := map[string]any{
-						"next": fmt.Sprintf("Write %s/%s now (%d of %d in the work are written): call save_draft with kind %s, id %s, the same work, "+
-							"and manifest set to the draft here, its name and every field you can filled from the documents; then call next again with the same work, "+
-							"which says what each check still needs.", w.Kind, w.ID, written, len(work), w.Kind, w.ID),
-						"write": w.Kind + "/" + w.ID,
-					}
-					if g, gerr := e.Guide(c.ctx, w.Kind, "", in.Locale); gerr == nil && g.Template != nil {
-						draft := g.Template
-						if meta, ok := draft["metadata"].(map[string]any); ok {
-							meta["id"] = w.ID
-						}
-						out["draft"] = draft
-					}
-					return out, nil
-				}
-				if err != nil {
-					return nil, err
-				}
-				drafted = append(drafted, w)
-			}
-			w, err := e.Work(c.ctx, work, in.Locale)
-			if err != nil {
-				return nil, err
-			}
-			out := map[string]any{"open": w.Open}
-			if len(w.Tasks) == 0 {
-				out["next"] = allMet(c.ctx, e)
-				return out, nil
-			}
-			out["next"] = firstNext(c.ctx, e, w.Tasks[0])
-			then := w.Tasks[1:]
-			if len(then) > 8 {
-				then = then[:8]
-			}
-			out["task"], out["then"] = w.Tasks[0], then
-			return out, nil
+			return nextOf(c, cs.ID, found, in.Work, in.Locale)
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "edit_draft", Description: "Set or clear single fields of your change set's draft of a manifest, by JSON pointer, leaving every other field as it stands, " +
@@ -1636,10 +1663,16 @@ func checkReport(checks []engine.Check) map[string]any {
 // lacks, so an agent fixing an outcome hears that the gap it closes has
 // no indicator yet.
 func withAround(c call, out map[string]any, kind, id string, work []string) map[string]any {
-	var also []engine.Ref
+	// The work as planned, and the part of it written so far: only what
+	// is written can be checked.
+	var planned, also []engine.Ref
 	for _, w := range work {
-		if k, i, ok := strings.Cut(w, "/"); ok && k != "" && i != "" {
-			also = append(also, engine.Ref{Kind: k, ID: i})
+		if k, i, ok := strings.Cut(w, "/"); ok && k != "" && i != "" && (k != kind || i != id) {
+			r := engine.Ref{Kind: k, ID: i}
+			planned = append(planned, r)
+			if _, err := c.o.Engine.Get(c.ctx, k, i); err == nil {
+				also = append(also, r)
+			}
 		}
 	}
 	// What to do next across the whole piece of work, so the agent is led
@@ -1653,6 +1686,13 @@ func withAround(c call, out map[string]any, kind, id string, work []string) map[
 			out["next"] = firstNext(c.ctx, c.o.Engine, w.Tasks[0])
 		} else {
 			out["next"] = allMet(c.ctx, c.o.Engine)
+		}
+	}
+	// This record finished, the next one the work plans is handed over
+	// in the same answer, so a whole port takes a call a record.
+	if open, _ := out["open"].([]engine.Check); len(open) == 0 {
+		if h, err := firstUnwritten(c, "", false, planned, ""); err == nil && h != nil {
+			out["next"], out["write"], out["draft"] = h["next"], h["write"], h["draft"]
 		}
 	}
 	around, err := c.o.Engine.WorkAround(c.ctx, kind, id, also)
@@ -1860,4 +1900,89 @@ func ProductName(ua string) string {
 		words[i] = strings.ToUpper(w[:1]) + w[1:]
 	}
 	return strings.Join(words, " ")
+}
+
+// nextOf is what to do next in a piece of work: the first record of it
+// not written yet, else the next open check across it, else that every
+// check is met; without work, the stage of the workspace to write now.
+func nextOf(c call, set string, found bool, workIn []string, locale string) (any, error) {
+	e := c.o.Engine
+	if found && len(workIn) == 0 {
+		view, err := e.ViewChangeSet(c.ctx, set)
+		if err != nil {
+			return nil, err
+		}
+		for _, it := range view.Items {
+			workIn = append(workIn, it.Item.Kind+"/"+it.Item.ID)
+		}
+	}
+	var work []engine.Ref
+	for _, w := range workIn {
+		if k, i, ok := strings.Cut(w, "/"); ok && k != "" && i != "" {
+			work = append(work, engine.Ref{Kind: k, ID: i})
+		}
+	}
+	if len(work) == 0 {
+		return workspaceNext(c.ctx, e)
+	}
+	if out, err := firstUnwritten(c, set, found, work, locale); out != nil || err != nil {
+		return out, err
+	}
+	w, err := e.Work(c.ctx, work, locale)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]any{"open": w.Open}
+	if len(w.Tasks) == 0 {
+		out["next"] = allMet(c.ctx, e)
+		return out, nil
+	}
+	out["next"] = firstNext(c.ctx, e, w.Tasks[0])
+	then := w.Tasks[1:]
+	if len(then) > 8 {
+		then = then[:8]
+	}
+	out["task"], out["then"] = w.Tasks[0], then
+	return out, nil
+}
+
+// firstUnwritten hands over the first record the work names that is not
+// written yet, in the order given (the structure's order), with its
+// starting draft; nil when every one is written. The work is a plan,
+// written one record at a time.
+func firstUnwritten(c call, set string, found bool, work []engine.Ref, locale string) (map[string]any, error) {
+	// A record the work names that is not drafted yet is the next
+	// thing to write, in the order given (the structure's order):
+	// the work is a plan, written one record at a time.
+	e := c.o.Engine
+	var drafted []engine.Ref
+	for _, w := range work {
+		var err error
+		if found {
+			_, _, err = e.ChangeSetText(c.ctx, set, w.Kind, w.ID)
+		} else {
+			_, err = e.Get(c.ctx, w.Kind, w.ID)
+		}
+		if errors.Is(err, engine.ErrNotFound) || errors.Is(err, engine.ErrUnknownKind) {
+			written := len(drafted)
+			out := map[string]any{
+				"next": fmt.Sprintf("Write %s/%s now (%d of %d in the work are written): call save_draft with kind %s, id %s, the same work, "+
+					"and manifest set to the draft here, its name and every field you can filled from the documents; its answer says what comes next.", w.Kind, w.ID, written, len(work), w.Kind, w.ID),
+				"write": w.Kind + "/" + w.ID,
+			}
+			if g, gerr := e.Guide(c.ctx, w.Kind, "", locale); gerr == nil && g.Template != nil {
+				draft := g.Template
+				if meta, ok := draft["metadata"].(map[string]any); ok {
+					meta["id"] = w.ID
+				}
+				out["draft"] = draft
+			}
+			return out, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		drafted = append(drafted, w)
+	}
+	return nil, nil
 }

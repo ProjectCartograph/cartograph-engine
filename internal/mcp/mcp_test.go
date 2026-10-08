@@ -113,7 +113,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 	}
 	for _, tl := range tools.Tools {
 		readOnly := tl.Annotations != nil && tl.Annotations.ReadOnlyHint
-		if !readOnly && tl.Name != "save_draft" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
+		if !readOnly && tl.Name != "save_draft" && tl.Name != "save_drafts" && tl.Name != "edit_draft" && tl.Name != "discard_draft" && tl.Name != "leave_open" && tl.Name != "start_work" && tl.Name != "propose" && !strings.HasPrefix(tl.Name, "propose_") {
 			t.Errorf("tool %s may change something and is neither a draft nor a proposal", tl.Name)
 		}
 	}
@@ -823,5 +823,36 @@ func TestStructureTeachesItsShapeAndHandsOverTheWork(t *testing.T) {
 	_, text = callTool(t, cs, "next", map[string]any{"work": out.Work})
 	if !strings.Contains(text, `"draft"`) || !strings.Contains(text, strings.TrimPrefix(out.Work[0], "Project/")) {
 		t.Fatalf("next: %s", text)
+	}
+}
+
+// What a piece is, is the answer: a kind or a key the questions do not
+// ask is refused with what to send instead, never silently ignored.
+func TestStructureRefusesWhatItDoesNotAsk(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "structure", map[string]any{"pieces": []any{
+		map[string]any{"name": "Rollout", "kind": "Project"},
+		map[string]any{"name": "Pupils served", "kind": "KPI"},
+	}})
+	if !strings.Contains(text, `\"kind\" is not an answer`) || !strings.Contains(text, "is a KPI, not a piece of work") || strings.Contains(text, `"work"`) {
+		t.Fatalf("structure: %s", text)
+	}
+}
+
+// Many records in one call, each checked, and what comes next.
+func TestSaveDraftsWritesManyAndSaysWhatComesNext(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "Plan"})
+	goal := func(id, name string) map[string]any {
+		return map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": id, "name": name}, "spec": map[string]any{"level": "goal"}}
+	}
+	res, text := callTool(t, cs, "save_drafts", map[string]any{
+		"manifests": []any{goal("g-one", "Fair prices"), goal("g-two", "Steady supply")},
+		"work":      []any{"Goal/g-one", "Goal/g-two", "Project/p-new"},
+	})
+	if res.IsError || strings.Count(text, `"saved":"draft`) != 2 || !strings.Contains(text, `"write":"Project/p-new"`) {
+		t.Fatalf("save_drafts: %s", text)
 	}
 }

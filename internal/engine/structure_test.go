@@ -1,6 +1,7 @@
 package engine_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -74,5 +75,22 @@ func TestClassifyGivesAProgrammeItsProjects(t *testing.T) {
 	})
 	if got := strings.Join(s.Order, " > "); got != "Meters > Pipes > Treatment works > Cleaner water" {
 		t.Errorf("order %s", got)
+	}
+}
+
+// Every key structure accepts is an answer StructurePiece holds.
+func TestStructureKeysAreThePieceFields(t *testing.T) {
+	t.Parallel()
+	b, _ := json.Marshal(engine.StructurePiece{Name: "x", OutOfScope: true, Policy: true, Ongoing: true, RunsToday: true, GroupsForFunding: true,
+		CoordinatesProjects: true, OutputOf: "y", ChangeOfItsOwn: true, DependedOnBy: []string{"z"}})
+	var m map[string]any
+	_ = json.Unmarshal(b, &m)
+	if len(m) != len(engine.StructureKeys) {
+		t.Fatalf("piece fields %v, keys %v", m, engine.StructureKeys)
+	}
+	for k := range m {
+		if !engine.StructureKeys[k] {
+			t.Errorf("%s is a field structure refuses", k)
+		}
 	}
 }
