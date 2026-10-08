@@ -10,8 +10,11 @@
 
   outputs = { self, nixpkgs, rust-overlay }:
     let
-      # Both architectures the releases target, plus macOS for laptops.
-      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      # The systems the flake builds on: both architectures the releases
+      # target, plus Apple silicon for laptops. Nixpkgs no longer builds
+      # for Intel macOS; its binary is cross-compiled here like every
+      # other platform's (cartograph-darwin-amd64, docs/CROSS.md).
+      systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
       version = builtins.replaceStrings [ "\n" ] [ "" ] (builtins.readFile ./VERSION);
       trim = f: builtins.replaceStrings [ "\n" " " ] [ "" "" ] (builtins.readFile f);
