@@ -1190,7 +1190,7 @@ func TestAPortIsOneChain(t *testing.T) {
 		"M2         Graders trained               Training unit          20/10/2026\n\n" +
 		"M3         Pilot depots checking         Quality team           02/11/2026\n\n" +
 		"M4         Pilot season reviewed         Steering committee     15/12/2026\n"
-	res, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	res, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileBytes": len(doc)})
 	if res.IsError || !strings.Contains(text, `"piecesIn":["s2"]`) {
 		t.Fatalf("port, first call: %s", text)
 	}
@@ -1218,7 +1218,7 @@ func TestStartWorkAfterADocumentIsAPort(t *testing.T) {
 		"M2         Graders trained               Training unit          20/10/2026\n\n" +
 		"M3         Pilot depots checking         Quality team           02/11/2026\n\n" +
 		"M4         Pilot season reviewed         Steering committee     15/12/2026\n"
-	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileBytes": len(doc)})
 	if !strings.Contains(text, `"questions"`) || !strings.Contains(text, `"example"`) {
 		t.Fatalf("port's first answer lacks the questions: %s", text)
 	}
@@ -1239,7 +1239,7 @@ func TestAPortRefusesTheDocumentsWorkstreamsAsProjects(t *testing.T) {
 		"and Training                 graders at every depot\n\n" +
 		"WS2 Depot Inspection         Run the checks each week once    Inspection unit\n" +
 		"and Follow-up                the pilot ends, and report\n"
-	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileBytes": len(doc)})
 	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{
 		map[string]any{"name": "Depot checks", "none": true},
 		map[string]any{"name": "Grading and Training", "changeOfItsOwn": true, "change": "graders apply one checklist", "dependedOnBy": []any{"Depot checks"}},
@@ -1315,7 +1315,7 @@ func TestAPortWritesEveryRecordInOneCall(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
 	doc := "Depot Checks Charter\n\nA. Purpose\nGraders at every depot apply one checklist, so produce is graded the same everywhere.\n"
-	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileBytes": len(doc)})
 	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{
 		map[string]any{"name": "Depot checks", "none": true},
 		map[string]any{"name": "Weekly inspection", "ongoing": true},
@@ -1357,7 +1357,7 @@ func TestARegisterGivesItsKPIsBaselinesAndTargets(t *testing.T) {
 		"    Indicator                    Baseline              Target / Date             Data Source         Frequency    Owner\n\n" +
 		"    Depots grading to checklist  0 (March 2026)        100% by June 2027         Inspection forms    Quarterly    Quality team\n\n" +
 		"    Grading disputes             Not counted yet       Set after the pilot       Dispute log         Monthly      Dr. Ada Mensah / Quality team\n"
-	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc})
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileBytes": len(doc)})
 	_, ported := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
 	_, text := callTool(t, cs, "work_summary", map[string]any{})
 	if !strings.Contains(text, "KPI/") {
@@ -1368,5 +1368,19 @@ func TestARegisterGivesItsKPIsBaselinesAndTargets(t *testing.T) {
 		if strings.Contains(text, bad) && !strings.Contains(text, "Grading disputes") {
 			t.Errorf("%s still open: %s", bad, text)
 		}
+	}
+}
+
+// A text that is not the whole file (a summary, a part) is refused.
+func TestAPortRefusesATextThatIsNotTheWholeFile(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	res, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": "A short summary of the charter.", "fileBytes": 40000})
+	if !res.IsError || !strings.Contains(text, "never a summary") {
+		t.Fatalf("port: %s", text)
+	}
+	res, _ = callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": "A short summary of the charter."})
+	if !res.IsError {
+		t.Fatal("port took a text without the file's size")
 	}
 }

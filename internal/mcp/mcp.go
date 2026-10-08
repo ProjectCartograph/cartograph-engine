@@ -68,9 +68,10 @@ func ServeStdio(ctx context.Context, o Options) error {
 }
 
 const instructions = `Porting a document? Do exactly this, in one pass:
-1. port with the document's title and its text, straight from its file
-   (never retyped, never read whole). It answers with the sections
-   that name pieces of work.
+1. port with the document's title, its text straight from its file and
+   fileBytes, the file's size: have a script build the call, never
+   retype, summarise or read the document whole. It answers with the
+   sections that name pieces of work.
 2. read_section those sections; list every piece of work they name
    (the whole, each survey, system, service, policy or scheme; never a
    workstream), answer the structure questions for each, and call port
@@ -799,6 +800,7 @@ type (
 		ChangeSet string       `json:"changeSet,omitempty" jsonschema:"the change set to port into; your latest open one when left out, and a new one when you have none"`
 		Title     string       `json:"title" jsonschema:"the document's title"`
 		Text      string       `json:"text,omitempty" jsonschema:"the document's whole text, straight from its file: on the first call only"`
+		FileBytes int          `json:"fileBytes,omitempty" jsonschema:"with text: the file's size in bytes (wc -c, os.path.getsize), so a text that is not the whole file is refused"`
 		Pieces    []any        `json:"pieces,omitempty" jsonschema:"on the second call: every piece of work the document names, each with its name and only its yes answers to the structure questions"`
 		Records   []portRecord `json:"records,omitempty" jsonschema:"on the third call: every record the second call listed, each with set (every field the document gives, by JSON pointer) and open (each check it does not answer, with the reason)"`
 	}
@@ -1717,6 +1719,9 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			if len(srcs) == 0 {
 				if strings.TrimSpace(in.Text) == "" {
 					return nil, fmt.Errorf("%w: give the document's text, straight from its file, on the first call", engine.ErrBadEdit)
+				}
+				if err := wholeFile(in.Text, in.FileBytes); err != nil {
+					return nil, err
 				}
 				src, err := e.BringSource(c.ctx, cs.ID, in.Title, in.Text)
 				if err != nil {
@@ -3031,6 +3036,23 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 		"next": "The structure is drafted and the registers written. Now call port a third time with records: every record listed here, " +
 			"each with set (every field in its fill, written from the sections read names) and open (each check the document does not answer, with its reason). " +
 			"One call for all of them; then propose; report from work_summary."}, nil
+}
+
+// wholeFile refuses a document's text that is not its whole file: a
+// summary or an excerpt loses the registers and sections a port is
+// written from, and no later step can tell. The file's size is given
+// beside the text; line endings and a final newline may differ.
+func wholeFile(text string, fileBytes int) error {
+	if fileBytes <= 0 {
+		return fmt.Errorf("%w: give fileBytes, the file's size in bytes (wc -c, or os.path.getsize in a script), beside its text", engine.ErrBadEdit)
+	}
+	got := len(text)
+	slack := fileBytes/50 + 64
+	if got < fileBytes-slack || got > fileBytes+slack {
+		return fmt.Errorf("%w: the text is %d bytes and the file %d: send the file's whole text, read straight from it by a script "+
+			"(json.dump({\"title\": ..., \"text\": open(path).read(), \"fileBytes\": os.path.getsize(path)})), never a summary or a part", engine.ErrBadEdit, got, fileBytes)
+	}
+	return nil
 }
 
 // fillsOf is what each record of the work still needs, field by field:
