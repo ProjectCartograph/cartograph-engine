@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -36,6 +37,9 @@ func (e *Engine) NamedRefs(ctx context.Context, set, kind string, fields map[str
 	created := r.created
 	for _, c := range r.clipped {
 		created = append(created, "cut: "+c)
+	}
+	for _, c := range r.refused {
+		created = append(created, "refused: "+c)
 	}
 	return out, created, nil
 }
@@ -76,6 +80,7 @@ type refResolver struct {
 	ids     map[string]map[string]bool   // kind: id
 	created []string
 	clipped []string
+	refused []string
 	err     error
 }
 
@@ -182,6 +187,14 @@ func (r *refResolver) id(kind, value string) string {
 	if err == nil {
 		err = r.e.SaveInChangeSet(r.ctx, r.set, kind, id, text)
 	}
+	var invalid *ValidationError
+	if errors.As(err, &invalid) {
+		// A name the register refuses (a person's, where a role goes)
+		// costs only the field it was given in: the field is refused when
+		// it is set, and the reason said here.
+		r.refused = append(r.refused, fmt.Sprintf("%q is not a %s's name: %s", value, kind, strictRule(r.e, kind)))
+		return value
+	}
 	if err != nil {
 		r.err = err
 		return value
@@ -265,4 +278,17 @@ func isDigits(s string) bool {
 		}
 	}
 	return s != ""
+}
+
+// strictRule is what a kind's strict profile says it refuses, for an
+// agent told its value was refused.
+func strictRule(e *Engine, kind string) string {
+	spec, ok := kinds.ByName(kind)
+	if !ok {
+		return "it breaks the kind's rules"
+	}
+	if d, _ := e.schemas.raw["strict."+spec.SchemaFile]["description"].(string); d != "" {
+		return d
+	}
+	return "it breaks the kind's rules"
 }

@@ -1124,3 +1124,25 @@ func TestADocumentIsBroughtInAndReadBySection(t *testing.T) {
 		t.Errorf("the document shows as a draft: %s", text)
 	}
 }
+
+// A person's name where a role goes is refused for that field alone,
+// with the reason; the rest of the settle is kept.
+func TestAPersonsNameCostsOnlyItsField(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{
+		"/spec/summary/about": "Checks at every depot",
+		"/spec/resources":     []any{map[string]any{"role": "manager", "resource": "Dr. Ada Mensah"}},
+	}})
+	if res.IsError || !strings.Contains(text, "is not a Resource's name") || !strings.Contains(text, "never a person") {
+		t.Fatalf("settle: %s", text)
+	}
+	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
+	if !strings.Contains(text, "Checks at every depot") || strings.Contains(text, "Mensah") {
+		t.Errorf("draft: %s", text)
+	}
+}

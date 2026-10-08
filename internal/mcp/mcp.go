@@ -1652,6 +1652,8 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 			for _, c := range created {
 				if note, ok := strings.CutPrefix(c, "cut: "); ok {
 					cut = append(cut, note)
+				} else if why, ok := strings.CutPrefix(c, "refused: "); ok {
+					refused = append(refused, engine.Problem{Message: why})
 				} else {
 					drafted = append(drafted, c)
 				}
