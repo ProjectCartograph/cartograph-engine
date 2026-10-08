@@ -20,6 +20,17 @@ test: embed
     # Compile every test binary first: the budget is for the tests, and a
     # cold CI runner spends most of ten seconds compiling.
     go test -count=1 -run '^$' ./... >/dev/null
+    # The stores' tests write SQLite files and vaults to the temporary
+    # directory; on a runner's disk that alone is most of the budget. A
+    # tmpfs where there is one (Linux's /dev/shm), the default elsewhere.
+    # Go builds the test binaries in GOTMPDIR, kept where it was: a tmpfs
+    # may be small, or not allow running what is on it.
+    if [ -d /dev/shm ] && [ -w /dev/shm ]; then
+      export GOTMPDIR="${GOTMPDIR:-${TMPDIR:-/tmp}}"
+      TMPDIR=$(mktemp -d /dev/shm/cartograph-test.XXXXXX)
+      export TMPDIR
+      trap 'rm -rf "$TMPDIR"' EXIT
+    fi
     start=$(date +%s%3N)
     go test -count=1 ./...
     end=$(date +%s%3N)
