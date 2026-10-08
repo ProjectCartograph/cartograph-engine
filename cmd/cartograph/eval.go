@@ -119,6 +119,7 @@ func evalServeCmd(args []string) error {
 	fs := flag.NewFlagSet("eval serve", flag.ContinueOnError)
 	document := fs.String("document", "", "the document the agent ports")
 	agent := fs.String("agent", "Agent", "the name the agent calls the server by, which its trace is read for")
+	flake := fs.String("flake", ".", "the flake the agent runs its other commands in")
 	dir, err := parseWithDir(fs, args)
 	if err != nil {
 		return err
@@ -176,6 +177,7 @@ func evalServeCmd(args []string) error {
 	fmt.Printf("run %s on build %s, serving %s\n\nThe agent's prompt:\n\n", name, short(b.Commit), endpoint)
 	fmt.Printf("Port the document in %s into Cartograph, and propose the change set. Your person is not available; work from the document alone.\n\n", doc)
 	fmt.Printf("Cartograph's MCP server is reached with `%s eval call -as %s %s` (`--init` for its instructions, `--tools`, or `<tool> '<json>'`; `@file.json` for long arguments).\n\n", bin, *agent, endpoint)
+	fmt.Printf("Run every other command inside the flake (`nix develop %s -c <command>`), never a tool installed on the machine. ", *flake)
 	fmt.Printf("Keep scratch files under %s and touch nothing else. Report the change set id.\n", filepath.Join(rd, "work"))
 	return nil
 }
