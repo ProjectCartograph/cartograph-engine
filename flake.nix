@@ -217,6 +217,7 @@
               go
               go-tools # staticcheck
               gopls # the language server: just check runs its diagnostics
+              actionlint # the workflows, before GitHub refuses one
               (python3.withPackages (ps: [ ps.pyyaml ])) # scripts/check-compat
               just
               bashInteractive

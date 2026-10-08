@@ -104,7 +104,7 @@ jobs:
           docker run -d --name cartograph -p 8080:8080 -v cartograph-vault:/vault "$tag"
       - name: ready
         run: |
-          for i in $(seq 1 60); do curl -sf http://localhost:8080/readyz && exit 0; sleep 0.5; done
+          for _ in $(seq 1 60); do curl -sf http://localhost:8080/readyz && exit 0; sleep 0.5; done
           docker logs cartograph; exit 1
 
   # The Helm chart: rendered and validated without a cluster, then

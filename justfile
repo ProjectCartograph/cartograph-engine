@@ -129,6 +129,7 @@ fmt:
 lint: embed
     staticcheck ./...
     out="$(gopls check $(git ls-files '*.go' | grep -v '/gen/'))"; [ -z "$out" ] || { echo "$out"; exit 1; }
+    actionlint .github/workflows/*.yml
 
 # The dependency rule: inward only (internal/arch)
 arch: embed
