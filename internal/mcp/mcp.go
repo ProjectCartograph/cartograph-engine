@@ -76,9 +76,11 @@ const instructions = `Porting a document, or starting any new piece of work? Do 
    lists them). It decides what each piece is, refuses answers that
    contradict each other, and drafts every record, named and linked.
 3. For each record next names, one settle: set every field the
-   documents give (read only the sections it needs) and leave open
-   each check they do not answer, with its reason, passing the work
-   list start_work returned. Its answer names the next record and
+   documents give, for each check in fill and each list in
+   alsoFromTheDocuments (milestones, risks, costs and the like), in the
+   shape each shows, reading only the sections it needs; leave open
+   each check they do not answer, with its reason; pass the work list
+   start_work returned. Its answer names the next record and
    what it lacks. Repeat until it says every check is met. Never stop
    part way and never hand the rest to your person.
 4. propose.
@@ -2250,14 +2252,25 @@ func withFill(c call, out map[string]any, tasks []engine.Task) {
 		return
 	}
 	first := tasks[0]
-	var fill []map[string]string
+	var fill []map[string]any
+	shaped := map[string]bool{}
 	for _, t := range tasks {
 		if t.Kind != first.Kind || t.ID != first.ID {
 			continue
 		}
-		f := map[string]string{"check": t.Check, "do": t.Do, "now": t.Message}
+		f := map[string]any{"check": t.Check, "do": t.Do, "now": t.Message}
 		if t.Field != "" {
 			f["field"] = t.Field
+			// What goes there, when it is a list or an object, so the whole
+			// of it is written in one settle without reading the guide;
+			// once a field.
+			if sh, ok := c.o.Engine.FieldShapeAt(t.Kind, t.Field); ok && !shaped[t.Field] {
+				shaped[t.Field] = true
+				switch sh.Example.(type) {
+				case []any, map[string]any:
+					f["shape"] = sh
+				}
+			}
 		}
 		if t.By != "" {
 			f["writeFirst"] = t.By
@@ -2267,6 +2280,20 @@ func withFill(c call, out map[string]any, tasks []engine.Task) {
 	if len(fill) > 1 {
 		out["fill"] = fill
 		delete(out, "then")
+		// A port is in full when every list the documents give is written,
+		// checked or not: the record's other lists, with their shapes.
+		also := map[string]any{}
+		for _, f := range c.o.Engine.ListFields(first.Kind) {
+			if shaped[f] {
+				continue
+			}
+			if sh, ok := c.o.Engine.FieldShapeAt(first.Kind, f); ok {
+				also[f] = sh
+			}
+		}
+		if len(also) > 0 {
+			out["alsoFromTheDocuments"] = also
+		}
 		out["next"] = fmt.Sprintf("Settle %s/%s now, every check in fill at once, with one settle call: set every field the documents give, "+
 			"open each check they do not answer with its reason, and pass the work list. %s", first.Kind, first.ID, firstNext(c.ctx, c.o.Engine, first))
 	}

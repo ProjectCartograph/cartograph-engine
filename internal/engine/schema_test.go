@@ -2,6 +2,7 @@ package engine_test
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -278,5 +279,23 @@ func TestAResourceNamesARoleNotAPerson(t *testing.T) {
 	}
 	if got := check("Head of quality"); got != "ok" {
 		t.Errorf("a role: %s", got)
+	}
+}
+
+// A field's shape, read from the schema: a milestone's required parts in
+// an example, its optional fields named.
+func TestTheShapeOfAField(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	sh, ok := e.FieldShapeAt("Project", "/spec/milestones")
+	if !ok {
+		t.Fatal("no shape for milestones")
+	}
+	b, _ := json.Marshal(sh)
+	if !strings.Contains(string(b), `"timing"`) || !strings.Contains(string(b), `"name"`) || !strings.Contains(string(b), "owner") {
+		t.Errorf("milestones: %s", b)
+	}
+	if _, ok := e.FieldShapeAt("Project", "/spec/nothing"); ok {
+		t.Error("a field the schema does not have")
 	}
 }
