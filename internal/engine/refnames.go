@@ -208,6 +208,16 @@ func (r *refResolver) id(kind, value string) string {
 // valid, read from the name where it can be: a role's category (a body
 // or a unit by its words, else a role), for the person to correct.
 func registerDefaults(kind, name string) map[string]any {
+	if kind == "KPI" {
+		// An indicator named in a register: its definition is its name, in
+		// percent where the name says so, else a count, rising; the checks
+		// ask for its baseline, target, sources and cycle.
+		unit := "count"
+		if strings.Contains(name, "%") || strings.Contains(strings.ToLower(name), "percent") || strings.Contains(strings.ToLower(name), "share") {
+			unit = "percent"
+		}
+		return map[string]any{"definition": clip(name, 300), "unit": unit, "direction": "increase"}
+	}
 	if kind != "Resource" {
 		return map[string]any{}
 	}

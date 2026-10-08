@@ -1249,3 +1249,24 @@ func TestAPortRefusesTheDocumentsWorkstreamsAsProjects(t *testing.T) {
 		t.Fatalf("port: %s", text)
 	}
 }
+
+// Re-sending a list the draft already holds merges by id: what the
+// server wrote from a register is never lost to a settle.
+func TestSettleMergesAListByID(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/deliverables": []any{
+		map[string]any{"id": "d1", "name": "Checklist"}, map[string]any{"id": "d2", "name": "Training"}}}})
+	callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/deliverables": []any{
+		map[string]any{"id": "d2", "name": "Training for graders"}, map[string]any{"id": "d3", "name": "Weekly report"}}}})
+	_, text = callTool(t, cs, "get", map[string]any{"kind": kind, "id": id})
+	for _, want := range []string{"Checklist", "Training for graders", "Weekly report"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("lacks %q: %s", want, text)
+		}
+	}
+}

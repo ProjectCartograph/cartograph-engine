@@ -215,6 +215,8 @@ func headerRole(h string) string {
 		{"owner", "owner|lead|responsible|accountable"},
 		{"date", "date|due|deadline|when|target"},
 		{"baseline", "baseline"},
+		{"source", "data source|source of data|source"},
+		{"cycle", "frequency|cycle|how often"},
 		{"dependency", "dependenc|depends|predecessor"},
 		{"name", "milestone|deliverable|description|risk|issue|item|name|title|indicator|kpi|output"},
 	} {
@@ -248,7 +250,11 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 		switch strings.TrimPrefix(field, "/spec/") {
 		case "milestones":
 			item["id"], item["name"] = id, clip(name, 120)
-			item["timing"] = cellTiming(byRole["date"])
+			if t := cellTiming(byRole["date"]); t != nil {
+				item["timing"] = t
+			} else {
+				item["timing"] = map[string]any{"form": "date", "note": clip(byRole["date"], 240)}
+			}
 			if o := leadOf(byRole["owner"]); o != "" {
 				item["owner"] = o
 			}
@@ -260,8 +266,8 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 			if len([]rune(name)) > 60 {
 				item["description"] = clip(name, 240)
 			}
-			if byRole["date"] != "" {
-				item["due"] = cellTiming(byRole["date"])
+			if t := cellTiming(byRole["date"]); t != nil {
+				item["due"] = t
 			}
 			if o := leadOf(byRole["owner"]); o != "" {
 				item["owner"] = o
@@ -297,6 +303,17 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 				reason += "; baseline " + byRole["baseline"]
 			}
 			item["reason"] = clip(reason, 240)
+			// What the KPI itself holds, set on it once it is drafted.
+			extra := map[string]any{}
+			if src := leadOf(byRole["source"]); src != "" {
+				extra["/spec/sources"] = []any{clip(src, 120)}
+			}
+			if cyc := strings.TrimSpace(byRole["cycle"]); cyc != "" {
+				extra["/spec/cycle"] = clip(cyc, 60)
+			}
+			if len(extra) > 0 {
+				item["_kpi"] = extra
+			}
 		default:
 			return nil
 		}
@@ -321,10 +338,16 @@ func cellTiming(cell string) map[string]any {
 			last = m
 		}
 	}
-	if last == "" {
-		return map[string]any{"form": "date"}
+	if last != "" {
+		return map[string]any{"form": "date", "date": last}
 	}
-	return map[string]any{"form": "date", "date": last}
+	// Only years ("Term I 2026/2027"): a window over them, honestly wide,
+	// the cell kept as its note; nothing at all is left to the checks.
+	years := regexp.MustCompile(`\b(19|20)[0-9]{2}\b`).FindAllString(cell, -1)
+	if len(years) > 0 {
+		return map[string]any{"form": "window", "notBefore": years[0] + "-01", "notAfter": years[len(years)-1] + "-12", "note": clip(cell, 240)}
+	}
+	return nil
 }
 
 func level(cell string) string {

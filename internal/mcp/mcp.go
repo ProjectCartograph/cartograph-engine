@@ -2782,6 +2782,7 @@ func applyFields(c call, set, kind, id string, put map[string]any, unset []strin
 	if len(put) == 0 && len(unset) == 0 {
 		return nil, created, nil
 	}
+	put = mergeLists(c, set, kind, id, put)
 	_, err = e.EditInChangeSet(c.ctx, set, kind, id, put, unset)
 	if err == nil {
 		return nil, created, nil
@@ -2854,7 +2855,21 @@ func registerInto(c call, set, kind, id, section, field string) (int, int, []eng
 	var drafted []string
 	added := 0
 	for _, it := range items {
+		extra, _ := it["_kpi"].(map[string]any)
+		delete(it, "_kpi")
 		r, created, err := applyFields(c, set, kind, id, map[string]any{field + "/-": it}, nil)
+		// A KPI drafted from the row gets what the row says of it: its
+		// source and its cycle, found or drafted by name.
+		if err == nil && len(extra) > 0 {
+			for _, d := range created {
+				if k, kid, ok := strings.Cut(d, "/"); ok && k == "KPI" {
+					more, moreCreated, _ := applyFields(c, set, "KPI", kid, extra, nil)
+					r = append(r, more...)
+					created = append(created, moreCreated...)
+					break
+				}
+			}
+		}
 		var invalid *engine.ValidationError
 		if errors.As(err, &invalid) {
 			// A row is worth more than a cell: the cells refused (an owner
@@ -2987,4 +3002,72 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 	}
 	return map[string]any{"changeSet": set, "work": st.Work, "pieces": st.Pieces, "registers": registers, "then": next,
 		"next": "The structure is drafted and the registers written. Now one settle a record, as then says, passing work; then propose; report from work_summary."}, nil
+}
+
+// mergeLists makes setting a whole list that the draft already holds
+// items of a merge by id: an item with an id the list has replaces it, a
+// new one is added, and every other item is kept. An agent re-sending a
+// list never loses what the server wrote into it (a register's rows); it
+// removes an item with unset.
+func mergeLists(c call, set, kind, id string, put map[string]any) map[string]any {
+	text, found, err := c.o.Engine.ChangeSetText(c.ctx, set, kind, id)
+	if err != nil || !found {
+		return put
+	}
+	var doc map[string]any
+	if c.o.Engine.Codec().DecodeInto(text, &doc) != nil {
+		return put
+	}
+	out := make(map[string]any, len(put))
+	for p, v := range put {
+		out[p] = v
+		next, isList := v.([]any)
+		if !isList {
+			continue
+		}
+		var cur any = doc
+		for _, seg := range strings.Split(strings.Trim(p, "/"), "/") {
+			m, ok := cur.(map[string]any)
+			if !ok {
+				cur = nil
+				break
+			}
+			cur = m[seg]
+		}
+		have, ok := cur.([]any)
+		if !ok || len(have) == 0 {
+			continue
+		}
+		idOf := func(item any) string {
+			m, _ := item.(map[string]any)
+			s, _ := m["id"].(string)
+			return s
+		}
+		merged := append([]any(nil), have...)
+		index := map[string]int{}
+		for i, it := range merged {
+			if k := idOf(it); k != "" {
+				index[k] = i
+			}
+		}
+		keyed := true
+		for _, it := range next {
+			k := idOf(it)
+			if k == "" {
+				keyed = false
+				break
+			}
+			if i, ok := index[k]; ok {
+				merged[i] = it
+			} else {
+				index[k] = len(merged)
+				merged = append(merged, it)
+			}
+		}
+		// A list without ids is set as sent: there is nothing to merge by.
+		if keyed {
+			out[p] = merged
+		}
+	}
+	return out
 }
