@@ -1384,3 +1384,26 @@ func TestAPortRefusesATextThatIsNotTheWholeFile(t *testing.T) {
 		t.Fatal("port took a text without the file's size")
 	}
 }
+
+// A document brought first and then start_work with the pieces is the
+// same port: it goes on in the change set holding the document, and the
+// registers are written.
+func TestStartWorkAfterBringingADocumentIsItsPort(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\nG1. Milestone Plan\n" +
+		"    Code    Milestone                    Date          Owner\n\n" +
+		"    M1      Checklist agreed             03/03/2026    Quality team\n\n" +
+		"    M2      Graders trained              06/05/2026    Quality team\n\n" +
+		"    M3      First depot graded           01/06/2026    Inspection unit\n\n" +
+		"    M4      Every depot graded           01/09/2026    Inspection unit\n\n" +
+		"    M5      Disputes reviewed            01/10/2026    Quality team\n"
+	_, brought := callTool(t, cs, "bring_document", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Depot checks", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
+	var a, b struct{ ChangeSet string }
+	_ = json.Unmarshal([]byte(brought), &a)
+	_ = json.Unmarshal([]byte(text), &b)
+	if a.ChangeSet == "" || a.ChangeSet != b.ChangeSet || !strings.Contains(text, `"field":"/spec/milestones"`) {
+		t.Fatalf("brought into %s, started %s: %s", a.ChangeSet, b.ChangeSet, text[strings.Index(text, `"registers"`):])
+	}
+}

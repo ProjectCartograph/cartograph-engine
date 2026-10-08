@@ -1946,6 +1946,19 @@ func newServer(o Options, person identity.Principal) *sdk.Server {
 					return map[string]any{"problems": st.Problems, "next": "Fix every problem and call start_work again with the pieces; nothing was started."}, nil
 				}
 			}
+			// A document already brought into the agent's open change set,
+			// with nothing drafted beside it yet, makes this that port: the
+			// work goes on in it, not in a new change set without the
+			// document.
+			if len(in.Pieces) > 0 {
+				if open, oc, found, err := c.inChangeSet("", false); err == nil && found {
+					if srcs, err := e.Sources(oc.ctx, open.ID); err == nil && len(srcs) > 0 {
+						if view, err := e.ViewChangeSet(oc.ctx, open.ID); err == nil && onlySources(view) {
+							return portPieces(oc, open.ID, srcs[0], in.Pieces)
+						}
+					}
+				}
+			}
 			cs, err := e.StartChangeSet(c.ctx, in.Title, in.Description)
 			if err != nil {
 				return nil, err
@@ -3042,6 +3055,17 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 		"next": "The structure is drafted and the registers written. Now call port a third time with records: every record listed here, " +
 			"each with set (every field in its fill, written from the sections read names) and open (each check the document does not answer, with its reason). " +
 			"One call for all of them; then propose; report from work_summary."}, nil
+}
+
+// onlySources reports whether a change set holds documents and nothing
+// drafted yet.
+func onlySources(view engine.ChangeSetView) bool {
+	for _, it := range view.Items {
+		if !strings.HasPrefix(it.Item.Kind, "_") {
+			return false
+		}
+	}
+	return true
 }
 
 // wholeFile refuses a document's text that is not its whole file: a
