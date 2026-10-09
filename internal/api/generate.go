@@ -1,3 +1,3 @@
 package api
 
-//go:generate go tool oapi-codegen -config oapi-codegen.yaml ../../contract/openapi.yaml
+//go:generate oapi-codegen -config oapi-codegen.yaml ../../contract/openapi.yaml

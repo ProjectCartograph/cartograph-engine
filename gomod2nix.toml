@@ -1,0 +1,215 @@
+schema = 3
+cachePackages = [
+  'github.com/apapsch/go-jsonmerge/v2',
+  'github.com/coder/websocket',
+  'github.com/dustin/go-humanize',
+  'github.com/fsnotify/fsnotify',
+  'github.com/fxamacker/cbor/v2',
+  'github.com/google/jsonschema-go/jsonschema',
+  'github.com/google/uuid',
+  'github.com/jackc/pgpassfile',
+  'github.com/jackc/pgservicefile',
+  'github.com/jackc/pgx/v5',
+  'github.com/jackc/pgx/v5/pgconn',
+  'github.com/jackc/pgx/v5/pgconn/ctxwatch',
+  'github.com/jackc/pgx/v5/pgproto3',
+  'github.com/jackc/pgx/v5/pgtype',
+  'github.com/jackc/pgx/v5/pgxpool',
+  'github.com/jackc/puddle/v2',
+  'github.com/modelcontextprotocol/go-sdk/auth',
+  'github.com/modelcontextprotocol/go-sdk/jsonrpc',
+  'github.com/modelcontextprotocol/go-sdk/mcp',
+  'github.com/modelcontextprotocol/go-sdk/oauthex',
+  'github.com/oapi-codegen/runtime',
+  'github.com/oapi-codegen/runtime/types',
+  'github.com/remyoudompheng/bigfft',
+  'github.com/santhosh-tekuri/jsonschema/v6',
+  'github.com/santhosh-tekuri/jsonschema/v6/kind',
+  'github.com/segmentio/asm/ascii',
+  'github.com/segmentio/asm/base64',
+  'github.com/segmentio/asm/cpu',
+  'github.com/segmentio/asm/cpu/arm',
+  'github.com/segmentio/asm/cpu/arm64',
+  'github.com/segmentio/asm/cpu/cpuid',
+  'github.com/segmentio/asm/cpu/x86',
+  'github.com/segmentio/asm/keyset',
+  'github.com/segmentio/encoding/ascii',
+  'github.com/segmentio/encoding/iso8601',
+  'github.com/segmentio/encoding/json',
+  'github.com/tetratelabs/wazero',
+  'github.com/tetratelabs/wazero/api',
+  'github.com/tetratelabs/wazero/experimental',
+  'github.com/tetratelabs/wazero/experimental/sys',
+  'github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1',
+  'github.com/tetratelabs/wazero/sys',
+  'github.com/x448/float16',
+  'github.com/yosida95/uritemplate/v3',
+  'go.yaml.in/yaml/v3',
+  'golang.org/x/oauth2',
+  'golang.org/x/sync/errgroup',
+  'golang.org/x/sync/semaphore',
+  'golang.org/x/sys/cpu',
+  'golang.org/x/sys/unix',
+  'golang.org/x/text/cases',
+  'golang.org/x/text/feature/plural',
+  'golang.org/x/text/language',
+  'golang.org/x/text/message',
+  'golang.org/x/text/message/catalog',
+  'golang.org/x/text/runes',
+  'golang.org/x/text/secure/bidirule',
+  'golang.org/x/text/secure/precis',
+  'golang.org/x/text/transform',
+  'golang.org/x/text/unicode/bidi',
+  'golang.org/x/text/unicode/norm',
+  'golang.org/x/text/width',
+  'golang.org/x/time/rate',
+  'modernc.org/libc',
+  'modernc.org/libc/sys/types',
+  'modernc.org/libc/uuid/uuid',
+  'modernc.org/mathutil',
+  'modernc.org/memory',
+  'modernc.org/sqlite',
+  'modernc.org/sqlite/lib',
+  'modernc.org/sqlite/vtab',
+]
+
+[mod]
+  [mod.'github.com/apapsch/go-jsonmerge/v2']
+    version = 'v2.0.0'
+    hash = 'sha256-xp/1B6XUN2EbddBfoUkTV3oTk+34m4kOZP+66HhfLg4='
+
+  [mod.'github.com/coder/websocket']
+    version = 'v1.8.15'
+    hash = 'sha256-6QnIQMMUSzrDXaUfO+9cl4uDh0SHizFUf4GpHmJedtk='
+
+  [mod.'github.com/davecgh/go-spew']
+    version = 'v1.1.2-0.20180830191138-d8f796af33cc'
+    hash = 'sha256-fV9oI51xjHdOmEx6+dlq7Ku2Ag+m/bmbzPo6A4Y74qc='
+
+  [mod.'github.com/dlclark/regexp2']
+    version = 'v1.11.4'
+    hash = 'sha256-1uCoCYCKyP8QZddlYfJCTWmcrKlEFNCsxWwMde9MspE='
+
+  [mod.'github.com/dustin/go-humanize']
+    version = 'v1.0.1'
+    hash = 'sha256-yuvxYYngpfVkUg9yAmG99IUVmADTQA0tMbBXe0Fq0Mc='
+
+  [mod.'github.com/fsnotify/fsnotify']
+    version = 'v1.10.1'
+    hash = 'sha256-6LBLgsh4nKkMpgRKVsYFEaGDSU1fncBcWVSjKBdfgjU='
+
+  [mod.'github.com/fxamacker/cbor/v2']
+    version = 'v2.9.4'
+    hash = 'sha256-9ApJh33oLwgBKYvINBjvwlWBAWXs8L3DN7yS9nyBXr0='
+
+  [mod.'github.com/google/jsonschema-go']
+    version = 'v0.4.3'
+    hash = 'sha256-AJDx6ZY91bQV0/mPHGDwko7+FgH/ihCH0kHubcbJIU4='
+
+  [mod.'github.com/google/uuid']
+    version = 'v1.6.0'
+    hash = 'sha256-VWl9sqUzdOuhW0KzQlv0gwwUQClYkmZwSydHG2sALYw='
+
+  [mod.'github.com/jackc/pgpassfile']
+    version = 'v1.0.0'
+    hash = 'sha256-H0nFbC34/3pZUFnuiQk9W7yvAMh6qJDrqvHp+akBPLM='
+
+  [mod.'github.com/jackc/pgservicefile']
+    version = 'v0.0.0-20240606120523-5a60cdf6a761'
+    hash = 'sha256-ETpGsLAA2wcm5xJBayr/mZrCE1YsWbnkbSSX3ptrFn0='
+
+  [mod.'github.com/jackc/pgx/v5']
+    version = 'v5.11.0'
+    hash = 'sha256-9+JOnfkk5WiuBC9J0l4EcAlHO/nD3zgNPnSJlu7Yx48='
+
+  [mod.'github.com/jackc/puddle/v2']
+    version = 'v2.2.2'
+    hash = 'sha256-IUxdu4JYfsCh/qlz2SiUWu7EVPHhyooiVA4oaS2Z6yk='
+
+  [mod.'github.com/mattn/go-isatty']
+    version = 'v0.0.24'
+    hash = 'sha256-pmq8KKIb2+qMF3E1cR2B7NAj5joF2tZduyXjIfIlkTk='
+
+  [mod.'github.com/modelcontextprotocol/go-sdk']
+    version = 'v1.8.0'
+    hash = 'sha256-MrAf2ChF1ikahpJDZ3zeXt59j9/cXMYocn46esn5+6E='
+
+  [mod.'github.com/ncruces/go-strftime']
+    version = 'v1.0.0'
+    hash = 'sha256-GYIwYDONuv/yTE0AEugCHQbtV3oiBaco93xUNYFcVBQ='
+
+  [mod.'github.com/oapi-codegen/runtime']
+    version = 'v1.7.0'
+    hash = 'sha256-jU0JmSRGvSIPNDZTWwotvROFktfiAVshOatYkT/u8tE='
+
+  [mod.'github.com/pmezard/go-difflib']
+    version = 'v1.0.1-0.20181226105442-5d4384ee4fb2'
+    hash = 'sha256-XA4Oj1gdmdV/F/+8kMI+DBxKPthZ768hbKsO3d9Gx90='
+
+  [mod.'github.com/remyoudompheng/bigfft']
+    version = 'v0.0.0-20230129092748-24d4a6f8daec'
+    hash = 'sha256-vYmpyCE37eBYP/navhaLV4oX4/nu0Z/StAocLIFqrmM='
+
+  [mod.'github.com/santhosh-tekuri/jsonschema/v6']
+    version = 'v6.0.3'
+    hash = 'sha256-r/1mhajjfamfJZpu+CeUYr7bTQGQEkmF2f4UcSQZEbA='
+
+  [mod.'github.com/segmentio/asm']
+    version = 'v1.1.3'
+    hash = 'sha256-T26b7yreVbvHVaUSLRnSeF+p4fmVhyTNIj7HzL83deA='
+
+  [mod.'github.com/segmentio/encoding']
+    version = 'v0.5.4'
+    hash = 'sha256-AVIwCIh/L7X7CaGGX2gYOlurO/xifjjLpK+AIRTv2rQ='
+
+  [mod.'github.com/tetratelabs/wazero']
+    version = 'v1.12.0'
+    hash = 'sha256-KXFBskHF9Esld7gn77BOyQpeeIDa/0OXuJFwrpNDRFc='
+
+  [mod.'github.com/x448/float16']
+    version = 'v0.8.4'
+    hash = 'sha256-VKzMTMS9pIB/cwe17xPftCSK9Mf4Y6EuBEJlB4by5mE='
+
+  [mod.'github.com/yosida95/uritemplate/v3']
+    version = 'v3.0.2'
+    hash = 'sha256-znUsCrfogPwAUNsdxBL93jIW/joercUm7RxKSExuWTM='
+
+  [mod.'go.yaml.in/yaml/v3']
+    version = 'v3.0.5'
+    hash = 'sha256-ygho+GU5kE7vPMx+dZYyNfCaeMjNxj66XmrcVf3afFE='
+
+  [mod.'golang.org/x/oauth2']
+    version = 'v0.35.0'
+    hash = 'sha256-QeleoXu+9K3LJZiw6/iPR+EQzi/OLDBTFdrP2/d1XN8='
+
+  [mod.'golang.org/x/sync']
+    version = 'v0.23.0'
+    hash = 'sha256-nF8YZFVC+TitjkderlqgGwJkuMqJCxI+fIElVLjBT2M='
+
+  [mod.'golang.org/x/sys']
+    version = 'v0.48.0'
+    hash = 'sha256-u+LwI76YIeg1asQKZItD2mnL4Yvx8veLhBuL8wv60Ls='
+
+  [mod.'golang.org/x/text']
+    version = 'v0.40.0'
+    hash = 'sha256-LJfnki46XEreGbSgjl+DeqgcTsINTOu2owyXNvijMcA='
+
+  [mod.'golang.org/x/time']
+    version = 'v0.15.0'
+    hash = 'sha256-5D24A65wn7k93Jj3+918UKjB9ccmGHPBEqjD2XDB92E='
+
+  [mod.'modernc.org/libc']
+    version = 'v1.77.1'
+    hash = 'sha256-XH7HBvMVe0lsBw0W+lkcRkItPL4//7c0p9RurXDcwqg='
+
+  [mod.'modernc.org/mathutil']
+    version = 'v1.7.1'
+    hash = 'sha256-COZ5rF2GhQVR1r6a0DanJ8qwQ94JSKdQxTMWrDzE0Cc='
+
+  [mod.'modernc.org/memory']
+    version = 'v1.12.1'
+    hash = 'sha256-Y/kW9/A5uF+Y66kDbxrh4muFgE3CEee6YzSl2FMPcRg='
+
+  [mod.'modernc.org/sqlite']
+    version = 'v1.60.1'
+    hash = 'sha256-NEuPcq63wseHfHZ0BorTAesJ0dPBwaPepsbFQOjM8Jo='

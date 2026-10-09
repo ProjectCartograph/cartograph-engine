@@ -7,15 +7,24 @@
   # else; the development shell does not carry it.
   inputs.rust-overlay.url = "github:oxalica/rust-overlay";
   inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+  # Go the way Nix builds it: one derivation per module, from
+  # gomod2nix.toml, and the dependencies compiled once into a build cache
+  # in the store, so neither a build nor the development shell downloads
+  # or compiles a dependency Cachix already holds (docs/adr/0031).
+  inputs.gomod2nix.url = "github:nix-community/gomod2nix";
+  inputs.gomod2nix.inputs.nixpkgs.follows = "nixpkgs";
 
-  outputs = { self, nixpkgs, rust-overlay }:
+  outputs = { self, nixpkgs, rust-overlay, gomod2nix }:
     let
       # The systems the flake builds on: both architectures the releases
       # target, plus Apple silicon for laptops. Nixpkgs no longer builds
       # for Intel macOS; its binary is cross-compiled here like every
       # other platform's (cartograph-darwin-amd64, docs/CROSS.md).
       systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
-      forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+      forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f (import nixpkgs {
+        inherit system;
+        overlays = [ gomod2nix.overlays.default ];
+      }));
       version = builtins.replaceStrings [ "\n" ] [ "" ] (builtins.readFile ./VERSION);
       trim = f: builtins.replaceStrings [ "\n" " " ] [ "" "" ] (builtins.readFile f);
     in
@@ -69,15 +78,19 @@
             meta.license = lib.licenses.asl20;
           };
 
-          # The binary. Tests run in the build (buildGoModule's checkPhase),
-          # so `nix build` is also the gate.
-          cartograph = pkgs.buildGoModule {
+          # The binary. Tests run in the build (the check phase), so `nix
+          # build` is also the gate. Each module is its own derivation, from
+          # gomod2nix.toml, and the dependencies compile once into a build
+          # cache derivation (passthru.goCacheEnv) the shell reads too.
+          cartograph = pkgs.buildGoApplication {
             pname = "cartograph";
             inherit version;
+            inherit (pkgs) go;
             src = lib.cleanSource ./.;
-            vendorHash = "sha256-wmRy0uULoA0ZKcmL9kPCIpzWEsFFLfrGb5xLAbAPSVU=";
+            pwd = ./.;
+            modules = ./gomod2nix.toml;
             subPackages = [ "cmd/cartograph" ];
-            env.CGO_ENABLED = 0;
+            CGO_ENABLED = 0;
             ldflags = [ "-s" "-w" "-X main.version=${version}" ];
             preBuild = ''
               rm -rf internal/spa/dist && mkdir -p internal/spa/dist
@@ -95,6 +108,23 @@
               mainProgram = "cartograph";
               license = lib.licenses.asl20;
             };
+          };
+
+          # gorelease, which `just compat` runs: not in nixpkgs, so built from
+          # golang.org/x/exp at one commit rather than fetched @latest.
+          gorelease = pkgs.buildGoModule {
+            pname = "gorelease";
+            version = "0-unstable-2026-10-07";
+            src = pkgs.fetchFromGitHub {
+              owner = "golang";
+              repo = "exp";
+              rev = "f45ad48fbe92f5666f71f75cf3e6dc0977a3c9d1";
+              hash = "sha256-ufKalh7FoqMdRr8sZZ53zqeeQCuaq82u1AG1i74EF+I=";
+            };
+            vendorHash = "sha256-OusVBrddEL2Gb1RdEzVsxdhb+WQE6ONpbmYEJUxGyCQ=";
+            subPackages = [ "cmd/gorelease" ];
+            doCheck = false;
+            meta.license = lib.licenses.bsd3;
           };
 
           # The Laya decision model (docs/adr/0023): its ONNX bundle at one
@@ -180,7 +210,8 @@
           # build on this machine. Tests run in the native build only.
           binaryFor = goos: goarch: cartograph.overrideAttrs (o: {
             pname = "cartograph-${goos}-${goarch}";
-            env = o.env // { GOOS = goos; GOARCH = goarch; };
+            GOOS = goos;
+            GOARCH = goarch;
             doCheck = false;
             postBuild = ''
               dir=$GOPATH/bin/${goos}_${goarch}
@@ -268,7 +299,7 @@
               };
             };
         in
-        { inherit cartograph automerge-wasm laya laya-model release; default = cartograph; }
+        { inherit cartograph automerge-wasm gorelease laya laya-model release; default = cartograph; }
         // lib.mapAttrs' (t: b: lib.nameValuePair "cartograph-${t}" b) binaries
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           image = imageFor { name = "cartograph"; };
@@ -286,29 +317,68 @@
         }) linuxOf));
 
       devShells = forEachSystem (pkgs:
-        let haveChromium = pkgs.stdenv.hostPlatform.isLinux; in {
-          default = pkgs.mkShell {
-            name = "cartograph-engine";
-            packages = with pkgs; [
+        let
+          haveChromium = pkgs.stdenv.hostPlatform.isLinux;
+          built = self.packages.${pkgs.stdenv.hostPlatform.system};
+          gomod = built.cartograph.passthru;
+          # What `just ci` runs, and nothing more: CI enters this shell, so
+          # a job fetches no browser, database or cluster it does not use.
+          ciPackages = with pkgs; [
               go
+              pkgs.gomod2nix # writes gomod2nix.toml from go.mod (just generate)
+              oapi-codegen # internal/api/generate.go, at the version nixpkgs pins
+              built.gorelease # just compat
+              zstd # unpacks the dependencies' build cache
               go-tools # staticcheck
               gopls # the language server: just check runs its diagnostics
               actionlint # the workflows, before GitHub refuses one
               (python3.withPackages (ps: [ ps.pyyaml ])) # scripts/check-compat
+              nodejs_22 # scripts/check-compat; and the Laya sidecar, `just serve laya` (docs/adr/0023)
               just
               bashInteractive
               coreutils
               diffutils
               gnugrep
               gnused
+              gawk # scripts/check-commit-msg
+              gnutar
+              gzip
               curl
               git
+          ];
+          goHook = ''
+              export GOTOOLCHAIN=local
+              export CARTOGRAPH_TOOLCHAIN=1
+              # Every module from the store, as the build reads them: vendor/
+              # links to gomod2nix's tree, so nothing is downloaded. The
+              # flags are the build's, so the dependencies compiled in
+              # go-cache-env are hits in GOCACHE, unpacked once per cache
+              # (docs/adr/0031). A new dependency: GOFLAGS=-mod=mod go get,
+              # then just generate.
+              root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+              ln -sfn ${gomod.vendorEnv} "$root/vendor"
+              export GOFLAGS="-mod=vendor -trimpath"
+              export GO_NO_VENDOR_CHECKS=1 # nixpkgs' Go: gomod2nix's modules.txt lists no explicit marks
+              export CGO_ENABLED=0
+              export GOCACHE="''${XDG_CACHE_HOME:-$HOME/.cache}/cartograph/go-build-${builtins.substring 11 12 (toString gomod.goCacheEnv)}"
+              if [ ! -d "$GOCACHE" ]; then
+                mkdir -p "$GOCACHE.tmp"
+                zstd -d -c ${gomod.goCacheEnv}/cache.tar.zst | tar -xf - -C "$GOCACHE.tmp"
+                chmod -R u+w "$GOCACHE.tmp" && mv "$GOCACHE.tmp" "$GOCACHE"
+              fi
+          '';
+        in {
+          ci = pkgs.mkShell {
+            name = "cartograph-engine-ci";
+            packages = ciPackages;
+            shellHook = goHook;
+          };
+          default = pkgs.mkShell {
+            name = "cartograph-engine";
+            packages = ciPackages ++ (with pkgs; [
               jujutsu # version control: colocated with git, the one agents use
               rsync # scripts/dev syncs the workspace into the test environment's copy
               postgresql # `just test-postgres` starts a throwaway server
-              # The Laya sidecar (deploy/laya): `just serve laya`
-              # starts it beside the server (docs/adr/0023).
-              nodejs_22
               # The Helm chart in deploy/helm: `just helm-lint` renders and
               # validates it, `just helm-kind` installs it on a kind cluster
               # (Docker comes from the host).
@@ -316,12 +386,10 @@
               kubeconform
               kind
               kubectl
-            ] ++ pkgs.lib.optionals haveChromium [ chromium ];
+            ] ++ pkgs.lib.optionals haveChromium [ chromium ]);
             shellHook = ''
               ${pkgs.lib.optionalString haveChromium ''export CHROMIUM="${pkgs.chromium}/bin/chromium"''}
-              export GOTOOLCHAIN=local
-              export CARTOGRAPH_TOOLCHAIN=1
-            '';
+'' + goHook;
           };
         });
 

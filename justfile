@@ -83,6 +83,10 @@ generate:
     cp contract/flows/*.json internal/contract/flows/
     cp -r contract/guidance/. internal/contract/guidance/
     cd internal/api && go generate ./...
+    # Each module as its own derivation, and the packages to compile into
+    # the dependencies' build cache (docs/adr/0031); downloads only when
+    # go.mod's modules change.
+    scripts/gomod2nix
     # The Automerge module, built from crdt/ by the flake (docs/adr/0007).
     # Its bytes are those x86_64 Linux builds: a compiler hosted on another
     # architecture emits different, equivalent WebAssembly, so elsewhere
@@ -158,7 +162,9 @@ compat base="": embed
     #!{{toolchain}} bash
     set -euo pipefail
     scripts/check-compat {{base}}
-    # gorelease is not packaged in nixpkgs; the Go toolchain fetches it.
+    # gorelease is the flake's, built from golang.org/x/exp at one commit.
+    # It compares with the base release as published, so it alone fetches
+    # modules: the base's, in module mode (ProjectCartograph/cartograph-engine#20).
     # The base is the last release before this commit: a tag on HEAD is
     # the release being checked.
     tag=$(git tag --list 'v*' --sort=-v:refname --no-contains HEAD | head -n 1)
@@ -172,7 +178,7 @@ compat base="": embed
       echo "VERSION $(cat VERSION) is a new major after $tag: no gorelease base"
       exit 0
     fi
-    go run golang.org/x/exp/cmd/gorelease@latest -base="$tag" 2>&1 | tail -n 20
+    GOFLAGS=-mod=mod gorelease -base="$tag" 2>&1 | tail -n 20
 
 # --- build and run --------------------------------------------------------
 

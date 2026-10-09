@@ -27,3 +27,5 @@ HANDOFF*.md
 SESSION_LOG.md
 NOTES.md
 .DS_Store
+# gomod2nix's vendor tree in the store, linked by the development shell
+/vendor
