@@ -1834,6 +1834,44 @@ func (s *Server) handoffItem(ctx context.Context, id, actor, _ string) error {
 	return s.handoffAt(ctx, id, actor, snapshot)
 }
 
+// GetChangeSetCharter is the charter a change set leaves a project with,
+// against the record, part by part and line by line.
+func (s *Server) GetChangeSetCharter(ctx context.Context, req apigen.GetChangeSetCharterRequestObject) (apigen.GetChangeSetCharterResponseObject, error) {
+	changed, err := s.Engine.Preview(ctx, req.Set)
+	if err != nil {
+		if errors.Is(err, engine.ErrNotFound) {
+			return apigen.GetChangeSetCharter404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+		}
+		return nil, err
+	}
+	parts, err := render.CharterDiff(ctx, changed, s.Engine, req.Id)
+	if err != nil {
+		if errors.Is(err, engine.ErrNotFound) {
+			return apigen.GetChangeSetCharter404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+		}
+		return nil, err
+	}
+	out := make(apigen.GetChangeSetCharter200JSONResponse, len(parts))
+	for i, p := range parts {
+		o := apigen.CharterPartDiff{Title: p.Title, State: apigen.CharterPartDiffState(p.State)}
+		if p.Step != "" {
+			step := p.Step
+			o.Step = &step
+		}
+		for _, l := range p.Lines {
+			o.Lines = append(o.Lines, struct {
+				Op   apigen.CharterPartDiffLinesOp `json:"op"`
+				Text string                        `json:"text"`
+			}{Op: apigen.CharterPartDiffLinesOp(l.Op), Text: l.Text})
+		}
+		if o.Lines == nil {
+			o.Lines = o.Lines[:0]
+		}
+		out[i] = o
+	}
+	return out, nil
+}
+
 // GetProjectCharterParts is a project's charter as its parts, as the
 // change set reads it (TAXONOMY.md D55).
 func (s *Server) GetProjectCharterParts(ctx context.Context, req apigen.GetProjectCharterPartsRequestObject) (apigen.GetProjectCharterPartsResponseObject, error) {

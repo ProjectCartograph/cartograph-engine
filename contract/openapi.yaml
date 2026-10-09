@@ -2025,6 +2025,36 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /changesets/{set}/items/Project/{id}/charter:
+    get:
+      operationId: getChangeSetCharter
+      summary: The charter a change set leaves a project with, against the record
+      description: >-
+        The project's charter as the change set reads it, part by part
+        against the record, from the same renderer as charter.html: each
+        part same, added, removed or changed, and its lines, one a
+        paragraph, list item, value or table row, each same, added or
+        removed. A project new in the change set is added whole. For a
+        person reviewing the change set in the document it adds up to.
+      parameters:
+        - $ref: "#/components/parameters/ChangeSetParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CharterPartDiff"
+
   /changesets/{set}/items/{kind}/{id}/removal:
     put:
       operationId: removeInChangeSet
@@ -4044,6 +4074,31 @@ components:
             What the person was asked about it and what they answered, or
             "not available" when the agent worked without them
             (docs/adr/0032).
+
+    CharterPartDiff:
+      type: object
+      description: One part of a charter as a change set leaves it, against the record.
+      required: [title, state, lines]
+      properties:
+        title:
+          type: string
+        step:
+          type: string
+          description: The step of the project's walk the part is written in.
+        state:
+          type: string
+          enum: [same, added, removed, changed]
+        lines:
+          type: array
+          items:
+            type: object
+            required: [op, text]
+            properties:
+              op:
+                type: string
+                enum: [same, added, removed]
+              text:
+                type: string
 
     Assumption:
       type: object
