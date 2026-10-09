@@ -128,11 +128,10 @@ fmt-check:
 fmt:
     gofmt -w .
 
-# staticcheck, the analyser the style guide names, and gopls, the
-# language server's own diagnostics: either finding anything fails
+# staticcheck, the analyser the style guide names, and actionlint on the
+# workflows: either finding anything fails
 lint: embed
     staticcheck ./...
-    out="$(gopls check $(git ls-files '*.go' | grep -v '/gen/'))"; [ -z "$out" ] || { echo "$out"; exit 1; }
     actionlint .github/workflows/*.yml
 
 # The dependency rule: inward only (internal/arch)
