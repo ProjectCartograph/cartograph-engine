@@ -355,8 +355,13 @@ eval-build dir rev="":
     #!{{toolchain}} bash
     set -euo pipefail
     # Any revision jj names (a change or commit id, short or whole, @-, a
-    # bookmark), resolved to the whole commit id nix builds from.
-    rev="$(jj log -r "{{ if rev == "" { "@-" } else { rev } }}" --no-graph -T commit_id)"
+    # bookmark), resolved to the whole commit id nix builds from. The test
+    # environment's copy has no .jj, so there git resolves it, read only.
+    if [ -d .jj ]; then
+      rev="$(jj log -r "{{ if rev == "" { "@-" } else { rev } }}" --no-graph -T commit_id)"
+    else
+      rev="$(git rev-parse "{{ if rev == "" { "HEAD" } else { rev } }}^{commit}")"
+    fi
     mkdir -p "{{dir}}"
     out="$(nix build "git+file://{{justfile_directory()}}?rev=$rev#cartograph" --print-out-paths --out-link "{{dir}}/build")"
     "$out/bin/cartograph" eval build "{{dir}}" -commit "$rev" -store "$out"
