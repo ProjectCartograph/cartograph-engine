@@ -49,9 +49,9 @@ var feeds = []struct {
 	{[]string{"decision", "condition", "sign-off", "sign off", "approval"}, []string{"/spec/conditions", "/spec/signOffs"}},
 }
 
-// SplitSource splits a document into sections at its headings. A section
-// too short to hold anything (a contents line) is folded into the one
-// before it.
+// Split splits a document into sections at its headings. A heading with
+// nothing under it (a contents line) is folded into the section before
+// it.
 func Split(title, text string) []Section {
 	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
 	type cut struct {
@@ -72,7 +72,14 @@ func Split(title, text string) []Section {
 		}
 		body := strings.TrimSpace(strings.Join(lines[c.from:to], "\n"))
 		words := len(strings.Fields(body))
-		if len(out) > 0 && words < 25 {
+		// A heading with nothing under it (a contents line) is folded into
+		// the section before; one with even a sentence under it ("Budget:
+		// to be confirmed") is a section of its own.
+		under := 0
+		if c.from+1 <= to {
+			under = len(strings.Fields(strings.Join(lines[min(c.from+1, to):to], " ")))
+		}
+		if len(out) > 0 && under == 0 {
 			prev := &out[len(out)-1]
 			prev.Text += "\n" + body
 			prev.Words += words
