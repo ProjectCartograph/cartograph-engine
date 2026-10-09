@@ -88,8 +88,8 @@ type KPIs struct {
 // Rounds judges a run with a person present, whose decisions are asked
 // in rounds (docs/adr/0032).
 type Rounds struct {
-	// NotLeft are checks, by id, the document states: none may be left
-	// for the person.
+	// NotLeft are checks, by id, the document states of the main project:
+	// none may be left there for the person.
 	NotLeft []string `json:"notLeft,omitempty"`
 	// MaxCalls is the last streak's median calls per run, the most this
 	// streak's median may be (StreakOf); 0 leaves it unjudged, as on the
@@ -315,7 +315,11 @@ func ScoreRun(ctx context.Context, srv Server, c Criteria, changeSet string, cal
 		add("proposed", status == "proposed", "status %s", status)
 	}
 	if r := c.Rounds; r != nil {
-		scoreRounds(r, left, mine, add)
+		mainRecord := ""
+		if main != nil {
+			mainRecord = main.Record
+		}
+		scoreRounds(r, mainRecord, left, mine, add)
 	}
 	if c.Triangle {
 		// A risk's side is read from the risk, so it is never left; a stance
@@ -463,7 +467,7 @@ func anyMatch(pattern string, names []string) bool {
 // is read as each left check keeps it, an exchange to a question: a
 // question left open names the exchange it was asked in, and several
 // questions in one exchange share it.
-func scoreRounds(r *Rounds, left []leftCheck, mine []trace.Call, add func(string, bool, string, ...any)) {
+func scoreRounds(r *Rounds, mainRecord string, left []leftCheck, mine []trace.Call, add func(string, bool, string, ...any)) {
 	notLeft := map[string]bool{}
 	for _, c := range r.NotLeft {
 		notLeft[c] = true
@@ -475,7 +479,10 @@ func scoreRounds(r *Rounds, left []leftCheck, mine []trace.Call, add func(string
 		if asked == "" || strings.EqualFold(asked, "not available") {
 			unasked = append(unasked, l.On+" "+l.Check)
 		}
-		if notLeft[l.Check] {
+		// What the document states it states of the main project: a part
+		// it only names (a survey run on its own) is the person's to
+		// authorise, so its checks may be left (eval run sonnet 002).
+		if notLeft[l.Check] && (mainRecord == "" || l.On == mainRecord) {
 			stated = append(stated, l.On+" "+l.Check)
 		}
 		// An exchange is one the person had: "not available" is none.

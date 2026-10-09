@@ -71,7 +71,9 @@ alone.
 Read from the server and the trace, on fresh runs of one frozen build:
 
 1. Every check the change set leaves for the person carries what the
-   person was asked, and none is a check the document states.
+   person was asked, and none is a check the document states of the
+   main project (a part the document only names is the person's to
+   authorise).
 2. With a person present, the agent calls `round` before it proposes,
    and asks more than one question a round where the round has more
    than one: questions per exchange above one.

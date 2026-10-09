@@ -225,3 +225,41 @@ func TestTheStreaksMedianCallsAreHeldToTheBar(t *testing.T) {
 		t.Fatalf("a streak whose median is above the bar closed: %+v", st)
 	}
 }
+
+// What the document states, it states of the main project: a check it
+// would have written there may be left on a part the person authorises
+// on their own, never on the main project itself (eval run sonnet 002).
+func TestNotLeftHoldsOnTheMainProject(t *testing.T) {
+	t.Parallel()
+	c := evaluate.Criteria{Agent: "Agent", Runs: 3, Rounds: &evaluate.Rounds{NotLeft: []string{"aim-mandate"}}}
+	asked := "Asked what authorises it; they will decide at review"
+	srv := func(on string) fake {
+		return fake{status: "proposed",
+			records: []map[string]any{
+				{"record": "Project/p-main", "name": "Depot checks", "objectives": 1.0, "components": 1.0, "milestones": 2.0},
+				{"record": "Project/p-survey", "name": "Baseline survey", "objectives": 1.0},
+			},
+			yaml: map[string]string{"Project/p-main": "spec: {}\n", "Project/p-survey": "spec: {}\n"},
+			left: []map[string]any{{"on": on, "check": "aim-mandate", "asked": asked}}}
+	}
+	run := []trace.Call{{Tool: "round", Agent: "Agent", Outcome: trace.OK}, {Tool: "propose", Agent: "Agent", Outcome: trace.OK}}
+	passes := func(on string) bool {
+		s, err := evaluate.ScoreRun(context.Background(), srv(on), c, "cs1", run, document)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, ch := range s.Checks {
+			if ch.Name == "left with what was asked" {
+				return ch.Pass
+			}
+		}
+		t.Fatal("no check on what was left")
+		return false
+	}
+	if !passes("Project/p-survey") {
+		t.Error("a part's mandate left with what was asked failed")
+	}
+	if passes("Project/p-main") {
+		t.Error("the main project's mandate, which the document states, was left")
+	}
+}
