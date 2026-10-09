@@ -5,6 +5,8 @@ touch (a tool, its answers, the instructions, the porting chain, a rule
 the engine enforces) is judged the way Lean Six Sigma judges a process:
 by defined criteria, measured from the outcome and the trace, never from
 what the agent says it did. This is DMAIC, run on our own tools.
+What people do in an interface is judged the same way, from the
+people's trace: `EVALUATING_PEOPLE.md`.
 
 ## Define
 

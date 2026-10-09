@@ -30,6 +30,7 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 | Release binaries for every platform, cross-compiled here | `just release` |
 | The container image, from the flake | `just image` |
 | How agents used the MCP server: defects, sigma, waste, variance | `cartograph traces [-agent name] <trace file>` |
+| How people used an interface: tasks, defects per million, the eight wastes, XmR charts | `cartograph ux [-period day\|week\|build -chart] <trace file>` |
 
 ## Rules that are not negotiable
 
@@ -84,6 +85,7 @@ Run one agent at a time. Several at once only with the person's leave.
 - `docs/UI_CONTRACT.md`, `docs/MULTIPLAYER.md`: what interfaces are built from, and shared editing.
 - `docs/DESIGN_RULES.md`: how Cartograph behaves. `docs/TAXONOMY.md`: what the nouns mean.
 - `docs/EVALUATING.md`: judging a change agents use, by DMAIC, from the server and the trace.
+- `docs/EVALUATING_PEOPLE.md`: judging a change people use, by DMAIC, from the people's trace, the path budget and lab runs.
 - `docs/CONTAINERS.md`: the test environment every command builds, tests and serves in.
 - `docs/CROSS.md`: every platform's binary and image, built on one Linux machine.
 - `STYLE.md`: code and commits. `CONTRIBUTING.md`: the loop.
