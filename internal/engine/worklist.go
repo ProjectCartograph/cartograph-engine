@@ -48,6 +48,9 @@ type Task struct {
 	// Choices are the records that already exist to settle it with, where
 	// a reference or a link settles it: offered before defining another.
 	Choices []Candidate `json:"choices,omitempty"`
+	// Stage is its place in the order of kinds, the directed acyclic
+	// graph's rank: what a stage names is in an earlier one.
+	Stage int `json:"-"`
 }
 
 // Worklist is a piece of work's open checks, in order.
@@ -245,7 +248,7 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 				by = ""
 			}
 			out.Tasks = append(out.Tasks, Task{Phase: pl.phase, Kind: r.Kind, ID: r.ID, Name: rec.name, Check: c.ID, State: c.State,
-				Message: c.Message, Step: pl.step, Do: words[r.Kind].Checks[c.ID], By: by, Choices: e.choices(l, r.Kind, rec.level, pl.field), Field: fieldOf(pl.field)})
+				Message: c.Message, Step: pl.step, Do: words[r.Kind].Checks[c.ID], By: by, Choices: e.choices(l, r.Kind, rec.level, pl.field), Field: fieldOf(pl.field), Stage: rank(r.Kind, rec.level)})
 			out.Open[pl.phase]++
 		}
 	}

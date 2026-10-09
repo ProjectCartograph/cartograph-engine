@@ -1535,3 +1535,35 @@ func TestGetReadsManyRecordsInOneCall(t *testing.T) {
 		t.Fatalf("get: %s", text)
 	}
 }
+
+// A round asks every decision that hangs on nothing still open, side by
+// side, with how to ask it (docs/adr/0032): two projects apart from each
+// other are asked about in one round, not one after the other.
+func TestARoundAsksIndependentRecordsTogether(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "Two pieces"})
+	for _, p := range []struct{ id, name string }{{"rollout", "Grading rollout"}, {"survey", "Depot survey"}} {
+		project := map[string]any{"apiVersion": "cartograph/v1", "kind": "Project", "metadata": map[string]any{"id": p.id, "name": p.name}, "spec": map[string]any{}}
+		if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Project", "id": p.id, "manifest": project}); res.IsError {
+			t.Fatalf("save_draft %s: %s", p.id, text)
+		}
+	}
+	res, text := callTool(t, cs, "round", map[string]any{"work": []string{"Project/rollout", "Project/survey"}})
+	var out struct {
+		Ask []struct {
+			ID string `json:"id"`
+		} `json:"ask"`
+		How string `json:"how"`
+	}
+	if res.IsError || json.Unmarshal([]byte(text), &out) != nil {
+		t.Fatalf("round: %s", text)
+	}
+	asked := map[string]bool{}
+	for _, q := range out.Ask {
+		asked[q.ID] = true
+	}
+	if !asked["rollout"] || !asked["survey"] || !strings.Contains(out.How, "yes accepts it") {
+		t.Fatalf("round asks %v, how %q: want both projects in one round, with how to ask: %.600s", asked, out.How, text)
+	}
+}

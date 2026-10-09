@@ -180,6 +180,19 @@ func registerDraftTools(s *sdk.Server, o Options, person identity.Principal) {
 			return nextOf(c, cs.ID, found, in.Work, in.Locale)
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "round", Description: "The next round of questions for your person, for work (every record of this piece of work as Kind/id), " +
+		"computed by Cartograph from the order of the work: every decision whose prerequisites are settled, and nothing that hangs on an answer " +
+		"not given yet. settle is what the documents state, yours to write; ask is your person's decisions, each with the records that could " +
+		"answer it and the one recommended; write is records to write next. Ask the whole of ask at once, as how says, save the answers, and " +
+		"call round again until it says to confirm with your person. Use it whenever your person is there to answer.", Annotations: readOnly},
+		func(c call, in nextIn) (any, error) {
+			cs, c, found, err := c.inChangeSet(in.ChangeSet, false)
+			if err != nil {
+				return nil, err
+			}
+			return roundOf(c, cs.ID, found, in.Work, in.Locale)
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "edit_draft", Description: "Set or clear single fields of your change set's draft of a manifest, by JSON pointer, leaving every other field as it stands, " +
 		"so changes your person makes in the change set at the same time are kept. Returns the draft as it now stands, their changes included, and its checks. " +
 		"Starts the draft from the record when your change set has none.", Annotations: drafting},
