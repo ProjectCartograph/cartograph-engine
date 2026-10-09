@@ -1,6 +1,9 @@
 package engine
 
-import "context"
+import (
+	"context"
+	"strings"
+)
 
 // A round of decisions (docs/adr/0032). The open checks of a piece of work
 // form a tree of decisions: what a record is comes before its numbers and
@@ -86,16 +89,17 @@ func (e *Engine) recommend(ctx context.Context, ask []Question) {
 
 // frontier picks, from tasks in the order of work, the round to ask now.
 //
-// A record waits while a record it names, directly or through others,
-// has a definition open that blocks: what it names must be settled, not
-// merely written, before the person is asked about the record that names
-// it. A warning does not hold anything back, and records that name
-// nothing open are asked side by side, whatever their stage: a goal
-// added above an outcome holds back what names the outcome, not every
-// project of the work. Within a record, its first open step is offered,
-// since its later steps (its numbers, its links) hang on what it is.
-// names are the records each record of the work names.
-func frontier(tasks []Task, fromDocument bool, names map[Ref][]Ref) Round {
+// A question waits on what its own answer names: a field that names a
+// record (an indicator's aims, a project's outcome) is asked once that
+// record's definition no longer has a check open that blocks, so the
+// person never chooses a record that is not yet settled. Nothing else
+// in the work holds it back: a risk is asked beside an unsettled
+// component, an indicator's target beside an aim still being drafted.
+// Within a record, what it is comes first: its definition's checks are
+// asked together, and its numbers and links wait while one of them that
+// blocks is open. A warning holds nothing back.
+// names are what each record of the work names, by field.
+func frontier(tasks []Task, fromDocument bool, names map[Ref][]Named) Round {
 	out := Round{Settle: []Task{}, Ask: []Question{}, Write: []Task{}}
 	defining := map[Ref]bool{}
 	for _, t := range tasks {
@@ -103,54 +107,32 @@ func frontier(tasks []Task, fromDocument bool, names map[Ref][]Ref) Round {
 			defining[Ref{Kind: t.Kind, ID: t.ID}] = true
 		}
 	}
-	// waits reports whether a record names, through any chain, a record
-	// whose definition is open.
-	memo := map[Ref]bool{}
-	var waits func(r Ref, seen map[Ref]bool) bool
-	waits = func(r Ref, seen map[Ref]bool) bool {
-		if w, ok := memo[r]; ok {
-			return w
+	// hangs reports whether the answer at field names a record whose
+	// definition is open.
+	hangs := func(r Ref, field string) bool {
+		if field == "" {
+			return false
 		}
-		seen[r] = true
-		w := false
 		for _, n := range names[r] {
-			if n == r || seen[n] {
-				continue
-			}
-			if defining[n] || waits(n, seen) {
-				w = true
-				break
+			if n.Ref != r && defining[n.Ref] && (n.Path == field || strings.HasPrefix(n.Path, field+"/")) {
+				return true
 			}
 		}
-		memo[r] = w
-		return w
+		return false
 	}
-	type step struct {
-		phase, step string
-	}
-	first := map[Ref]step{}
 	for _, t := range tasks {
 		r := Ref{Kind: t.Kind, ID: t.ID}
 		if t.By != "" {
 			// Settled by writing a later record that names this one: once
-			// this one is defined, and all it names.
-			if defining[r] || waits(r, map[Ref]bool{}) {
+			// this one is defined.
+			if defining[r] {
 				out.Waiting++
 			} else {
 				out.Write = append(out.Write, t)
 			}
 			continue
 		}
-		if waits(r, map[Ref]bool{}) {
-			out.Waiting++
-			continue
-		}
-		s, seen := first[r]
-		if !seen {
-			s = step{t.Phase, t.Step}
-			first[r] = s
-		}
-		if s != (step{t.Phase, t.Step}) {
+		if (t.Phase != "define" && defining[r]) || hangs(r, t.Field) {
 			out.Waiting++
 			continue
 		}
@@ -163,10 +145,16 @@ func frontier(tasks []Task, fromDocument bool, names map[Ref][]Ref) Round {
 	return out
 }
 
-// namesIn are the records each record with an open check names, as the
-// change set on ctx has them.
-func (e *Engine) namesIn(ctx context.Context, tasks []Task) map[Ref][]Ref {
-	out := map[Ref][]Ref{}
+// Named is a record a record names, and the field that names it.
+type Named struct {
+	Ref
+	Path string
+}
+
+// namesIn are the records each record with an open check names, by
+// field, as the change set on ctx has them.
+func (e *Engine) namesIn(ctx context.Context, tasks []Task) map[Ref][]Named {
+	out := map[Ref][]Named{}
 	for _, t := range tasks {
 		r := Ref{Kind: t.Kind, ID: t.ID}
 		if _, done := out[r]; done {
@@ -182,7 +170,7 @@ func (e *Engine) namesIn(ctx context.Context, tasks []Task) map[Ref][]Ref {
 			continue
 		}
 		for _, f := range extractRefs(doc, e.refRules[r.Kind]) {
-			out[r] = append(out[r], Ref{Kind: f.kind, ID: f.id})
+			out[r] = append(out[r], Named{Ref: Ref{Kind: f.kind, ID: f.id}, Path: f.path})
 		}
 	}
 	return out

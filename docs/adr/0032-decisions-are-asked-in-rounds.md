@@ -33,13 +33,14 @@ numbers, its links) and its flow step.
 The engine computes each round, and the MCP server hands it to the
 agent with how to ask it (`round`).
 
-- **The frontier.** A record waits while a record it names, directly
-  or through others, has a definition open that blocks: what it names
-  must be settled before the person is asked about it. A warning holds
-  nothing back. Each record offers its first open step; its later steps
-  hang on it. Records apart from each other are asked side by side,
-  whatever their stage. What depends on an answer in this round is
-  counted as waiting, and comes in a later round.
+- **The frontier.** A question waits on what its own answer names: a
+  field that names a record (an indicator's aims, a project's outcome)
+  is asked once that record's definition has no check open that
+  blocks. Nothing else in the work holds it back. Within a record, its
+  definition's checks are asked together, and its numbers and links
+  wait while one of them that blocks is open. A warning holds nothing
+  back. What depends on an answer in this round is counted as waiting,
+  and comes in a later round.
 - **Facts and decisions.** When the work has a document, what a
   document itself states (the checks a port writes and never waives)
   is listed in `settle`: the agent writes it, and asks only where the
@@ -96,9 +97,11 @@ The bar is three passing runs in a row, one agent at a time.
   it is in the instructions and in every round's `how`, the weakest
   kind of fix (0027). What the engine holds is the frontier and the
   split between facts and decisions.
-- The frontier follows the references: a goal drafted above an outcome
-  holds back what names the outcome, not every project of the work.
-  It began by stage (every later stage waiting on every earlier
-  definition, warnings included), which asked one or two questions a
-  round once aims were drafted mid-work (evaluation run 002), and was
-  changed to this. It never asks one too early.
+- The frontier follows each answer's own references. It began by
+  stage (every later stage waiting on every earlier definition,
+  warnings included), then by record (a record waiting on everything
+  it names, and offering one step at a time). Evaluation runs 002 and
+  003 showed both asking two to five questions a round with a dozen or
+  more waiting: a project's risks held behind its component's sponsor.
+  It never asks one too early: an answer that names a record waits for
+  that record.
