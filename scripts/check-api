@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Fail on a change to pkg/, the Go API other repositories import, that
+# breaks code written against the base release (VERSIONING.md).
+#
+#   scripts/check-api TAG
+#
+# The base is the tag's tree from git, its modules the store's vendor
+# tree the development shell links, so nothing is downloaded
+# (docs/adr/0031). Each package's API at the tag is written as export
+# data by apidiff, then compared with the working tree's.
+set -euo pipefail
+
+tag=$1
+root=$(git rev-parse --show-toplevel)
+# A fresh directory every run: Go caches by path, and a reused one can
+# answer with the last tree's packages.
+base=$(mktemp -d)
+trap 'rm -rf "$base"' EXIT
+git archive "$tag" | tar -x -C "$base"
+ln -s "$(readlink -f "$root/vendor")" "$base/vendor"
+# The web build is embedded by internal/spa, which pkg/ does not import;
+# an empty one lets the base load.
+mkdir -p "$base/internal/spa/dist" && touch "$base/internal/spa/dist/.keep"
+
+bad=0
+for pkg in $(cd "$base" && go list ./pkg/...); do
+    name=${pkg//\//_}
+    (cd "$base" && apidiff -w "$base/$name.export" "$pkg")
+    if ! go list "$pkg" >/dev/null 2>&1; then
+        echo "$pkg: removed since $tag"; bad=1; continue
+    fi
+    out=$(apidiff -incompatible "$base/$name.export" "$pkg")
+    if [ -n "$out" ]; then
+        echo "$pkg: incompatible with $tag:"; printf '%s\n' "$out" | sed 's/^/  /'; bad=1
+    fi
+done
+if [ $bad -eq 0 ]; then echo "pkg/ is compatible with $tag"; fi
+exit $bad

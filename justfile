@@ -162,9 +162,6 @@ compat base="": embed
     #!{{toolchain}} bash
     set -euo pipefail
     scripts/check-compat {{base}}
-    # gorelease is the flake's, built from golang.org/x/exp at one commit.
-    # It compares with the base release as published, so it alone fetches
-    # modules: the base's, in module mode (ProjectCartograph/cartograph-engine#20).
     # The base is the last release before this commit: a tag on HEAD is
     # the release being checked.
     tag=$(git tag --list 'v*' --sort=-v:refname --no-contains HEAD | head -n 1)
@@ -172,13 +169,12 @@ compat base="": embed
     major=$(cut -d. -f1 VERSION)
     base=${tag#v}
     if [ "${base%%.*}" != "$major" ]; then
-      # A new major has a new module path (/v<major>), so there is no base
-      # for gorelease to compare with; check-compat above has already
-      # required the bump.
-      echo "VERSION $(cat VERSION) is a new major after $tag: no gorelease base"
+      # A new major has a new module path (/v<major>), so pkg/ may break;
+      # check-compat above has already required the bump.
+      echo "VERSION $(cat VERSION) is a new major after $tag: pkg/ may change"
       exit 0
     fi
-    GOFLAGS=-mod=mod gorelease -base="$tag" 2>&1 | tail -n 20
+    scripts/check-api "$tag"
 
 # --- build and run --------------------------------------------------------
 

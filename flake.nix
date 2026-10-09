@@ -110,10 +110,10 @@
             };
           };
 
-          # gorelease, which `just compat` runs: not in nixpkgs, so built from
-          # golang.org/x/exp at one commit rather than fetched @latest.
-          gorelease = pkgs.buildGoModule {
-            pname = "gorelease";
+          # apidiff, which `just compat` runs on pkg/ (scripts/check-api): not
+          # in nixpkgs, so built from golang.org/x/exp at one commit.
+          apidiff = pkgs.buildGoModule {
+            pname = "apidiff";
             version = "0-unstable-2026-10-07";
             src = pkgs.fetchFromGitHub {
               owner = "golang";
@@ -122,7 +122,7 @@
               hash = "sha256-ufKalh7FoqMdRr8sZZ53zqeeQCuaq82u1AG1i74EF+I=";
             };
             vendorHash = "sha256-OusVBrddEL2Gb1RdEzVsxdhb+WQE6ONpbmYEJUxGyCQ=";
-            subPackages = [ "cmd/gorelease" ];
+            subPackages = [ "cmd/apidiff" ];
             doCheck = false;
             meta.license = lib.licenses.bsd3;
           };
@@ -299,7 +299,7 @@
               };
             };
         in
-        { inherit cartograph automerge-wasm gorelease laya laya-model release; default = cartograph; }
+        { inherit cartograph automerge-wasm apidiff laya laya-model release; default = cartograph; }
         // lib.mapAttrs' (t: b: lib.nameValuePair "cartograph-${t}" b) binaries
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           image = imageFor { name = "cartograph"; };
@@ -327,7 +327,7 @@
               go
               pkgs.gomod2nix # writes gomod2nix.toml from go.mod (just generate)
               oapi-codegen # internal/api/generate.go, at the version nixpkgs pins
-              built.gorelease # just compat
+              built.apidiff # just compat
               zstd # unpacks the dependencies' build cache
               go-tools # staticcheck
               gopls # the language server: just check runs its diagnostics

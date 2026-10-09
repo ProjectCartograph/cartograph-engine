@@ -30,7 +30,7 @@ Go is built the way Nix builds it, through gomod2nix's overlay:
   (`-mod=vendor -trimpath`, `CGO_ENABLED=0`), so its entries are hits.
   Only this repository's packages compile.
 - Tools are packages, not `go tool` or `go run ...@latest`:
-  oapi-codegen from nixpkgs, gorelease from golang.org/x/exp at one
+  oapi-codegen from nixpkgs, apidiff from golang.org/x/exp at one
   commit.
 - CI enters `.#ci`, the shell with only what `just ci` runs.
 
@@ -44,5 +44,7 @@ fetches it instead of building it.
 - A new import of an existing module's package is compiled in the shell
   until `just generate` adds it to `cachePackages`; it is never wrong,
   only slower.
-- gorelease still fetches the base release it compares against, in
-  module mode; it is the one recipe that downloads modules.
+- `just compat` compares pkg/ with the base release's tree from git, its
+  modules the same store tree, so no recipe downloads modules. The base
+  is read with today's dependency versions; pkg/'s own API is what is
+  compared.

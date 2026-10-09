@@ -40,7 +40,8 @@ minor release, and a new Go module path (`/v2`), as Go requires.
 - `just compat` compares the contract and the schemas against the last
   tag and fails on a breaking change unless `VERSION` has a higher
   major. CI runs it on every pull request.
-- `just compat` also runs `gorelease` against the last tag for `pkg/`.
+- `just compat` also compares `pkg/` with the last tag (`scripts/check-api`,
+  apidiff) and fails on an incompatible change unless the major is higher.
 - `VERSION` is the single source: the flake, the binary (`cartograph
   --version`), the image tag and the release all read it. A release is a
   tag `v<VERSION>` on `main`; `.github/workflows/release.yml` builds the
