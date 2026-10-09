@@ -929,8 +929,13 @@ func (e *Engine) acceptChangeSet(ctx context.Context, id, reason string) ([]Vers
 		return nil, nil, nil, err
 	}
 	p := identity.PrincipalFrom(ctx)
-	if cs.For != personKey(p) {
-		return nil, nil, nil, ErrNotTheirChangeSet
+	policy, err := e.rollInPolicy(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	reviewer, err := e.mayRollIn(policy, cs, personKey(p))
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	actor := p.Actor(e.operator(ctx))
 	now := timeNow().UTC()
@@ -946,6 +951,32 @@ func (e *Engine) acceptChangeSet(ctx context.Context, id, reason string) ([]Vers
 	if err != nil {
 		release()
 		return nil, nil, nil, err
+	}
+	// The workspace's roll-in policy, as the change set stands now.
+	if problems, err := e.rollInProblems(ctx, policy, cs); err != nil || len(problems) > 0 {
+		release()
+		if err == nil {
+			err = &ValidationError{Problems: problems}
+		}
+		return nil, nil, nil, err
+	}
+	if reviewer {
+		// A reviewer rolls in work they did not write: each item is put
+		// to the policy with their own access, as their own save would be.
+		for _, m := range ordered {
+			if err := e.guardDoc(ctx, m.Kind, m.ID, docs[m.Kind+"/"+m.ID]); err != nil {
+				release()
+				return nil, nil, nil, err
+			}
+		}
+		for _, it := range in {
+			if it.Op == store.ItemDelete {
+				if err := e.guardDoc(ctx, it.Kind, it.ID, nil); err != nil {
+					release()
+					return nil, nil, nil, err
+				}
+			}
+		}
 	}
 	base := map[string]int{}
 	for _, it := range in {
