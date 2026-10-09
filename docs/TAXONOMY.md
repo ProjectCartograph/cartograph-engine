@@ -1426,8 +1426,10 @@ happens, with the month it is expected by and the role that sets it. An
 deliverable accepted, a condition met, a KPI's first reading, a decision
 issued, or something outside the workspace, named in words. A timing may name
 the risks that could move it; Cartograph records the mapping and does not
-simulate it. A target or baseline that is set when an event happens meets its
-check until its expected month passes; after that it is flagged.
+simulate it. A dependency says when it is needed the same way (needed),
+in place of the phase it named. A target or baseline that is set when an
+event happens meets its check until its expected month passes; after that
+it is flagged.
 
 An event may happen to an item of another project (`item`, with `on`
 naming the project): a milestone that waits on another project's

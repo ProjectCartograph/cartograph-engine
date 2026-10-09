@@ -149,6 +149,69 @@ func (p *placer) due(project, list, id string) string {
 	return timing.Read(p.item(project, list, id)["due"]).Month
 }
 
+// eventMonth is the month an event on a project's item falls in, in this
+// project or another, "" when it cannot be placed; with the list and id
+// of the item it names in this project.
+func (p *placer) eventMonth(project string, ev map[string]any) (month, list, lid string) {
+	on, _ := ev["on"].(map[string]any)
+	list, _ = on["local"].(string)
+	lid, _ = on["id"].(string)
+	switch list {
+	case "milestones":
+		month = p.place(project, lid)
+	case "deliverables", "conditions":
+		month = p.due(project, list, lid)
+	}
+	if k, _ := on["kind"].(string); k == "Project" && lid != "" {
+		item, _ := ev["item"].(string)
+		switch {
+		case item == "":
+		case p.item(lid, "milestones", item) != nil:
+			month = p.place(lid, item)
+		case p.item(lid, "deliverables", item) != nil:
+			month = p.due(lid, "deliverables", item)
+		default:
+			month = p.due(lid, "conditions", item)
+		}
+	}
+	return month, list, lid
+}
+
+// when is the latest month a timing on a project's item allows: its date,
+// its window's end, or what it follows plus its lag; "" when it says none.
+func (p *placer) when(project string, tm map[string]any) string {
+	t := timing.Read(tm)
+	out := t.Month
+	if t.Form == "after" && t.Event != nil {
+		if base, _, _ := p.eventMonth(project, t.Event); base != "" {
+			if got, err := addMonths(base, intOf(tm["lagMonths"])+intOf(tm["lagDays"])/30); err == nil && got > out {
+				out = got
+			}
+		}
+	}
+	return out
+}
+
+// ready is the month a project's last placed milestone falls in: when what
+// it delivers is ready, as far as its milestones say.
+func (p *placer) ready(project string) (string, bool) {
+	spec, found, err := p.spec(project)
+	if err != nil || !found {
+		return "", false
+	}
+	last := ""
+	ms, _ := spec["milestones"].([]any)
+	for _, it := range ms {
+		m, _ := it.(map[string]any)
+		if mid, _ := m["id"].(string); mid != "" {
+			if at := p.place(project, mid); at > last {
+				last = at
+			}
+		}
+	}
+	return last, last != ""
+}
+
 // place is the month a project's milestone falls in, "" when it cannot be
 // placed.
 func (p *placer) place(project, mid string) string {
@@ -167,28 +230,7 @@ func (p *placer) place(project, mid string) string {
 	t := timing.Read(m["timing"])
 	out := t.Month
 	follow := func(ev map[string]any, lagMonths, lagDays int) {
-		on, _ := ev["on"].(map[string]any)
-		list, _ := on["local"].(string)
-		lid, _ := on["id"].(string)
-		var base string
-		switch list {
-		case "milestones":
-			base = p.place(project, lid)
-		case "deliverables", "conditions":
-			base = p.due(project, list, lid)
-		}
-		if k, _ := on["kind"].(string); k == "Project" && lid != "" {
-			item, _ := ev["item"].(string)
-			switch {
-			case item == "":
-			case p.item(lid, "milestones", item) != nil:
-				base = p.place(lid, item)
-			case p.item(lid, "deliverables", item) != nil:
-				base = p.due(lid, "deliverables", item)
-			default:
-				base = p.due(lid, "conditions", item)
-			}
-		}
+		base, list, lid := p.eventMonth(project, ev)
 		if base == "" {
 			return
 		}

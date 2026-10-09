@@ -27,7 +27,10 @@ type DependencyEdge struct {
 	ToID     string `json:"toId"`
 	ToName   string `json:"toName"`
 	NeedBy   string `json:"needBy,omitempty"`
-	Why      string `json:"why,omitempty"`
+	// Needed is when the waiting work needs it, as a timing (TAXONOMY.md
+	// D47), in place of NeedBy's phase.
+	Needed map[string]any `json:"-"`
+	Why    string         `json:"why,omitempty"`
 }
 
 // dependencyKinds are the kinds that hold a risk list, and so may hold an
@@ -95,10 +98,11 @@ func (e *Engine) DependencyGraph(ctx context.Context) ([]DependencyEdge, error) 
 				}
 				why, _ := rm["description"].(string)
 				needBy, _ := dep["needBy"].(string)
+				needed, _ := dep["needed"].(map[string]any)
 				edge := DependencyEdge{
 					FromKind: kind, FromID: id, FromName: docName(doc, id),
 					ToKind: on.Kind, ToID: on.ID, ToName: nameOf(on.Kind, on.ID),
-					NeedBy: needBy, Why: why,
+					NeedBy: needBy, Needed: needed, Why: why,
 				}
 				if d, _ := dep["direction"].(string); d == "neededBy" {
 					// Declared from the other end: the far end is the one
@@ -224,9 +228,12 @@ func (e *Engine) DependencyScheduleConflicts(ctx context.Context) ([]ScheduleCon
 		return nil, err
 	}
 
+	// Milestones are placed once across every edge, as the schedule places
+	// them (TAXONOMY.md D48).
+	p := &placer{e: e, ctx: ctx, specs: map[string]map[string]any{}, month: map[spot]string{}, state: map[spot]int{}, from: map[spot]string{}}
 	var out []ScheduleConflict
 	for _, edge := range edges {
-		if edge.NeedBy == "" || edge.FromKind != "Project" || edge.ToKind != "Project" {
+		if (edge.NeedBy == "" && edge.Needed == nil) || edge.FromKind != "Project" || edge.ToKind != "Project" {
 			continue
 		}
 		from, ok := docs[edge.FromKind][edge.FromID]
@@ -237,11 +244,19 @@ func (e *Engine) DependencyScheduleConflicts(ctx context.Context) ([]ScheduleCon
 		if !ok {
 			continue
 		}
-		needBy, found := phaseEnd(from, edge.NeedBy)
-		if !found {
+		// When the waiting work needs it: its timing, else the phase a
+		// deployed version named.
+		needBy, found := p.when(edge.FromID, edge.Needed), true
+		if edge.Needed == nil {
+			needBy, found = phaseEnd(from, edge.NeedBy)
+		}
+		if !found || needBy == "" {
 			continue
 		}
-		ready, found := timelineEnd(to)
+		ready, found := p.ready(edge.ToID)
+		if !found {
+			ready, found = timelineEnd(to)
+		}
 		if !found {
 			continue
 		}

@@ -916,8 +916,8 @@
                 ]
               },
               {
-                "path": "/depends/needBy",
-                "control": "reference",
+                "path": "/depends/needed",
+                "control": "timing",
                 "title": "Needed by",
                 "when": {
                   "path": "/type",
