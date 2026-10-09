@@ -746,6 +746,7 @@
     "risks-dependency-cycle": "Break the loop: one end of it must not wait on the other.",
     "risks-dependency-schedule": "Move the needed-by phase, or agree an earlier finish with the other end.",
     "success-criteria": "Add at least one success criterion.",
+    "success-confirmer": "Name the role or governance body that confirms each criterion, under confirmedBy. A criterion the document states is written whoever confirms it; when your person has not decided who does, leave this check open with their answer.",
     "success-measured": "Give every measured criterion a level to reach and a data source, and a reporting cycle if it is checked after handover. Efficiency needs no data source.",
     "success-owner": "Name the role that tracks every criterion.",
     "closing-criteria": "Give every deliverable a test it is accepted against.",

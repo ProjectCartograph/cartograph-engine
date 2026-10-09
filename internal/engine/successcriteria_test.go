@@ -42,9 +42,11 @@ func TestProjectSuccessCriteriaRules(t *testing.T) {
 			yaml: base + "  successCriteria:\n    - id: sc-1\n      statement: Coverage is close to complete\n      confirmedBy: {external: Sponsor}\n      when: atClosing\n",
 		},
 		{
-			// Who ultimately determines whether the project succeeded is
-			// the one question a criterion may not leave open.
-			name: "missing confirmedBy", kind: "Project", wantProblem: true,
+			// Who ultimately determines whether the project succeeded may
+			// not be left open at handoff: success-confirmer blocks it. A
+			// check never blocks a save, so a criterion a document states
+			// is written before its confirmer is decided.
+			name: "a criterion saved before its confirmer is decided", kind: "Project",
 			yaml: base + "  successCriteria:\n    - id: sc-1\n      statement: Coverage is close to complete\n      metric: business\n      when: atClosing\n",
 		},
 		{
