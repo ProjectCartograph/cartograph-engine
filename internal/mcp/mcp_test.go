@@ -1769,7 +1769,8 @@ func TestAPortNamesWhatTheDocumentListsUnwritten(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
 	doc := "Depot Checks Charter\n\n## Scope\n\nEvery depot is in scope, with its graders and its checklist.\n\n" +
-		"## Risks\n\nGrader turnover at the two smallest depots could leave a depot unchecked, and the committee may not meet in July.\n"
+		"## Risks\n\nGrader turnover at the two smallest depots could leave a depot unchecked, and the committee may not meet in July.\n\n" +
+		"## Measures\n\nShare of audit crates graded the same across depots: 41% in the 2025 audit.\n"
 	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
 	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
 	var out struct {
@@ -1787,7 +1788,7 @@ func TestAPortNamesWhatTheDocumentListsUnwritten(t *testing.T) {
 	_, text = callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "records": []any{
 		map[string]any{"record": project, "set": map[string]any{"/spec/objectives/0/objective": "Produce is graded the same at every depot"}},
 	}})
-	if !strings.Contains(text, `"notYetWritten":[`) || !strings.Contains(text, "holds no risks") {
+	if !strings.Contains(text, `"notYetWritten":[`) || !strings.Contains(text, "holds no risks") || !strings.Contains(text, "names no indicator") {
 		t.Fatalf("risks the document lists are not named: %s", text)
 	}
 }

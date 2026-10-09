@@ -226,7 +226,11 @@ func unported(c call, set string) []string {
 	}
 	docs := map[string]map[string]any{}
 	parts := map[string]bool{}
+	kpis := 0
 	for _, it := range view.Items {
+		if it.Item.Kind == "KPI" {
+			kpis++
+		}
 		if it.Item.Kind != "Project" {
 			continue
 		}
@@ -257,6 +261,15 @@ func unported(c call, set string) []string {
 			if secs := e.SectionsFor(c.ctx, set, "/spec/"+f.key); len(secs) > 0 {
 				out = append(out, fmt.Sprintf("Project/%s holds no %s, and the document lists them (sections %s): write each from there, with port records",
 					id, f.what, strings.Join(secs, ", ")))
+			}
+		}
+		// A measure the document gives is an indicator to draft, its target
+		// set later where the document defers it (Sonnet run 008 drafted
+		// none, waiting on the target).
+		if l, _ := spec["kpis"].([]any); len(l) == 0 && kpis == 0 {
+			if secs := e.SectionsFor(c.ctx, set, "/spec/kpis"); len(secs) > 0 {
+				out = append(out, fmt.Sprintf("Project/%s names no indicator, and the document gives a measure (sections %s): draft a KPI for it, "+
+					"with a target set later (setWhen) where the document defers it, and name it under the project's kpis", id, strings.Join(secs, ", ")))
 			}
 		}
 	}
