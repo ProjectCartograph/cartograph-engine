@@ -55,6 +55,27 @@ func TestAPortIsAnEngineUseCase(t *testing.T) {
 	if len(still) == 0 || still[0].Record != project {
 		t.Fatalf("still open %+v", still)
 	}
+	// With the person asked, a check is left with what they answered,
+	// even one a document states; without, it says nobody was asked
+	// (docs/adr/0032).
+	asked := "Asked who mandated it; they will name the decision at review"
+	if results, _, err = e.PortRecords(ctx, cs.ID, []engine.PortRecord{{
+		Record: project, Asked: asked,
+		Open: []engine.OpenReason{{Check: "aim-mandate", Reason: "The mandate is named at review"}},
+	}}); err != nil || strings.Join(results[0].Left, ",") != "aim-mandate" {
+		t.Fatalf("left with the person asked: %+v %v", results, err)
+	}
+	view, err := e.ViewChangeSet(ctx, cs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, w := range view.ChangeSet.Waivers {
+		got[w.Check] = w.Asked
+	}
+	if got["resources-funding"] != "not available" || got["aim-mandate"] != asked {
+		t.Fatalf("what was asked, by check: %v", got)
+	}
 }
 
 // Records created in one call may name each other by id, in either

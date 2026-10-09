@@ -456,8 +456,9 @@ func scoreRounds(r *Rounds, left []leftCheck, mine []trace.Call, add func(string
 		if notLeft[l.Check] {
 			stated = append(stated, l.On+" "+l.Check)
 		}
+		// An exchange is one the person had: "not available" is none.
 		for _, ex := range strings.Split(asked, " Also: ") {
-			if ex = strings.TrimSpace(ex); ex != "" {
+			if ex = strings.TrimSpace(ex); ex != "" && !strings.EqualFold(ex, "not available") {
 				questions[ex]++
 			}
 		}

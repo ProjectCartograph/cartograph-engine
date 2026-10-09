@@ -305,6 +305,7 @@ type PortRecord struct {
 	Set    map[string]any `json:"set,omitempty" jsonschema:"every field the document gives, by JSON pointer"`
 	Unset  []string       `json:"unset,omitempty" jsonschema:"fields to clear, by JSON pointer"`
 	Open   []OpenReason   `json:"open,omitempty" jsonschema:"each check the document does not answer, with the reason your person will read"`
+	Asked  string         `json:"asked,omitempty" jsonschema:"what you asked your person about the checks left open here and what they answered; leave it out only when you work without them"`
 }
 
 // OpenReason is a check left open, with the reason a person reads.
@@ -372,16 +373,22 @@ func (e *Engine) PortRecords(ctx context.Context, set string, records []PortReco
 			}
 		}
 		res.Refused = refused
+		// Left with what the person answered, or, with nobody to ask,
+		// "not available": a check the document states is never left so.
+		asked := strings.TrimSpace(r.Asked)
+		if asked == "" {
+			asked = "not available"
+		}
 		for _, o := range r.Open {
 			if strings.TrimSpace(o.Reason) == "" {
 				res.NotLeft = append(res.NotLeft, o.Check+": give the reason your person will read")
 				continue
 			}
-			if err := MayLeave(o.Check, "not available"); err != nil {
+			if err := MayLeave(o.Check, asked); err != nil {
 				res.NotLeft = append(res.NotLeft, err.Error())
 				continue
 			}
-			if err := e.LeaveOpen(ctx, set, k, id, o.Check, o.Reason, "not available", false); err != nil {
+			if err := e.LeaveOpen(ctx, set, k, id, o.Check, o.Reason, asked, false); err != nil {
 				res.NotLeft = append(res.NotLeft, o.Check+": "+err.Error())
 				continue
 			}

@@ -511,6 +511,18 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, as
 	return s.PutChangeSet(ctx, cs)
 }
 
+// askedFor is what the person was asked about a check left by way of
+// another, whose reason it carries word for word: what they were asked
+// there is what they were asked here.
+func askedFor(waivers []store.Waiver, reason string) string {
+	for _, w := range waivers {
+		if w.Reason == reason && w.Asked != "" {
+			return w.Asked
+		}
+	}
+	return ""
+}
+
 // leftKey carries the checks a change set leaves for its person, as
 // "Kind/id#check" to the reason.
 type leftKey struct{}
@@ -830,7 +842,11 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 			why = c.Left
 		}
 		if why != "" {
-			waivers = append(waivers, store.Waiver{On: c.Kind + "/" + c.ManifestID, Check: c.ID, Message: c.Message, Reason: why, Asked: askedOf[c.Kind+"/"+c.ManifestID+"#"+c.ID]})
+			asked := askedOf[c.Kind+"/"+c.ManifestID+"#"+c.ID]
+			if asked == "" {
+				asked = askedFor(cs.Waivers, why)
+			}
+			waivers = append(waivers, store.Waiver{On: c.Kind + "/" + c.ManifestID, Check: c.ID, Message: c.Message, Reason: why, Asked: asked})
 			continue
 		}
 		unmet = append(unmet, c)
