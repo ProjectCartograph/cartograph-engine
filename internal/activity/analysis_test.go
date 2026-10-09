@@ -1,6 +1,7 @@
 package activity
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -128,5 +129,67 @@ func TestStepForTakesTheLongestField(t *testing.T) {
 	}
 	if s := f.StepFor("/metadata/name"); s != "" {
 		t.Fatalf("got %q", s)
+	}
+}
+
+func TestReadingsChartEachFigurePerPeriod(t *testing.T) {
+	t.Parallel()
+	flows, err := Flows()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Twenty-two days, one goal defined each day: refused on the first
+	// try every fourth day, and from day twelve, a new build, never.
+	var acts []Event
+	for d := 0; d < 22; d++ {
+		t0 := time.Date(2026, 9, 1+d, 10, 0, 0, 0, time.UTC)
+		build := "2.10.0"
+		if d >= 11 {
+			build = "2.11.0"
+		}
+		rec := fmt.Sprintf("g%d", d)
+		if d%4 == 0 && d < 11 {
+			acts = append(acts, Event{At: t0, Name: VersionSave, Source: Server, Person: "p", Kind: "Goal", Record: rec, Outcome: Refused, Paths: []string{"/spec/objective"}, Build: build})
+		}
+		acts = append(acts,
+			Event{At: t0.Add(time.Minute), Name: VersionSave, Source: Server, Person: "p", Kind: "Goal", Record: rec, Outcome: OK, Build: build},
+			Event{At: t0.Add(2 * time.Minute), Name: Press, Source: Interface, Session: "w", Person: "p", Target: "action", Millis: 50, Build: build})
+	}
+	series := Readings(acts, flows, Options{}, Day, "")
+	byName := map[string]Series{}
+	for _, s := range series {
+		byName[s.Name] = s
+	}
+	fpy := byName["first pass yield"]
+	if len(fpy.Chart.Points) != 22 || !fpy.Chart.Enough {
+		t.Fatalf("first pass yield: %d points, enough %v", len(fpy.Chart.Points), fpy.Chart.Enough)
+	}
+	if fpy.Chart.Points[0].Value != 0 || fpy.Chart.Points[1].Value != 1 || fpy.Counts[0] != 1 {
+		t.Fatalf("first pass yield readings %+v", fpy.Chart.Points[:2])
+	}
+	// The run of good days after the change signals that the process
+	// moved.
+	signalled := false
+	for _, p := range fpy.Chart.Points {
+		if len(p.Signals) > 0 {
+			signalled = true
+		}
+	}
+	if !signalled {
+		t.Errorf("eleven clean days in a row after the change should signal: %+v", fpy.Chart)
+	}
+
+	byBuild := Readings(acts, flows, Options{}, Build, "2.11.0")
+	for _, s := range byBuild {
+		if s.Name != "first pass yield" {
+			continue
+		}
+		if len(s.Chart.Points) != 2 || s.Split != "2.11.0" || s.Chart.Note == "" {
+			// One reading since the split: too few for limits, and said so.
+			t.Fatalf("by build, split at 2.11.0: %+v", s)
+		}
+	}
+	if p := PeriodOf(Week, time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC), ""); p != "2026-W41" {
+		t.Errorf("week %q", p)
 	}
 }

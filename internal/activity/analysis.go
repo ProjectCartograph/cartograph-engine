@@ -66,6 +66,8 @@ type Task struct {
 	Reworked     int `json:"reworked"`
 	Hunting      int `json:"hunting"`
 	Drafts       int `json:"drafts"`
+	// Build is the server build its last act was recorded on.
+	Build string `json:"build,omitempty"`
 	// Submitted is when a change set was sent for review.
 	Submitted time.Time `json:"submitted,omitzero"`
 
@@ -242,6 +244,7 @@ func Analyse(acts []Event, flows map[string]Flow, o Options) Report {
 				tasks = append(tasks, t)
 			}
 			t.last = a.At
+			t.Build = or(a.Build, t.Build)
 			if t.Session == "" && a.Source == Interface {
 				t.Session = a.Session
 			}
@@ -296,6 +299,7 @@ func Analyse(acts []Event, flows map[string]Flow, o Options) Report {
 				tasks = append(tasks, t)
 			}
 			t.last = a.At
+			t.Build = or(a.Build, t.Build)
 			switch {
 			case a.Name == ChangeSetSubmit && a.Outcome != Refused:
 				t.Submitted = a.At
@@ -319,7 +323,7 @@ func Analyse(acts []Event, flows map[string]Flow, o Options) Report {
 				t.Status, t.End = Open, time.Time{}
 			}
 		case a.Name == FindOpen:
-			t := &Task{Type: Find, Status: Open, Person: a.Person, Session: a.Session, Start: a.At, last: a.At}
+			t := &Task{Type: Find, Status: Open, Person: a.Person, Session: a.Session, Start: a.At, last: a.At, Build: a.Build}
 			finds[a.Session] = t
 			tasks = append(tasks, t)
 		case a.Name == FindPick || a.Name == FindClose:
@@ -789,4 +793,11 @@ func (t *Task) guided(field string) bool {
 		}
 	}
 	return false
+}
+
+func or(s, def string) string {
+	if s == "" {
+		return def
+	}
+	return s
 }

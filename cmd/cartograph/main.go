@@ -107,7 +107,7 @@ Usage:
   cartograph unapplied <vault-dir>
   cartograph excluded <vault-dir>
   cartograph traces [-json] [-agent name] <trace file>...       (Lean Six Sigma over MCP call traces)
-  cartograph ux [-json] [-idle 1h] [-person subject] [-from t] [-to t] <trace file or postgres URL>...  (people's traces)
+  cartograph ux [-json] [-idle 1h] [-person subject] [-from t] [-to t] [-period day|week|build [-chart] [-split p]] <trace file or postgres URL>...  (people's traces)
   cartograph eval build|serve|call|score|status|stop ...        (judge a change agents use, docs/EVALUATING.md)
   cartograph report <projects|kpi-readings|alignment|teams> <vault, file or postgres:// URL> [-format csv|json]
   cartograph mcp <vault, file or postgres:// URL>               (MCP over stdio, for a local agent)

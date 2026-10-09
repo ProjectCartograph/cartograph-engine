@@ -41,4 +41,9 @@ func TestUXReadsATraceFile(t *testing.T) {
 	if !strings.Contains(out.String(), "define  Team") || !strings.Contains(out.String(), "Not measured yet") {
 		t.Fatalf("report:\n%s", out.String())
 	}
+	out.Reset()
+	printReadings(&out, activity.Readings(acts, flows, activity.Options{}, activity.Day, ""), true)
+	if !strings.Contains(out.String(), "first pass yield") || !strings.Contains(out.String(), "2026-10-09") {
+		t.Fatalf("readings:\n%s", out.String())
+	}
 }

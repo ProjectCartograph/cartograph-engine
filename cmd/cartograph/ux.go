@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
@@ -26,11 +27,14 @@ func runUX(args []string) error {
 	person := fs.String("person", "", "only this person's acts, so one person is measured apart from another")
 	from := fs.String("from", "", "only acts from this time on (RFC 3339, or a date)")
 	to := fs.String("to", "", "only acts before this time (RFC 3339, or a date)")
+	period := fs.String("period", "", "take one reading per period of each figure: day, week or build")
+	chart := fs.Bool("chart", false, "with -period, chart each figure as an individuals and moving range (XmR) chart")
+	split := fs.String("split", "", "with -period, work out the limits from this period or build on: a changed interface is a new process")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() == 0 {
-		return fmt.Errorf("usage: cartograph ux [-json] [-idle 1h] [-person subject] [-from t] [-to t] <trace file>... | <postgres URL> (where CARTOGRAPH_UI_TRACE keeps it)")
+		return fmt.Errorf("usage: cartograph ux [-json] [-idle 1h] [-person subject] [-from t] [-to t] [-period day|week|build [-chart] [-split period]] <trace file>... | <postgres URL> (where CARTOGRAPH_UI_TRACE keeps it)")
 	}
 	q := activity.Query{Person: *person}
 	var err error
@@ -47,6 +51,19 @@ func runUX(args []string) error {
 	flows, err := activity.Flows()
 	if err != nil {
 		return err
+	}
+	if *period != "" {
+		if *period != activity.Day && *period != activity.Week && *period != activity.Build {
+			return fmt.Errorf("-period is day, week or build, not %q", *period)
+		}
+		series := activity.Readings(acts, flows, activity.Options{Idle: *idle}, *period, *split)
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(series)
+		}
+		printReadings(os.Stdout, series, *chart)
+		return nil
 	}
 	r := activity.Analyse(acts, flows, activity.Options{Idle: *idle})
 	if *asJSON {
@@ -150,4 +167,35 @@ func whenOf(s string) (time.Time, error) {
 		return t, fmt.Errorf("%q is neither RFC 3339 nor a date", s)
 	}
 	return t, nil
+}
+
+// printReadings prints each figure's readings, and with chart, its
+// centre, natural process limits and the signals that the process moved.
+func printReadings(w io.Writer, series []activity.Series, chart bool) {
+	for i, s := range series {
+		if i > 0 {
+			fmt.Fprintln(w)
+		}
+		fmt.Fprintf(w, "%s\n", s.Name)
+		for j, p := range s.Chart.Points {
+			mark := ""
+			if s.Split != "" && p.Period == s.Split {
+				mark = "  <- limits from here"
+			}
+			if chart && len(p.Signals) > 0 {
+				mark += "  signal: " + strings.Join(p.Signals, ", ")
+			}
+			fmt.Fprintf(w, "  %-12s %12.3f  (%d)%s\n", p.Period, p.Value, s.Counts[j], mark)
+		}
+		if !chart {
+			continue
+		}
+		c := s.Chart
+		if len(c.Points) >= 2 && c.Note != "Two readings at least are needed for limits." {
+			fmt.Fprintf(w, "  centre %.3f, limits %.3f to %.3f, stable %v\n", c.Centre, c.Lower, c.Upper, c.Stable)
+		}
+		if c.Note != "" {
+			fmt.Fprintf(w, "  %s\n", c.Note)
+		}
+	}
 }
