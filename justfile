@@ -388,3 +388,20 @@ eval-status dir criteria="":
 # Stop a run's server, or every run's
 eval-stop dir run="":
     "$(readlink -f "{{dir}}/build")/bin/cartograph" eval stop "{{dir}}" {{run}}
+
+# A person's task, run the same way (docs/EVALUATING_PEOPLE.md): a fresh
+# traced run of the task on the frozen build, its brief printed
+ux-serve dir task:
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval ux-serve "{{dir}}" -task "{{task}}"
+
+# Score a person's task run from the people's trace
+ux-score dir run task:
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval ux-score "{{dir}}" "{{run}}" -task "{{task}}"
+
+# Every task run, its checks, and the streak against the bar
+ux-status dir task="":
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval ux-status "{{dir}}" {{ if task != "" { "-task " + quote(task) } else { "" } }}
+
+# Stop a task run's server, or every one's
+ux-stop dir run="":
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval ux-stop "{{dir}}" {{run}}

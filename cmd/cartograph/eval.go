@@ -72,6 +72,14 @@ func runEval(args []string) error {
 		return evalStatusCmd(args[1:])
 	case "stop":
 		return evalStopCmd(args[1:])
+	case "ux-serve":
+		return evalUXServeCmd(args[1:])
+	case "ux-score":
+		return evalUXScoreCmd(args[1:])
+	case "ux-status":
+		return evalUXStatusCmd(args[1:])
+	case "ux-stop":
+		return evalUXStopCmd(args[1:])
 	}
 	return errors.New(evalUsage)
 }
@@ -85,7 +93,7 @@ const evalUsage = `usage:
   cartograph eval score <dir> <run> -criteria <file> -change-set <id>
                                                              score a run from the server and its trace
   cartograph eval status <dir> -criteria <file>              every run, and the streak against the bar
-  cartograph eval stop <dir> [<run>]                         stop a run's server, or every run's`
+  cartograph eval stop <dir> [<run>]                         stop a run's server, or every run's` + evalUXUsage
 
 // evalBuildCmd records the build under test: the flake's cartograph
 // package built at one commit (just eval-build does the nix build), so

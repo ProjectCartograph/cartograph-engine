@@ -193,3 +193,27 @@ func TestReadingsChartEachFigurePerPeriod(t *testing.T) {
 		t.Errorf("week %q", p)
 	}
 }
+
+func TestScoreRunHoldsTheTaskToItsBar(t *testing.T) {
+	t.Parallel()
+	flows, err := Flows()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := Analyse(trace(time.Date(2026, 10, 9, 13, 0, 0, 0, time.UTC)), flows, Options{Budget: map[string]int{"define/Goal": 4}})
+	zero, slow := 0, 0.5
+	checks := ScoreRun(r, Bar{Type: Define, Kind: "Goal", MaxDefects: &zero, MaxSeconds: 300, MaxExtra: 2, MaxSlowPresses: &slow, MaxDeadClicks: &zero})
+	got := map[string]bool{}
+	for _, c := range checks {
+		got[c.Name] = c.Pass
+	}
+	want := map[string]bool{"finished": true, "defects": false, "time": true, "extra interactions": true, "slow answers": true, "dead clicks": false}
+	for name, pass := range want {
+		if p, ok := got[name]; !ok || p != pass {
+			t.Errorf("%s: pass %v (judged %v), want %v", name, p, ok, pass)
+		}
+	}
+	if c := ScoreRun(r, Bar{Type: Define, Kind: "Project"}); len(c) != 1 || c[0].Pass {
+		t.Errorf("no project was defined: %+v", c)
+	}
+}
