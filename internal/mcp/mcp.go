@@ -23,6 +23,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/reporting"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace"
@@ -677,6 +678,12 @@ func failed(err error) *sdk.CallToolResult {
 			fmt.Fprintf(&b, "\n- %s: %s", orRoot(p.Path), p.Message)
 		}
 		text = b.String()
+	}
+	if errors.Is(err, engine.ErrUnknownKind) {
+		// Name the kinds there are, and the two an agent reaches for that
+		// are not kinds, so the next call is right (eval run 009).
+		text += ". The kinds are " + strings.Join(kinds.Names(), ", ") +
+			". A role is a Resource; an organisation or a unit is a Resource of category orgUnit, or a Team."
 	}
 	var open *engine.OpenChecksError
 	if errors.As(err, &open) {

@@ -1692,3 +1692,21 @@ func TestARoundAskingTheStancesCarriesTheTriangle(t *testing.T) {
 		t.Fatalf("triangle %+v: %.800s", out.Triangle, text)
 	}
 }
+
+// A kind that does not exist is refused with the kinds that do, and the
+// two an agent reaches for (eval run 009 searched for Role and
+// Organisation); a port's first answer says what the workspace holds, so
+// nothing is searched for in an empty one.
+func TestAPortSaysWhatTheWorkspaceHolds(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	res, text := callTool(t, cs, "search", map[string]any{"kind": "Role"})
+	if !res.IsError || !strings.Contains(text, "The kinds are") || !strings.Contains(text, "A role is a Resource") {
+		t.Fatalf("an unknown kind: %s", text)
+	}
+	doc := "Depot Checks Charter\n\n## Scope\n\nEvery depot is in scope, with its graders and its checklist.\n"
+	_, text = callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
+	if !strings.Contains(text, `"workspace":{`) || !strings.Contains(text, `"Team":`) {
+		t.Fatalf("port's first answer: %s", text)
+	}
+}

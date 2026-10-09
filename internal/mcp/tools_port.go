@@ -7,6 +7,7 @@ import (
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/kinds"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/structure"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -55,7 +56,7 @@ func registerPortTools(s *sdk.Server, o Options, person identity.Principal) {
 			}
 			if len(in.Pieces) == 0 {
 				return map[string]any{"changeSet": cs.ID, "sections": srcs[0].Sections, "piecesIn": pieceSections,
-					"questions": structure.Questions, "example": json.RawMessage(structureExample),
+					"questions": structure.Questions, "example": json.RawMessage(structureExample), "workspace": workspaceHeld(c),
 					"next": "Read sections " + strings.Join(pieceSections, ", ") + " with read_section, list every piece of work they name, answer the questions " +
 						"here for each, and call port again with title and pieces, shaped as example. Do not call structure or start_work: port does both, and writes the registers."}, nil
 			}
@@ -143,4 +144,20 @@ func registerPortTools(s *sdk.Server, o Options, person identity.Principal) {
 			out["then"] = next
 			return out, nil
 		})
+}
+
+// workspaceHeld says what the workspace already holds, kind by kind, so
+// an agent searches only kinds that have records and drafts the rest
+// without looking (eval run 009 spent twelve searches on an empty one).
+func workspaceHeld(c call) map[string]any {
+	held := map[string]int{}
+	for _, k := range kinds.Names() {
+		if list, err := c.o.Engine.List(c.ctx, k, engine.Filter{}, false); err == nil && len(list) > 0 {
+			held[k] = len(list)
+		}
+	}
+	if len(held) == 0 {
+		return map[string]any{"records": held, "said": "The workspace holds no records yet: every record this document needs is new, so there is nothing to search for. Draft each one."}
+	}
+	return map[string]any{"records": held, "said": "The workspace already holds these, by kind: search a kind listed here before drafting one of your own; a kind not listed has nothing to find."}
 }
