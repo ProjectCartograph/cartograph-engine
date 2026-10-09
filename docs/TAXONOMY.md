@@ -1701,3 +1701,29 @@ and the short-term sigma level. The limits are worked out from the
 readings, never entered: specification limits say what is required,
 control limits what the process does.
 
+
+### D59. What happened is traced to what it reaches. *(resolved)*
+
+**The problem.** The event log (D52) records that something happened to an
+item, but not what it moves. When the food models a survey needed came in
+over budget, the risk that named it had occurred, the survey had to be
+redesigned, and the baseline that waited on the survey, and the target that
+waited on the baseline, moved with it. Nothing in the record said so.
+
+**The discipline.** A risk that is not mapped to the schedule cannot be
+followed into it (schedule risk analysis); dependency tools mark the items a
+late one breaks rather than move them (Jira, Airtable, Linear).
+
+**What Cartograph does.** The items something can happen to are a
+project's **triggerables**: its milestones (reached, slipped), deliverables
+(accepted, rejected, slipped), conditions (met, not met), risks and
+dependencies (occurred) and success criteria (met, not met). A person says
+what happened in their own words, and the decision model ranks the
+triggerables it is about; without one, every triggerable is offered for the
+person to pick (ADR 0030). From the item, the engine walks what waits on it
+(D47, D48), and for a risk every item whose timing names it, and shows
+everything the trigger reaches. Each reaction is an event of its own, a
+deliverable needing redesign, a milestone slipped, with **cause** naming the
+event it follows from, recorded in one change set with the trigger, so the
+chain from cause to every reaction is kept. Nothing is rescheduled: the
+person decides what changes.

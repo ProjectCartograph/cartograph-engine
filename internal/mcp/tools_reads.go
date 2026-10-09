@@ -285,6 +285,30 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 			return g, nil
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "what_happened", Description: "When your person tells you something happened to a project (a risk occurred, a delivery slipped, a milestone was reached), " +
+		"the items of the project it is about, likeliest first, ranked by the decision model, each with what can be recorded as happening to it (TAXONOMY.md D59). " +
+		"Offer the likeliest and let your person confirm; without a model (available false) every item is listed: ask which. " +
+		"Then affects says what it reaches, and you record the event, and any that follow from it with cause, in one change set.", Annotations: readOnly},
+		func(c call, in happenedIn) (any, error) {
+			c = c.reading(in.ChangeSet)
+			return e.WhatHappened(c.ctx, in.Project, in.Text)
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "affects", Description: "Every item a trigger on one of a project's items reaches (TAXONOMY.md D59): what waits on it, directly or through others, " +
+		"and for a risk every item whose timing names it, each with its month and what it follows. Tell your person what it reaches; " +
+		"what changes is theirs to decide, recorded as events with cause naming the trigger, or as changes, in their change set. Nothing moves by itself.", Annotations: readOnly},
+		func(c call, in affectsIn) (any, error) {
+			c = c.reading(in.ChangeSet)
+			nodes, err := e.Affects(c.ctx, in.Project, in.Item)
+			if err != nil {
+				return nil, err
+			}
+			for i := range nodes {
+				nodes[i].X, nodes[i].Y = 0, 0
+			}
+			return map[string]any{"reaches": nodes}, nil
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "match", Description: "Before defining anything, the existing records of a kind that already say what it would say, most likely first: " +
 		"judged by Cartograph's decision model; without one, only a record with the same name or its initials (by says which). Work on a match instead of defining another.", Annotations: readOnly},
 		func(c call, in matchIn) (any, error) {

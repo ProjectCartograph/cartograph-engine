@@ -190,6 +190,36 @@ func (e GuidePlanItemWhen) Valid() bool {
 	}
 }
 
+// Defines values for HappenedMatchesKind.
+const (
+	HappenedMatchesKindCondition   HappenedMatchesKind = "condition"
+	HappenedMatchesKindCriterion   HappenedMatchesKind = "criterion"
+	HappenedMatchesKindDeliverable HappenedMatchesKind = "deliverable"
+	HappenedMatchesKindDependency  HappenedMatchesKind = "dependency"
+	HappenedMatchesKindMilestone   HappenedMatchesKind = "milestone"
+	HappenedMatchesKindRisk        HappenedMatchesKind = "risk"
+)
+
+// Valid indicates whether the value is a known member of the HappenedMatchesKind enum.
+func (e HappenedMatchesKind) Valid() bool {
+	switch e {
+	case HappenedMatchesKindCondition:
+		return true
+	case HappenedMatchesKindCriterion:
+		return true
+	case HappenedMatchesKindDeliverable:
+		return true
+	case HappenedMatchesKindDependency:
+		return true
+	case HappenedMatchesKindMilestone:
+		return true
+	case HappenedMatchesKindRisk:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LineageNodeRole.
 const (
 	LineageNodeRoleDownstream LineageNodeRole = "downstream"
@@ -1394,6 +1424,25 @@ type GuideStep struct {
 	Title  string       `json:"title"`
 }
 
+// Happened defines model for Happened.
+type Happened struct {
+	// Available Whether the decision model ranked the matches; false, every triggerable as listed.
+	Available bool `json:"available"`
+	Matches   []struct {
+		// Happens What can be recorded as happening to it, as the event log names it.
+		Happens []string `json:"happens"`
+
+		// Item The item, as list/id.
+		Item       string              `json:"item"`
+		Kind       HappenedMatchesKind `json:"kind"`
+		Likelihood *float32            `json:"likelihood,omitempty"`
+		Name       string              `json:"name"`
+	} `json:"matches"`
+}
+
+// HappenedMatchesKind defines model for Happened.Matches.Kind.
+type HappenedMatchesKind string
+
 // Health defines model for Health.
 type Health struct {
 	Status string `json:"status"`
@@ -2406,6 +2455,15 @@ type GetProgrammeChecksParams struct {
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
+// GetWhatATriggerReachesParams defines parameters for GetWhatATriggerReaches.
+type GetWhatATriggerReachesParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+
+	// Item The item, as list/id.
+	Item string `form:"item" json:"item"`
+}
+
 // GetProjectCharterHtmlParams defines parameters for GetProjectCharterHtml.
 type GetProjectCharterHtmlParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -2423,6 +2481,17 @@ type GetProjectChecksParams struct {
 
 // GetProjectDMAICParams defines parameters for GetProjectDMAIC.
 type GetProjectDMAICParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
+// MatchWhatHappenedJSONBody defines parameters for MatchWhatHappened.
+type MatchWhatHappenedJSONBody struct {
+	Text string `json:"text"`
+}
+
+// MatchWhatHappenedParams defines parameters for MatchWhatHappened.
+type MatchWhatHappenedParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
@@ -2640,6 +2709,9 @@ type GetLineageJSONRequestBody GetLineageJSONBody
 
 // DeleteGoalJSONRequestBody defines body for DeleteGoal for application/json ContentType.
 type DeleteGoalJSONRequestBody = DeleteGoalRequest
+
+// MatchWhatHappenedJSONRequestBody defines body for MatchWhatHappened for application/json ContentType.
+type MatchWhatHappenedJSONRequestBody MatchWhatHappenedJSONBody
 
 // TransitionProjectStateJSONRequestBody defines body for TransitionProjectState for application/json ContentType.
 type TransitionProjectStateJSONRequestBody = ProjectStateTransitionRequest
@@ -2885,6 +2957,9 @@ type ServerInterface interface {
 	// GetProgrammeChecks Whether a programme can be judged on what a programme is judged on. Advisory only: none of these has a state that stops anything, because most of them can change when somebody edits a different manifest.
 	// (GET /manifests/Programme/{id}/checks)
 	GetProgrammeChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProgrammeChecksParams)
+	// GetWhatATriggerReaches Every item a trigger on one of a project's items reaches
+	// (GET /manifests/Project/{id}/affects)
+	GetWhatATriggerReaches(w http.ResponseWriter, r *http.Request, id IdParam, params GetWhatATriggerReachesParams)
 	// GetProjectCharterHtml Project charter rendered as HTML from the latest snapshot (or working copy with ?working=true).
 	// (GET /manifests/Project/{id}/charter.html)
 	GetProjectCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectCharterHtmlParams)
@@ -2894,6 +2969,9 @@ type ServerInterface interface {
 	// GetProjectDMAIC Whether a project can be taken through DMAIC, phase by phase
 	// (GET /manifests/Project/{id}/dmaic)
 	GetProjectDMAIC(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectDMAICParams)
+	// MatchWhatHappened The items of a project what a person says happened is about
+	// (POST /manifests/Project/{id}/happened)
+	MatchWhatHappened(w http.ResponseWriter, r *http.Request, id IdParam, params MatchWhatHappenedParams)
 	// GetProjectSchedule A project's milestones placed on time
 	// (GET /manifests/Project/{id}/schedule)
 	GetProjectSchedule(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectScheduleParams)
@@ -4509,6 +4587,61 @@ func (siw *ServerInterfaceWrapper) GetProgrammeChecks(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// GetWhatATriggerReaches operation middleware
+func (siw *ServerInterfaceWrapper) GetWhatATriggerReaches(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetWhatATriggerReachesParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "item" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "item", r.URL.Query(), &params.Item, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "item"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "item", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetWhatATriggerReaches(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetProjectCharterHtml operation middleware
 func (siw *ServerInterfaceWrapper) GetProjectCharterHtml(w http.ResponseWriter, r *http.Request) {
 
@@ -4639,6 +4772,48 @@ func (siw *ServerInterfaceWrapper) GetProjectDMAIC(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProjectDMAIC(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MatchWhatHappened operation middleware
+func (siw *ServerInterfaceWrapper) MatchWhatHappened(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params MatchWhatHappenedParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MatchWhatHappened(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6237,6 +6412,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/links/{link}/candidates", wrapper.GetLinkCandidates)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/schedule", wrapper.GetProjectSchedule)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/waits", wrapper.GetProjectWaits)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/Project/{id}/happened", wrapper.MatchWhatHappened)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/affects", wrapper.GetWhatATriggerReaches)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/components", wrapper.GetComponents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/graph", wrapper.GetGraph)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Goal/{id}/checks", wrapper.GetGoalChecks)
@@ -9265,6 +9442,71 @@ func (response GetProgrammeChecks404JSONResponse) VisitGetProgrammeChecksRespons
 	return err
 }
 
+type GetWhatATriggerReachesRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetWhatATriggerReachesParams
+}
+
+type GetWhatATriggerReachesResponseObject interface {
+	VisitGetWhatATriggerReachesResponse(w http.ResponseWriter) error
+}
+
+type GetWhatATriggerReaches200JSONResponse []WaitsNode
+
+func (response GetWhatATriggerReaches200JSONResponse) VisitGetWhatATriggerReachesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWhatATriggerReaches401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetWhatATriggerReaches401JSONResponse) VisitGetWhatATriggerReachesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWhatATriggerReaches403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetWhatATriggerReaches403JSONResponse) VisitGetWhatATriggerReachesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWhatATriggerReaches404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetWhatATriggerReaches404JSONResponse) VisitGetWhatATriggerReachesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetProjectCharterHtmlRequestObject struct {
 	Id     IdParam `json:"id"`
 	Params GetProjectCharterHtmlParams
@@ -9455,6 +9697,72 @@ func (response GetProjectDMAIC403JSONResponse) VisitGetProjectDMAICResponse(w ht
 type GetProjectDMAIC404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response GetProjectDMAIC404JSONResponse) VisitGetProjectDMAICResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MatchWhatHappenedRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params MatchWhatHappenedParams
+	Body   *MatchWhatHappenedJSONRequestBody
+}
+
+type MatchWhatHappenedResponseObject interface {
+	VisitMatchWhatHappenedResponse(w http.ResponseWriter) error
+}
+
+type MatchWhatHappened200JSONResponse Happened
+
+func (response MatchWhatHappened200JSONResponse) VisitMatchWhatHappenedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MatchWhatHappened401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response MatchWhatHappened401JSONResponse) VisitMatchWhatHappenedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MatchWhatHappened403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response MatchWhatHappened403JSONResponse) VisitMatchWhatHappenedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MatchWhatHappened404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response MatchWhatHappened404JSONResponse) VisitMatchWhatHappenedResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -12569,6 +12877,9 @@ type StrictServerInterface interface {
 	// GetProgrammeChecks Whether a programme can be judged on what a programme is judged on. Advisory only: none of these has a state that stops anything, because most of them can change when somebody edits a different manifest.
 	// (GET /manifests/Programme/{id}/checks)
 	GetProgrammeChecks(ctx context.Context, request GetProgrammeChecksRequestObject) (GetProgrammeChecksResponseObject, error)
+	// GetWhatATriggerReaches Every item a trigger on one of a project's items reaches
+	// (GET /manifests/Project/{id}/affects)
+	GetWhatATriggerReaches(ctx context.Context, request GetWhatATriggerReachesRequestObject) (GetWhatATriggerReachesResponseObject, error)
 	// GetProjectCharterHtml Project charter rendered as HTML from the latest snapshot (or working copy with ?working=true).
 	// (GET /manifests/Project/{id}/charter.html)
 	GetProjectCharterHtml(ctx context.Context, request GetProjectCharterHtmlRequestObject) (GetProjectCharterHtmlResponseObject, error)
@@ -12578,6 +12889,9 @@ type StrictServerInterface interface {
 	// GetProjectDMAIC Whether a project can be taken through DMAIC, phase by phase
 	// (GET /manifests/Project/{id}/dmaic)
 	GetProjectDMAIC(ctx context.Context, request GetProjectDMAICRequestObject) (GetProjectDMAICResponseObject, error)
+	// MatchWhatHappened The items of a project what a person says happened is about
+	// (POST /manifests/Project/{id}/happened)
+	MatchWhatHappened(ctx context.Context, request MatchWhatHappenedRequestObject) (MatchWhatHappenedResponseObject, error)
 	// GetProjectSchedule A project's milestones placed on time
 	// (GET /manifests/Project/{id}/schedule)
 	GetProjectSchedule(ctx context.Context, request GetProjectScheduleRequestObject) (GetProjectScheduleResponseObject, error)
@@ -14038,6 +14352,33 @@ func (sh *strictHandler) GetProgrammeChecks(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// GetWhatATriggerReaches operation middleware
+func (sh *strictHandler) GetWhatATriggerReaches(w http.ResponseWriter, r *http.Request, id IdParam, params GetWhatATriggerReachesParams) {
+	var request GetWhatATriggerReachesRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetWhatATriggerReaches(ctx, request.(GetWhatATriggerReachesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetWhatATriggerReaches")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetWhatATriggerReachesResponseObject); ok {
+		if err := validResponse.VisitGetWhatATriggerReachesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetProjectCharterHtml operation middleware
 func (sh *strictHandler) GetProjectCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectCharterHtmlParams) {
 	var request GetProjectCharterHtmlRequestObject
@@ -14112,6 +14453,40 @@ func (sh *strictHandler) GetProjectDMAIC(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProjectDMAICResponseObject); ok {
 		if err := validResponse.VisitGetProjectDMAICResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// MatchWhatHappened operation middleware
+func (sh *strictHandler) MatchWhatHappened(w http.ResponseWriter, r *http.Request, id IdParam, params MatchWhatHappenedParams) {
+	var request MatchWhatHappenedRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	var body MatchWhatHappenedJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MatchWhatHappened(ctx, request.(MatchWhatHappenedRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MatchWhatHappened")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MatchWhatHappenedResponseObject); ok {
+		if err := validResponse.VisitMatchWhatHappenedResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

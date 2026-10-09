@@ -1205,6 +1205,10 @@
                 "type": "string",
                 "maxLength": 240
               },
+              "cause": {
+                "$ref": "common.schema.json#/$defs/Slug",
+                "description": "The id of the event this one follows from, in this log: a deliverable needing redesign because a risk occurred (TAXONOMY.md D59). The chain from a trigger to every reaction is kept."
+              },
               "value": {
                 "type": "number",
                 "description": "For a success criterion: the value measured."

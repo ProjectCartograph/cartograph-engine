@@ -86,6 +86,16 @@ type (
 		Kind      string `json:"kind" jsonschema:"the manifest's kind"`
 		ID        string `json:"id" jsonschema:"the manifest's id"`
 	}
+	happenedIn struct {
+		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to read: your own, or your person's; your latest open one when left out"`
+		Project   string `json:"project" jsonschema:"the project's id"`
+		Text      string `json:"text" jsonschema:"what happened, in your person's own words"`
+	}
+	affectsIn struct {
+		ChangeSet string `json:"changeSet,omitempty" jsonschema:"the change set to read: your own, or your person's; your latest open one when left out"`
+		Project   string `json:"project" jsonschema:"the project's id"`
+		Item      string `json:"item" jsonschema:"the item something happened to, as what_happened names it: list/id, such as risks/r1"`
+	}
 	searchIn struct {
 		Kind  string   `json:"kind" jsonschema:"the kind to list"`
 		Query string   `json:"query,omitempty" jsonschema:"words in the id or name"`

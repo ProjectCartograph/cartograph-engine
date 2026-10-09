@@ -37,6 +37,8 @@ type TimeNode struct {
 	// Risks are the descriptions of the risks the timing says could move
 	// it: recorded, never simulated.
 	Risks []string `json:"risks,omitempty"`
+	// riskItems are the ids of those risks, for what a risk reaches.
+	riskItems []string
 	// Critical is on the chain that decides the last date; Conflict no
 	// longer fits its own date or window, or what it needs lands after
 	// it; Late is set once something happens, past the month expected;
@@ -102,6 +104,7 @@ func (e *Engine) Waits(ctx context.Context, project string) (TimeGraph, error) {
 			i := g.item(project, tl.list, id, tl.kind, m)
 			g.nodes[i].Timing = tm
 			for _, rid := range stringList(tm["risks"]) {
+				g.nodes[i].riskItems = append(g.nodes[i].riskItems, rid)
 				if n := riskNames[rid]; n != "" {
 					g.nodes[i].Risks = append(g.nodes[i].Risks, n)
 				}

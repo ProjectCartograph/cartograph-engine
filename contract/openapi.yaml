@@ -156,6 +156,79 @@ paths:
               schema:
                 $ref: "#/components/schemas/Waits"
 
+  /manifests/Project/{id}/happened:
+    post:
+      operationId: matchWhatHappened
+      summary: The items of a project what a person says happened is about
+      description: >-
+        What happened, in the person's own words, matched to the project's
+        triggerables (its milestones, deliverables, conditions, risks,
+        dependencies and success criteria) by the decision model, likeliest
+        first, with what can be recorded as happening to each (TAXONOMY.md
+        D59). Without a model nothing is judged (docs/adr/0030): every
+        triggerable is returned, unranked, and available is false.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - $ref: "#/components/parameters/PreviewParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 400
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Happened"
+
+  /manifests/Project/{id}/affects:
+    get:
+      operationId: getWhatATriggerReaches
+      summary: Every item a trigger on one of a project's items reaches
+      description: >-
+        From the item (milestones/start, risks/r1), everything that waits on
+        it, directly or through others, and for a risk every item whose
+        timing names it and what waits on those (TAXONOMY.md D59), as the
+        project's waits place them. Nothing is rescheduled.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - $ref: "#/components/parameters/PreviewParam"
+        - name: item
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The item, as list/id.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WaitsNode"
+
   /components:
     get:
       operationId: getComponents
@@ -4447,6 +4520,34 @@ components:
               to:
                 type: integer
                 description: The index in nodes of what waits on it.
+    Happened:
+      type: object
+      required: [available, matches]
+      properties:
+        available:
+          type: boolean
+          description: Whether the decision model ranked the matches; false, every triggerable as listed.
+        matches:
+          type: array
+          items:
+            type: object
+            required: [item, kind, name, happens]
+            properties:
+              item:
+                type: string
+                description: The item, as list/id.
+              kind:
+                type: string
+                enum: [milestone, deliverable, condition, risk, dependency, criterion]
+              name:
+                type: string
+              happens:
+                type: array
+                items:
+                  type: string
+                description: What can be recorded as happening to it, as the event log names it.
+              likelihood:
+                type: number
     WaitsNode:
       type: object
       required: [kind, record, name, critical, conflict, late, unplaced, x, y]
