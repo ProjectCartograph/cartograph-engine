@@ -1343,7 +1343,7 @@ func TestAPortWritesEveryRecordInOneCall(t *testing.T) {
 	}
 	_, text = callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "records": []any{
 		map[string]any{"record": project, "set": map[string]any{"/spec/objectives/0/objective": "Produce is graded the same at every depot"},
-			"open": []any{map[string]any{"check": "resources-funding", "reason": "The charter names no funding"}}},
+			"asked": "not available", "open": []any{map[string]any{"check": "resources-funding", "reason": "The charter names no funding"}}},
 	}})
 	if !strings.Contains(text, `"left":["resources-funding"]`) || !strings.Contains(text, "stillOpen") {
 		t.Fatalf("third call: %s", text)
