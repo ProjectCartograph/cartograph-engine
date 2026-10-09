@@ -200,8 +200,12 @@ func portRecords(c call, set string, records []engine.PortRecord) (any, error) {
 	}
 	if len(still) > 0 {
 		out["stillOpen"] = still
-		out["next"] = "Call port again with records for what is still open: set it from the document, or open it with the reason the document does not say it. " +
-			"Refused fields are sent again in the shape each says. Then propose."
+		// With the person there, what the document does not say is theirs,
+		// asked in rounds; round is named here, where the agent looks next
+		// (Sonnet run 006 asked everything without it, and never called it).
+		out["next"] = "Set from the document what it says, with port records; refused fields are sent again in the shape each says. " +
+			"What it does not say: with your person there, call round, which lists what to ask them now, together, and ask it before you write anything open; " +
+			"told to work without them, open it with the reason and asked \"not available\". Then propose."
 	} else {
 		out["next"] = "Every record is settled. Propose the change set with propose; report from work_summary."
 	}
