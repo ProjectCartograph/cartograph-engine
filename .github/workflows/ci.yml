@@ -93,8 +93,10 @@ jobs:
       - run: nix develop .#ci --command just commit-check origin/${{ github.base_ref }}
 
   # The binary and the image from the flake, on both architectures; the
-  # image is started and asked whether it is ready.
+  # image is started and asked whether it is ready. After ci: an image is
+  # made of what ci has built, tested and pushed to the cache.
   image:
+    needs: ci
     strategy:
       # Each architecture reports for itself; one failing must not hide
       # the other's result.
@@ -147,6 +149,7 @@ jobs:
   # installed on a kind cluster with the image the flake builds, two
   # replicas on one Postgres, probed, and made to lose a pod.
   deploy:
+    needs: image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -60,8 +60,10 @@ jobs:
   # Every image for both architectures, built on x86_64 runners: an
   # image is files, and an arm64 one is put together from arm64's own
   # packages without running any of them (docs/CROSS.md). One job per
-  # architecture, side by side: in series they were most of a release.
+  # architecture, side by side, after the binaries, which put every Go
+  # build in the cache the images are made from.
   images:
+    needs: binaries
     strategy:
       fail-fast: false
       matrix:
@@ -199,6 +201,7 @@ jobs:
   # The Helm chart at VERSION, as an OCI artifact next to the images:
   # helm install cartograph oci://ghcr.io/<owner>/charts/cartograph --version <VERSION>
   chart:
+    needs: manifest
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
