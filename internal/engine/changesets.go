@@ -473,7 +473,7 @@ func (e *Engine) UnnamedInChangeSet(ctx context.Context, set string) ([]Ref, err
 // reason, so an agent says why once, as it goes, rather than all at the
 // end. An empty reason takes it back; a second reason is added to the
 // first unless correct puts it in its place.
-func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason string, correct bool) error {
+func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, asked string, correct bool) error {
 	s, err := e.changeSetStore()
 	if err != nil {
 		return err
@@ -483,7 +483,7 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason str
 		return err
 	}
 	on := kind + "/" + id
-	reason = strings.TrimSpace(reason)
+	reason, asked = strings.TrimSpace(reason), strings.TrimSpace(asked)
 	kept := cs.Waivers[:0:0]
 	for _, w := range cs.Waivers {
 		if w.On != on || w.Check != check {
@@ -497,9 +497,15 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason str
 		} else if reason != "" && !correct {
 			reason = w.Reason
 		}
+		// So with what the person was asked: every exchange is kept.
+		if reason != "" && !correct && w.Asked != "" && !strings.Contains(w.Asked, asked) {
+			asked = w.Asked + " Also: " + asked
+		} else if reason != "" && !correct && w.Asked != "" {
+			asked = w.Asked
+		}
 	}
 	if reason != "" {
-		kept = append(kept, store.Waiver{On: on, Check: check, Reason: reason})
+		kept = append(kept, store.Waiver{On: on, Check: check, Reason: reason, Asked: asked})
 	}
 	cs.Waivers, cs.Updated = kept, timeNow().UTC()
 	return s.PutChangeSet(ctx, cs)
@@ -786,9 +792,9 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 	if len(built) > 0 {
 		return store.ChangeSet{}, &ValidationError{Problems: built}
 	}
-	left := map[string]string{}
+	left, askedOf := map[string]string{}, map[string]string{}
 	for _, w := range cs.Waivers {
-		left[w.On+"#"+w.Check] = w.Reason
+		left[w.On+"#"+w.Check], askedOf[w.On+"#"+w.Check] = w.Reason, w.Asked
 	}
 	open, err := e.openIn(context.WithValue(ctx, leftKey{}, left), s, cs.ID)
 	if err != nil {
@@ -824,7 +830,7 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 			why = c.Left
 		}
 		if why != "" {
-			waivers = append(waivers, store.Waiver{On: c.Kind + "/" + c.ManifestID, Check: c.ID, Message: c.Message, Reason: why})
+			waivers = append(waivers, store.Waiver{On: c.Kind + "/" + c.ManifestID, Check: c.ID, Message: c.Message, Reason: why, Asked: askedOf[c.Kind+"/"+c.ManifestID+"#"+c.ID]})
 			continue
 		}
 		unmet = append(unmet, c)

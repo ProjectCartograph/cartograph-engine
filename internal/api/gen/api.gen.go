@@ -2260,7 +2260,9 @@ type WaitsNodeRecordKind string
 
 // Waiver defines model for Waiver.
 type Waiver struct {
-	Check string `json:"check"`
+	// Asked What the person was asked about it and what they answered, or "not available" when the agent worked without them (docs/adr/0032).
+	Asked *string `json:"asked,omitempty"`
+	Check string  `json:"check"`
 
 	// Message What the check said.
 	Message string `json:"message"`

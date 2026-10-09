@@ -29,6 +29,7 @@ script can run against the server.
 A criteria file is JSON: what is judged, the agent's name, the bar, and
 the checks (`wholeDocument`, `proposed`, `oneObjectiveEach`,
 `noPeople`, `structure` with the component and operation patterns,
+`rounds` for a run with a person present (docs/adr/0032),
 `totals` across projects, and the `kpis` that must and must not exist).
 `internal/evaluate` defines it.
 
@@ -43,7 +44,7 @@ tells the agent to prefix every command with `scripts/dev`.
 | Do | Run |
 |---|---|
 | Freeze the build under test, the flake built at a commit | `just eval-build <dir> [rev]` |
-| Serve a fresh traced run; print the agent's prompt | `just eval-serve <dir> <document> [agent]` |
+| Serve a fresh traced run; print the agent's prompt (`person=1`: a person answers between its turns) | `just eval-serve <dir> <document> [agent] [person]` |
 | Score a run from the server and its trace | `just eval-score <dir> <run> <criteria> <change set>` |
 | Every run, its figures, and the streak | `just eval-status <dir> [criteria]` |
 | Stop a run's server, or every run's | `just eval-stop <dir> [run]` |
@@ -57,6 +58,11 @@ tells the agent to prefix every command with `scripts/dev`.
 - The scorer reads through the same server as a client named `Scorer`,
   and the trace figures are the agent's calls only
   (`cartograph traces -agent <name>` reads them the same way).
+- With a person present (`person=1`), the agent ends its turn with its
+  questions and the evaluator answers as the person, by a policy
+  written beside the criteria before the first run and kept word for
+  word across runs: what to answer to each kind of question, and what
+  to say when it is a figure the person does not have yet.
 - Score every run, every criterion, pass or fail.
 
 ## Analyse

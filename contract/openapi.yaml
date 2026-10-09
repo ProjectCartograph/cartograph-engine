@@ -3828,6 +3828,12 @@ components:
         reason:
           type: string
           description: Why the agent left it open.
+        asked:
+          type: string
+          description: >-
+            What the person was asked about it and what they answered, or
+            "not available" when the agent worked without them
+            (docs/adr/0032).
 
     ManifestCheck:
       type: object

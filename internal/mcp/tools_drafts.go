@@ -284,7 +284,7 @@ func registerDraftTools(s *sdk.Server, o Options, person identity.Principal) {
 				default:
 					if err := engine.MayLeave(o.Check, in.Asked); err != nil {
 						notLeft = append(notLeft, err.Error())
-					} else if err := e.LeaveOpen(c.ctx, cs.ID, in.Kind, in.ID, o.Check, o.Reason, false); err != nil {
+					} else if err := e.LeaveOpen(c.ctx, cs.ID, in.Kind, in.ID, o.Check, o.Reason, in.Asked, false); err != nil {
 						notLeft = append(notLeft, o.Check+": "+err.Error())
 					} else {
 						left = append(left, o.Check)
@@ -365,7 +365,7 @@ func registerDraftTools(s *sdk.Server, o Options, person identity.Principal) {
 						return nil, err
 					}
 				}
-				if err := e.LeaveOpen(c.ctx, cs.ID, it.Kind, it.ID, it.Check, in.Reason, in.Correct); err != nil {
+				if err := e.LeaveOpen(c.ctx, cs.ID, it.Kind, it.ID, it.Check, in.Reason, in.Asked, in.Correct); err != nil {
 					return nil, err
 				}
 				left = append(left, it.Kind+"/"+it.ID+" "+it.Check)

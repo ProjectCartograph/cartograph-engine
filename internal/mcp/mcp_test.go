@@ -565,6 +565,14 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 	if len(sets) == 0 || len(sets[0].Waivers) != len(report.Open) || !strings.HasPrefix(sets[0].Waivers[0].Reason, "Only the person knows") {
 		t.Fatalf("the proposal's waivers: %+v", sets)
 	}
+	// What the person was asked goes with the check to the proposal, and
+	// the summary the agent reports from says it (docs/adr/0032).
+	if !strings.HasPrefix(sets[0].Waivers[0].Asked, "Asked who sets it") {
+		t.Fatalf("what the person was asked was lost: %+v", sets[0].Waivers)
+	}
+	if _, sum := callTool(t, cs, "work_summary", map[string]any{"changeSet": sets[0].ID}); !strings.Contains(sum, `"asked":"Asked who sets it`) {
+		t.Fatalf("the summary does not say what was asked: %s", sum)
+	}
 }
 
 // taxonomy says where each part of a document goes, and what stays out,

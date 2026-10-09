@@ -502,7 +502,7 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "work_summary", Description: "What your change set really holds, record by record: each record's name, how many objectives, " +
-		"deliverables, milestones, risks, components and key results it has, its checks still open and those left for your person. " +
+		"deliverables, milestones, risks, components and key results it has, its checks still open, and each check left for your person with what they were asked. " +
 		"Report to your person from this answer only: never say a record holds what it does not show.", Annotations: readOnly},
 		func(c call, in readingIn) (any, error) {
 			cs, c, found, err := c.inChangeSet(in.ChangeSet, false)
@@ -540,7 +540,13 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 				r["openChecks"], r["leftForPerson"] = open, leftBy[it.Item.Kind+"/"+it.Item.ID]
 				records = append(records, r)
 			}
-			return map[string]any{"changeSet": cs.ID, "status": view.ChangeSet.Status, "records": records,
+			// What is left for the person, with what they were asked, for
+			// the report: a check left without asking them shows here.
+			left := make([]map[string]any, len(view.ChangeSet.Waivers))
+			for i, w := range view.ChangeSet.Waivers {
+				left[i] = map[string]any{"on": w.On, "check": w.Check, "reason": w.Reason, "asked": w.Asked}
+			}
+			return map[string]any{"changeSet": cs.ID, "status": view.ChangeSet.Status, "records": records, "leftForYourPerson": left,
 				"said": "This is all the change set holds. Report from it only."}, nil
 		})
 }

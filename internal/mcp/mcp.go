@@ -619,7 +619,7 @@ func scheduleOut(items []engine.ScheduleItem) map[string]any {
 func changeSetOut(cs store.ChangeSet, items []string) map[string]any {
 	waived := make([]map[string]any, len(cs.Waivers))
 	for i, w := range cs.Waivers {
-		waived[i] = map[string]any{"on": w.On, "check": w.Check, "reason": w.Reason}
+		waived[i] = map[string]any{"on": w.On, "check": w.Check, "reason": w.Reason, "asked": w.Asked}
 	}
 	return map[string]any{"changeSet": cs.ID, "title": cs.Title, "status": cs.Status, "items": items, "leftForYourPerson": waived,
 		"next": "Proposed. Your person reviews the whole change set in Cartograph, under Change sets, and accepts it there; tell them what it holds and what you left open."}

@@ -381,7 +381,7 @@ func (e *Engine) PortRecords(ctx context.Context, set string, records []PortReco
 				res.NotLeft = append(res.NotLeft, err.Error())
 				continue
 			}
-			if err := e.LeaveOpen(ctx, set, k, id, o.Check, o.Reason, false); err != nil {
+			if err := e.LeaveOpen(ctx, set, k, id, o.Check, o.Reason, "not available", false); err != nil {
 				res.NotLeft = append(res.NotLeft, o.Check+": "+err.Error())
 				continue
 			}
