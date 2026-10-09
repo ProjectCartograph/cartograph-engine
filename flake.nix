@@ -342,19 +342,10 @@
           haveChromium = pkgs.stdenv.hostPlatform.isLinux;
           built = self.packages.${pkgs.stdenv.hostPlatform.system};
           gomod = built.cartograph.passthru;
-          # What `just ci` runs, and nothing more: CI enters this shell, so
-          # a job fetches no browser, database or cluster it does not use.
-          ciPackages = with pkgs; [
-              go
-              pkgs.gomod2nix # writes gomod2nix.toml from go.mod (just generate)
-              oapi-codegen # internal/api/generate.go, at the version nixpkgs pins
-              built.apidiff # just compat
-              zstd # unpacks the dependencies' build cache
-              go-tools # staticcheck
-              gopls # the language server: just check runs its diagnostics
-              actionlint # the workflows, before GitHub refuses one
-              (python3.withPackages (ps: [ ps.pyyaml ])) # scripts/check-compat
-              nodejs_22 # scripts/check-compat; and the Laya sidecar, `just serve laya` (docs/adr/0023)
+          # Each CI job enters the shell with what its recipes run and no
+          # more, so a job fetches no browser, database, cluster or Go build
+          # cache it does not use. The default shell has them all.
+          basePackages = with pkgs; [
               just
               bashInteractive
               coreutils
@@ -367,6 +358,30 @@
               curl
               git
           ];
+          # The Helm chart in deploy/helm: `just helm-lint` renders and
+          # validates it, `just helm-kind` installs it on a kind cluster
+          # (Docker comes from the host).
+          deployPackages = with pkgs; [
+              kubernetes-helm
+              kubeconform
+              kind
+              kubectl
+          ];
+          # What `just ci` runs.
+          ciPackages = basePackages ++ (with pkgs; [
+              go
+              pkgs.gomod2nix # writes gomod2nix.toml from go.mod (just generate)
+              oapi-codegen # internal/api/generate.go, at the version nixpkgs pins
+              built.apidiff # just compat
+              zstd # unpacks the dependencies' build cache
+              go-tools # staticcheck
+              actionlint # the workflows, before GitHub refuses one
+              (python3.withPackages (ps: [ ps.pyyaml ])) # scripts/check-compat
+              nodejs_22 # scripts/check-compat; and the Laya sidecar, `just serve laya` (docs/adr/0023)
+          ]);
+          plainHook = ''
+              export CARTOGRAPH_TOOLCHAIN=1
+          '';
           goHook = ''
               export GOTOOLCHAIN=local
               export CARTOGRAPH_TOOLCHAIN=1
@@ -394,19 +409,25 @@
             packages = ciPackages;
             shellHook = goHook;
           };
+          # `just commit-check`: bash, git and awk.
+          commits = pkgs.mkShell {
+            name = "cartograph-engine-commits";
+            packages = basePackages;
+            shellHook = plainHook;
+          };
+          # `just helm-lint helm-kind`, and the release's chart.
+          deploy = pkgs.mkShell {
+            name = "cartograph-engine-deploy";
+            packages = basePackages ++ deployPackages;
+            shellHook = plainHook;
+          };
           default = pkgs.mkShell {
             name = "cartograph-engine";
-            packages = ciPackages ++ (with pkgs; [
+            packages = ciPackages ++ deployPackages ++ (with pkgs; [
+              gopls # the language server, for editors
               jujutsu # version control: colocated with git, the one agents use
               rsync # scripts/dev syncs the workspace into the test environment's copy
               postgresql # `just test-postgres` starts a throwaway server
-              # The Helm chart in deploy/helm: `just helm-lint` renders and
-              # validates it, `just helm-kind` installs it on a kind cluster
-              # (Docker comes from the host).
-              kubernetes-helm
-              kubeconform
-              kind
-              kubectl
             ] ++ pkgs.lib.optionals haveChromium [ chromium ]);
             shellHook = ''
               ${pkgs.lib.optionalString haveChromium ''export CHROMIUM="${pkgs.chromium}/bin/chromium"''}

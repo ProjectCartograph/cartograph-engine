@@ -232,13 +232,13 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # Images live in the registry; the cache keeps what builds them.
           pushFilter: '\.tar\.gz$'
-      - run: nix develop --command just helm-lint
+      - run: nix develop .#deploy --command just helm-lint
       - name: package and push the chart
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           version=$(cat VERSION)
           repo=oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts
-          nix develop --command helm package deploy/helm/cartograph --version "$version" --app-version "$version" --destination dist
-          echo "$GITHUB_TOKEN" | nix develop --command helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
-          nix develop --command helm push "dist/cartograph-$version.tgz" "$repo"
+          nix develop .#deploy --command helm package deploy/helm/cartograph --version "$version" --app-version "$version" --destination dist
+          echo "$GITHUB_TOKEN" | nix develop .#deploy --command helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+          nix develop .#deploy --command helm push "dist/cartograph-$version.tgz" "$repo"
