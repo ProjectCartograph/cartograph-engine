@@ -291,6 +291,10 @@ func registerDraftTools(s *sdk.Server, o Options, person identity.Principal) {
 					}
 				}
 			}
+			// What it decided for its person, kept apart for them to review.
+			if err := e.Assume(c.ctx, cs.ID, in.Kind, in.ID, in.Assumed); err != nil {
+				notLeft = append(notLeft, "assumed: "+err.Error())
+			}
 			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
 				return nil, err
 			}

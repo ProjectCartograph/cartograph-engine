@@ -21,6 +21,7 @@ type changeSets struct {
 
 func cloneChangeSet(cs store.ChangeSet) store.ChangeSet {
 	cs.Waivers = slices.Clone(cs.Waivers)
+	cs.Assumptions = slices.Clone(cs.Assumptions)
 	return cs
 }
 

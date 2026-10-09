@@ -304,7 +304,10 @@ Work this way, every time:
    answer yet (a figure decided later, a score nobody has made), call
    leave_open for it with the reason and what you asked, and carry on: next passes it by, and propose waives
    it with your reason, which your person reads. Never leave one you
-   could meet from the documents.
+   could meet from the documents. A decision you take for your person
+   with no document and no answer behind it (a month a figure was
+   taken, where a cycle starts) goes in assumed, on settle or a port
+   record, so they review each one.
 9. Your work ends in a proposal, never in a chat message asking the
    person to accept: they accept in Cartograph, after reading it. Tell
    them what you proposed, and what you left open and why.
@@ -527,6 +530,10 @@ func (c call) reading(set string) call {
 // proposeChangeSet proposes the change set, and announces it.
 func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[string]map[string]string) (any, error) {
 	e := c.o.Engine
+	if strings.TrimSpace(reason) == "" {
+		// Why, in the person's words, is the change set's own title.
+		reason = cs.Title
+	}
 	// What a document states is written, or left open with the person's
 	// own answer through leave_open; never waived in passing here.
 	for rec, checks := range waive {
@@ -621,8 +628,8 @@ func changeSetOut(cs store.ChangeSet, items []string) map[string]any {
 	for i, w := range cs.Waivers {
 		waived[i] = map[string]any{"on": w.On, "check": w.Check, "reason": w.Reason, "asked": w.Asked}
 	}
-	return map[string]any{"changeSet": cs.ID, "title": cs.Title, "status": cs.Status, "items": items, "leftForYourPerson": waived,
-		"next": "Proposed. Your person reviews the whole change set in Cartograph, under Change sets, and accepts it there; tell them what it holds and what you left open."}
+	return map[string]any{"changeSet": cs.ID, "title": cs.Title, "status": cs.Status, "items": items, "leftForYourPerson": waived, "decidedForYourPerson": assumedOut(cs.Assumptions),
+		"next": "Proposed. Your person reviews the whole change set in Cartograph, under Change sets, and accepts it there; tell them what it holds, what you left open, and each decision you took for them."}
 }
 
 // personFor is the person an agent acts for, as proposals name them.
@@ -753,4 +760,14 @@ func ProductName(ua string) string {
 		words[i] = strings.ToUpper(w[:1]) + w[1:]
 	}
 	return strings.Join(words, " ")
+}
+
+// assumedOut is what an agent decided for its person, as it reads it
+// back: never null, so an empty list says nothing was decided.
+func assumedOut(as []store.Assumption) []map[string]any {
+	out := make([]map[string]any, len(as))
+	for i, a := range as {
+		out[i] = map[string]any{"on": a.On, "field": a.Field, "took": a.Took, "why": a.Why}
+	}
+	return out
 }

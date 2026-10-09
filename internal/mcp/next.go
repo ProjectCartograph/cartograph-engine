@@ -525,8 +525,10 @@ const roundHow = "Ask every question in ask in one message, numbered, each with 
 	"good examples support, with why in a few words. Offer the choices by name, and room for the person's own answer. " +
 	"With a tool for multiple-choice questions (AskUserQuestion, up to four a call), put the recommended option first, marked so. " +
 	"If your person chose step by step, ask the same questions one at a time. Never answer a question in ask yourself: " +
-	"the decisions are your person's. Settle is yours: write each from the documents with settle, and ask only where a " +
-	"document is silent, in this round. Then save every answer in one settle call, leave_open with their words what they " +
+	"the decisions are your person's. Settle is yours: write each from the documents with settle; one the documents do not state " +
+	"is a question, asked in this round. Any decision you still take without a document or an answer (a month, a start, a wording) " +
+	"goes in assumed on the record you write it to, for your person to review. " +
+	"Then save every answer in one settle call, leave_open with their words what they " +
 	"cannot decide yet, and call round again: the next round asks what these answers unblocked."
 
 // roundOf is the next round of a piece of work.

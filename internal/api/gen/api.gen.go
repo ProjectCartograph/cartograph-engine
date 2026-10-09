@@ -972,6 +972,21 @@ type ApplyRequest struct {
 	Refs *[]string `json:"refs,omitempty"`
 }
 
+// Assumption A decision an agent took for its person with no document and no answer behind it (docs/adr/0033).
+type Assumption struct {
+	// Field The field it wrote, as a JSON pointer.
+	Field *string `json:"field,omitempty"`
+
+	// On The record it is on, as Kind/id.
+	On string `json:"on"`
+
+	// Took What the agent decided.
+	Took string `json:"took"`
+
+	// Why Why it decided without asking.
+	Why string `json:"why"`
+}
+
 // Change defines model for Change.
 type Change struct {
 	From interface{} `json:"from,omitempty"`
@@ -1004,12 +1019,15 @@ type ChangeControl struct {
 // ChangeSet A piece of work kept apart from the record and from every other piece of work until it is accepted, as a pull request is (docs/adr/0022).
 type ChangeSet struct {
 	// Agent The agent working in it, if one is.
-	Agent          *string    `json:"agent,omitempty"`
-	At             time.Time  `json:"at"`
-	DecidedAt      *time.Time `json:"decidedAt,omitempty"`
-	DecidedBy      *string    `json:"decidedBy,omitempty"`
-	DecisionReason *string    `json:"decisionReason,omitempty"`
-	Description    *string    `json:"description,omitempty"`
+	Agent *string `json:"agent,omitempty"`
+
+	// Assumptions What the agent decided on its person's behalf, with no document and no answer behind it, as it declared them (docs/adr/0033): each for the person to review.
+	Assumptions    *[]Assumption `json:"assumptions,omitempty"`
+	At             time.Time     `json:"at"`
+	DecidedAt      *time.Time    `json:"decidedAt,omitempty"`
+	DecidedBy      *string       `json:"decidedBy,omitempty"`
+	DecisionReason *string       `json:"decisionReason,omitempty"`
+	Description    *string       `json:"description,omitempty"`
 
 	// For The person it is for, who accepts it.
 	For *string `json:"for,omitempty"`

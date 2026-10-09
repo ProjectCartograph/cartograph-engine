@@ -4045,6 +4045,26 @@ components:
             "not available" when the agent worked without them
             (docs/adr/0032).
 
+    Assumption:
+      type: object
+      description: >-
+        A decision an agent took for its person with no document and no
+        answer behind it (docs/adr/0033).
+      required: [on, took, why]
+      properties:
+        on:
+          type: string
+          description: The record it is on, as Kind/id.
+        field:
+          type: string
+          description: The field it wrote, as a JSON pointer.
+        took:
+          type: string
+          description: What the agent decided.
+        why:
+          type: string
+          description: Why it decided without asking.
+
     ManifestCheck:
       type: object
       description: >-
@@ -4347,6 +4367,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Waiver"
+        assumptions:
+          type: array
+          description: >-
+            What the agent decided on its person's behalf, with no document
+            and no answer behind it, as it declared them (docs/adr/0033):
+            each for the person to review.
+          items:
+            $ref: "#/components/schemas/Assumption"
         at:
           type: string
           format: date-time

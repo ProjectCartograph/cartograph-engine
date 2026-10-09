@@ -300,7 +300,8 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 		for i, id := range []string{"a", "b"} {
 			must(t, cs.PutChangeSet(ctx, store.ChangeSet{ID: id, Title: "Work " + id, Owner: "grant-" + id, Agent: "Claude", For: "ada@example.org",
 				Status: store.ChangeSetOpen, At: at.Add(time.Duration(i) * time.Minute), Updated: at,
-				Waivers: []store.Waiver{{Check: "owner", Message: "No owner yet.", Reason: "decided next week"}}}))
+				Waivers:     []store.Waiver{{Check: "owner", Message: "No owner yet.", Reason: "decided next week", Asked: "Asked who owns it; they will decide next week"}},
+				Assumptions: []store.Assumption{{On: "Gap/g1", Field: "/spec/evidence/0/at", Took: "2025-12", Why: "The document gives no month"}}}))
 		}
 		// Each keeps its own draft of the same manifest.
 		must(t, cs.PutChangeItem(ctx, store.ChangeItem{Set: "a", Kind: "Gap", ID: "g1", Text: []byte("a's"), Base: 2, Included: true, By: "x", At: at}))
@@ -338,7 +339,8 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 
 		got, err := cs.GetChangeSet(ctx, "a")
 		must(t, err)
-		if got.Title != "Work a" || len(got.Waivers) != 1 || got.Waivers[0].Reason != "decided next week" || !got.At.Equal(at) {
+		if got.Title != "Work a" || len(got.Waivers) != 1 || got.Waivers[0].Reason != "decided next week" || got.Waivers[0].Asked == "" || !got.At.Equal(at) ||
+			len(got.Assumptions) != 1 || got.Assumptions[0].Took != "2025-12" {
 			t.Fatalf("change set round trip: %+v", got)
 		}
 		list, err := cs.ListChangeSets(ctx, store.ChangeSetFilter{For: "ada@example.org"})

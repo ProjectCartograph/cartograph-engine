@@ -546,7 +546,8 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 			for i, w := range view.ChangeSet.Waivers {
 				left[i] = map[string]any{"on": w.On, "check": w.Check, "reason": w.Reason, "asked": w.Asked}
 			}
-			return map[string]any{"changeSet": cs.ID, "status": view.ChangeSet.Status, "records": records, "leftForYourPerson": left,
+			assumed := assumedOut(view.ChangeSet.Assumptions)
+			return map[string]any{"changeSet": cs.ID, "status": view.ChangeSet.Status, "records": records, "leftForYourPerson": left, "decidedForYourPerson": assumed,
 				"said": "This is all the change set holds. Report from it only."}, nil
 		})
 }

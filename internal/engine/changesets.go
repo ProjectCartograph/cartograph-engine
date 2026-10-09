@@ -522,6 +522,49 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, as
 	return s.PutChangeSet(ctx, cs)
 }
 
+// Assumed is a decision an agent declares it took for its person on a
+// record: the field it wrote, what it took, and why it did not ask.
+type Assumed struct {
+	Field string `json:"field,omitempty" jsonschema:"the field you wrote it to, as a JSON pointer"`
+	Took  string `json:"took" jsonschema:"what you decided, in a few words; empty takes back one declared before on this field"`
+	Why   string `json:"why,omitempty" jsonschema:"why you took it without a document or your person's answer"`
+}
+
+// Assume keeps, on the working change set, the decisions an agent took
+// on its person's behalf for kind/id, with nothing in a document and no
+// answer behind them (docs/adr/0033). Best effort: only the agent knows
+// it decided, so it declares it. One a field: a later one replaces it,
+// and an empty took takes it back.
+func (e *Engine) Assume(ctx context.Context, set, kind, id string, decided []Assumed) error {
+	if len(decided) == 0 {
+		return nil
+	}
+	s, err := e.changeSetStore()
+	if err != nil {
+		return err
+	}
+	cs, err := e.WorkingChangeSet(ctx, set)
+	if err != nil {
+		return err
+	}
+	on := kind + "/" + id
+	for _, d := range decided {
+		field, took := strings.TrimSpace(d.Field), strings.TrimSpace(d.Took)
+		kept := cs.Assumptions[:0:0]
+		for _, a := range cs.Assumptions {
+			if a.On != on || a.Field != field {
+				kept = append(kept, a)
+			}
+		}
+		if took != "" {
+			kept = append(kept, store.Assumption{On: on, Field: field, Took: took, Why: strings.TrimSpace(d.Why)})
+		}
+		cs.Assumptions = kept
+	}
+	cs.Updated = timeNow().UTC()
+	return s.PutChangeSet(ctx, cs)
+}
+
 // askedFor is what the person was asked about a check left by way of
 // another, whose reason it carries word for word: what they were asked
 // there is what they were asked here.

@@ -1576,6 +1576,55 @@ func TestARoundAsksIndependentRecordsTogether(t *testing.T) {
 	}
 }
 
+// A document that lists its milestones and risks in prose has no register
+// to read: port says so, and never that registers were written (eval run
+// 005 answered registers null with "the registers written").
+func TestAPortWithoutARegisterSaysSo(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\n## Scope\n\nEvery depot is in scope, with its graders and its checklist.\n\n" +
+		"## Risks\n\nGrader turnover at the two smallest depots could leave a depot unchecked, and the committee may not meet in July.\n"
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
+	res, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{
+		map[string]any{"name": "Depot checks", "none": true},
+	}})
+	if res.IsError || strings.Contains(text, "registers written") || !strings.Contains(text, "no register as a table") {
+		t.Fatalf("port, second call: %s", text)
+	}
+}
+
+// A decision the agent takes for its person, with no document and no
+// answer behind it, is kept apart for them to review (docs/adr/0033):
+// declared on settle, one a field, and taken back with an empty took.
+func TestDecisionsTakenForThePersonAreKeptApart(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	_, text := callTool(t, cs, "start_work", map[string]any{"title": "Port", "pieces": []any{map[string]any{"name": "Rollout", "none": true}}})
+	var out struct{ Work []string }
+	_ = json.Unmarshal([]byte(text), &out)
+	kind, id, _ := strings.Cut(out.Work[0], "/")
+	took := func(assumed ...map[string]any) string {
+		res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/summary/about": "A survey of every depot"},
+			"assumed": assumed})
+		if res.IsError {
+			t.Fatalf("settle: %s", text)
+		}
+		_, sum := callTool(t, cs, "work_summary", map[string]any{})
+		return sum
+	}
+	sum := took(map[string]any{"field": "/spec/timeline/start", "took": "2026-04", "why": "The charter gives the year only"})
+	if !strings.Contains(sum, `"decidedForYourPerson":[{"field":"/spec/timeline/start","on":"`+kind+"/"+id+`","took":"2026-04"`) {
+		t.Fatalf("declared: %s", sum)
+	}
+	// One a field: a later one replaces it; an empty took takes it back.
+	if sum = took(map[string]any{"field": "/spec/timeline/start", "took": "2026-05", "why": "Corrected"}); strings.Contains(sum, "2026-04") || !strings.Contains(sum, "2026-05") {
+		t.Fatalf("replaced: %s", sum)
+	}
+	if sum = took(map[string]any{"field": "/spec/timeline/start", "took": ""}); !strings.Contains(sum, `"decidedForYourPerson":[]`) {
+		t.Fatalf("taken back: %s", sum)
+	}
+}
+
 // A round that asks how a project holds scope, schedule and cost carries
 // the triangle, so the person decides knowing what each side carries
 // (TAXONOMY.md D60).
