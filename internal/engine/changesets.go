@@ -508,7 +508,11 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, as
 		} else if reason != "" && !correct {
 			reason = w.Reason
 		}
-		// So with what the person was asked: every exchange is kept.
+		// So with what the person was asked: every exchange is kept, and
+		// an answer takes the place of having had nobody to ask.
+		if strings.EqualFold(w.Asked, "not available") && asked != "" {
+			continue
+		}
 		if reason != "" && !correct && w.Asked != "" && !strings.Contains(w.Asked, asked) {
 			asked = w.Asked + " Also: " + asked
 		} else if reason != "" && !correct && w.Asked != "" {

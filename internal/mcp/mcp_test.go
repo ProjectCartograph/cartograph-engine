@@ -1625,6 +1625,36 @@ func TestDecisionsTakenForThePersonAreKeptApart(t *testing.T) {
 	}
 }
 
+// A check left for the person without asking them comes back in the next
+// round, until it is left again with their answer, which then stands in
+// place of "not available" (eval run 007).
+func TestARoundAsksWhatWasLeftWithoutAsking(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "A survey"})
+	project := map[string]any{"apiVersion": "cartograph/v1", "kind": "Project", "metadata": map[string]any{"id": "survey", "name": "Depot survey"}, "spec": map[string]any{}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Project", "id": "survey", "manifest": project})
+	callTool(t, cs, "settle", map[string]any{"kind": "Project", "id": "survey", "asked": "not available",
+		"open": []any{map[string]any{"check": "resources-funding", "reason": "The budget is to be confirmed"}}})
+	round := func() string {
+		_, text := callTool(t, cs, "round", map[string]any{"work": []string{"Project/survey"}})
+		return text
+	}
+	if text := round(); !strings.Contains(text, `"check":"resources-funding"`) || !strings.Contains(text, "without asking them") {
+		t.Fatalf("a check left unasked is not asked again: %.800s", text)
+	}
+	asked := "Asked the budget; it is set at the board's December meeting"
+	callTool(t, cs, "settle", map[string]any{"kind": "Project", "id": "survey", "asked": asked,
+		"open": []any{map[string]any{"check": "resources-funding", "reason": "The budget is to be confirmed"}}})
+	if text := round(); strings.Contains(text, "without asking them") {
+		t.Fatalf("a check left with the person's answer is asked again: %.800s", text)
+	}
+	_, sum := callTool(t, cs, "work_summary", map[string]any{})
+	if !strings.Contains(sum, `"asked":"`+asked+`"`) {
+		t.Fatalf("the answer did not take the place of not available: %s", sum)
+	}
+}
+
 // A round that asks how a project holds scope, schedule and cost carries
 // the triangle, so the person decides knowing what each side carries
 // (TAXONOMY.md D60).

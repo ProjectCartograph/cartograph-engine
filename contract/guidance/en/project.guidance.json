@@ -732,7 +732,7 @@
     "components-programmes": "Remove the programmes; this project belongs to its bigger project's programmes.",
     "components-one-sponsor": "Use the bigger project's sponsor and budget, or make this a separate project and group the two in a programme.",
     "resources-funding": "Add a funding line, even an unfunded one.",
-    "resources-sponsor-lead": "Name a sponsor and a project manager in Resources; a part of a bigger project needs only a project manager.",
+    "resources-sponsor-lead": "Name a sponsor and a project manager in Resources. A part of a bigger project, one that names its parent under alignment partOf, needs only a project manager: being listed among another project's components is not enough.",
     "resources-mapped": "Choose who or what fills each role, if you know.",
     "data-personal-data": "Say whether every output holds personal data.",
     "data-sink": "Name the data source every output lands in.",

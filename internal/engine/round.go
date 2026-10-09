@@ -55,7 +55,29 @@ func (e *Engine) Round(ctx context.Context, set string, work []Ref, locale strin
 	sources, _ := e.Sources(ctx, set)
 	r := frontier(w.Tasks, len(sources) > 0, e.namesIn(ctx, w.Tasks))
 	e.recommend(ctx, r.Ask)
+	r.Ask = append(r.Ask, e.unasked(ctx, set)...)
 	return r, nil
+}
+
+// unasked are the checks the change set leaves for the person without
+// having asked them ("not available", or nothing): a round is asked with
+// the person there, so each is a question again until it carries their
+// answer (eval run 007 left one so before asking, and never came back).
+func (e *Engine) unasked(ctx context.Context, set string) []Question {
+	cs, err := e.WorkingChangeSet(ctx, set)
+	if err != nil {
+		return nil
+	}
+	var out []Question
+	for _, w := range cs.Waivers {
+		if a := strings.TrimSpace(w.Asked); a != "" && !strings.EqualFold(a, "not available") {
+			continue
+		}
+		kind, id, _ := strings.Cut(w.On, "/")
+		out = append(out, Question{Task: Task{Phase: "define", Kind: kind, ID: id, Check: w.Check, State: checkWarn,
+			Message: "Left for your person without asking them (" + w.Reason + "): ask them now, then leave it again with their answer as asked, or settle it."}})
+	}
+	return out
 }
 
 // recommend marks, on each question with choices, the one the decision
