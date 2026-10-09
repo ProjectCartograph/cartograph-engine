@@ -138,6 +138,13 @@ lint: embed
 arch: embed
     go test -count=1 -tags arch ./internal/arch/
 
+# Each task's shortest path, from the flows and schemas, written to the
+# budget the gate holds every change to (docs/EVALUATING_PEOPLE.md,
+# "Control"). It changes a file, so run it on the host, and say in the
+# pull request why a path grew.
+ux-budget: embed
+    go run ./cmd/cartograph ux -paths > internal/activity/paths.json
+
 # No organisation's words, no em dashes in what a person reads
 words:
     #!{{toolchain}} bash

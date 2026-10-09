@@ -30,7 +30,20 @@ func runUX(args []string) error {
 	period := fs.String("period", "", "take one reading per period of each figure: day, week or build")
 	chart := fs.Bool("chart", false, "with -period, chart each figure as an individuals and moving range (XmR) chart")
 	split := fs.String("split", "", "with -period, work out the limits from this period or build on: a changed interface is a new process")
+	paths := fs.Bool("paths", false, "print each task's shortest path from the contract, as the budget file holds it (just ux-budget)")
 	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *paths {
+		flows, err := activity.Flows()
+		if err != nil {
+			return err
+		}
+		p, err := activity.Paths(flows)
+		if err != nil {
+			return err
+		}
+		_, err = os.Stdout.Write(activity.PathsJSON(p))
 		return err
 	}
 	if fs.NArg() == 0 {
@@ -52,11 +65,16 @@ func runUX(args []string) error {
 	if err != nil {
 		return err
 	}
+	budget, err := activity.Budget()
+	if err != nil {
+		return err
+	}
+	opts := activity.Options{Idle: *idle, Budget: budget}
 	if *period != "" {
 		if *period != activity.Day && *period != activity.Week && *period != activity.Build {
 			return fmt.Errorf("-period is day, week or build, not %q", *period)
 		}
-		series := activity.Readings(acts, flows, activity.Options{Idle: *idle}, *period, *split)
+		series := activity.Readings(acts, flows, opts, *period, *split)
 		if *asJSON {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
@@ -65,7 +83,7 @@ func runUX(args []string) error {
 		printReadings(os.Stdout, series, *chart)
 		return nil
 	}
-	r := activity.Analyse(acts, flows, activity.Options{Idle: *idle})
+	r := activity.Analyse(acts, flows, opts)
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")

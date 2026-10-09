@@ -1,0 +1,23 @@
+{
+  "define/Assumption": 8,
+  "define/BeneficiaryGroup": 3,
+  "define/DataSource": 10,
+  "define/FundingSource": 5,
+  "define/Gap": 5,
+  "define/Goal": 8,
+  "define/KPI": 21,
+  "define/KPIReadings": 5,
+  "define/Operation": 9,
+  "define/Portfolio": 8,
+  "define/PortfolioDecisions": 5,
+  "define/Programme": 11,
+  "define/Project": 24,
+  "define/Purpose": 3,
+  "define/ReportingCycle": 3,
+  "define/Resource": 4,
+  "define/Segment": 3,
+  "define/Settings": 5,
+  "define/StakeholderMap": 6,
+  "define/Team": 3,
+  "define/Unit": 4
+}
