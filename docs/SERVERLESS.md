@@ -27,6 +27,7 @@ ADR 0008). What is left is printing without Chromium.
 | Presence | Never stored: relayed on the sync socket | `fanout.Bus` | Relayed over the fan-out, never stored |
 | Events (a version saved, a state changed) | Memory (`engine.Bus`), per process | `engine.Bus` | The same; only in-process subscribers hear them, since the events endpoint is not built |
 | Handoff bundles | Files under `.cartograph/handoff` | `store.BundleStore` | Rows; object storage remains an option behind the same port |
+| The people's trace (ADR 0034), when on | A JSON lines file, one per replica unless on a shared volume (`activity/jsonl`) | `activity.Recorder`, `activity.Reader` | A table every replica appends to (`activity/postgres`, `CARTOGRAPH_UI_TRACE=postgres://...`); the interface's batch waiting to be sent lives in the browser, never on a replica |
 | The embedded interface | The binary | none | none needed |
 | The file watcher | A goroutine over the vault directory | none | Absent: a database has nothing to watch |
 | PDF printing | A Chromium subprocess | `printer.Printer` | The same, or `printer.None` and a separate renderer |

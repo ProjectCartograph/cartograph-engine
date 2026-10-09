@@ -83,6 +83,12 @@ func runServe(args []string) error {
 		}
 		opts.Access = &d
 	}
+	people, closePeople, err := peopleTrace(ctx, cfg.UITrace)
+	if err != nil {
+		return err
+	}
+	defer closePeople()
+	opts.Activity = people
 	comp, err := compose(ctx, opts)
 	if err != nil {
 		return err

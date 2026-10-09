@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/api/gen"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
@@ -86,6 +87,8 @@ func (s *Server) GetSession(ctx context.Context, _ apigen.GetSessionRequestObjec
 	// list, their roles allow it.
 	agents := s.AgentsOn && (out.Access == nil || out.Access.Agents != nil && *out.Access.Agents)
 	out.Agents = &agents
+	traceOn := !activity.IsOff(s.Engine.Activity())
+	out.TraceOn = &traceOn
 	if out.Access != nil {
 		// canWrite is whether they may write anything at all.
 		out.CanWrite = false

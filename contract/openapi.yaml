@@ -1664,6 +1664,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/Session"
 
+  /events:
+    post:
+      operationId: recordEvents
+      summary: Keep what an interface saw a person do, by its shape
+      description: >-
+        An interface's own acts (a step entered, a press, a picker opened
+        and closed, how long a press took to answer), kept on the people's
+        trace (docs/adr/0034) for docs/EVALUATING_PEOPLE.md. Every field is
+        a token, a route pattern or a JSON pointer, so nothing a person
+        wrote fits; a batch with any act that does not is refused whole.
+        Not found when the deployment keeps no trace (CARTOGRAPH_UI_TRACE
+        off, the default): an interface reads traceOn from the session and
+        sends nothing then.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventBatch"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "202":
+          description: Kept
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [kept]
+                properties:
+                  kept:
+                    type: integer
+                    description: How many acts were kept.
+
   /agents:
     get:
       operationId: listAgentGrants
@@ -3500,6 +3538,79 @@ components:
             Whether agents may act for this principal here: the deployment
             serves MCP and, with an access list, the principal's roles allow
             one. An interface shows Proposals when it is true.
+        traceOn:
+          type: boolean
+          description: >-
+            Whether the deployment keeps the people's trace (docs/adr/0034).
+            An interface sends its acts to POST /events only when it is true.
+    EventBatch:
+      type: object
+      description: >-
+        One window's acts, sent together. The session groups them; the
+        person is who the request runs as.
+      required: [session, events]
+      properties:
+        session:
+          type: string
+          description: A token the interface makes for one window, never a name.
+          maxLength: 80
+        interface:
+          type: string
+          description: Which interface sent them (web, terminal).
+          maxLength: 80
+        events:
+          type: array
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/InterfaceEvent"
+    InterfaceEvent:
+      type: object
+      description: >-
+        One act an interface saw, by its shape: docs/EVALUATING_PEOPLE.md
+        says what each name means.
+      required: [name]
+      properties:
+        name:
+          type: string
+          enum: [screen.show, screen.deadend, flow.open, step.enter, step.back, field.set, guide.open,
+            picker.open, picker.close, press, request, find.open, find.pick, find.close, changeset.switch]
+          x-enum-varnames: [ActScreenShow, ActScreenDeadEnd, ActFlowOpen, ActStepEnter, ActStepBack, ActFieldSet, ActGuideOpen,
+            ActPickerOpen, ActPickerClose, ActPress, ActRequest, ActFindOpen, ActFindPick, ActFindClose, ActChangeSetSwitch]
+        at:
+          type: string
+          format: date-time
+          description: When it happened, by the interface's clock; the server's time when absent.
+        surface:
+          type: string
+          description: The screen as its route pattern (goals/$id), never its address.
+        kind:
+          type: string
+        record:
+          type: string
+          description: The record's id; ids are generated, never names.
+        step:
+          type: string
+          description: The flow step's key.
+        field:
+          type: string
+          description: The field's JSON pointer, list items by key in braces.
+        changeSet:
+          type: string
+        target:
+          type: string
+          enum: [new, existing, action, none, chosen]
+          x-enum-varnames: [TargetNew, TargetExisting, TargetAction, TargetNone, TargetChosen]
+        outcome:
+          type: string
+          enum: [ok, refused, failed]
+          x-enum-varnames: [OutcomeOk, OutcomeRefused, OutcomeFailed]
+        millis:
+          type: integer
+          minimum: 0
+          description: How long it took, in milliseconds.
+        sign:
+          type: boolean
+          description: Whether a wait showed it was waiting (a skeleton or a count).
     SessionAccess:
       type: object
       description: >-

@@ -40,7 +40,7 @@ const wazero = "github.com/tetratelabs/wazero"
 const pgx = "github.com/jackc/pgx"
 
 // postgresAdapters are the packages pgx is allowed in.
-var postgresAdapters = []string{"internal/store/postgres", "internal/fanout/postgres", "internal/reporting/postgres"}
+var postgresAdapters = []string{"internal/store/postgres", "internal/fanout/postgres", "internal/reporting/postgres", "internal/activity/postgres"}
 
 // outer is what only the composition root and the driving adapters
 // beside it may know.
@@ -51,7 +51,7 @@ var outer = []string{"internal/api", "internal/spa", "internal/render", "interna
 // outward.
 var adapters = []string{
 	"internal/store/", "internal/codec/", "internal/printer/", "internal/auth/",
-	"internal/crdt/", "internal/fanout/", "internal/reporting/", "internal/layout/", "internal/decide/", "internal/semantic/", "internal/trace/",
+	"internal/crdt/", "internal/fanout/", "internal/reporting/", "internal/layout/", "internal/decide/", "internal/semantic/", "internal/trace/", "internal/activity/",
 	"internal/yamlfmt", "pkg/client/",
 }
 
@@ -75,7 +75,7 @@ func adapter(own string) []string {
 		"internal/layout/force", "internal/layout/layered", "internal/layout/conformance",
 		"internal/decide/laya", "internal/decide/fake", "internal/decide/conformance",
 		"internal/semantic/dbt", "internal/semantic/conformance",
-		"internal/trace/jsonl",
+		"internal/trace/jsonl", "internal/activity/jsonl", "internal/activity/memory", "internal/activity/conformance", "internal/activity/postgres",
 	}
 	var forbid []string
 	for _, s := range siblings {
@@ -135,7 +135,13 @@ var rules = map[string][]string{
 	// The semantic layer port: its own terms, nothing else (docs/adr/0026).
 	"internal/semantic": join([]string{"internal", "pkg", "cmd"}, drivers),
 	// The trace port and its analysis: calls, nothing else (docs/adr/0028).
-	"internal/trace":  join([]string{"internal", "pkg", "cmd"}, drivers),
+	"internal/trace": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/codec", "internal/printer", "internal/auth", "internal/contract",
+		"internal/crdt", "internal/fanout", "internal/sentence", "internal/syncserver", "internal/yamlfmt", "internal/identity", "pkg", "cmd"}, outer, adapters, drivers),
+	// The domain of the people's trace and its ports (docs/adr/0034): acts,
+	// tasks, the flows that count their opportunities, the charts. It reads
+	// no file and opens no connection: that is an adapter's work.
+	"internal/activity": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/codec", "internal/printer", "internal/auth",
+		"internal/crdt", "internal/fanout", "internal/sentence", "internal/syncserver", "internal/yamlfmt", "pkg", "cmd"}, outer, adapters, drivers),
 	"internal/crdt":   join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/fanout": join([]string{"internal", "pkg", "cmd"}, drivers),
 	"internal/auth": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/codec", "internal/printer",
@@ -185,10 +191,16 @@ var rules = map[string][]string{
 	"internal/semantic/conformance": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/semantic/conformance")),
 	// A trace recorder keeps calls; it knows its port and a file.
 	"internal/trace/jsonl": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/trace/jsonl")),
-	"internal/auth/access": join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/access")),
-	"internal/auth/proxy":  join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/proxy")),
-	"internal/auth/roles":  join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/roles")),
-	"internal/yamlfmt":     join([]string{"internal", "pkg", "cmd"}, without(drivers, "go.yaml.in/yaml")),
+	// Where the people's trace is kept: each knows its port and its
+	// medium, and the suite holds every one to the same promises.
+	"internal/activity/jsonl":       join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/activity/jsonl")),
+	"internal/activity/memory":      join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/activity/memory")),
+	"internal/activity/conformance": join([]string{"internal/store", "internal/codec"}, drivers, adapter("internal/activity/conformance")),
+	"internal/activity/postgres":    adapter("internal/activity/postgres"),
+	"internal/auth/access":          join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/access")),
+	"internal/auth/proxy":           join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/proxy")),
+	"internal/auth/roles":           join([]string{"internal/store", "internal/codec"}, adapter("internal/auth/roles")),
+	"internal/yamlfmt":              join([]string{"internal", "pkg", "cmd"}, without(drivers, "go.yaml.in/yaml")),
 	// The CRDT adapter knows its port and wazero; its suite knows the
 	// port only, so it holds any adapter to the same promises.
 	"internal/crdt/automerge":   join([]string{"internal/store", "internal/codec", "internal/printer", "internal/auth", "internal/fanout"}, adapter("internal/crdt/automerge")),

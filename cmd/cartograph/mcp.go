@@ -3,12 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace"
-	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace/jsonl"
 	"os"
 	"os/signal"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
+	activityjsonl "github.com/ProjectCartograph/cartograph-engine/v2/internal/activity/jsonl"
+	activitypostgres "github.com/ProjectCartograph/cartograph-engine/v2/internal/activity/postgres"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/config"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/mcp"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace/jsonl"
 )
 
 // runMCP is `cartograph mcp`: MCP over stdin and stdout, for an agent on
@@ -46,4 +52,42 @@ func mcpTrace(setting string) (trace.Recorder, func(), error) {
 		return nil, nil, err
 	}
 	return r, func() { _ = r.Close() }, nil
+}
+
+// peopleTrace is the recorder of people's acts the configuration names
+// (docs/adr/0034), each act stamped with this build: none when off or
+// unset; a table in the Postgres a postgres:// URL names, where every
+// replica of a stateless deployment appends; else JSON lines appended to
+// the file named.
+func peopleTrace(ctx context.Context, setting string) (activity.Recorder, func(), error) {
+	switch {
+	case setting == "" || setting == "off":
+		return activity.Off{}, func() {}, nil
+	case config.IsPostgresURL(setting):
+		s, closeStore, err := activityPostgres(ctx, setting)
+		if err != nil {
+			return nil, nil, err
+		}
+		return activity.Stamped(s, version), closeStore, nil
+	}
+	r, err := activityjsonl.Open(setting)
+	if err != nil {
+		return nil, nil, err
+	}
+	return activity.Stamped(r, version), func() { _ = r.Close() }, nil
+}
+
+// activityPostgres opens the people's trace in the Postgres url names,
+// on a pool of its own.
+func activityPostgres(ctx context.Context, url string) (*activitypostgres.Store, func(), error) {
+	pool, err := pgxpool.New(ctx, url)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open %s: %w", config.Redact(url), err)
+	}
+	s, err := activitypostgres.Open(ctx, pool)
+	if err != nil {
+		pool.Close()
+		return nil, nil, err
+	}
+	return s, pool.Close, nil
 }

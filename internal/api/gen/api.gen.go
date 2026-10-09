@@ -220,6 +220,111 @@ func (e HappenedMatchesKind) Valid() bool {
 	}
 }
 
+// Defines values for InterfaceEventName.
+const (
+	ActChangeSetSwitch InterfaceEventName = "changeset.switch"
+	ActFieldSet        InterfaceEventName = "field.set"
+	ActFindClose       InterfaceEventName = "find.close"
+	ActFindOpen        InterfaceEventName = "find.open"
+	ActFindPick        InterfaceEventName = "find.pick"
+	ActFlowOpen        InterfaceEventName = "flow.open"
+	ActGuideOpen       InterfaceEventName = "guide.open"
+	ActPickerClose     InterfaceEventName = "picker.close"
+	ActPickerOpen      InterfaceEventName = "picker.open"
+	ActPress           InterfaceEventName = "press"
+	ActRequest         InterfaceEventName = "request"
+	ActScreenDeadEnd   InterfaceEventName = "screen.deadend"
+	ActScreenShow      InterfaceEventName = "screen.show"
+	ActStepBack        InterfaceEventName = "step.back"
+	ActStepEnter       InterfaceEventName = "step.enter"
+)
+
+// Valid indicates whether the value is a known member of the InterfaceEventName enum.
+func (e InterfaceEventName) Valid() bool {
+	switch e {
+	case ActChangeSetSwitch:
+		return true
+	case ActFieldSet:
+		return true
+	case ActFindClose:
+		return true
+	case ActFindOpen:
+		return true
+	case ActFindPick:
+		return true
+	case ActFlowOpen:
+		return true
+	case ActGuideOpen:
+		return true
+	case ActPickerClose:
+		return true
+	case ActPickerOpen:
+		return true
+	case ActPress:
+		return true
+	case ActRequest:
+		return true
+	case ActScreenDeadEnd:
+		return true
+	case ActScreenShow:
+		return true
+	case ActStepBack:
+		return true
+	case ActStepEnter:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InterfaceEventOutcome.
+const (
+	OutcomeFailed  InterfaceEventOutcome = "failed"
+	OutcomeOk      InterfaceEventOutcome = "ok"
+	OutcomeRefused InterfaceEventOutcome = "refused"
+)
+
+// Valid indicates whether the value is a known member of the InterfaceEventOutcome enum.
+func (e InterfaceEventOutcome) Valid() bool {
+	switch e {
+	case OutcomeFailed:
+		return true
+	case OutcomeOk:
+		return true
+	case OutcomeRefused:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InterfaceEventTarget.
+const (
+	TargetAction   InterfaceEventTarget = "action"
+	TargetChosen   InterfaceEventTarget = "chosen"
+	TargetExisting InterfaceEventTarget = "existing"
+	TargetNew      InterfaceEventTarget = "new"
+	TargetNone     InterfaceEventTarget = "none"
+)
+
+// Valid indicates whether the value is a known member of the InterfaceEventTarget enum.
+func (e InterfaceEventTarget) Valid() bool {
+	switch e {
+	case TargetAction:
+		return true
+	case TargetChosen:
+		return true
+	case TargetExisting:
+		return true
+	case TargetNew:
+		return true
+	case TargetNone:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LineageNodeRole.
 const (
 	LineageNodeRoleDownstream LineageNodeRole = "downstream"
@@ -1114,6 +1219,17 @@ type DeleteRequest struct {
 	Reason string `json:"reason"`
 }
 
+// EventBatch One window's acts, sent together. The session groups them; the person is who the request runs as.
+type EventBatch struct {
+	Events []InterfaceEvent `json:"events"`
+
+	// Interface Which interface sent them (web, terminal).
+	Interface *string `json:"interface,omitempty"`
+
+	// Session A token the interface makes for one window, never a name.
+	Session string `json:"session"`
+}
+
 // Exclusion defines model for Exclusion.
 type Exclusion struct {
 	// Id Manifest id
@@ -1479,6 +1595,44 @@ type IdeaReading struct {
 	} `json:"answers"`
 	Available bool `json:"available"`
 }
+
+// InterfaceEvent One act an interface saw, by its shape: docs/EVALUATING_PEOPLE.md says what each name means.
+type InterfaceEvent struct {
+	// At When it happened, by the interface's clock; the server's time when absent.
+	At        *time.Time `json:"at,omitempty"`
+	ChangeSet *string    `json:"changeSet,omitempty"`
+
+	// Field The field's JSON pointer, list items by key in braces.
+	Field *string `json:"field,omitempty"`
+	Kind  *string `json:"kind,omitempty"`
+
+	// Millis How long it took, in milliseconds.
+	Millis  *int                   `json:"millis,omitempty"`
+	Name    InterfaceEventName     `json:"name"`
+	Outcome *InterfaceEventOutcome `json:"outcome,omitempty"`
+
+	// Record The record's id; ids are generated, never names.
+	Record *string `json:"record,omitempty"`
+
+	// Sign Whether a wait showed it was waiting (a skeleton or a count).
+	Sign *bool `json:"sign,omitempty"`
+
+	// Step The flow step's key.
+	Step *string `json:"step,omitempty"`
+
+	// Surface The screen as its route pattern (goals/$id), never its address.
+	Surface *string               `json:"surface,omitempty"`
+	Target  *InterfaceEventTarget `json:"target,omitempty"`
+}
+
+// InterfaceEventName defines model for InterfaceEvent.Name.
+type InterfaceEventName string
+
+// InterfaceEventOutcome defines model for InterfaceEvent.Outcome.
+type InterfaceEventOutcome string
+
+// InterfaceEventTarget defines model for InterfaceEvent.Target.
+type InterfaceEventTarget string
 
 // KindCount defines model for KindCount.
 type KindCount struct {
@@ -1976,6 +2130,9 @@ type Session struct {
 
 	// Name A display name, where the authenticator has one; otherwise absent.
 	Name *string `json:"name,omitempty"`
+
+	// TraceOn Whether the deployment keeps the people's trace (docs/adr/0034). An interface sends its acts to POST /events only when it is true.
+	TraceOn *bool `json:"traceOn,omitempty"`
 }
 
 // SessionAccess What the access list gives the principal (docs/adr/0011), present when the deployment keeps one. An interface offers editing from it; the engine decides again on every write.
@@ -2728,6 +2885,9 @@ type ProposeChangeSetJSONRequestBody = ChangeSetProposal
 // ReopenChangeSetJSONRequestBody defines body for ReopenChangeSet for application/json ContentType.
 type ReopenChangeSetJSONRequestBody = ProposalDecision
 
+// RecordEventsJSONRequestBody defines body for RecordEvents for application/json ContentType.
+type RecordEventsJSONRequestBody = EventBatch
+
 // FromIdeaJSONRequestBody defines body for FromIdea for application/json ContentType.
 type FromIdeaJSONRequestBody FromIdeaJSONBody
 
@@ -2921,6 +3081,9 @@ type ServerInterface interface {
 	// GetDecisionModel Whether a decision model is configured, and answering now
 	// (GET /decision-model)
 	GetDecisionModel(w http.ResponseWriter, r *http.Request)
+	// RecordEvents Keep what an interface saw a person do, by its shape
+	// (POST /events)
+	RecordEvents(w http.ResponseWriter, r *http.Request)
 	// ListFlows The kinds that have a flow (a stepped definition, contract/flows). A kind without one is a sheet: one step, every field.
 	// (GET /flows)
 	ListFlows(w http.ResponseWriter, r *http.Request)
@@ -3870,6 +4033,20 @@ func (siw *ServerInterfaceWrapper) GetDecisionModel(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetDecisionModel(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RecordEvents operation middleware
+func (siw *ServerInterfaceWrapper) RecordEvents(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RecordEvents(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6533,6 +6710,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/document", wrapper.GetSharedDocument)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/presence", wrapper.GetPresenceDocument)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/session", wrapper.GetSession)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/events", wrapper.RecordEvents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/agents", wrapper.ListAgentGrants)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/agents", wrapper.CreateAgentToken)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/agents/feed", wrapper.GetAgentFeed)
@@ -8236,6 +8414,73 @@ func (response GetDecisionModel401JSONResponse) VisitGetDecisionModelResponse(w 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordEventsRequestObject struct {
+	Body *RecordEventsJSONRequestBody
+}
+
+type RecordEventsResponseObject interface {
+	VisitRecordEventsResponse(w http.ResponseWriter) error
+}
+
+type RecordEvents202JSONResponse struct {
+	// Kept How many acts were kept.
+	Kept int `json:"kept"`
+}
+
+func (response RecordEvents202JSONResponse) VisitRecordEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordEvents400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response RecordEvents400JSONResponse) VisitRecordEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordEvents401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response RecordEvents401JSONResponse) VisitRecordEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordEvents404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RecordEvents404JSONResponse) VisitRecordEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -12952,6 +13197,9 @@ type StrictServerInterface interface {
 	// GetDecisionModel Whether a decision model is configured, and answering now
 	// (GET /decision-model)
 	GetDecisionModel(ctx context.Context, request GetDecisionModelRequestObject) (GetDecisionModelResponseObject, error)
+	// RecordEvents Keep what an interface saw a person do, by its shape
+	// (POST /events)
+	RecordEvents(ctx context.Context, request RecordEventsRequestObject) (RecordEventsResponseObject, error)
 	// ListFlows The kinds that have a flow (a stepped definition, contract/flows). A kind without one is a sheet: one step, every field.
 	// (GET /flows)
 	ListFlows(ctx context.Context, request ListFlowsRequestObject) (ListFlowsResponseObject, error)
@@ -13917,6 +14165,37 @@ func (sh *strictHandler) GetDecisionModel(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetDecisionModelResponseObject); ok {
 		if err := validResponse.VisitGetDecisionModelResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RecordEvents operation middleware
+func (sh *strictHandler) RecordEvents(w http.ResponseWriter, r *http.Request) {
+	var request RecordEventsRequestObject
+
+	var body RecordEventsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RecordEvents(ctx, request.(RecordEventsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RecordEvents")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RecordEventsResponseObject); ok {
+		if err := validResponse.VisitRecordEventsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

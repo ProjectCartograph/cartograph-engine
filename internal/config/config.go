@@ -111,6 +111,11 @@ type Config struct {
 	// and analysis (docs/adr/0028): "off" (the default) or a file path,
 	// to which calls are appended as JSON lines. CARTOGRAPH_MCP_TRACE.
 	MCPTrace string
+	// UITrace keeps what people do in an interface by its shape, for
+	// docs/EVALUATING_PEOPLE.md (docs/adr/0034): "off" (the default) or a
+	// file path, to which acts are appended as JSON lines.
+	// CARTOGRAPH_UI_TRACE.
+	UITrace string
 	// MCPAuth is who authenticates an agent's requests: "proxy" (the
 	// default), whatever authenticates every other request, checking the
 	// tokens of the authorization server MCPIssuer names; or
@@ -300,6 +305,9 @@ func FromEnv(getenv Getenv) (Config, error) {
 	if v := getenv("CARTOGRAPH_MCP_TRACE"); v != "" {
 		c.MCPTrace = v
 	}
+	if v := getenv("CARTOGRAPH_UI_TRACE"); v != "" {
+		c.UITrace = v
+	}
 	if v := getenv("CARTOGRAPH_MCP_ISSUER"); v != "" {
 		c.MCPIssuer = v
 	}
@@ -370,6 +378,7 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.LogLevel, "log-level", c.LogLevel, "debug, info, warn or error (CARTOGRAPH_LOG_LEVEL)")
 	fs.StringVar(&c.MCP, "mcp", c.MCP, "serve agents over MCP at /api/v1/mcp: off or on (CARTOGRAPH_MCP)")
 	fs.StringVar(&c.MCPTrace, "mcp-trace", c.MCPTrace, "keep every MCP tool call by its shape: off, or a file to append JSON lines to (CARTOGRAPH_MCP_TRACE)")
+	fs.StringVar(&c.UITrace, "ui-trace", c.UITrace, "keep what people do in an interface by its shape: off, or a file to append JSON lines to (CARTOGRAPH_UI_TRACE)")
 	fs.StringVar(&c.MCPAuth, "mcp-auth", c.MCPAuth, "who authenticates agents: proxy or cartograph (CARTOGRAPH_MCP_AUTH)")
 	fs.StringVar(&c.MCPIssuer, "mcp-issuer", c.MCPIssuer, "the authorization server MCP clients sign in with (CARTOGRAPH_MCP_ISSUER)")
 	fs.StringVar(&c.Reports, "reports", c.Reports, "reporting: computed, postgres (views, with a Postgres store) or off (CARTOGRAPH_REPORTS)")
