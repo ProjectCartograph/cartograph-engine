@@ -15,8 +15,6 @@ env:
 
 permissions:
   contents: read
-  # magic-nix-cache asks for a token to reach the Actions cache.
-  id-token: write
 
 jobs:
   # The same `just ci` a contributor runs, in the same flake, on both
@@ -47,6 +45,11 @@ jobs:
       # by the next run instead of built (docs/CONTAINERS.md, "CI").
       - if: env.CARTOGRAPH_CACHE_GHA == 'on'
         uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          # The Actions cache only: FlakeHub needs an account this
+          # organisation does not have, and asking for it logs an error.
+          use-flakehub: false
+          use-gha-cache: true
       - if: env.CARTOGRAPH_CACHIX != ''
         uses: cachix/cachix-action@v15
         with:
@@ -75,6 +78,11 @@ jobs:
       # by the next run instead of built (docs/CONTAINERS.md, "CI").
       - if: env.CARTOGRAPH_CACHE_GHA == 'on'
         uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          # The Actions cache only: FlakeHub needs an account this
+          # organisation does not have, and asking for it logs an error.
+          use-flakehub: false
+          use-gha-cache: true
       - if: env.CARTOGRAPH_CACHIX != ''
         uses: cachix/cachix-action@v15
         with:
@@ -108,6 +116,11 @@ jobs:
       # by the next run instead of built (docs/CONTAINERS.md, "CI").
       - if: env.CARTOGRAPH_CACHE_GHA == 'on'
         uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          # The Actions cache only: FlakeHub needs an account this
+          # organisation does not have, and asking for it logs an error.
+          use-flakehub: false
+          use-gha-cache: true
       - if: env.CARTOGRAPH_CACHIX != ''
         uses: cachix/cachix-action@v15
         with:
@@ -149,6 +162,11 @@ jobs:
       # by the next run instead of built (docs/CONTAINERS.md, "CI").
       - if: env.CARTOGRAPH_CACHE_GHA == 'on'
         uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          # The Actions cache only: FlakeHub needs an account this
+          # organisation does not have, and asking for it logs an error.
+          use-flakehub: false
+          use-gha-cache: true
       - if: env.CARTOGRAPH_CACHIX != ''
         uses: cachix/cachix-action@v15
         with:

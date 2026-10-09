@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Check every commit message since a base against the commit rules in
 # CONTRIBUTING.md: Google's Angular commit message format,
-# <type>(<scope>): <summary>, then a blank line, a body that says what
-# and why, and a sign-off.
+# <type>(<scope>): <summary> with no "and" in it, then a blank line, a
+# body in prose that says what and why, and the trailers: Fixes #N or
+# Refs #N, Signed-off-by, Co-authored-by, spelled and ordered as there.
 #
 #   scripts/check-commit-msg [base]      default base: origin/main
 #   scripts/check-commit-msg --file F    one message from a file (a commit-msg hook)
@@ -12,12 +13,40 @@ set -euo pipefail
 # (CONTRIBUTING.md lists them); a change across several has none.
 types='build|ci|docs|feat|fix|perf|refactor|test'
 scopes='adr api arch auth chart cli client codec commits compose config contract contributing crdt deployment deps engine fanout flake kinds layout mcp oauth release render spa store syncserver ui vault'
+# The lines that are trailers, not body, in any capitalisation; the
+# spelling and the order are checked on their own.
+trailers='Fixes #|Refs #|Signed-off-by:|Co-authored-by:|Claude-Session:|Change-Id:|Reviewed-by:'
+
+# The trailers in CONTRIBUTING.md, spelled as it spells them, in the
+# order it gives: the issue, the sign-off, any co-author.
+trailer_rules() {
+    local msg="$1" where="$2" bad=0 line rank last=0
+    while IFS= read -r line; do
+        case "$line" in
+            'Fixes #'[0-9]* | 'Refs #'[0-9]*) rank=1 ;;
+            'Signed-off-by: '*) rank=2 ;;
+            'Co-authored-by: '*) rank=3 ;;
+            *)
+                if printf '%s\n' "$line" | grep -qiE '^((fixes|refs):? #[0-9]+\s*$|(signed-off-by|co-authored-by):)'; then
+                    echo "$where: spell the trailer as CONTRIBUTING.md does (Fixes #N, Refs #N, Signed-off-by:, Co-authored-by:): '$line'"; bad=1
+                fi
+                continue ;;
+        esac
+        if [ "$rank" -lt "$last" ]; then
+            echo "$where: trailers go Fixes or Refs, then Signed-off-by, then Co-authored-by: '$line' is out of order"; bad=1
+        fi
+        last=$rank
+    done < <(printf '%s\n' "$msg" | sed -n '3,$p' | awk '/^```/{code=!code; next} !code')
+    return $bad
+}
 
 check() {
     local msg="$1" where="$2" bad=0
     local header type scope summary body
     header=$(printf '%s\n' "$msg" | sed -n '1p')
-    body=$(printf '%s\n' "$msg" | sed -n '3,$p' | grep -vE '^(Signed-off-by|Co-Authored-By|Co-authored-by|Claude-Session|Change-Id|Reviewed-by|Fixes|Bug|Refs):' | sed '/^\s*$/d' || true)
+    body=$(printf '%s\n' "$msg" | sed -n '3,$p' | grep -viE "^($trailers)" | sed '/^\s*$/d' || true)
+    # The body's prose, outside code blocks, for the rules below.
+    prose=$(printf '%s\n' "$msg" | sed -n '3,$p' | grep -viE "^($trailers)" | awk '/^```/{code=!code; next} !code' || true)
     if [ ${#header} -gt 72 ]; then echo "$where: header is ${#header} characters; keep it to 72"; bad=1; fi
     if [[ "$header" =~ ^revert:\ (.+)$ ]]; then
         if ! printf '%s\n' "$msg" | grep -q '^This reverts commit [0-9a-f]\{7,\}'; then
@@ -38,6 +67,10 @@ check() {
         if printf '%s' "$summary" | grep -qiE '^(added|adds|adding|fixed|fixes|fixing|updated|updates|changed|changes|removed|removes|wip)\b'; then
             echo "$where: write the summary in the imperative, present tense (add, fix, change), not '$summary'"; bad=1
         fi
+        # One change per commit: a summary that needs "and" is two.
+        if printf '%s' "$summary" | grep -qwiE 'and|&'; then
+            echo "$where: the summary joins two changes with 'and'; one change per commit"; bad=1
+        fi
         # Angular requires a body of at least 20 characters, except for docs.
         if [ "$type" != docs ] && [ ${#body} -lt 20 ]; then
             echo "$where: a body is required: what the change does and why, for the reader who was not there"; bad=1
@@ -51,6 +84,13 @@ check() {
     long=$(printf '%s\n' "$msg" | sed -n '3,$p' | awk '/^```/{code=!code; next} !code && length($0) > 72 && $0 !~ /:\/\// {print NR+2": "$0}' | head -n 3)
     if [ -n "$long" ]; then echo "$where: wrap the body at 72 characters:"; printf '  %s\n' "$long"; bad=1; fi
     if ! printf '%s\n' "$msg" | grep -q '^Signed-off-by: '; then echo "$where: no Signed-off-by (git commit -s)"; bad=1; fi
+    # The body is prose; a list belongs in the pull request.
+    list=$(printf '%s\n' "$prose" | grep -E '^\s*([-*+]|[0-9]+[.)])\s' | head -n 1 || true)
+    if [ -n "$list" ]; then echo "$where: write the body as prose, not a list: '$list'"; bad=1; fi
+    # An issue is named in a trailer, where GitHub and the reader look.
+    issue=$(printf '%s\n' "$prose" | grep -oiE '(^|[^[:alnum:]/&-])(issue )?#[0-9]+' | grep -oiE '(issue )?#[0-9]+' | head -n 1 || true)
+    if [ -n "$issue" ]; then echo "$where: name the issue in a Fixes #N or Refs #N trailer, not in the body: '$issue'"; bad=1; fi
+    trailer_rules "$msg" "$where" || bad=1
     return $bad
 }
 
