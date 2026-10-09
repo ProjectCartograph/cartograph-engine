@@ -291,18 +291,7 @@ func (e *Engine) Work(ctx context.Context, work []Ref, locale string) (Worklist,
 // work's drafts in play, and says its name and, for a goal, its level.
 func (e *Engine) checksInWork(ctx context.Context, r Ref, work []Ref) ([]Check, string, string, error) {
 	docs := map[string]map[string]any{}
-	text := func(ref Ref) []byte {
-		if t, ok := inPlay(ctx, ref.Kind, ref.ID); ok {
-			return t
-		}
-		if t, found, err := e.manifests.GetWorking(ctx, ref.Kind, ref.ID); err == nil && found {
-			return t
-		}
-		if v, ok, err := e.manifests.GetCurrent(ctx, ref.Kind, ref.ID); err == nil && ok {
-			return v.YAML
-		}
-		return nil
-	}
+	text := func(ref Ref) []byte { return e.workText(ctx, ref) }
 	for _, w := range append(append([]Ref{r}, work...), inPlayRefs(ctx)...) {
 		if t := text(w); t != nil {
 			var d map[string]any
@@ -435,4 +424,19 @@ func fieldOf(f string) string {
 		return f
 	}
 	return ""
+}
+
+// workText is a record as the work has it: in play on ctx, else its
+// working copy, else its current version; nil when there is none.
+func (e *Engine) workText(ctx context.Context, ref Ref) []byte {
+	if t, ok := inPlay(ctx, ref.Kind, ref.ID); ok {
+		return t
+	}
+	if t, found, err := e.manifests.GetWorking(ctx, ref.Kind, ref.ID); err == nil && found {
+		return t
+	}
+	if v, ok, err := e.manifests.GetCurrent(ctx, ref.Kind, ref.ID); err == nil && ok {
+		return v.YAML
+	}
+	return nil
 }

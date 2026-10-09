@@ -33,11 +33,12 @@ numbers, its links) and its flow step.
 The engine computes each round, and the MCP server hands it to the
 agent with how to ask it (`round`).
 
-- **The frontier.** A stage of the graph opens once no earlier stage
-  has a record whose definition is open, since a record names only what
-  comes before it. In an open stage, each record offers its first open
-  step; its later steps hang on it. Records apart from each other are
-  asked side by side. What depends on an answer in this round is
+- **The frontier.** A record waits while a record it names, directly
+  or through others, has a definition open that blocks: what it names
+  must be settled before the person is asked about it. A warning holds
+  nothing back. Each record offers its first open step; its later steps
+  hang on it. Records apart from each other are asked side by side,
+  whatever their stage. What depends on an answer in this round is
   counted as waiting, and comes in a later round.
 - **Facts and decisions.** When the work has a document, what a
   document itself states (the checks a port writes and never waives)
@@ -95,6 +96,9 @@ The bar is three passing runs in a row, one agent at a time.
   it is in the instructions and in every round's `how`, the weakest
   kind of fix (0027). What the engine holds is the frontier and the
   split between facts and decisions.
-- The frontier is conservative: a later stage waits for every earlier
-  definition, not only the records it names, so a round can hold back a
-  question that was independent. It never asks one too early.
+- The frontier follows the references: a goal drafted above an outcome
+  holds back what names the outcome, not every project of the work.
+  It began by stage (every later stage waiting on every earlier
+  definition, warnings included), which asked one or two questions a
+  round once aims were drafted mid-work (evaluation run 002), and was
+  changed to this. It never asks one too early.

@@ -50,7 +50,7 @@ func (e *Engine) Round(ctx context.Context, set string, work []Ref, locale strin
 	// What a document states is the agent's to write only when the work
 	// has a document; otherwise every decision is the person's.
 	sources, _ := e.Sources(ctx, set)
-	r := frontier(w.Tasks, len(sources) > 0)
+	r := frontier(w.Tasks, len(sources) > 0, e.namesIn(ctx, w.Tasks))
 	e.recommend(ctx, r.Ask)
 	return r, nil
 }
@@ -86,20 +86,44 @@ func (e *Engine) recommend(ctx context.Context, ask []Question) {
 
 // frontier picks, from tasks in the order of work, the round to ask now.
 //
-// A stage of the graph opens once no earlier stage still has a record
-// whose definition is open: a record names only what comes before it, and
-// what it names must be settled, not merely written, before the person
-// is asked about the record that names it. Within an open stage, each
-// record offers its first open step, since its later steps (its numbers,
-// its links) hang on what it is. Records apart from each other are asked
-// side by side.
-func frontier(tasks []Task, fromDocument bool) Round {
+// A record waits while a record it names, directly or through others,
+// has a definition open that blocks: what it names must be settled, not
+// merely written, before the person is asked about the record that names
+// it. A warning does not hold anything back, and records that name
+// nothing open are asked side by side, whatever their stage: a goal
+// added above an outcome holds back what names the outcome, not every
+// project of the work. Within a record, its first open step is offered,
+// since its later steps (its numbers, its links) hang on what it is.
+// names are the records each record of the work names.
+func frontier(tasks []Task, fromDocument bool, names map[Ref][]Ref) Round {
 	out := Round{Settle: []Task{}, Ask: []Question{}, Write: []Task{}}
-	openDefinition := -1
+	defining := map[Ref]bool{}
 	for _, t := range tasks {
-		if t.Phase == "define" && t.By == "" && (openDefinition < 0 || t.Stage < openDefinition) {
-			openDefinition = t.Stage
+		if t.Phase == "define" && t.By == "" && t.State != checkWarn {
+			defining[Ref{Kind: t.Kind, ID: t.ID}] = true
 		}
+	}
+	// waits reports whether a record names, through any chain, a record
+	// whose definition is open.
+	memo := map[Ref]bool{}
+	var waits func(r Ref, seen map[Ref]bool) bool
+	waits = func(r Ref, seen map[Ref]bool) bool {
+		if w, ok := memo[r]; ok {
+			return w
+		}
+		seen[r] = true
+		w := false
+		for _, n := range names[r] {
+			if n == r || seen[n] {
+				continue
+			}
+			if defining[n] || waits(n, seen) {
+				w = true
+				break
+			}
+		}
+		memo[r] = w
+		return w
 	}
 	type step struct {
 		phase, step string
@@ -108,16 +132,16 @@ func frontier(tasks []Task, fromDocument bool) Round {
 	for _, t := range tasks {
 		r := Ref{Kind: t.Kind, ID: t.ID}
 		if t.By != "" {
-			// Settled by writing a later record: once every record up to
-			// and at its own stage is defined.
-			if openDefinition < 0 || t.Stage < openDefinition {
-				out.Write = append(out.Write, t)
-			} else {
+			// Settled by writing a later record that names this one: once
+			// this one is defined, and all it names.
+			if defining[r] || waits(r, map[Ref]bool{}) {
 				out.Waiting++
+			} else {
+				out.Write = append(out.Write, t)
 			}
 			continue
 		}
-		if openDefinition >= 0 && t.Stage > openDefinition {
+		if waits(r, map[Ref]bool{}) {
 			out.Waiting++
 			continue
 		}
@@ -135,6 +159,31 @@ func frontier(tasks []Task, fromDocument bool) Round {
 			continue
 		}
 		out.Ask = append(out.Ask, Question{Task: t})
+	}
+	return out
+}
+
+// namesIn are the records each record with an open check names, as the
+// change set on ctx has them.
+func (e *Engine) namesIn(ctx context.Context, tasks []Task) map[Ref][]Ref {
+	out := map[Ref][]Ref{}
+	for _, t := range tasks {
+		r := Ref{Kind: t.Kind, ID: t.ID}
+		if _, done := out[r]; done {
+			continue
+		}
+		out[r] = nil
+		text := e.workText(ctx, r)
+		if text == nil {
+			continue
+		}
+		var doc map[string]any
+		if e.codec.DecodeInto(text, &doc) != nil {
+			continue
+		}
+		for _, f := range extractRefs(doc, e.refRules[r.Kind]) {
+			out[r] = append(out[r], Ref{Kind: f.kind, ID: f.id})
+		}
 	}
 	return out
 }
