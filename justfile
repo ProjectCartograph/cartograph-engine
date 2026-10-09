@@ -377,6 +377,10 @@ eval-build dir rev="":
 eval-serve dir document agent="Agent" person="":
     "$(readlink -f "{{dir}}/build")/bin/cartograph" eval serve "{{dir}}" -document "{{document}}" -agent "{{agent}}" -flake "{{justfile_directory()}}" {{ if person != "" { "-person" } else { "" } }}
 
+# Record that the person answered a run's agent, before replying as them
+eval-answer dir run:
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval answer "{{dir}}" "{{run}}"
+
 # Score a run from the server and its trace against the criteria
 eval-score dir run criteria change_set:
     "$(readlink -f "{{dir}}/build")/bin/cartograph" eval score "{{dir}}" "{{run}}" -criteria "{{criteria}}" -change-set "{{change_set}}"

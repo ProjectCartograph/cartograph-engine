@@ -49,6 +49,7 @@ tells the agent to prefix every command with `scripts/dev`.
 |---|---|
 | Freeze the build under test, the flake built at a commit | `just eval-build <dir> [rev]` |
 | Serve a fresh traced run; print the agent's prompt (`person=1`: a person answers between its turns) | `just eval-serve <dir> <document> [agent] [person]` |
+| Record that the person answered, before replying as them | `just eval-answer <dir> <run>` |
 | Score a run from the server and its trace | `just eval-score <dir> <run> <criteria> <change set>` |
 | Every run, its figures, and the streak | `just eval-status <dir> [criteria]` |
 | Stop a run's server, or every run's | `just eval-stop <dir> [run]` |
@@ -66,7 +67,8 @@ tells the agent to prefix every command with `scripts/dev`.
   questions and the evaluator answers as the person, by a policy
   written beside the criteria before the first run and kept word for
   word across runs: what to answer to each kind of question, and what
-  to say when it is a figure the person does not have yet.
+  to say when it is a figure the person does not have yet. Before each
+  reply, `eval-answer` records it: a run proposes only after an answer.
 - Score every run, every criterion, pass or fail.
 
 ## Analyse

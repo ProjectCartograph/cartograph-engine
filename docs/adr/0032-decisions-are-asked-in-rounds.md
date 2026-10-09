@@ -84,6 +84,10 @@ Read from the server and the trace, on fresh runs of one frozen build:
    median: rounds must not add waste. Judged on the streak, not each
    run: one run in two of an unchanged process is above its median, and
    runs 009 and 010 failed on that alone.
+5. With a person present, the first proposal comes after the person
+   answered: the evaluator records each answer (`eval answer`), since
+   what the agent writes as asked cannot show it (Sonnet run 007 wrote
+   "answer awaited" and proposed in the same turn).
 
 The scorer (`rounds` in the criteria file, `internal/evaluate`) reads
 1 from each left check's `asked`, which the change set keeps with it;

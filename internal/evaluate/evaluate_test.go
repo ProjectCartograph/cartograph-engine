@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/evaluate"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace"
@@ -74,7 +75,7 @@ func calls(bytes int) []trace.Call {
 // and the evaluator's own calls are left out of the trace figures.
 func TestAPortThatMeetsEveryCriterionPasses(t *testing.T) {
 	t.Parallel()
-	s, err := evaluate.ScoreRun(context.Background(), depotPort("proposed", "the quality lead"), criteria, "cs1", calls(len(document)), document)
+	s, err := evaluate.ScoreRun(context.Background(), depotPort("proposed", "the quality lead"), criteria, "cs1", calls(len(document)), document, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +92,7 @@ func TestAPortThatMeetsEveryCriterionPasses(t *testing.T) {
 // part.
 func TestARunFailsOnWhatTheServerHolds(t *testing.T) {
 	t.Parallel()
-	s, err := evaluate.ScoreRun(context.Background(), depotPort("open", "Mensah, with the team"), criteria, "cs1", calls(10), document)
+	s, err := evaluate.ScoreRun(context.Background(), depotPort("open", "Mensah, with the team"), criteria, "cs1", calls(10), document, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +148,7 @@ func TestRoundsAreJudgedFromWhatIsLeft(t *testing.T) {
 		{Tool: "settle", Agent: "Agent", Outcome: trace.OK},
 		{Tool: "propose", Agent: "Agent", Outcome: trace.OK},
 	}
-	s, err := evaluate.ScoreRun(context.Background(), good, c, "cs1", run, document)
+	s, err := evaluate.ScoreRun(context.Background(), good, c, "cs1", run, document, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +163,7 @@ func TestRoundsAreJudgedFromWhatIsLeft(t *testing.T) {
 		{"on": "Project/p-main", "check": "aim-mandate", "asked": "not available"},
 	}}
 	late := append([]trace.Call{run[0], run[3], run[1]}, run[2], run[2])
-	s, err = evaluate.ScoreRun(context.Background(), bad, c, "cs1", late, document)
+	s, err = evaluate.ScoreRun(context.Background(), bad, c, "cs1", late, document, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +190,7 @@ func TestTheTriangleIsAskedNotLeftSilent(t *testing.T) {
 	asked := fake{status: "proposed", records: mainProject, left: []map[string]any{
 		{"on": "Project/p-main", "check": "constraints-stated", "asked": "Asked whether the dates or the budget give first; the board decides"},
 	}}
-	s, err := evaluate.ScoreRun(context.Background(), asked, c, "cs1", run, document)
+	s, err := evaluate.ScoreRun(context.Background(), asked, c, "cs1", run, document, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +200,7 @@ func TestTheTriangleIsAskedNotLeftSilent(t *testing.T) {
 	silent := fake{status: "proposed", records: mainProject, left: []map[string]any{
 		{"on": "Project/p-main", "check": "risks-constrained", "asked": "Asked the person about everything left: leave it open"},
 	}}
-	s, err = evaluate.ScoreRun(context.Background(), silent, c, "cs1", run, document)
+	s, err = evaluate.ScoreRun(context.Background(), silent, c, "cs1", run, document, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +245,7 @@ func TestNotLeftHoldsOnTheMainProject(t *testing.T) {
 	}
 	run := []trace.Call{{Tool: "round", Agent: "Agent", Outcome: trace.OK}, {Tool: "propose", Agent: "Agent", Outcome: trace.OK}}
 	passes := func(on string) bool {
-		s, err := evaluate.ScoreRun(context.Background(), srv(on), c, "cs1", run, document)
+		s, err := evaluate.ScoreRun(context.Background(), srv(on), c, "cs1", run, document, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -261,5 +262,38 @@ func TestNotLeftHoldsOnTheMainProject(t *testing.T) {
 	}
 	if passes("Project/p-main") {
 		t.Error("the main project's mandate, which the document states, was left")
+	}
+}
+
+// With a person present, a run proposes only after the person answered:
+// the evaluator's record says when, whatever the agent wrote as asked
+// (Sonnet run 007 wrote "answer awaited" and proposed).
+func TestAPersonAnswersBeforeTheProposal(t *testing.T) {
+	t.Parallel()
+	c := evaluate.Criteria{Agent: "Agent", Runs: 3, Rounds: &evaluate.Rounds{}}
+	at := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
+	run := []trace.Call{{Tool: "round", Agent: "Agent", Outcome: trace.OK, At: at}, {Tool: "propose", Agent: "Agent", Outcome: trace.OK, At: at.Add(time.Minute)}}
+	srv := fake{status: "proposed", left: []map[string]any{{"on": "Project/p", "check": "resources-funding", "asked": "asked of the person at the end of this turn; answer awaited"}}}
+	judged := func(answered []time.Time) bool {
+		s, err := evaluate.ScoreRun(context.Background(), srv, c, "cs1", run, document, answered)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, ch := range s.Checks {
+			if ch.Name == "answered before propose" {
+				return ch.Pass
+			}
+		}
+		t.Fatal("not judged")
+		return false
+	}
+	if judged([]time.Time{}) {
+		t.Error("a proposal with no answer passed")
+	}
+	if judged([]time.Time{at.Add(2 * time.Minute)}) {
+		t.Error("an answer after the proposal passed")
+	}
+	if !judged([]time.Time{at.Add(30 * time.Second)}) {
+		t.Error("an answer before the proposal failed")
 	}
 }
