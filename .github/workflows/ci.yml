@@ -57,7 +57,7 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # Images live in the registry; the cache keeps what builds them.
           pushFilter: '\.tar\.gz$'
-      - run: nix develop --command just ci
+      - run: nix develop .#ci --command just ci
 
   commits:
     if: github.event_name == 'pull_request'
@@ -90,7 +90,7 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # Images live in the registry; the cache keeps what builds them.
           pushFilter: '\.tar\.gz$'
-      - run: nix develop --command just commit-check origin/${{ github.base_ref }}
+      - run: nix develop .#ci --command just commit-check origin/${{ github.base_ref }}
 
   # The binary and the image from the flake, on both architectures; the
   # image is started and asked whether it is ready.
