@@ -952,6 +952,25 @@ type ChangeSetTitle struct {
 	Title       *string `json:"title,omitempty"`
 }
 
+// CharterPart defines model for CharterPart.
+type CharterPart struct {
+	// Anchor The section's id in the charter's HTML; absent for an empty part.
+	Anchor *string `json:"anchor,omitempty"`
+
+	// Empty Nothing is written in it yet; what belongs there is still to say.
+	Empty bool `json:"empty"`
+
+	// Fields The JSON pointers of the fields written in it as typed, each editable in place.
+	Fields []string `json:"fields"`
+
+	// Html What the renderer wrote under the heading, escaped as the charter is.
+	Html string `json:"html"`
+
+	// Step The step of the project's walk the section is written in.
+	Step  *string `json:"step,omitempty"`
+	Title string  `json:"title"`
+}
+
 // ComponentEdge defines model for ComponentEdge.
 type ComponentEdge struct {
 	From WorkRef `json:"from"`
@@ -2473,6 +2492,12 @@ type GetProjectCharterHtmlParams struct {
 	Working *bool `form:"working,omitempty" json:"working,omitempty"`
 }
 
+// GetProjectCharterPartsParams defines parameters for GetProjectCharterParts.
+type GetProjectCharterPartsParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetProjectChecksParams defines parameters for GetProjectChecks.
 type GetProjectChecksParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -2963,6 +2988,9 @@ type ServerInterface interface {
 	// GetProjectCharterHtml Project charter rendered as HTML from the latest snapshot (or working copy with ?working=true).
 	// (GET /manifests/Project/{id}/charter.html)
 	GetProjectCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectCharterHtmlParams)
+	// GetProjectCharterParts A project's charter as its parts, as the change set reads it
+	// (GET /manifests/Project/{id}/charter/parts)
+	GetProjectCharterParts(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectCharterPartsParams)
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
 	GetProjectChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectChecksParams)
@@ -4688,6 +4716,48 @@ func (siw *ServerInterfaceWrapper) GetProjectCharterHtml(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProjectCharterHtml(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProjectCharterParts operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectCharterParts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectCharterPartsParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProjectCharterParts(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6430,6 +6500,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.GetProjectState)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.TransitionProjectState)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/charter.html", wrapper.GetProjectCharterHtml)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/charter/parts", wrapper.GetProjectCharterParts)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/charter.pdf", wrapper.GetCharterPdf)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Programme/{id}/charter.html", wrapper.GetProgrammeCharterHtml)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Operation/{id}/charter.html", wrapper.GetOperationCharterHtml)
@@ -9567,6 +9638,71 @@ func (response GetProjectCharterHtml403JSONResponse) VisitGetProjectCharterHtmlR
 type GetProjectCharterHtml404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response GetProjectCharterHtml404JSONResponse) VisitGetProjectCharterHtmlResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectCharterPartsRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetProjectCharterPartsParams
+}
+
+type GetProjectCharterPartsResponseObject interface {
+	VisitGetProjectCharterPartsResponse(w http.ResponseWriter) error
+}
+
+type GetProjectCharterParts200JSONResponse []CharterPart
+
+func (response GetProjectCharterParts200JSONResponse) VisitGetProjectCharterPartsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectCharterParts401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetProjectCharterParts401JSONResponse) VisitGetProjectCharterPartsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectCharterParts403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProjectCharterParts403JSONResponse) VisitGetProjectCharterPartsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectCharterParts404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProjectCharterParts404JSONResponse) VisitGetProjectCharterPartsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -12883,6 +13019,9 @@ type StrictServerInterface interface {
 	// GetProjectCharterHtml Project charter rendered as HTML from the latest snapshot (or working copy with ?working=true).
 	// (GET /manifests/Project/{id}/charter.html)
 	GetProjectCharterHtml(ctx context.Context, request GetProjectCharterHtmlRequestObject) (GetProjectCharterHtmlResponseObject, error)
+	// GetProjectCharterParts A project's charter as its parts, as the change set reads it
+	// (GET /manifests/Project/{id}/charter/parts)
+	GetProjectCharterParts(ctx context.Context, request GetProjectCharterPartsRequestObject) (GetProjectCharterPartsResponseObject, error)
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
 	GetProjectChecks(ctx context.Context, request GetProjectChecksRequestObject) (GetProjectChecksResponseObject, error)
@@ -14399,6 +14538,33 @@ func (sh *strictHandler) GetProjectCharterHtml(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProjectCharterHtmlResponseObject); ok {
 		if err := validResponse.VisitGetProjectCharterHtmlResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProjectCharterParts operation middleware
+func (sh *strictHandler) GetProjectCharterParts(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectCharterPartsParams) {
+	var request GetProjectCharterPartsRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProjectCharterParts(ctx, request.(GetProjectCharterPartsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProjectCharterParts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProjectCharterPartsResponseObject); ok {
+		if err := validResponse.VisitGetProjectCharterPartsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

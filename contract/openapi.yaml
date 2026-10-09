@@ -679,6 +679,38 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /manifests/Project/{id}/charter/parts:
+    get:
+      operationId: getProjectCharterParts
+      summary: A project's charter as its parts, as the change set reads it
+      description: >-
+        Each section the charter renderer writes, in order: its title, the
+        step of the walk it is written in, the HTML written under its
+        heading (escaped as the charter is), and the JSON pointers of the
+        fields it holds as typed, each editable in place. A section the
+        renderer started with nothing to write under it is an empty part,
+        what still belongs there. From the same renderer as charter.html
+        and charter.pdf, so the screen and the paper never differ
+        (TAXONOMY.md D55).
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CharterPart"
+
   /manifests/{kind}/{id}/charter.pdf:
     get:
       operationId: getCharterPdf
@@ -4520,6 +4552,29 @@ components:
               to:
                 type: integer
                 description: The index in nodes of what waits on it.
+    CharterPart:
+      type: object
+      required: [title, html, fields, empty]
+      properties:
+        title:
+          type: string
+        step:
+          type: string
+          description: The step of the project's walk the section is written in.
+        anchor:
+          type: string
+          description: The section's id in the charter's HTML; absent for an empty part.
+        html:
+          type: string
+          description: What the renderer wrote under the heading, escaped as the charter is.
+        fields:
+          type: array
+          items:
+            type: string
+          description: The JSON pointers of the fields written in it as typed, each editable in place.
+        empty:
+          type: boolean
+          description: Nothing is written in it yet; what belongs there is still to say.
     Happened:
       type: object
       required: [available, matches]

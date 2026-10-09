@@ -500,3 +500,60 @@ spec:
 		}
 	}
 }
+
+// The charter as parts: each section in order, with what it wrote and
+// the fields it holds by pointer, and a section with nothing in it yet
+// kept as an empty part (TAXONOMY.md D55).
+func TestCharterAsParts(t *testing.T) {
+	ctx := context.Background()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectYAML := `apiVersion: cartograph/v1
+kind: Project
+metadata:
+  id: test-project
+  name: Test Project
+spec:
+  team: test-team
+  summary:
+    problems:
+      - id: pr-1
+        problem: {situation: depots grade produce differently}
+        change: {what: one grading standard in every depot}
+`
+	if err := e.PutWorking(ctx, "Project", "test-project", []byte(projectYAML)); err != nil {
+		t.Fatal(err)
+	}
+	parts, err := CharterParts(ctx, e, "test-project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var problem *Part
+	empty := 0
+	for i, p := range parts {
+		if p.Step == "aim" && !p.Empty {
+			problem = &parts[i]
+		}
+		if p.Empty {
+			empty++
+		}
+	}
+	if problem == nil {
+		t.Fatalf("no problem statement part: %+v", parts)
+	}
+	if !contains(problem.HTML, "Depots grade produce differently") || len(problem.Fields) == 0 || problem.Fields[0] != "/spec/summary/problems/0/problem/situation" {
+		t.Errorf("the problem part: %+v", problem)
+	}
+	if empty == 0 {
+		t.Errorf("a charter this bare has sections still to say: %+v", parts)
+	}
+	html, _, err := Charter(ctx, e, "test-project", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !contains(string(html), problem.HTML) {
+		t.Error("the part is not what the charter prints")
+	}
+}

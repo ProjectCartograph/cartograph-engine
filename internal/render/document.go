@@ -202,6 +202,11 @@ type doc struct {
 	// org and logo are the organisation the workspace is about and its
 	// logo, a data URL, for the cover (TAXONOMY.md D37).
 	org, logo string
+	// parts are the sections as written, for the charter as parts; opened
+	// is whether the last is still being written.
+	parts  []Part
+	opened bool
+	openAt int
 }
 
 // brand reads the organisation's name and logo for the cover.
@@ -213,7 +218,12 @@ func (d *doc) brand(ctx context.Context, e *engine.Engine) {
 
 func (d *doc) flush() {
 	if d.pending != "" {
+		d.closePart()
 		d.toc = append(d.toc, d.pending)
+		defer func(title string) {
+			d.parts = append(d.parts, Part{Title: title, Step: sectionSteps[title], Anchor: fmt.Sprintf("s%d", len(d.toc)), start: d.b.Len()})
+			d.opened, d.openAt = true, len(d.parts)-1
+		}(d.pending)
 		anchor := fmt.Sprintf(` id="s%d"`, len(d.toc))
 		// The step of a project's walk that defines the section, so an
 		// interface showing the charter beside the walk can open it there.
@@ -262,7 +272,15 @@ var sectionSteps = map[string]string{
 
 func esc(s string) string { return html.EscapeString(strings.TrimSpace(s)) }
 
-func (d *doc) h2(s string) { d.pending = s }
+func (d *doc) h2(s string) {
+	if d.pending != "" {
+		// The section before had nothing written under it: a part still to
+		// say.
+		d.parts = append(d.parts, Part{Title: d.pending, Step: sectionSteps[d.pending], Empty: true, Fields: []string{}})
+	}
+	d.pending = s
+}
+
 func (d *doc) h3(s string) {
 	d.flush()
 	d.b.WriteString("<h3>")
@@ -598,6 +616,7 @@ nav.contents ol { columns: 2; column-gap: 2.5rem; }
 const coverEnd = "<!--cover-->"
 
 func (d *doc) end() []byte {
+	d.closePart()
 	d.b.WriteString("\n<footer class=\"doc\">Rendered by Cartograph from the definition: every section reads its fields, and nothing is typed twice.</footer>\n</body>\n</html>\n")
 	out := d.b.Bytes()
 	// The cover closes before the contents, or before the first section

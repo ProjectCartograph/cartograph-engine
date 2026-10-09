@@ -15,6 +15,15 @@ import (
 // will achieve and produce, when, who decides and pays, what could go
 // wrong, how anyone will know it worked, and who approves it.
 func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engine.Version) ([]byte, error) {
+	d, err := projectCharterDoc(ctx, e, id, vers)
+	if err != nil {
+		return nil, err
+	}
+	return d.end(), nil
+}
+
+// projectCharterDoc writes a project's charter, all but its end.
+func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers engine.Version) (*doc, error) {
 	name, spec, err := manifestOf(e, vers, id)
 	if err != nil {
 		return nil, err
@@ -228,7 +237,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 	}
 	d.history(ctx, e, "Project", id)
 	d.heldInCartograph(spec, len(stakeholders(ctx, e, n, "Project", id)))
-	return d.end(), nil
+	return &d, nil
 }
 
 func hasString(list []string, s string) bool {
