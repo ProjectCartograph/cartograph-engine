@@ -300,22 +300,22 @@ func (e MatchBy) Valid() bool {
 
 // Defines values for OrderStageState.
 const (
-	Done    OrderStageState = "done"
-	Next    OrderStageState = "next"
-	Ready   OrderStageState = "ready"
-	Waiting OrderStageState = "waiting"
+	OrderStageStateDone    OrderStageState = "done"
+	OrderStageStateNext    OrderStageState = "next"
+	OrderStageStateReady   OrderStageState = "ready"
+	OrderStageStateWaiting OrderStageState = "waiting"
 )
 
 // Valid indicates whether the value is a known member of the OrderStageState enum.
 func (e OrderStageState) Valid() bool {
 	switch e {
-	case Done:
+	case OrderStageStateDone:
 		return true
-	case Next:
+	case OrderStageStateNext:
 		return true
-	case Ready:
+	case OrderStageStateReady:
 		return true
-	case Waiting:
+	case OrderStageStateWaiting:
 		return true
 	default:
 		return false
@@ -571,6 +571,60 @@ func (e UseAs) Valid() bool {
 	case Decided:
 		return true
 	case Receives:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WaitsNodeKind.
+const (
+	WaitsNodeKindBaseline    WaitsNodeKind = "baseline"
+	WaitsNodeKindCondition   WaitsNodeKind = "condition"
+	WaitsNodeKindDeliverable WaitsNodeKind = "deliverable"
+	WaitsNodeKindDependency  WaitsNodeKind = "dependency"
+	WaitsNodeKindMilestone   WaitsNodeKind = "milestone"
+	WaitsNodeKindPurchase    WaitsNodeKind = "purchase"
+	WaitsNodeKindReady       WaitsNodeKind = "ready"
+	WaitsNodeKindTarget      WaitsNodeKind = "target"
+)
+
+// Valid indicates whether the value is a known member of the WaitsNodeKind enum.
+func (e WaitsNodeKind) Valid() bool {
+	switch e {
+	case WaitsNodeKindBaseline:
+		return true
+	case WaitsNodeKindCondition:
+		return true
+	case WaitsNodeKindDeliverable:
+		return true
+	case WaitsNodeKindDependency:
+		return true
+	case WaitsNodeKindMilestone:
+		return true
+	case WaitsNodeKindPurchase:
+		return true
+	case WaitsNodeKindReady:
+		return true
+	case WaitsNodeKindTarget:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WaitsNodeRecordKind.
+const (
+	WaitsNodeRecordKindKPI     WaitsNodeRecordKind = "KPI"
+	WaitsNodeRecordKindProject WaitsNodeRecordKind = "Project"
+)
+
+// Valid indicates whether the value is a known member of the WaitsNodeRecordKind enum.
+func (e WaitsNodeRecordKind) Valid() bool {
+	switch e {
+	case WaitsNodeRecordKindKPI:
+		return true
+	case WaitsNodeRecordKindProject:
 		return true
 	default:
 		return false
@@ -2078,6 +2132,64 @@ type Version struct {
 	Reason string    `json:"reason"`
 }
 
+// Waits defines model for Waits.
+type Waits struct {
+	Edges []struct {
+		// From The index in nodes of what comes first.
+		From int `json:"from"`
+
+		// To The index in nodes of what waits on it.
+		To int `json:"to"`
+	} `json:"edges"`
+	Nodes []WaitsNode `json:"nodes"`
+}
+
+// WaitsNode defines model for WaitsNode.
+type WaitsNode struct {
+	// Conflict What it waits on puts it after its own date or window, or what it needs is ready after it.
+	Conflict bool `json:"conflict"`
+
+	// Critical On the chain that decides the last date.
+	Critical bool `json:"critical"`
+
+	// Follows The name of what it follows or is set by.
+	Follows *string `json:"follows,omitempty"`
+
+	// Item Its place in the record, list/id, such as milestones/start.
+	Item *string `json:"item,omitempty"`
+
+	// Kind What it is; ready is when another project is ready, for a dependency on it.
+	Kind WaitsNodeKind `json:"kind"`
+
+	// Late Set once something happens, past the month it was expected by.
+	Late bool `json:"late"`
+
+	// Month The month it falls in as far as its timing says, YYYY-MM.
+	Month *string `json:"month,omitempty"`
+	Name  string  `json:"name"`
+
+	// Record The record it is in, to open.
+	Record struct {
+		Id   string              `json:"id"`
+		Kind WaitsNodeRecordKind `json:"kind"`
+	} `json:"record"`
+
+	// Risks The risks the timing says could move it, by description; recorded, never simulated.
+	Risks *[]string `json:"risks,omitempty"`
+
+	// Timing Its timing as written (common.schema.json Timing), for the words an interface says it in.
+	Timing   *map[string]interface{} `json:"timing,omitempty"`
+	Unplaced bool                    `json:"unplaced"`
+	X        float32                 `json:"x"`
+	Y        float32                 `json:"y"`
+}
+
+// WaitsNodeKind What it is; ready is when another project is ready, for a dependency on it.
+type WaitsNodeKind string
+
+// WaitsNodeRecordKind defines model for WaitsNode.Record.Kind.
+type WaitsNodeRecordKind string
+
 // Waiver defines model for Waiver.
 type Waiver struct {
 	Check string `json:"check"`
@@ -2317,6 +2429,12 @@ type GetProjectDMAICParams struct {
 
 // GetProjectScheduleParams defines parameters for GetProjectSchedule.
 type GetProjectScheduleParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
+// GetProjectWaitsParams defines parameters for GetProjectWaits.
+type GetProjectWaitsParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
@@ -2785,6 +2903,9 @@ type ServerInterface interface {
 	// TransitionProjectState Move a project to a new state. draft to in review is refused with 422 (the blocking checks as problems) unless every blocking check currently passes; cancelled requires a reason; every other move must be the next state in the fixed sequence.
 	// (POST /manifests/Project/{id}/state)
 	TransitionProjectState(w http.ResponseWriter, r *http.Request, id IdParam)
+	// GetProjectWaits What a project's dated items wait on, across kinds, laid out
+	// (GET /manifests/Project/{id}/waits)
+	GetProjectWaits(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectWaitsParams)
 	// GetCyclePeriods A reporting cycle's periods that overlap two months, derived from the cycle and never stored (TAXONOMY.md D8, D40): equal periods from its start month, or its named periods (terms each year, survey waves once). Each is keyed by the month it ends, which is what a reading is filed under, with its label and the day its reading is due. Derived in one place so every interface lays out a KPI's readings the same way.
 	// (GET /manifests/ReportingCycle/{id}/periods)
 	GetCyclePeriods(w http.ResponseWriter, r *http.Request, id IdParam, params GetCyclePeriodsParams)
@@ -4621,6 +4742,48 @@ func (siw *ServerInterfaceWrapper) TransitionProjectState(w http.ResponseWriter,
 	handler.ServeHTTP(w, r)
 }
 
+// GetProjectWaits operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectWaits(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectWaitsParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProjectWaits(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetCyclePeriods operation middleware
 func (siw *ServerInterfaceWrapper) GetCyclePeriods(w http.ResponseWriter, r *http.Request) {
 
@@ -6073,6 +6236,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/goals/tree", wrapper.GetGoalTree)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/links/{link}/candidates", wrapper.GetLinkCandidates)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/schedule", wrapper.GetProjectSchedule)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/waits", wrapper.GetProjectWaits)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/components", wrapper.GetComponents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/graph", wrapper.GetGraph)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Goal/{id}/checks", wrapper.GetGoalChecks)
@@ -9524,6 +9688,71 @@ func (response TransitionProjectState422JSONResponse) VisitTransitionProjectStat
 	return err
 }
 
+type GetProjectWaitsRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetProjectWaitsParams
+}
+
+type GetProjectWaitsResponseObject interface {
+	VisitGetProjectWaitsResponse(w http.ResponseWriter) error
+}
+
+type GetProjectWaits200JSONResponse Waits
+
+func (response GetProjectWaits200JSONResponse) VisitGetProjectWaitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectWaits401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetProjectWaits401JSONResponse) VisitGetProjectWaitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectWaits403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProjectWaits403JSONResponse) VisitGetProjectWaitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectWaits404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProjectWaits404JSONResponse) VisitGetProjectWaitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetCyclePeriodsRequestObject struct {
 	Id     IdParam `json:"id"`
 	Params GetCyclePeriodsParams
@@ -12358,6 +12587,9 @@ type StrictServerInterface interface {
 	// TransitionProjectState Move a project to a new state. draft to in review is refused with 422 (the blocking checks as problems) unless every blocking check currently passes; cancelled requires a reason; every other move must be the next state in the fixed sequence.
 	// (POST /manifests/Project/{id}/state)
 	TransitionProjectState(ctx context.Context, request TransitionProjectStateRequestObject) (TransitionProjectStateResponseObject, error)
+	// GetProjectWaits What a project's dated items wait on, across kinds, laid out
+	// (GET /manifests/Project/{id}/waits)
+	GetProjectWaits(ctx context.Context, request GetProjectWaitsRequestObject) (GetProjectWaitsResponseObject, error)
 	// GetCyclePeriods A reporting cycle's periods that overlap two months, derived from the cycle and never stored (TAXONOMY.md D8, D40): equal periods from its start month, or its named periods (terms each year, survey waves once). Each is keyed by the month it ends, which is what a reading is filed under, with its label and the day its reading is due. Derived in one place so every interface lays out a KPI's readings the same way.
 	// (GET /manifests/ReportingCycle/{id}/periods)
 	GetCyclePeriods(ctx context.Context, request GetCyclePeriodsRequestObject) (GetCyclePeriodsResponseObject, error)
@@ -13966,6 +14198,33 @@ func (sh *strictHandler) TransitionProjectState(w http.ResponseWriter, r *http.R
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(TransitionProjectStateResponseObject); ok {
 		if err := validResponse.VisitTransitionProjectStateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProjectWaits operation middleware
+func (sh *strictHandler) GetProjectWaits(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectWaitsParams) {
+	var request GetProjectWaitsRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProjectWaits(ctx, request.(GetProjectWaitsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProjectWaits")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProjectWaitsResponseObject); ok {
+		if err := validResponse.VisitGetProjectWaitsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

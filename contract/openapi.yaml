@@ -125,6 +125,37 @@ paths:
                 items:
                   $ref: "#/components/schemas/ScheduleItem"
 
+  /manifests/Project/{id}/waits:
+    get:
+      operationId: getProjectWaits
+      summary: What a project's dated items wait on, across kinds, laid out
+      description: >-
+        Every item of the project that says when it falls (a milestone, a
+        deliverable, a condition, a purchase, a dependency on another
+        project), a KPI's target or baseline set when one of them happens,
+        and another project's item one waits on, each placed on time, with
+        an edge from what comes first to what waits on it (TAXONOMY.md
+        D47, D48). Marked: the chain that decides the last date, what no
+        longer fits its own date or what it needs, what is late, and the
+        risks that could move each. Laid out by the engine, a column to a
+        month; an interface draws it. Nothing is rescheduled.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - $ref: "#/components/parameters/PreviewParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Waits"
+
   /components:
     get:
       operationId: getComponents
@@ -4396,6 +4427,79 @@ components:
         unplaced:
           type: boolean
           description: It follows something outside the project, or a loop, so no month can be worked out.
+    Waits:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/WaitsNode"
+        edges:
+          type: array
+          items:
+            type: object
+            required: [from, to]
+            properties:
+              from:
+                type: integer
+                description: The index in nodes of what comes first.
+              to:
+                type: integer
+                description: The index in nodes of what waits on it.
+    WaitsNode:
+      type: object
+      required: [kind, record, name, critical, conflict, late, unplaced, x, y]
+      properties:
+        kind:
+          type: string
+          enum: [milestone, deliverable, condition, purchase, dependency, target, baseline, ready]
+          description: What it is; ready is when another project is ready, for a dependency on it.
+        record:
+          type: object
+          required: [kind, id]
+          description: The record it is in, to open.
+          properties:
+            kind:
+              type: string
+              enum: [Project, KPI]
+            id:
+              type: string
+        item:
+          type: string
+          description: Its place in the record, list/id, such as milestones/start.
+        name:
+          type: string
+        timing:
+          type: object
+          additionalProperties: true
+          description: Its timing as written (common.schema.json Timing), for the words an interface says it in.
+        follows:
+          type: string
+          description: The name of what it follows or is set by.
+        month:
+          type: string
+          description: The month it falls in as far as its timing says, YYYY-MM.
+        risks:
+          type: array
+          items:
+            type: string
+          description: The risks the timing says could move it, by description; recorded, never simulated.
+        critical:
+          type: boolean
+          description: On the chain that decides the last date.
+        conflict:
+          type: boolean
+          description: What it waits on puts it after its own date or window, or what it needs is ready after it.
+        late:
+          type: boolean
+          description: Set once something happens, past the month it was expected by.
+        unplaced:
+          type: boolean
+        x:
+          type: number
+        y:
+          type: number
     WorkRef:
       type: object
       required: [kind, id]

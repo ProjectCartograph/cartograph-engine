@@ -267,6 +267,24 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 			return scheduleOut(items), nil
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "waits", Description: "What a project's dated items wait on, across kinds, as your change set reads it (TAXONOMY.md D47, D48): " +
+		"its milestones, deliverables, conditions, purchases and dependencies on other projects, and KPI targets or baselines set when one of them happens, " +
+		"each with its month, what it follows, the risks that could move it, and whether it is on the chain that decides the last date (critical), " +
+		"no longer fits its own date or what it needs (conflict), or late. edges run from what comes first to what waits on it, by index. " +
+		"Use it to tell your person what a date depends on, or which item a slip would move.", Annotations: readOnly},
+		func(c call, in manifestRef) (any, error) {
+			c = c.reading(in.ChangeSet)
+			g, err := e.Waits(c.ctx, in.ID)
+			if err != nil {
+				return nil, err
+			}
+			// Where it sits on a canvas is the interface's, not the agent's.
+			for i := range g.Nodes {
+				g.Nodes[i].X, g.Nodes[i].Y = 0, 0
+			}
+			return g, nil
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "match", Description: "Before defining anything, the existing records of a kind that already say what it would say, most likely first: " +
 		"judged by Cartograph's decision model; without one, only a record with the same name or its initials (by says which). Work on a match instead of defining another.", Annotations: readOnly},
 		func(c call, in matchIn) (any, error) {

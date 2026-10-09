@@ -121,3 +121,45 @@ func (s *Server) GetProjectSchedule(ctx context.Context, req apigen.GetProjectSc
 	}
 	return out, nil
 }
+
+// GetProjectWaits is what a project's dated items wait on, across kinds,
+// laid out by the engine (TAXONOMY.md D47, D48).
+func (s *Server) GetProjectWaits(ctx context.Context, req apigen.GetProjectWaitsRequestObject) (apigen.GetProjectWaitsResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
+	g, err := s.Engine.Waits(ctx, string(req.Id))
+	if err != nil {
+		return nil, err
+	}
+	out := apigen.GetProjectWaits200JSONResponse{Nodes: make([]apigen.WaitsNode, len(g.Nodes))}
+	out.Edges = make([]struct {
+		From int `json:"from"`
+		To   int `json:"to"`
+	}, len(g.Edges))
+	for i, ed := range g.Edges {
+		out.Edges[i].From, out.Edges[i].To = ed.From, ed.To
+	}
+	text := func(s string) *string {
+		if s == "" {
+			return nil
+		}
+		return &s
+	}
+	for i, n := range g.Nodes {
+		o := apigen.WaitsNode{Kind: apigen.WaitsNodeKind(n.Kind), Name: n.Name, Critical: n.Critical, Conflict: n.Conflict, Late: n.Late, Unplaced: n.Unplaced,
+			X: float32(n.X), Y: float32(n.Y), Item: text(n.Item), Follows: text(n.Follows), Month: text(n.Month)}
+		o.Record.Kind, o.Record.Id = apigen.WaitsNodeRecordKind(n.Record.Kind), n.Record.ID
+		if n.Timing != nil {
+			t := n.Timing
+			o.Timing = &t
+		}
+		if len(n.Risks) > 0 {
+			r := n.Risks
+			o.Risks = &r
+		}
+		out.Nodes[i] = o
+	}
+	return out, nil
+}
