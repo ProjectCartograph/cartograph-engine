@@ -246,9 +246,13 @@
           # A container image is a Linux root filesystem: the binary, CA
           # certificates, a writable /vault owned by the runtime user, and
           # the binary's own readiness check. No shell, no browser.
-          imageFor = { name, arch ? pkgs.go.GOARCH, extra ? [ ], env ? [ ] }:
+          # stream: the image as a script that writes it to stdout, for the
+          # release to push with skopeo, instead of a gzipped tarball that
+          # docker would load and compress again.
+          layered = stream: if stream then pkgs.dockerTools.streamLayeredImage else pkgs.dockerTools.buildLayeredImage;
+          imageFor = { name, arch ? pkgs.go.GOARCH, extra ? [ ], env ? [ ], stream ? false }:
             let bin = if arch == pkgs.go.GOARCH && pkgs.stdenv.hostPlatform.isLinux then cartograph else binaries."linux-${arch}"; in
-            pkgs.dockerTools.buildLayeredImage {
+            layered stream {
             inherit name;
             tag = version;
             architecture = arch;
@@ -273,16 +277,16 @@
               };
             };
           };
-          imageChromium = arch: imageFor {
+          imageChromium = arch: stream: imageFor {
             name = "cartograph-chromium";
-            inherit arch;
+            inherit arch stream;
             extra = [ linuxOf.${arch}.chromium ];
             env = [ "CARTOGRAPH_CHROMIUM=${linuxOf.${arch}.chromium}/bin/chromium" ];
           };
           layaOn = arch: if arch == pkgs.go.GOARCH then laya else layaFor linuxOf.${arch};
-          imageLaya = arch:
+          imageLaya = arch: stream:
             let l = layaOn arch; in
-            pkgs.dockerTools.buildLayeredImage {
+            layered stream {
               name = "cartograph-laya";
               tag = version;
               architecture = arch;
@@ -304,15 +308,19 @@
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           image = imageFor { name = "cartograph"; };
           # The same, plus Chromium for PDF printing.
-          image-chromium = imageChromium pkgs.go.GOARCH;
+          image-chromium = imageChromium pkgs.go.GOARCH false;
           # The Laya sidecar, its model inside: no download when it starts.
-          image-laya = imageLaya pkgs.go.GOARCH;
+          image-laya = imageLaya pkgs.go.GOARCH false;
         }
         # Every architecture's images, built on this one (docs/CROSS.md).
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux (lib.concatMapAttrs (arch: _: {
           "image-linux-${arch}" = imageFor { name = "cartograph"; inherit arch; };
-          "image-chromium-linux-${arch}" = imageChromium arch;
-          "image-laya-linux-${arch}" = imageLaya arch;
+          "image-chromium-linux-${arch}" = imageChromium arch false;
+          "image-laya-linux-${arch}" = imageLaya arch false;
+          # The same images as streams, for the release to push.
+          "stream-image-linux-${arch}" = imageFor { name = "cartograph"; inherit arch; stream = true; };
+          "stream-image-chromium-linux-${arch}" = imageChromium arch true;
+          "stream-image-laya-linux-${arch}" = imageLaya arch true;
           "laya-linux-${arch}" = layaOn arch;
         }) linuxOf));
 

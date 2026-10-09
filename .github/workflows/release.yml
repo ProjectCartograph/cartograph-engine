@@ -1,4 +1,5 @@
 name: release
+          set -o pipefail
 
 # A release is a tag v<VERSION> on main (VERSIONING.md). The binaries for
 # both architectures, the images, the Helm chart and the notes come from
@@ -102,6 +103,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: build and push this architecture's images
         run: |
+          set -o pipefail
           version=$(cat VERSION)
           repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cartograph
           arch=${{ matrix.arch }}
@@ -111,10 +113,11 @@ jobs:
               image-chromium) tag="$repo:$version-chromium-$arch" ;;
               image-laya) tag="$repo-laya:$version-$arch" ;;
             esac
-            nix build ".#$target-linux-$arch" --out-link "result-$target-$arch"
-            name=$(docker load < "result-$target-$arch" | sed -n 's/^Loaded image: //p')
-            docker tag "$name" "$tag"
-            docker push "$tag"
+            # Streamed to the registry: no gzipped tarball to load into
+            # docker and compress again. skopeo reads the login above.
+            stream=$(nix build ".#stream-$target-linux-$arch" --no-link --print-out-paths)
+            "$stream" | nix run --inputs-from . nixpkgs#skopeo -- copy --insecure-policy \
+              docker-archive:/dev/stdin "docker://$tag"
           done
 
   # Each architecture's images, pulled and run on that architecture: the
