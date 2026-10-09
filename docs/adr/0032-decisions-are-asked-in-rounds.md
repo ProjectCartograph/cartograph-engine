@@ -78,14 +78,16 @@ Read from the server and the trace, on fresh runs of one frozen build:
 3. No round asks a question whose record has an earlier step open
    (a defect the engine now prevents). The trace keeps no values, so
    this is held by the engine's tests, not scored.
-4. Calls per run no higher than the last streak's median: rounds must
-   not add waste.
+4. The streak's median calls per run no higher than the last streak's
+   median: rounds must not add waste. Judged on the streak, not each
+   run: one run in two of an unchanged process is above its median, and
+   runs 009 and 010 failed on that alone.
 
 The scorer (`rounds` in the criteria file, `internal/evaluate`) reads
 1 from each left check's `asked`, which the change set keeps with it;
 2 from the trace for the round, and from the exchanges the left checks
-name for the questions; 4 against `maxCalls`, unset on the first streak,
-whose median becomes it.
+name for the questions; 4 in `eval status`, the streak against `maxCalls`,
+unset on the first streak, whose median becomes it.
 
 The bar is three passing runs in a row, one agent at a time.
 

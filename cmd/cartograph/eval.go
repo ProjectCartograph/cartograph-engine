@@ -329,7 +329,7 @@ func evalStatusCmd(args []string) error {
 	if err != nil {
 		return err
 	}
-	bar := 3
+	bar, maxCalls := 3, 0
 	name := ""
 	if *criteriaPath != "" {
 		c, err := evaluate.ReadCriteria(*criteriaPath)
@@ -337,6 +337,9 @@ func evalStatusCmd(args []string) error {
 			return err
 		}
 		bar, name = c.Runs, c.Name
+		if c.Rounds != nil {
+			maxCalls = c.Rounds.MaxCalls
+		}
 	}
 	runs, err := evalRuns(dir)
 	if err != nil {
@@ -358,13 +361,16 @@ func evalStatusCmd(args []string) error {
 		scored = append(scored, er)
 	}
 	_ = w.Flush()
-	st := evaluate.StreakOf(scored, bar)
+	st := evaluate.StreakOf(scored, bar, maxCalls)
 	if name != "" {
 		fmt.Printf("\n%s: ", name)
 	} else {
 		fmt.Println()
 	}
 	fmt.Printf("%d of %d in a row on build %s", st.InARow, st.Bar, short(st.Commit))
+	if st.MaxCalls > 0 && st.InARow > 0 {
+		fmt.Printf(", median %d calls against %d", st.MedianCalls, st.MaxCalls)
+	}
 	if st.Closed {
 		fmt.Println(": the bar is met.")
 	} else {

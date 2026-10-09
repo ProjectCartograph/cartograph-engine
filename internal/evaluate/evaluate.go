@@ -91,8 +91,9 @@ type Rounds struct {
 	// NotLeft are checks, by id, the document states: none may be left
 	// for the person.
 	NotLeft []string `json:"notLeft,omitempty"`
-	// MaxCalls is the last streak's median calls per run, the most a run
-	// may make; 0 leaves it unjudged, as on the first streak.
+	// MaxCalls is the last streak's median calls per run, the most this
+	// streak's median may be (StreakOf); 0 leaves it unjudged, as on the
+	// first streak.
 	MaxCalls int `json:"maxCalls,omitempty"`
 }
 
@@ -505,8 +506,4 @@ func scoreRounds(r *Rounds, left []leftCheck, mine []trace.Call, add func(string
 	// One question left open can only have been one exchange.
 	together := asked <= 1 || asked > len(questions)
 	add("asked together", together, "%d questions left open over %d exchanges", asked, len(questions))
-
-	if r.MaxCalls > 0 {
-		add("no more calls", len(mine) <= r.MaxCalls, "%d calls; the last streak's median is %d", len(mine), r.MaxCalls)
-	}
 }

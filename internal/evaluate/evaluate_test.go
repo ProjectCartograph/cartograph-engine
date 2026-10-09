@@ -117,15 +117,15 @@ func TestTheStreakIsCountedOnOneBuild(t *testing.T) {
 	t.Parallel()
 	pass, fail := &evaluate.Score{Pass: true}, &evaluate.Score{}
 	runs := []evaluate.Run{{Commit: "a", Score: pass}, {Commit: "b", Score: fail}, {Commit: "b", Score: pass}, {Commit: "b", Score: pass}}
-	st := evaluate.StreakOf(runs, 3)
+	st := evaluate.StreakOf(runs, 3, 0)
 	if st.InARow != 2 || st.Closed || st.Commit != "b" {
 		t.Fatalf("streak %+v", st)
 	}
-	st = evaluate.StreakOf(append(runs, evaluate.Run{Commit: "b", Score: pass}), 3)
+	st = evaluate.StreakOf(append(runs, evaluate.Run{Commit: "b", Score: pass}), 3, 0)
 	if !st.Closed {
 		t.Fatalf("three in a row not closed: %+v", st)
 	}
-	if strings.TrimSpace(evaluate.StreakOf(nil, 3).Commit) != "" {
+	if strings.TrimSpace(evaluate.StreakOf(nil, 3, 0).Commit) != "" {
 		t.Error("an empty streak has a build")
 	}
 }
@@ -155,7 +155,7 @@ func TestRoundsAreJudgedFromWhatIsLeft(t *testing.T) {
 		t.Fatalf("a run that asked in rounds failed: %+v", s.Checks)
 	}
 	// One question an exchange, a check left unasked or stated by the
-	// document, propose before any round, and too many calls each fail.
+	// document, and propose before any round each fail.
 	bad := fake{status: "proposed", left: []map[string]any{
 		{"on": "Project/p-main", "check": "costs-figure", "asked": "Asked the budget"},
 		{"on": "Project/p-main", "check": "milestone-date", "asked": "Asked the go-live month"},
@@ -172,7 +172,7 @@ func TestRoundsAreJudgedFromWhatIsLeft(t *testing.T) {
 			failed[ch.Name] = true
 		}
 	}
-	for _, want := range []string{"left with what was asked", "round before propose", "asked together", "no more calls"} {
+	for _, want := range []string{"left with what was asked", "round before propose", "asked together"} {
 		if !failed[want] {
 			t.Errorf("%s passed: %+v", want, s.Checks)
 		}
@@ -209,3 +209,19 @@ func TestTheTriangleIsAskedNotLeftSilent(t *testing.T) {
 }
 
 var mainProject = []map[string]any{{"record": "Project/p-main", "name": "Grading rollout"}}
+
+// Waste is judged on the streak, not the run: one run above the last
+// streak's median calls still counts, and the streak closes only once its
+// own median is within it.
+func TestTheStreaksMedianCallsAreHeldToTheBar(t *testing.T) {
+	t.Parallel()
+	run := func(calls int) evaluate.Run {
+		return evaluate.Run{Commit: "c", Score: &evaluate.Score{Pass: true, Trace: trace.Report{Calls: calls}}}
+	}
+	if st := evaluate.StreakOf([]evaluate.Run{run(44), run(33), run(38)}, 3, 39); !st.Closed || st.MedianCalls != 38 {
+		t.Fatalf("a run above the median, the streak within it: %+v", st)
+	}
+	if st := evaluate.StreakOf([]evaluate.Run{run(44), run(41), run(38)}, 3, 39); st.Closed || st.MedianCalls != 41 {
+		t.Fatalf("a streak whose median is above the bar closed: %+v", st)
+	}
+}
