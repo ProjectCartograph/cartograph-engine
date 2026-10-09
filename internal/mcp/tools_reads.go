@@ -267,6 +267,48 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 			return scheduleOut(items), nil
 		})
 
+	tool(s, o, person, &sdk.Tool{Name: "waits", Description: "What a project's dated items wait on, across kinds, as your change set reads it (TAXONOMY.md D47, D48): " +
+		"its milestones, deliverables, conditions, purchases and dependencies on other projects, and KPI targets or baselines set when one of them happens, " +
+		"each with its month, what it follows, the risks that could move it, and whether it is on the chain that decides the last date (critical), " +
+		"no longer fits its own date or what it needs (conflict), or late. edges run from what comes first to what waits on it, by index. " +
+		"Use it to tell your person what a date depends on, or which item a slip would move.", Annotations: readOnly},
+		func(c call, in manifestRef) (any, error) {
+			c = c.reading(in.ChangeSet)
+			g, err := e.Waits(c.ctx, in.ID)
+			if err != nil {
+				return nil, err
+			}
+			// Where it sits on a canvas is the interface's, not the agent's.
+			for i := range g.Nodes {
+				g.Nodes[i].X, g.Nodes[i].Y = 0, 0
+			}
+			return g, nil
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "what_happened", Description: "When your person tells you something happened to a project (a risk occurred, a delivery slipped, a milestone was reached), " +
+		"the items of the project it is about, likeliest first, ranked by the decision model, each with what can be recorded as happening to it (TAXONOMY.md D59). " +
+		"Offer the likeliest and let your person confirm; without a model (available false) every item is listed: ask which. " +
+		"Then affects says what it reaches, and you record the event, and any that follow from it with cause, in one change set.", Annotations: readOnly},
+		func(c call, in happenedIn) (any, error) {
+			c = c.reading(in.ChangeSet)
+			return e.WhatHappened(c.ctx, in.Project, in.Text)
+		})
+
+	tool(s, o, person, &sdk.Tool{Name: "affects", Description: "Every item a trigger on one of a project's items reaches (TAXONOMY.md D59): what waits on it, directly or through others, " +
+		"and for a risk every item whose timing names it, each with its month and what it follows. Tell your person what it reaches; " +
+		"what changes is theirs to decide, recorded as events with cause naming the trigger, or as changes, in their change set. Nothing moves by itself.", Annotations: readOnly},
+		func(c call, in affectsIn) (any, error) {
+			c = c.reading(in.ChangeSet)
+			nodes, err := e.Affects(c.ctx, in.Project, in.Item)
+			if err != nil {
+				return nil, err
+			}
+			for i := range nodes {
+				nodes[i].X, nodes[i].Y = 0, 0
+			}
+			return map[string]any{"reaches": nodes}, nil
+		})
+
 	tool(s, o, person, &sdk.Tool{Name: "match", Description: "Before defining anything, the existing records of a kind that already say what it would say, most likely first: " +
 		"judged by Cartograph's decision model; without one, only a record with the same name or its initials (by says which). Work on a match instead of defining another.", Annotations: readOnly},
 		func(c call, in matchIn) (any, error) {
@@ -460,7 +502,7 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "work_summary", Description: "What your change set really holds, record by record: each record's name, how many objectives, " +
-		"deliverables, milestones, risks, components and key results it has, its checks still open and those left for your person. " +
+		"deliverables, milestones, risks, components and key results it has, its checks still open, and each check left for your person with what they were asked. " +
 		"Report to your person from this answer only: never say a record holds what it does not show.", Annotations: readOnly},
 		func(c call, in readingIn) (any, error) {
 			cs, c, found, err := c.inChangeSet(in.ChangeSet, false)
@@ -498,7 +540,13 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 				r["openChecks"], r["leftForPerson"] = open, leftBy[it.Item.Kind+"/"+it.Item.ID]
 				records = append(records, r)
 			}
-			return map[string]any{"changeSet": cs.ID, "status": view.ChangeSet.Status, "records": records,
+			// What is left for the person, with what they were asked, for
+			// the report: a check left without asking them shows here.
+			left := make([]map[string]any, len(view.ChangeSet.Waivers))
+			for i, w := range view.ChangeSet.Waivers {
+				left[i] = map[string]any{"on": w.On, "check": w.Check, "reason": w.Reason, "asked": w.Asked}
+			}
+			return map[string]any{"changeSet": cs.ID, "status": view.ChangeSet.Status, "records": records, "leftForYourPerson": left,
 				"said": "This is all the change set holds. Report from it only."}, nil
 		})
 }

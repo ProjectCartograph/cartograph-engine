@@ -355,15 +355,20 @@ eval-build dir rev="":
     #!{{toolchain}} bash
     set -euo pipefail
     # Any revision jj names (a change or commit id, short or whole, @-, a
-    # bookmark), resolved to the whole commit id nix builds from.
-    rev="$(jj log -r "{{ if rev == "" { "@-" } else { rev } }}" --no-graph -T commit_id)"
+    # bookmark), resolved to the whole commit id nix builds from. The test
+    # environment's copy has no .jj, so there git resolves it, read only.
+    if [ -d .jj ]; then
+      rev="$(jj log -r "{{ if rev == "" { "@-" } else { rev } }}" --no-graph -T commit_id)"
+    else
+      rev="$(git rev-parse "{{ if rev == "" { "HEAD" } else { rev } }}^{commit}")"
+    fi
     mkdir -p "{{dir}}"
     out="$(nix build "git+file://{{justfile_directory()}}?rev=$rev#cartograph" --print-out-paths --out-link "{{dir}}/build")"
     "$out/bin/cartograph" eval build "{{dir}}" -commit "$rev" -store "$out"
 
 # Serve a fresh traced run of the frozen build, and print the agent's prompt
-eval-serve dir document agent="Agent":
-    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval serve "{{dir}}" -document "{{document}}" -agent "{{agent}}" -flake "{{justfile_directory()}}"
+eval-serve dir document agent="Agent" person="":
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval serve "{{dir}}" -document "{{document}}" -agent "{{agent}}" -flake "{{justfile_directory()}}" {{ if person != "" { "-person" } else { "" } }}
 
 # Score a run from the server and its trace against the criteria
 eval-score dir run criteria change_set:

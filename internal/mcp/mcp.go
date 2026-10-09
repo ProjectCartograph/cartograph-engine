@@ -117,7 +117,11 @@ To look at records, read them all in one get with records ["Kind/id",
 Use no other tool unless an answer tells you to.
 
 Starting new work, not from a document: structure, then start_work with
-the pieces, then settle each record, then propose.
+the pieces, then round: ask your person the whole round at once, settle
+their answers in one call, and call round again until it says to
+confirm with them; then propose. Porting with your person there: before
+step 4, call round for what the document leaves open, and ask it the
+same way, rather than leave it open unasked.
 
 A shape the discipline refuses (a second objective on a project, a
 person's name on a role, a field the schema does not have) is refused
@@ -276,10 +280,15 @@ Work this way, every time:
    tool gives the same, with what follows.
 7. Take what the documents your person gave you say: figures, dates,
    sources and owners, quoting where each came from. For what they do
-   not say, ask your person, one question at a time, as soon as a check
-   needs it: say why you ask (what the document says, or that it is
-   silent, and which check waits on it), and offer the options you can
-   draw from the document and their records, so they can pick. A target
+   not say, ask your person in rounds (round): Cartograph works out
+   which decisions hang on nothing still open, and you ask all of them
+   in one message, numbered, each with your recommended answer worded so
+   yes accepts it. For each, say why you ask (what the document says, or
+   that it is silent, and which check waits on it), and offer the
+   options you can draw from the document and their records, so they
+   can pick. Never ask what round lists in settle (the documents say
+   it) or answer a question in ask yourself (it is theirs to decide).
+   Their answers unblock the next round. A target
    the document defers is still asked: they may know it, or decide it
    now. Never invent a figure, a date, a source or an owner. Speak to
    your person in their document's words, not Cartograph's: "intake
@@ -610,7 +619,7 @@ func scheduleOut(items []engine.ScheduleItem) map[string]any {
 func changeSetOut(cs store.ChangeSet, items []string) map[string]any {
 	waived := make([]map[string]any, len(cs.Waivers))
 	for i, w := range cs.Waivers {
-		waived[i] = map[string]any{"on": w.On, "check": w.Check, "reason": w.Reason}
+		waived[i] = map[string]any{"on": w.On, "check": w.Check, "reason": w.Reason, "asked": w.Asked}
 	}
 	return map[string]any{"changeSet": cs.ID, "title": cs.Title, "status": cs.Status, "items": items, "leftForYourPerson": waived,
 		"next": "Proposed. Your person reviews the whole change set in Cartograph, under Change sets, and accepts it there; tell them what it holds and what you left open."}

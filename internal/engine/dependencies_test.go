@@ -299,3 +299,36 @@ func TestDependencyChecksOnTheProject(t *testing.T) {
 		}
 	}
 }
+
+// A dependency says when it is needed as a timing (TAXONOMY.md D47), and
+// the other project's milestones say when it is ready (D48): needed before
+// its last milestone is a conflict, with no phases on either side.
+func TestADependencyNeededByATimingMeetsTheOtherProjectsMilestones(t *testing.T) {
+	t.Parallel()
+	needed := func(timing string) string {
+		return "  risks:\n    - description: Cannot start without it\n      type: dependency\n" +
+			"      depends:\n        direction: needs\n        on: {kind: Project, id: supplier}\n        needed: " + timing + "\n"
+	}
+	supplier := "  milestones:\n    - {id: live, name: Live, timing: {form: date, date: \"2027-06\"}}\n"
+	own := "  milestones:\n    - {id: start, name: Start, timing: {form: date, date: \"2026-10\"}}\n"
+	setup := func(t *testing.T, timing string) []engine.ScheduleConflict {
+		t.Helper()
+		e := seededEngine(t)
+		mustCommit(t, e, "Project", "supplier", "local", projectYAML("supplier", supplier))
+		mustCommit(t, e, "Project", "waiter", "local", projectYAML("waiter", own+needed(timing)))
+		conflicts, err := e.DependencyScheduleConflicts(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return conflicts
+	}
+	if c := setup(t, `{form: date, date: "2027-01"}`); len(c) != 1 || c[0].NeedByOn != "2027-01" || c[0].ReadyOn != "2027-06" {
+		t.Fatalf("needed in January, ready in June: %+v", c)
+	}
+	if c := setup(t, `{form: after, event: {on: {local: milestones, id: start}}, lagMonths: 3}`); len(c) != 1 || c[0].NeedByOn != "2027-01" {
+		t.Fatalf("needed three months after its own start (October): %+v", c)
+	}
+	if c := setup(t, `{form: window, notAfter: "2027-09"}`); len(c) != 0 {
+		t.Fatalf("needed by September, ready in June, is no conflict: %+v", c)
+	}
+}

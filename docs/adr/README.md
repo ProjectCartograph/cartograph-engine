@@ -41,6 +41,7 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0029](0029-no-version-brings-in-a-refused-shape.md) | No version brings in a shape the strict profile refuses | Accepted |
 | [0030](0030-meaning-is-system-one.md) | Meaning in text is judged by a System-1 model, or not at all | Accepted |
 | [0031](0031-go-is-built-by-nix-per-module.md) | Go modules and their compiled packages come from the Nix store | Accepted |
+| [0032](0032-decisions-are-asked-in-rounds.md) | Decisions are asked in rounds the engine computes | Accepted |
 
 ## Writing one
 

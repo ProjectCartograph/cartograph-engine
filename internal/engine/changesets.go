@@ -473,7 +473,7 @@ func (e *Engine) UnnamedInChangeSet(ctx context.Context, set string) ([]Ref, err
 // reason, so an agent says why once, as it goes, rather than all at the
 // end. An empty reason takes it back; a second reason is added to the
 // first unless correct puts it in its place.
-func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason string, correct bool) error {
+func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, asked string, correct bool) error {
 	s, err := e.changeSetStore()
 	if err != nil {
 		return err
@@ -483,7 +483,7 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason str
 		return err
 	}
 	on := kind + "/" + id
-	reason = strings.TrimSpace(reason)
+	reason, asked = strings.TrimSpace(reason), strings.TrimSpace(asked)
 	kept := cs.Waivers[:0:0]
 	for _, w := range cs.Waivers {
 		if w.On != on || w.Check != check {
@@ -497,12 +497,30 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason str
 		} else if reason != "" && !correct {
 			reason = w.Reason
 		}
+		// So with what the person was asked: every exchange is kept.
+		if reason != "" && !correct && w.Asked != "" && !strings.Contains(w.Asked, asked) {
+			asked = w.Asked + " Also: " + asked
+		} else if reason != "" && !correct && w.Asked != "" {
+			asked = w.Asked
+		}
 	}
 	if reason != "" {
-		kept = append(kept, store.Waiver{On: on, Check: check, Reason: reason})
+		kept = append(kept, store.Waiver{On: on, Check: check, Reason: reason, Asked: asked})
 	}
 	cs.Waivers, cs.Updated = kept, timeNow().UTC()
 	return s.PutChangeSet(ctx, cs)
+}
+
+// askedFor is what the person was asked about a check left by way of
+// another, whose reason it carries word for word: what they were asked
+// there is what they were asked here.
+func askedFor(waivers []store.Waiver, reason string) string {
+	for _, w := range waivers {
+		if w.Reason == reason && w.Asked != "" {
+			return w.Asked
+		}
+	}
+	return ""
 }
 
 // leftKey carries the checks a change set leaves for its person, as
@@ -786,9 +804,9 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 	if len(built) > 0 {
 		return store.ChangeSet{}, &ValidationError{Problems: built}
 	}
-	left := map[string]string{}
+	left, askedOf := map[string]string{}, map[string]string{}
 	for _, w := range cs.Waivers {
-		left[w.On+"#"+w.Check] = w.Reason
+		left[w.On+"#"+w.Check], askedOf[w.On+"#"+w.Check] = w.Reason, w.Asked
 	}
 	open, err := e.openIn(context.WithValue(ctx, leftKey{}, left), s, cs.ID)
 	if err != nil {
@@ -824,7 +842,11 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 			why = c.Left
 		}
 		if why != "" {
-			waivers = append(waivers, store.Waiver{On: c.Kind + "/" + c.ManifestID, Check: c.ID, Message: c.Message, Reason: why})
+			asked := askedOf[c.Kind+"/"+c.ManifestID+"#"+c.ID]
+			if asked == "" {
+				asked = askedFor(cs.Waivers, why)
+			}
+			waivers = append(waivers, store.Waiver{On: c.Kind + "/" + c.ManifestID, Check: c.ID, Message: c.Message, Reason: why, Asked: asked})
 			continue
 		}
 		unmet = append(unmet, c)
@@ -929,8 +951,13 @@ func (e *Engine) acceptChangeSet(ctx context.Context, id, reason string) ([]Vers
 		return nil, nil, nil, err
 	}
 	p := identity.PrincipalFrom(ctx)
-	if cs.For != personKey(p) {
-		return nil, nil, nil, ErrNotTheirChangeSet
+	policy, err := e.rollInPolicy(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	reviewer, err := e.mayRollIn(policy, cs, personKey(p))
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	actor := p.Actor(e.operator(ctx))
 	now := timeNow().UTC()
@@ -946,6 +973,32 @@ func (e *Engine) acceptChangeSet(ctx context.Context, id, reason string) ([]Vers
 	if err != nil {
 		release()
 		return nil, nil, nil, err
+	}
+	// The workspace's roll-in policy, as the change set stands now.
+	if problems, err := e.rollInProblems(ctx, policy, cs); err != nil || len(problems) > 0 {
+		release()
+		if err == nil {
+			err = &ValidationError{Problems: problems}
+		}
+		return nil, nil, nil, err
+	}
+	if reviewer {
+		// A reviewer rolls in work they did not write: each item is put
+		// to the policy with their own access, as their own save would be.
+		for _, m := range ordered {
+			if err := e.guardDoc(ctx, m.Kind, m.ID, docs[m.Kind+"/"+m.ID]); err != nil {
+				release()
+				return nil, nil, nil, err
+			}
+		}
+		for _, it := range in {
+			if it.Op == store.ItemDelete {
+				if err := e.guardDoc(ctx, it.Kind, it.ID, nil); err != nil {
+					release()
+					return nil, nil, nil, err
+				}
+			}
+		}
 	}
 	base := map[string]int{}
 	for _, it := range in {

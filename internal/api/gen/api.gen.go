@@ -190,6 +190,36 @@ func (e GuidePlanItemWhen) Valid() bool {
 	}
 }
 
+// Defines values for HappenedMatchesKind.
+const (
+	HappenedMatchesKindCondition   HappenedMatchesKind = "condition"
+	HappenedMatchesKindCriterion   HappenedMatchesKind = "criterion"
+	HappenedMatchesKindDeliverable HappenedMatchesKind = "deliverable"
+	HappenedMatchesKindDependency  HappenedMatchesKind = "dependency"
+	HappenedMatchesKindMilestone   HappenedMatchesKind = "milestone"
+	HappenedMatchesKindRisk        HappenedMatchesKind = "risk"
+)
+
+// Valid indicates whether the value is a known member of the HappenedMatchesKind enum.
+func (e HappenedMatchesKind) Valid() bool {
+	switch e {
+	case HappenedMatchesKindCondition:
+		return true
+	case HappenedMatchesKindCriterion:
+		return true
+	case HappenedMatchesKindDeliverable:
+		return true
+	case HappenedMatchesKindDependency:
+		return true
+	case HappenedMatchesKindMilestone:
+		return true
+	case HappenedMatchesKindRisk:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LineageNodeRole.
 const (
 	LineageNodeRoleDownstream LineageNodeRole = "downstream"
@@ -300,22 +330,22 @@ func (e MatchBy) Valid() bool {
 
 // Defines values for OrderStageState.
 const (
-	Done    OrderStageState = "done"
-	Next    OrderStageState = "next"
-	Ready   OrderStageState = "ready"
-	Waiting OrderStageState = "waiting"
+	OrderStageStateDone    OrderStageState = "done"
+	OrderStageStateNext    OrderStageState = "next"
+	OrderStageStateReady   OrderStageState = "ready"
+	OrderStageStateWaiting OrderStageState = "waiting"
 )
 
 // Valid indicates whether the value is a known member of the OrderStageState enum.
 func (e OrderStageState) Valid() bool {
 	switch e {
-	case Done:
+	case OrderStageStateDone:
 		return true
-	case Next:
+	case OrderStageStateNext:
 		return true
-	case Ready:
+	case OrderStageStateReady:
 		return true
-	case Waiting:
+	case OrderStageStateWaiting:
 		return true
 	default:
 		return false
@@ -571,6 +601,60 @@ func (e UseAs) Valid() bool {
 	case Decided:
 		return true
 	case Receives:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WaitsNodeKind.
+const (
+	WaitsNodeKindBaseline    WaitsNodeKind = "baseline"
+	WaitsNodeKindCondition   WaitsNodeKind = "condition"
+	WaitsNodeKindDeliverable WaitsNodeKind = "deliverable"
+	WaitsNodeKindDependency  WaitsNodeKind = "dependency"
+	WaitsNodeKindMilestone   WaitsNodeKind = "milestone"
+	WaitsNodeKindPurchase    WaitsNodeKind = "purchase"
+	WaitsNodeKindReady       WaitsNodeKind = "ready"
+	WaitsNodeKindTarget      WaitsNodeKind = "target"
+)
+
+// Valid indicates whether the value is a known member of the WaitsNodeKind enum.
+func (e WaitsNodeKind) Valid() bool {
+	switch e {
+	case WaitsNodeKindBaseline:
+		return true
+	case WaitsNodeKindCondition:
+		return true
+	case WaitsNodeKindDeliverable:
+		return true
+	case WaitsNodeKindDependency:
+		return true
+	case WaitsNodeKindMilestone:
+		return true
+	case WaitsNodeKindPurchase:
+		return true
+	case WaitsNodeKindReady:
+		return true
+	case WaitsNodeKindTarget:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WaitsNodeRecordKind.
+const (
+	WaitsNodeRecordKindKPI     WaitsNodeRecordKind = "KPI"
+	WaitsNodeRecordKindProject WaitsNodeRecordKind = "Project"
+)
+
+// Valid indicates whether the value is a known member of the WaitsNodeRecordKind enum.
+func (e WaitsNodeRecordKind) Valid() bool {
+	switch e {
+	case WaitsNodeRecordKindKPI:
+		return true
+	case WaitsNodeRecordKindProject:
 		return true
 	default:
 		return false
@@ -866,6 +950,25 @@ type ChangeSetReview struct {
 type ChangeSetTitle struct {
 	Description *string `json:"description,omitempty"`
 	Title       *string `json:"title,omitempty"`
+}
+
+// CharterPart defines model for CharterPart.
+type CharterPart struct {
+	// Anchor The section's id in the charter's HTML; absent for an empty part.
+	Anchor *string `json:"anchor,omitempty"`
+
+	// Empty Nothing is written in it yet; what belongs there is still to say.
+	Empty bool `json:"empty"`
+
+	// Fields The JSON pointers of the fields written in it as typed, each editable in place.
+	Fields []string `json:"fields"`
+
+	// Html What the renderer wrote under the heading, escaped as the charter is.
+	Html string `json:"html"`
+
+	// Step The step of the project's walk the section is written in.
+	Step  *string `json:"step,omitempty"`
+	Title string  `json:"title"`
 }
 
 // ComponentEdge defines model for ComponentEdge.
@@ -1339,6 +1442,25 @@ type GuideStep struct {
 	Links  *[]GuideLink `json:"links,omitempty"`
 	Title  string       `json:"title"`
 }
+
+// Happened defines model for Happened.
+type Happened struct {
+	// Available Whether the decision model ranked the matches; false, every triggerable as listed.
+	Available bool `json:"available"`
+	Matches   []struct {
+		// Happens What can be recorded as happening to it, as the event log names it.
+		Happens []string `json:"happens"`
+
+		// Item The item, as list/id.
+		Item       string              `json:"item"`
+		Kind       HappenedMatchesKind `json:"kind"`
+		Likelihood *float32            `json:"likelihood,omitempty"`
+		Name       string              `json:"name"`
+	} `json:"matches"`
+}
+
+// HappenedMatchesKind defines model for Happened.Matches.Kind.
+type HappenedMatchesKind string
 
 // Health defines model for Health.
 type Health struct {
@@ -2078,9 +2200,69 @@ type Version struct {
 	Reason string    `json:"reason"`
 }
 
+// Waits defines model for Waits.
+type Waits struct {
+	Edges []struct {
+		// From The index in nodes of what comes first.
+		From int `json:"from"`
+
+		// To The index in nodes of what waits on it.
+		To int `json:"to"`
+	} `json:"edges"`
+	Nodes []WaitsNode `json:"nodes"`
+}
+
+// WaitsNode defines model for WaitsNode.
+type WaitsNode struct {
+	// Conflict What it waits on puts it after its own date or window, or what it needs is ready after it.
+	Conflict bool `json:"conflict"`
+
+	// Critical On the chain that decides the last date.
+	Critical bool `json:"critical"`
+
+	// Follows The name of what it follows or is set by.
+	Follows *string `json:"follows,omitempty"`
+
+	// Item Its place in the record, list/id, such as milestones/start.
+	Item *string `json:"item,omitempty"`
+
+	// Kind What it is; ready is when another project is ready, for a dependency on it.
+	Kind WaitsNodeKind `json:"kind"`
+
+	// Late Set once something happens, past the month it was expected by.
+	Late bool `json:"late"`
+
+	// Month The month it falls in as far as its timing says, YYYY-MM.
+	Month *string `json:"month,omitempty"`
+	Name  string  `json:"name"`
+
+	// Record The record it is in, to open.
+	Record struct {
+		Id   string              `json:"id"`
+		Kind WaitsNodeRecordKind `json:"kind"`
+	} `json:"record"`
+
+	// Risks The risks the timing says could move it, by description; recorded, never simulated.
+	Risks *[]string `json:"risks,omitempty"`
+
+	// Timing Its timing as written (common.schema.json Timing), for the words an interface says it in.
+	Timing   *map[string]interface{} `json:"timing,omitempty"`
+	Unplaced bool                    `json:"unplaced"`
+	X        float32                 `json:"x"`
+	Y        float32                 `json:"y"`
+}
+
+// WaitsNodeKind What it is; ready is when another project is ready, for a dependency on it.
+type WaitsNodeKind string
+
+// WaitsNodeRecordKind defines model for WaitsNode.Record.Kind.
+type WaitsNodeRecordKind string
+
 // Waiver defines model for Waiver.
 type Waiver struct {
-	Check string `json:"check"`
+	// Asked What the person was asked about it and what they answered, or "not available" when the agent worked without them (docs/adr/0032).
+	Asked *string `json:"asked,omitempty"`
+	Check string  `json:"check"`
 
 	// Message What the check said.
 	Message string `json:"message"`
@@ -2294,6 +2476,15 @@ type GetProgrammeChecksParams struct {
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
+// GetWhatATriggerReachesParams defines parameters for GetWhatATriggerReaches.
+type GetWhatATriggerReachesParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+
+	// Item The item, as list/id.
+	Item string `form:"item" json:"item"`
+}
+
 // GetProjectCharterHtmlParams defines parameters for GetProjectCharterHtml.
 type GetProjectCharterHtmlParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -2301,6 +2492,12 @@ type GetProjectCharterHtmlParams struct {
 
 	// Working Use working copy instead of latest snapshot
 	Working *bool `form:"working,omitempty" json:"working,omitempty"`
+}
+
+// GetProjectCharterPartsParams defines parameters for GetProjectCharterParts.
+type GetProjectCharterPartsParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
 // GetProjectChecksParams defines parameters for GetProjectChecks.
@@ -2315,8 +2512,25 @@ type GetProjectDMAICParams struct {
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
+// MatchWhatHappenedJSONBody defines parameters for MatchWhatHappened.
+type MatchWhatHappenedJSONBody struct {
+	Text string `json:"text"`
+}
+
+// MatchWhatHappenedParams defines parameters for MatchWhatHappened.
+type MatchWhatHappenedParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetProjectScheduleParams defines parameters for GetProjectSchedule.
 type GetProjectScheduleParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
+// GetProjectWaitsParams defines parameters for GetProjectWaits.
+type GetProjectWaitsParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
@@ -2522,6 +2736,9 @@ type GetLineageJSONRequestBody GetLineageJSONBody
 
 // DeleteGoalJSONRequestBody defines body for DeleteGoal for application/json ContentType.
 type DeleteGoalJSONRequestBody = DeleteGoalRequest
+
+// MatchWhatHappenedJSONRequestBody defines body for MatchWhatHappened for application/json ContentType.
+type MatchWhatHappenedJSONRequestBody MatchWhatHappenedJSONBody
 
 // TransitionProjectStateJSONRequestBody defines body for TransitionProjectState for application/json ContentType.
 type TransitionProjectStateJSONRequestBody = ProjectStateTransitionRequest
@@ -2767,15 +2984,24 @@ type ServerInterface interface {
 	// GetProgrammeChecks Whether a programme can be judged on what a programme is judged on. Advisory only: none of these has a state that stops anything, because most of them can change when somebody edits a different manifest.
 	// (GET /manifests/Programme/{id}/checks)
 	GetProgrammeChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProgrammeChecksParams)
+	// GetWhatATriggerReaches Every item a trigger on one of a project's items reaches
+	// (GET /manifests/Project/{id}/affects)
+	GetWhatATriggerReaches(w http.ResponseWriter, r *http.Request, id IdParam, params GetWhatATriggerReachesParams)
 	// GetProjectCharterHtml Project charter rendered as HTML from the latest snapshot (or working copy with ?working=true).
 	// (GET /manifests/Project/{id}/charter.html)
 	GetProjectCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectCharterHtmlParams)
+	// GetProjectCharterParts A project's charter as its parts, as the change set reads it
+	// (GET /manifests/Project/{id}/charter/parts)
+	GetProjectCharterParts(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectCharterPartsParams)
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
 	GetProjectChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectChecksParams)
 	// GetProjectDMAIC Whether a project can be taken through DMAIC, phase by phase
 	// (GET /manifests/Project/{id}/dmaic)
 	GetProjectDMAIC(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectDMAICParams)
+	// MatchWhatHappened The items of a project what a person says happened is about
+	// (POST /manifests/Project/{id}/happened)
+	MatchWhatHappened(w http.ResponseWriter, r *http.Request, id IdParam, params MatchWhatHappenedParams)
 	// GetProjectSchedule A project's milestones placed on time
 	// (GET /manifests/Project/{id}/schedule)
 	GetProjectSchedule(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectScheduleParams)
@@ -2785,6 +3011,9 @@ type ServerInterface interface {
 	// TransitionProjectState Move a project to a new state. draft to in review is refused with 422 (the blocking checks as problems) unless every blocking check currently passes; cancelled requires a reason; every other move must be the next state in the fixed sequence.
 	// (POST /manifests/Project/{id}/state)
 	TransitionProjectState(w http.ResponseWriter, r *http.Request, id IdParam)
+	// GetProjectWaits What a project's dated items wait on, across kinds, laid out
+	// (GET /manifests/Project/{id}/waits)
+	GetProjectWaits(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectWaitsParams)
 	// GetCyclePeriods A reporting cycle's periods that overlap two months, derived from the cycle and never stored (TAXONOMY.md D8, D40): equal periods from its start month, or its named periods (terms each year, survey waves once). Each is keyed by the month it ends, which is what a reading is filed under, with its label and the day its reading is due. Derived in one place so every interface lays out a KPI's readings the same way.
 	// (GET /manifests/ReportingCycle/{id}/periods)
 	GetCyclePeriods(w http.ResponseWriter, r *http.Request, id IdParam, params GetCyclePeriodsParams)
@@ -4388,6 +4617,61 @@ func (siw *ServerInterfaceWrapper) GetProgrammeChecks(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// GetWhatATriggerReaches operation middleware
+func (siw *ServerInterfaceWrapper) GetWhatATriggerReaches(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetWhatATriggerReachesParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "item" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "item", r.URL.Query(), &params.Item, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "item"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "item", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetWhatATriggerReaches(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetProjectCharterHtml operation middleware
 func (siw *ServerInterfaceWrapper) GetProjectCharterHtml(w http.ResponseWriter, r *http.Request) {
 
@@ -4434,6 +4718,48 @@ func (siw *ServerInterfaceWrapper) GetProjectCharterHtml(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProjectCharterHtml(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProjectCharterParts operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectCharterParts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectCharterPartsParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProjectCharterParts(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4518,6 +4844,48 @@ func (siw *ServerInterfaceWrapper) GetProjectDMAIC(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProjectDMAIC(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MatchWhatHappened operation middleware
+func (siw *ServerInterfaceWrapper) MatchWhatHappened(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params MatchWhatHappenedParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MatchWhatHappened(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4612,6 +4980,48 @@ func (siw *ServerInterfaceWrapper) TransitionProjectState(w http.ResponseWriter,
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.TransitionProjectState(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProjectWaits operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectWaits(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectWaitsParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProjectWaits(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6073,6 +6483,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/goals/tree", wrapper.GetGoalTree)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/links/{link}/candidates", wrapper.GetLinkCandidates)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/schedule", wrapper.GetProjectSchedule)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/waits", wrapper.GetProjectWaits)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/Project/{id}/happened", wrapper.MatchWhatHappened)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/affects", wrapper.GetWhatATriggerReaches)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/components", wrapper.GetComponents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/graph", wrapper.GetGraph)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Goal/{id}/checks", wrapper.GetGoalChecks)
@@ -6089,6 +6502,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.GetProjectState)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.TransitionProjectState)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/charter.html", wrapper.GetProjectCharterHtml)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/charter/parts", wrapper.GetProjectCharterParts)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/charter.pdf", wrapper.GetCharterPdf)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Programme/{id}/charter.html", wrapper.GetProgrammeCharterHtml)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Operation/{id}/charter.html", wrapper.GetOperationCharterHtml)
@@ -9101,6 +9515,71 @@ func (response GetProgrammeChecks404JSONResponse) VisitGetProgrammeChecksRespons
 	return err
 }
 
+type GetWhatATriggerReachesRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetWhatATriggerReachesParams
+}
+
+type GetWhatATriggerReachesResponseObject interface {
+	VisitGetWhatATriggerReachesResponse(w http.ResponseWriter) error
+}
+
+type GetWhatATriggerReaches200JSONResponse []WaitsNode
+
+func (response GetWhatATriggerReaches200JSONResponse) VisitGetWhatATriggerReachesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWhatATriggerReaches401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetWhatATriggerReaches401JSONResponse) VisitGetWhatATriggerReachesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWhatATriggerReaches403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetWhatATriggerReaches403JSONResponse) VisitGetWhatATriggerReachesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWhatATriggerReaches404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetWhatATriggerReaches404JSONResponse) VisitGetWhatATriggerReachesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetProjectCharterHtmlRequestObject struct {
 	Id     IdParam `json:"id"`
 	Params GetProjectCharterHtmlParams
@@ -9161,6 +9640,71 @@ func (response GetProjectCharterHtml403JSONResponse) VisitGetProjectCharterHtmlR
 type GetProjectCharterHtml404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response GetProjectCharterHtml404JSONResponse) VisitGetProjectCharterHtmlResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectCharterPartsRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetProjectCharterPartsParams
+}
+
+type GetProjectCharterPartsResponseObject interface {
+	VisitGetProjectCharterPartsResponse(w http.ResponseWriter) error
+}
+
+type GetProjectCharterParts200JSONResponse []CharterPart
+
+func (response GetProjectCharterParts200JSONResponse) VisitGetProjectCharterPartsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectCharterParts401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetProjectCharterParts401JSONResponse) VisitGetProjectCharterPartsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectCharterParts403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProjectCharterParts403JSONResponse) VisitGetProjectCharterPartsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectCharterParts404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProjectCharterParts404JSONResponse) VisitGetProjectCharterPartsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9291,6 +9835,72 @@ func (response GetProjectDMAIC403JSONResponse) VisitGetProjectDMAICResponse(w ht
 type GetProjectDMAIC404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response GetProjectDMAIC404JSONResponse) VisitGetProjectDMAICResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MatchWhatHappenedRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params MatchWhatHappenedParams
+	Body   *MatchWhatHappenedJSONRequestBody
+}
+
+type MatchWhatHappenedResponseObject interface {
+	VisitMatchWhatHappenedResponse(w http.ResponseWriter) error
+}
+
+type MatchWhatHappened200JSONResponse Happened
+
+func (response MatchWhatHappened200JSONResponse) VisitMatchWhatHappenedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MatchWhatHappened401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response MatchWhatHappened401JSONResponse) VisitMatchWhatHappenedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MatchWhatHappened403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response MatchWhatHappened403JSONResponse) VisitMatchWhatHappenedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MatchWhatHappened404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response MatchWhatHappened404JSONResponse) VisitMatchWhatHappenedResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9520,6 +10130,71 @@ func (response TransitionProjectState422JSONResponse) VisitTransitionProjectStat
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectWaitsRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetProjectWaitsParams
+}
+
+type GetProjectWaitsResponseObject interface {
+	VisitGetProjectWaitsResponse(w http.ResponseWriter) error
+}
+
+type GetProjectWaits200JSONResponse Waits
+
+func (response GetProjectWaits200JSONResponse) VisitGetProjectWaitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectWaits401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetProjectWaits401JSONResponse) VisitGetProjectWaitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectWaits403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProjectWaits403JSONResponse) VisitGetProjectWaitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectWaits404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProjectWaits404JSONResponse) VisitGetProjectWaitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -12340,15 +13015,24 @@ type StrictServerInterface interface {
 	// GetProgrammeChecks Whether a programme can be judged on what a programme is judged on. Advisory only: none of these has a state that stops anything, because most of them can change when somebody edits a different manifest.
 	// (GET /manifests/Programme/{id}/checks)
 	GetProgrammeChecks(ctx context.Context, request GetProgrammeChecksRequestObject) (GetProgrammeChecksResponseObject, error)
+	// GetWhatATriggerReaches Every item a trigger on one of a project's items reaches
+	// (GET /manifests/Project/{id}/affects)
+	GetWhatATriggerReaches(ctx context.Context, request GetWhatATriggerReachesRequestObject) (GetWhatATriggerReachesResponseObject, error)
 	// GetProjectCharterHtml Project charter rendered as HTML from the latest snapshot (or working copy with ?working=true).
 	// (GET /manifests/Project/{id}/charter.html)
 	GetProjectCharterHtml(ctx context.Context, request GetProjectCharterHtmlRequestObject) (GetProjectCharterHtmlResponseObject, error)
+	// GetProjectCharterParts A project's charter as its parts, as the change set reads it
+	// (GET /manifests/Project/{id}/charter/parts)
+	GetProjectCharterParts(ctx context.Context, request GetProjectCharterPartsRequestObject) (GetProjectCharterPartsResponseObject, error)
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
 	GetProjectChecks(ctx context.Context, request GetProjectChecksRequestObject) (GetProjectChecksResponseObject, error)
 	// GetProjectDMAIC Whether a project can be taken through DMAIC, phase by phase
 	// (GET /manifests/Project/{id}/dmaic)
 	GetProjectDMAIC(ctx context.Context, request GetProjectDMAICRequestObject) (GetProjectDMAICResponseObject, error)
+	// MatchWhatHappened The items of a project what a person says happened is about
+	// (POST /manifests/Project/{id}/happened)
+	MatchWhatHappened(ctx context.Context, request MatchWhatHappenedRequestObject) (MatchWhatHappenedResponseObject, error)
 	// GetProjectSchedule A project's milestones placed on time
 	// (GET /manifests/Project/{id}/schedule)
 	GetProjectSchedule(ctx context.Context, request GetProjectScheduleRequestObject) (GetProjectScheduleResponseObject, error)
@@ -12358,6 +13042,9 @@ type StrictServerInterface interface {
 	// TransitionProjectState Move a project to a new state. draft to in review is refused with 422 (the blocking checks as problems) unless every blocking check currently passes; cancelled requires a reason; every other move must be the next state in the fixed sequence.
 	// (POST /manifests/Project/{id}/state)
 	TransitionProjectState(ctx context.Context, request TransitionProjectStateRequestObject) (TransitionProjectStateResponseObject, error)
+	// GetProjectWaits What a project's dated items wait on, across kinds, laid out
+	// (GET /manifests/Project/{id}/waits)
+	GetProjectWaits(ctx context.Context, request GetProjectWaitsRequestObject) (GetProjectWaitsResponseObject, error)
 	// GetCyclePeriods A reporting cycle's periods that overlap two months, derived from the cycle and never stored (TAXONOMY.md D8, D40): equal periods from its start month, or its named periods (terms each year, survey waves once). Each is keyed by the month it ends, which is what a reading is filed under, with its label and the day its reading is due. Derived in one place so every interface lays out a KPI's readings the same way.
 	// (GET /manifests/ReportingCycle/{id}/periods)
 	GetCyclePeriods(ctx context.Context, request GetCyclePeriodsRequestObject) (GetCyclePeriodsResponseObject, error)
@@ -13806,6 +14493,33 @@ func (sh *strictHandler) GetProgrammeChecks(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// GetWhatATriggerReaches operation middleware
+func (sh *strictHandler) GetWhatATriggerReaches(w http.ResponseWriter, r *http.Request, id IdParam, params GetWhatATriggerReachesParams) {
+	var request GetWhatATriggerReachesRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetWhatATriggerReaches(ctx, request.(GetWhatATriggerReachesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetWhatATriggerReaches")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetWhatATriggerReachesResponseObject); ok {
+		if err := validResponse.VisitGetWhatATriggerReachesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetProjectCharterHtml operation middleware
 func (sh *strictHandler) GetProjectCharterHtml(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectCharterHtmlParams) {
 	var request GetProjectCharterHtmlRequestObject
@@ -13826,6 +14540,33 @@ func (sh *strictHandler) GetProjectCharterHtml(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProjectCharterHtmlResponseObject); ok {
 		if err := validResponse.VisitGetProjectCharterHtmlResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProjectCharterParts operation middleware
+func (sh *strictHandler) GetProjectCharterParts(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectCharterPartsParams) {
+	var request GetProjectCharterPartsRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProjectCharterParts(ctx, request.(GetProjectCharterPartsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProjectCharterParts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProjectCharterPartsResponseObject); ok {
+		if err := validResponse.VisitGetProjectCharterPartsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -13880,6 +14621,40 @@ func (sh *strictHandler) GetProjectDMAIC(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProjectDMAICResponseObject); ok {
 		if err := validResponse.VisitGetProjectDMAICResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// MatchWhatHappened operation middleware
+func (sh *strictHandler) MatchWhatHappened(w http.ResponseWriter, r *http.Request, id IdParam, params MatchWhatHappenedParams) {
+	var request MatchWhatHappenedRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	var body MatchWhatHappenedJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MatchWhatHappened(ctx, request.(MatchWhatHappenedRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MatchWhatHappened")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MatchWhatHappenedResponseObject); ok {
+		if err := validResponse.VisitMatchWhatHappenedResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -13966,6 +14741,33 @@ func (sh *strictHandler) TransitionProjectState(w http.ResponseWriter, r *http.R
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(TransitionProjectStateResponseObject); ok {
 		if err := validResponse.VisitTransitionProjectStateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProjectWaits operation middleware
+func (sh *strictHandler) GetProjectWaits(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectWaitsParams) {
+	var request GetProjectWaitsRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProjectWaits(ctx, request.(GetProjectWaitsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProjectWaits")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProjectWaitsResponseObject); ok {
+		if err := validResponse.VisitGetProjectWaitsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

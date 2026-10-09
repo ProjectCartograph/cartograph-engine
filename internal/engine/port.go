@@ -304,7 +304,8 @@ type PortRecord struct {
 	Record string         `json:"record" jsonschema:"the record, as Kind/id"`
 	Set    map[string]any `json:"set,omitempty" jsonschema:"every field the document gives, by JSON pointer"`
 	Unset  []string       `json:"unset,omitempty" jsonschema:"fields to clear, by JSON pointer"`
-	Open   []OpenReason   `json:"open,omitempty" jsonschema:"each check the document does not answer, with the reason your person will read"`
+	Open   []OpenReason   `json:"open,omitempty" jsonschema:"each check the document does not answer, with the reason your person will read; an empty reason takes back one left before"`
+	Asked  string         `json:"asked,omitempty" jsonschema:"with open: what you asked your person about these checks and what they answered, or \"not available\" when you were told to work without them"`
 }
 
 // OpenReason is a check left open, with the reason a person reads.
@@ -319,7 +320,10 @@ type PortRecordResult struct {
 	Refused []Problem `json:"refused,omitempty"`
 	Left    []string  `json:"left,omitempty"`
 	NotLeft []string  `json:"notLeft,omitempty"`
-	Error   string    `json:"error,omitempty"`
+	// TakenBack are checks left before, open again: an empty reason
+	// takes one back.
+	TakenBack []string `json:"takenBack,omitempty"`
+	Error     string   `json:"error,omitempty"`
 	// Err is the error behind Error, for an adapter to word.
 	Err error `json:"-"`
 }
@@ -372,16 +376,29 @@ func (e *Engine) PortRecords(ctx context.Context, set string, records []PortReco
 			}
 		}
 		res.Refused = refused
+		// Left with what the person answered, or "not available" when
+		// there is nobody to ask, said as settle says it: a check is never
+		// marked unasked because asked was left out, and one the document
+		// states is never left so. An empty reason takes a check back.
+		asked := strings.TrimSpace(r.Asked)
 		for _, o := range r.Open {
 			if strings.TrimSpace(o.Reason) == "" {
-				res.NotLeft = append(res.NotLeft, o.Check+": give the reason your person will read")
+				if err := e.LeaveOpen(ctx, set, k, id, o.Check, "", "", false); err != nil {
+					res.NotLeft = append(res.NotLeft, o.Check+": "+err.Error())
+				} else {
+					res.TakenBack = append(res.TakenBack, o.Check)
+				}
 				continue
 			}
-			if err := MayLeave(o.Check, "not available"); err != nil {
+			if asked == "" {
+				res.NotLeft = append(res.NotLeft, o.Check+`: pass asked on the record, what you asked your person and what they answered, or "not available" when you were told to work without them`)
+				continue
+			}
+			if err := MayLeave(o.Check, asked); err != nil {
 				res.NotLeft = append(res.NotLeft, err.Error())
 				continue
 			}
-			if err := e.LeaveOpen(ctx, set, k, id, o.Check, o.Reason, false); err != nil {
+			if err := e.LeaveOpen(ctx, set, k, id, o.Check, o.Reason, asked, false); err != nil {
 				res.NotLeft = append(res.NotLeft, o.Check+": "+err.Error())
 				continue
 			}

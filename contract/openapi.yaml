@@ -125,6 +125,110 @@ paths:
                 items:
                   $ref: "#/components/schemas/ScheduleItem"
 
+  /manifests/Project/{id}/waits:
+    get:
+      operationId: getProjectWaits
+      summary: What a project's dated items wait on, across kinds, laid out
+      description: >-
+        Every item of the project that says when it falls (a milestone, a
+        deliverable, a condition, a purchase, a dependency on another
+        project), a KPI's target or baseline set when one of them happens,
+        and another project's item one waits on, each placed on time, with
+        an edge from what comes first to what waits on it (TAXONOMY.md
+        D47, D48). Marked: the chain that decides the last date, what no
+        longer fits its own date or what it needs, what is late, and the
+        risks that could move each. Laid out by the engine, a column to a
+        month; an interface draws it. Nothing is rescheduled.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - $ref: "#/components/parameters/PreviewParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Waits"
+
+  /manifests/Project/{id}/happened:
+    post:
+      operationId: matchWhatHappened
+      summary: The items of a project what a person says happened is about
+      description: >-
+        What happened, in the person's own words, matched to the project's
+        triggerables (its milestones, deliverables, conditions, risks,
+        dependencies and success criteria) by the decision model, likeliest
+        first, with what can be recorded as happening to each (TAXONOMY.md
+        D59). Without a model nothing is judged (docs/adr/0030): every
+        triggerable is returned, unranked, and available is false.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - $ref: "#/components/parameters/PreviewParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 400
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Happened"
+
+  /manifests/Project/{id}/affects:
+    get:
+      operationId: getWhatATriggerReaches
+      summary: Every item a trigger on one of a project's items reaches
+      description: >-
+        From the item (milestones/start, risks/r1), everything that waits on
+        it, directly or through others, and for a risk every item whose
+        timing names it and what waits on those (TAXONOMY.md D59), as the
+        project's waits place them. Nothing is rescheduled.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - $ref: "#/components/parameters/PreviewParam"
+        - name: item
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The item, as list/id.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WaitsNode"
+
   /components:
     get:
       operationId: getComponents
@@ -574,6 +678,38 @@ paths:
                 type: string
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /manifests/Project/{id}/charter/parts:
+    get:
+      operationId: getProjectCharterParts
+      summary: A project's charter as its parts, as the change set reads it
+      description: >-
+        Each section the charter renderer writes, in order: its title, the
+        step of the walk it is written in, the HTML written under its
+        heading (escaped as the charter is), and the JSON pointers of the
+        fields it holds as typed, each editable in place. A section the
+        renderer started with nothing to write under it is an empty part,
+        what still belongs there. From the same renderer as charter.html
+        and charter.pdf, so the screen and the paper never differ
+        (TAXONOMY.md D55).
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CharterPart"
 
   /manifests/{kind}/{id}/charter.pdf:
     get:
@@ -3692,6 +3828,12 @@ components:
         reason:
           type: string
           description: Why the agent left it open.
+        asked:
+          type: string
+          description: >-
+            What the person was asked about it and what they answered, or
+            "not available" when the agent worked without them
+            (docs/adr/0032).
 
     ManifestCheck:
       type: object
@@ -4396,6 +4538,130 @@ components:
         unplaced:
           type: boolean
           description: It follows something outside the project, or a loop, so no month can be worked out.
+    Waits:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/WaitsNode"
+        edges:
+          type: array
+          items:
+            type: object
+            required: [from, to]
+            properties:
+              from:
+                type: integer
+                description: The index in nodes of what comes first.
+              to:
+                type: integer
+                description: The index in nodes of what waits on it.
+    CharterPart:
+      type: object
+      required: [title, html, fields, empty]
+      properties:
+        title:
+          type: string
+        step:
+          type: string
+          description: The step of the project's walk the section is written in.
+        anchor:
+          type: string
+          description: The section's id in the charter's HTML; absent for an empty part.
+        html:
+          type: string
+          description: What the renderer wrote under the heading, escaped as the charter is.
+        fields:
+          type: array
+          items:
+            type: string
+          description: The JSON pointers of the fields written in it as typed, each editable in place.
+        empty:
+          type: boolean
+          description: Nothing is written in it yet; what belongs there is still to say.
+    Happened:
+      type: object
+      required: [available, matches]
+      properties:
+        available:
+          type: boolean
+          description: Whether the decision model ranked the matches; false, every triggerable as listed.
+        matches:
+          type: array
+          items:
+            type: object
+            required: [item, kind, name, happens]
+            properties:
+              item:
+                type: string
+                description: The item, as list/id.
+              kind:
+                type: string
+                enum: [milestone, deliverable, condition, risk, dependency, criterion]
+              name:
+                type: string
+              happens:
+                type: array
+                items:
+                  type: string
+                description: What can be recorded as happening to it, as the event log names it.
+              likelihood:
+                type: number
+    WaitsNode:
+      type: object
+      required: [kind, record, name, critical, conflict, late, unplaced, x, y]
+      properties:
+        kind:
+          type: string
+          enum: [milestone, deliverable, condition, purchase, dependency, target, baseline, ready]
+          description: What it is; ready is when another project is ready, for a dependency on it.
+        record:
+          type: object
+          required: [kind, id]
+          description: The record it is in, to open.
+          properties:
+            kind:
+              type: string
+              enum: [Project, KPI]
+            id:
+              type: string
+        item:
+          type: string
+          description: Its place in the record, list/id, such as milestones/start.
+        name:
+          type: string
+        timing:
+          type: object
+          additionalProperties: true
+          description: Its timing as written (common.schema.json Timing), for the words an interface says it in.
+        follows:
+          type: string
+          description: The name of what it follows or is set by.
+        month:
+          type: string
+          description: The month it falls in as far as its timing says, YYYY-MM.
+        risks:
+          type: array
+          items:
+            type: string
+          description: The risks the timing says could move it, by description; recorded, never simulated.
+        critical:
+          type: boolean
+          description: On the chain that decides the last date.
+        conflict:
+          type: boolean
+          description: What it waits on puts it after its own date or window, or what it needs is ready after it.
+        late:
+          type: boolean
+          description: Set once something happens, past the month it was expected by.
+        unplaced:
+          type: boolean
+        x:
+          type: number
+        y:
+          type: number
     WorkRef:
       type: object
       required: [kind, id]

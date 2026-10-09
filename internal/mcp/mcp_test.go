@@ -565,6 +565,14 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 	if len(sets) == 0 || len(sets[0].Waivers) != len(report.Open) || !strings.HasPrefix(sets[0].Waivers[0].Reason, "Only the person knows") {
 		t.Fatalf("the proposal's waivers: %+v", sets)
 	}
+	// What the person was asked goes with the check to the proposal, and
+	// the summary the agent reports from says it (docs/adr/0032).
+	if !strings.HasPrefix(sets[0].Waivers[0].Asked, "Asked who sets it") {
+		t.Fatalf("what the person was asked was lost: %+v", sets[0].Waivers)
+	}
+	if _, sum := callTool(t, cs, "work_summary", map[string]any{"changeSet": sets[0].ID}); !strings.Contains(sum, `"asked":"Asked who sets it`) {
+		t.Fatalf("the summary does not say what was asked: %s", sum)
+	}
 }
 
 // taxonomy says where each part of a document goes, and what stays out,
@@ -1335,7 +1343,7 @@ func TestAPortWritesEveryRecordInOneCall(t *testing.T) {
 	}
 	_, text = callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "records": []any{
 		map[string]any{"record": project, "set": map[string]any{"/spec/objectives/0/objective": "Produce is graded the same at every depot"},
-			"open": []any{map[string]any{"check": "resources-funding", "reason": "The charter names no funding"}}},
+			"asked": "not available", "open": []any{map[string]any{"check": "resources-funding", "reason": "The charter names no funding"}}},
 	}})
 	if !strings.Contains(text, `"left":["resources-funding"]`) || !strings.Contains(text, "stillOpen") {
 		t.Fatalf("third call: %s", text)
@@ -1533,5 +1541,37 @@ func TestGetReadsManyRecordsInOneCall(t *testing.T) {
 	_, text = callTool(t, cs, "get", map[string]any{"records": out.Work})
 	if strings.Count(text, `"yaml"`) != len(out.Work) || len(out.Work) != 2 {
 		t.Fatalf("get: %s", text)
+	}
+}
+
+// A round asks every decision that hangs on nothing still open, side by
+// side, with how to ask it (docs/adr/0032): two projects apart from each
+// other are asked about in one round, not one after the other.
+func TestARoundAsksIndependentRecordsTogether(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "Two pieces"})
+	for _, p := range []struct{ id, name string }{{"rollout", "Grading rollout"}, {"survey", "Depot survey"}} {
+		project := map[string]any{"apiVersion": "cartograph/v1", "kind": "Project", "metadata": map[string]any{"id": p.id, "name": p.name}, "spec": map[string]any{}}
+		if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Project", "id": p.id, "manifest": project}); res.IsError {
+			t.Fatalf("save_draft %s: %s", p.id, text)
+		}
+	}
+	res, text := callTool(t, cs, "round", map[string]any{"work": []string{"Project/rollout", "Project/survey"}})
+	var out struct {
+		Ask []struct {
+			ID string `json:"id"`
+		} `json:"ask"`
+		How string `json:"how"`
+	}
+	if res.IsError || json.Unmarshal([]byte(text), &out) != nil {
+		t.Fatalf("round: %s", text)
+	}
+	asked := map[string]bool{}
+	for _, q := range out.Ask {
+		asked[q.ID] = true
+	}
+	if !asked["rollout"] || !asked["survey"] || !strings.Contains(out.How, "yes accepts it") {
+		t.Fatalf("round asks %v, how %q: want both projects in one round, with how to ask: %.600s", asked, out.How, text)
 	}
 }

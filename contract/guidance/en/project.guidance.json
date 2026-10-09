@@ -601,7 +601,14 @@
       "guide": "What this project waits on, or what waits on it: another project, a data source, another record in Cartograph, or something outside Cartograph typed in."
     },
     "/spec/risks/-/depends/needBy": {
-      "guide": "The phase by which the dependency must be done."
+      "guide": "No longer written: say when it is needed in needed. The phase by which the dependency must be done, read from projects saved before milestones."
+    },
+    "/spec/risks/-/depends/needed": {
+      "guide": "When this project needs it: a month, a window, or after one of its own milestones, such as three months after the pilot starts. Cartograph flags it when the other project's milestones place it later.",
+      "good": [
+        "After the pilot starts, plus one month",
+        "Not after March 2027"
+      ]
     },
     "/spec/risks/-/escalate/to": {
       "guide": "Whose decision is needed: usually the sponsor or a board."

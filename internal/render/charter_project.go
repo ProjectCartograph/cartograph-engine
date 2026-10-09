@@ -15,6 +15,15 @@ import (
 // will achieve and produce, when, who decides and pays, what could go
 // wrong, how anyone will know it worked, and who approves it.
 func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engine.Version) ([]byte, error) {
+	d, err := projectCharterDoc(ctx, e, id, vers)
+	if err != nil {
+		return nil, err
+	}
+	return d.end(), nil
+}
+
+// projectCharterDoc writes a project's charter, all but its end.
+func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers engine.Version) (*doc, error) {
 	name, spec, err := manifestOf(e, vers, id)
 	if err != nil {
 		return nil, err
@@ -176,16 +185,27 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 	if len(criteria) > 0 {
 		d.h2("Success criteria and handover")
 		var rows [][]string
+		results := false
 		for _, c := range criteria {
 			judged := str(c["when"])
 			if judged == "" {
 				judged = "atClosing"
 			}
+			result := p.result(str(c["id"]))
+			results = results || result != ""
 			rows = append(rows, []string{
-				str(c["statement"]), str(c["standard"]), label("when", judged), p.who(c["confirmedBy"]),
+				str(c["statement"]), str(c["standard"]), label("when", judged), p.who(c["confirmedBy"]), result,
 			})
 		}
-		d.table([]string{"Criterion", "Target", "Judged", "Signed off by"}, rows)
+		heads := []string{"Criterion", "Target", "Judged", "Signed off by", "Result"}
+		if !results {
+			// Before anything is judged, the charter reads as it always has.
+			heads = heads[:4]
+			for i := range rows {
+				rows[i] = rows[i][:4]
+			}
+		}
+		d.table(heads, rows)
 	}
 	var kpiNames []string
 	for _, k := range list(spec["kpis"]) {
@@ -217,7 +237,7 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 	}
 	d.history(ctx, e, "Project", id)
 	d.heldInCartograph(spec, len(stakeholders(ctx, e, n, "Project", id)))
-	return d.end(), nil
+	return &d, nil
 }
 
 func hasString(list []string, s string) bool {

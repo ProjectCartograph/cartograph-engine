@@ -17,12 +17,13 @@ type fake struct {
 	status  string
 	records []map[string]any
 	yaml    map[string]string
+	left    []map[string]any
 }
 
 func (f fake) Call(_ context.Context, tool string, args map[string]any) (string, error) {
 	switch tool {
 	case "work_summary":
-		b, _ := json.Marshal(map[string]any{"status": f.status, "records": f.records})
+		b, _ := json.Marshal(map[string]any{"status": f.status, "records": f.records, "leftForYourPerson": f.left})
 		return string(b), nil
 	case "get":
 		var items []map[string]any
@@ -126,5 +127,54 @@ func TestTheStreakIsCountedOnOneBuild(t *testing.T) {
 	}
 	if strings.TrimSpace(evaluate.StreakOf(nil, 3).Commit) != "" {
 		t.Error("an empty streak has a build")
+	}
+}
+
+// Rounds are judged from what the change set leaves for the person and
+// the agent's calls: each check left with what was asked, none the
+// document states, a round before propose, several questions an exchange.
+func TestRoundsAreJudgedFromWhatIsLeft(t *testing.T) {
+	t.Parallel()
+	c := evaluate.Criteria{Agent: "Agent", Runs: 3, Rounds: &evaluate.Rounds{NotLeft: []string{"aim-mandate"}, MaxCalls: 4}}
+	asked := "Asked the budget and the go-live month; they will set both at the board"
+	good := fake{status: "proposed", left: []map[string]any{
+		{"on": "Project/p-main", "check": "costs-figure", "asked": asked},
+		{"on": "Project/p-main", "check": "milestone-date", "asked": asked},
+	}}
+	run := []trace.Call{
+		{Tool: "port", Agent: "Agent", Outcome: trace.OK},
+		{Tool: "round", Agent: "Agent", Outcome: trace.OK},
+		{Tool: "settle", Agent: "Agent", Outcome: trace.OK},
+		{Tool: "propose", Agent: "Agent", Outcome: trace.OK},
+	}
+	s, err := evaluate.ScoreRun(context.Background(), good, c, "cs1", run, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.Pass {
+		t.Fatalf("a run that asked in rounds failed: %+v", s.Checks)
+	}
+	// One question an exchange, a check left unasked or stated by the
+	// document, propose before any round, and too many calls each fail.
+	bad := fake{status: "proposed", left: []map[string]any{
+		{"on": "Project/p-main", "check": "costs-figure", "asked": "Asked the budget"},
+		{"on": "Project/p-main", "check": "milestone-date", "asked": "Asked the go-live month"},
+		{"on": "Project/p-main", "check": "aim-mandate", "asked": "not available"},
+	}}
+	late := append([]trace.Call{run[0], run[3], run[1]}, run[2], run[2])
+	s, err = evaluate.ScoreRun(context.Background(), bad, c, "cs1", late, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failed := map[string]bool{}
+	for _, ch := range s.Checks {
+		if !ch.Pass {
+			failed[ch.Name] = true
+		}
+	}
+	for _, want := range []string{"left with what was asked", "round before propose", "asked together", "no more calls"} {
+		if !failed[want] {
+			t.Errorf("%s passed: %+v", want, s.Checks)
+		}
 	}
 }

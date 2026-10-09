@@ -47,13 +47,47 @@ func TestAPortIsAnEngineUseCase(t *testing.T) {
 	results, still, err := e.PortRecords(ctx, cs.ID, []engine.PortRecord{{
 		Record: project,
 		Set:    map[string]any{"/spec/objectives/0/objective": "Produce is graded the same at every depot"},
-		Open:   []engine.OpenReason{{Check: "resources-funding", Reason: "The charter names no funding"}},
+		Open:   []engine.OpenReason{{Check: "resources-funding", Reason: "The charter names no funding"}}, Asked: "not available",
 	}})
 	if err != nil || len(results) != 1 || results[0].Error != "" || strings.Join(results[0].Left, ",") != "resources-funding" {
 		t.Fatalf("records %+v %v", results, err)
 	}
 	if len(still) == 0 || still[0].Record != project {
 		t.Fatalf("still open %+v", still)
+	}
+	// With the person asked, a check is left with what they answered,
+	// even one a document states; without, it says nobody was asked
+	// (docs/adr/0032).
+	asked := "Asked who mandated it; they will name the decision at review"
+	if results, _, err = e.PortRecords(ctx, cs.ID, []engine.PortRecord{{
+		Record: project, Asked: asked,
+		Open: []engine.OpenReason{{Check: "aim-mandate", Reason: "The mandate is named at review"}},
+	}}); err != nil || strings.Join(results[0].Left, ",") != "aim-mandate" {
+		t.Fatalf("left with the person asked: %+v %v", results, err)
+	}
+	view, err := e.ViewChangeSet(ctx, cs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, w := range view.ChangeSet.Waivers {
+		got[w.Check] = w.Asked
+	}
+	if got["resources-funding"] != "not available" || got["aim-mandate"] != asked {
+		t.Fatalf("what was asked, by check: %v", got)
+	}
+	// Without asked a check is not left, never marked unasked by default;
+	// an empty reason takes back one left before (eval run 002).
+	results, _, err = e.PortRecords(ctx, cs.ID, []engine.PortRecord{{
+		Record: project,
+		Open:   []engine.OpenReason{{Check: "owner-role", Reason: "Nobody named"}, {Check: "resources-funding"}},
+	}})
+	if err != nil || len(results[0].Left) != 0 || len(results[0].NotLeft) != 1 || !strings.Contains(results[0].NotLeft[0], "pass asked") ||
+		strings.Join(results[0].TakenBack, ",") != "resources-funding" {
+		t.Fatalf("left without asked, taken back: %+v %v", results, err)
+	}
+	if view, _ = e.ViewChangeSet(ctx, cs.ID); len(view.ChangeSet.Waivers) != 1 || view.ChangeSet.Waivers[0].Check != "aim-mandate" {
+		t.Fatalf("left after taking one back: %+v", view.ChangeSet.Waivers)
 	}
 }
 

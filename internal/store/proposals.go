@@ -59,6 +59,9 @@ type Waiver struct {
 	Check   string `json:"check"`
 	Message string `json:"message"`
 	Reason  string `json:"reason"`
+	// Asked is what the person was asked and what they answered, or
+	// "not available" when the agent worked without them (docs/adr/0032).
+	Asked string `json:"asked,omitempty"`
 }
 
 // What a proposal does.

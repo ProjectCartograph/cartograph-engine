@@ -121,3 +121,101 @@ func (s *Server) GetProjectSchedule(ctx context.Context, req apigen.GetProjectSc
 	}
 	return out, nil
 }
+
+// GetProjectWaits is what a project's dated items wait on, across kinds,
+// laid out by the engine (TAXONOMY.md D47, D48).
+func (s *Server) GetProjectWaits(ctx context.Context, req apigen.GetProjectWaitsRequestObject) (apigen.GetProjectWaitsResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
+	g, err := s.Engine.Waits(ctx, string(req.Id))
+	if err != nil {
+		return nil, err
+	}
+	out := apigen.GetProjectWaits200JSONResponse{Nodes: make([]apigen.WaitsNode, len(g.Nodes))}
+	out.Edges = make([]struct {
+		From int `json:"from"`
+		To   int `json:"to"`
+	}, len(g.Edges))
+	for i, ed := range g.Edges {
+		out.Edges[i].From, out.Edges[i].To = ed.From, ed.To
+	}
+	for i, n := range g.Nodes {
+		out.Nodes[i] = waitsNode(n)
+	}
+	return out, nil
+}
+
+// waitsNode is a dated item as the contract says it.
+func waitsNode(n engine.TimeNode) apigen.WaitsNode {
+	text := func(s string) *string {
+		if s == "" {
+			return nil
+		}
+		return &s
+	}
+	o := apigen.WaitsNode{Kind: apigen.WaitsNodeKind(n.Kind), Name: n.Name, Critical: n.Critical, Conflict: n.Conflict, Late: n.Late, Unplaced: n.Unplaced,
+		X: float32(n.X), Y: float32(n.Y), Item: text(n.Item), Follows: text(n.Follows), Month: text(n.Month)}
+	o.Record.Kind, o.Record.Id = apigen.WaitsNodeRecordKind(n.Record.Kind), n.Record.ID
+	if n.Timing != nil {
+		t := n.Timing
+		o.Timing = &t
+	}
+	if len(n.Risks) > 0 {
+		r := n.Risks
+		o.Risks = &r
+	}
+	return o
+}
+
+// MatchWhatHappened ranks a project's items by what a person says happened
+// (TAXONOMY.md D59).
+func (s *Server) MatchWhatHappened(ctx context.Context, req apigen.MatchWhatHappenedRequestObject) (apigen.MatchWhatHappenedResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
+	text := ""
+	if req.Body != nil {
+		text = req.Body.Text
+	}
+	h, err := s.Engine.WhatHappened(ctx, string(req.Id), text)
+	if err != nil {
+		return nil, err
+	}
+	out := apigen.MatchWhatHappened200JSONResponse{Available: h.Available}
+	out.Matches = make([]struct {
+		Happens    []string                   `json:"happens"`
+		Item       string                     `json:"item"`
+		Kind       apigen.HappenedMatchesKind `json:"kind"`
+		Likelihood *float32                   `json:"likelihood,omitempty"`
+		Name       string                     `json:"name"`
+	}, len(h.Matches))
+	for i, m := range h.Matches {
+		out.Matches[i].Happens, out.Matches[i].Item, out.Matches[i].Kind, out.Matches[i].Name = m.Happens, m.Item, apigen.HappenedMatchesKind(m.Kind), m.Name
+		if h.Available {
+			l := float32(m.Likelihood)
+			out.Matches[i].Likelihood = &l
+		}
+	}
+	return out, nil
+}
+
+// GetWhatATriggerReaches is every item a trigger on one item reaches
+// (TAXONOMY.md D59).
+func (s *Server) GetWhatATriggerReaches(ctx context.Context, req apigen.GetWhatATriggerReachesRequestObject) (apigen.GetWhatATriggerReachesResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := s.Engine.Affects(ctx, string(req.Id), req.Params.Item)
+	if err != nil {
+		return nil, err
+	}
+	out := make(apigen.GetWhatATriggerReaches200JSONResponse, len(nodes))
+	for i, n := range nodes {
+		out[i] = waitsNode(n)
+	}
+	return out, nil
+}

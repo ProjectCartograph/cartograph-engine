@@ -32,7 +32,7 @@ func toChangeSet(cs store.ChangeSet) apigen.ChangeSet {
 	if len(cs.Waivers) > 0 {
 		ws := make([]apigen.Waiver, len(cs.Waivers))
 		for i, w := range cs.Waivers {
-			ws[i] = apigen.Waiver{On: opt(w.On), Check: w.Check, Message: w.Message, Reason: w.Reason}
+			ws[i] = apigen.Waiver{On: opt(w.On), Check: w.Check, Message: w.Message, Reason: w.Reason, Asked: opt(w.Asked)}
 		}
 		out.Waivers = &ws
 	}

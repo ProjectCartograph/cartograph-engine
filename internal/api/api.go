@@ -1833,3 +1833,36 @@ func (s *Server) handoffItem(ctx context.Context, id, actor, _ string) error {
 	}
 	return s.handoffAt(ctx, id, actor, snapshot)
 }
+
+// GetProjectCharterParts is a project's charter as its parts, as the
+// change set reads it (TAXONOMY.md D55).
+func (s *Server) GetProjectCharterParts(ctx context.Context, req apigen.GetProjectCharterPartsRequestObject) (apigen.GetProjectCharterPartsResponseObject, error) {
+	ctx, err := s.previewing(ctx, req.Params.ChangeSet)
+	if err != nil {
+		return nil, err
+	}
+	parts, err := render.CharterParts(ctx, s.Engine, req.Id)
+	if err != nil {
+		if errors.Is(err, engine.ErrNotFound) {
+			return apigen.GetProjectCharterParts404JSONResponse{NotFoundJSONResponse: notFound(err)}, nil
+		}
+		return nil, err
+	}
+	out := make(apigen.GetProjectCharterParts200JSONResponse, len(parts))
+	for i, p := range parts {
+		o := apigen.CharterPart{Title: p.Title, Html: p.HTML, Fields: p.Fields, Empty: p.Empty}
+		if o.Fields == nil {
+			o.Fields = []string{}
+		}
+		if p.Step != "" {
+			step := p.Step
+			o.Step = &step
+		}
+		if p.Anchor != "" {
+			anchor := p.Anchor
+			o.Anchor = &anchor
+		}
+		out[i] = o
+	}
+	return out, nil
+}

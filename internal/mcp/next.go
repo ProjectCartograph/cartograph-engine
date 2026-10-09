@@ -517,3 +517,55 @@ func firstUnwritten(c call, set string, found bool, work []engine.Ref, locale st
 func containsFold(s, sub string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(strings.TrimSpace(sub)))
 }
+
+// roundHow is how an agent asks a round (docs/adr/0032): the grilling
+// technique, with the frontier computed by the engine rather than judged.
+const roundHow = "Ask every question in ask in one message, numbered, each with your recommended answer on its own line, " +
+	"worded so that yes accepts it: the recommended choice where one is given, otherwise the one the documents and the guide's " +
+	"good examples support, with why in a few words. Offer the choices by name, and room for the person's own answer. " +
+	"With a tool for multiple-choice questions (AskUserQuestion, up to four a call), put the recommended option first, marked so. " +
+	"If your person chose step by step, ask the same questions one at a time. Never answer a question in ask yourself: " +
+	"the decisions are your person's. Settle is yours: write each from the documents with settle, and ask only where a " +
+	"document is silent, in this round. Then save every answer in one settle call, leave_open with their words what they " +
+	"cannot decide yet, and call round again: the next round asks what these answers unblocked."
+
+// roundOf is the next round of a piece of work.
+func roundOf(c call, set string, found bool, workIn []string, locale string) (any, error) {
+	e := c.o.Engine
+	if found && len(workIn) == 0 {
+		view, err := e.ViewChangeSet(c.ctx, set)
+		if err != nil {
+			return nil, err
+		}
+		for _, it := range view.Items {
+			workIn = append(workIn, it.Item.Kind+"/"+it.Item.ID)
+		}
+	}
+	var work []engine.Ref
+	for _, w := range workIn {
+		if k, i, ok := strings.Cut(w, "/"); ok && k != "" && i != "" {
+			work = append(work, engine.Ref{Kind: k, ID: i})
+		}
+	}
+	if len(work) == 0 {
+		return map[string]any{"next": "No work to ask about: call structure with every piece of work your person names, then start_work, then round."}, nil
+	}
+	if out, err := firstUnwritten(c, set, found, work, locale); out != nil || err != nil {
+		return out, err
+	}
+	r, err := e.Round(c.ctx, set, work, locale)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]any{"settle": r.Settle, "ask": r.Ask, "write": r.Write, "waiting": r.Waiting}
+	switch {
+	case r.Done():
+		out["next"] = "Every check is met or left with your person's own answer. Show them what was decided (work_summary), " +
+			"ask them to confirm it says what they meant, and only then propose: they accept it in Cartograph."
+	case len(r.Ask) == 0 && len(r.Settle) == 0 && len(r.Write) > 0:
+		out["next"] = "Nothing to ask this round: write the records in write, each naming the record it settles, then call round again."
+	default:
+		out["how"] = roundHow
+	}
+	return out, nil
+}

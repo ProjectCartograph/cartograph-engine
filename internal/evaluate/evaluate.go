@@ -54,6 +54,8 @@ type Criteria struct {
 	// KPIs are the indicators that must exist, by name pattern, and the
 	// names none may have.
 	KPIs *KPIs `json:"kpis,omitempty"`
+	// Rounds judges the asking, with a person present.
+	Rounds *Rounds `json:"rounds,omitempty"`
 }
 
 // Structure is the main project's components, the services the work
@@ -77,6 +79,17 @@ type Structure struct {
 type KPIs struct {
 	Require []string `json:"require,omitempty"`
 	Forbid  string   `json:"forbid,omitempty"`
+}
+
+// Rounds judges a run with a person present, whose decisions are asked
+// in rounds (docs/adr/0032).
+type Rounds struct {
+	// NotLeft are checks, by id, the document states: none may be left
+	// for the person.
+	NotLeft []string `json:"notLeft,omitempty"`
+	// MaxCalls is the last streak's median calls per run, the most a run
+	// may make; 0 leaves it unjudged, as on the first streak.
+	MaxCalls int `json:"maxCalls,omitempty"`
 }
 
 // ReadCriteria reads a criteria file.
@@ -122,6 +135,14 @@ func (s Score) Passed() int {
 	return n
 }
 
+// leftCheck is a check the change set leaves for the person, as
+// work_summary lists it.
+type leftCheck struct {
+	On    string `json:"on"`
+	Check string `json:"check"`
+	Asked string `json:"asked"`
+}
+
 // record is a change set's record as work_summary lists it.
 type record struct {
 	Record string
@@ -145,7 +166,7 @@ func ScoreRun(ctx context.Context, srv Server, c Criteria, changeSet string, cal
 		out.Checks = append(out.Checks, Check{Name: name, Pass: pass, Why: fmt.Sprintf(why, args...)})
 	}
 
-	status, recs, err := summary(ctx, srv, changeSet)
+	status, recs, left, err := summary(ctx, srv, changeSet)
 	if err != nil {
 		return out, err
 	}
@@ -288,22 +309,26 @@ func ScoreRun(ctx context.Context, srv Server, c Criteria, changeSet string, cal
 	if c.Proposed {
 		add("proposed", status == "proposed", "status %s", status)
 	}
+	if r := c.Rounds; r != nil {
+		scoreRounds(r, left, mine, add)
+	}
 	out.Pass = len(out.Checks) > 0 && out.Passed() == len(out.Checks)
 	return out, nil
 }
 
 // summary is the change set's status and records, from work_summary.
-func summary(ctx context.Context, srv Server, changeSet string) (string, []record, error) {
+func summary(ctx context.Context, srv Server, changeSet string) (string, []record, []leftCheck, error) {
 	text, err := srv.Call(ctx, "work_summary", map[string]any{"changeSet": changeSet})
 	if err != nil {
-		return "", nil, fmt.Errorf("work_summary: %w", err)
+		return "", nil, nil, fmt.Errorf("work_summary: %w", err)
 	}
 	var raw struct {
 		Status  string           `json:"status"`
 		Records []map[string]any `json:"records"`
+		Left    []leftCheck      `json:"leftForYourPerson"`
 	}
 	if err := json.Unmarshal([]byte(text), &raw); err != nil {
-		return "", nil, fmt.Errorf("work_summary: %w", err)
+		return "", nil, nil, fmt.Errorf("work_summary: %w", err)
 	}
 	var out []record
 	for _, m := range raw.Records {
@@ -317,7 +342,7 @@ func summary(ctx context.Context, srv Server, changeSet string) (string, []recor
 		}
 		out = append(out, r)
 	}
-	return raw.Status, out, nil
+	return raw.Status, out, raw.Left, nil
 }
 
 // records are every record's YAML as the change set holds it, read a
@@ -409,4 +434,58 @@ func anyMatch(pattern string, names []string) bool {
 		}
 	}
 	return false
+}
+
+// scoreRounds judges the asking (docs/adr/0032), from what the change set
+// leaves for the person and the agent's calls. What the person was asked
+// is read as each left check keeps it, an exchange to a question: a
+// question left open names the exchange it was asked in, and several
+// questions in one exchange share it.
+func scoreRounds(r *Rounds, left []leftCheck, mine []trace.Call, add func(string, bool, string, ...any)) {
+	notLeft := map[string]bool{}
+	for _, c := range r.NotLeft {
+		notLeft[c] = true
+	}
+	var unasked, stated []string
+	questions := map[string]int{}
+	for _, l := range left {
+		asked := strings.TrimSpace(l.Asked)
+		if asked == "" || strings.EqualFold(asked, "not available") {
+			unasked = append(unasked, l.On+" "+l.Check)
+		}
+		if notLeft[l.Check] {
+			stated = append(stated, l.On+" "+l.Check)
+		}
+		// An exchange is one the person had: "not available" is none.
+		for _, ex := range strings.Split(asked, " Also: ") {
+			if ex = strings.TrimSpace(ex); ex != "" && !strings.EqualFold(ex, "not available") {
+				questions[ex]++
+			}
+		}
+	}
+	add("left with what was asked", len(unasked) == 0 && len(stated) == 0,
+		"%d checks left; without what the person was asked %q; stated by the document %q", len(left), unasked, stated)
+
+	round, propose := -1, -1
+	for i, call := range mine {
+		if call.Tool == "round" && call.Outcome == trace.OK && round < 0 {
+			round = i
+		}
+		if call.Tool == "propose" && propose < 0 {
+			propose = i
+		}
+	}
+	add("round before propose", round >= 0 && (propose < 0 || round < propose), "first round at call %d, first propose at %d", round, propose)
+
+	asked := 0
+	for _, n := range questions {
+		asked += n
+	}
+	// One question left open can only have been one exchange.
+	together := asked <= 1 || asked > len(questions)
+	add("asked together", together, "%d questions left open over %d exchanges", asked, len(questions))
+
+	if r.MaxCalls > 0 {
+		add("no more calls", len(mine) <= r.MaxCalls, "%d calls; the last streak's median is %d", len(mine), r.MaxCalls)
+	}
 }

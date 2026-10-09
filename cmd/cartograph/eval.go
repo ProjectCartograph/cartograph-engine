@@ -78,7 +78,8 @@ func runEval(args []string) error {
 
 const evalUsage = `usage:
   cartograph eval build <dir> -commit <sha> -store <path>    record the flake built at a commit as the build under test
-  cartograph eval serve <dir> -document <file> [-agent name] serve a fresh traced run; print the agent's prompt
+  cartograph eval serve <dir> -document <file> [-agent name] [-person]
+                                                             serve a fresh traced run; print the agent's prompt
   cartograph eval call [-as name] <endpoint> --init|--tools|<tool> [<json>|@<file>]
                                                              call the server as an agent does
   cartograph eval score <dir> <run> -criteria <file> -change-set <id>
@@ -119,6 +120,7 @@ func evalServeCmd(args []string) error {
 	document := fs.String("document", "", "the document the agent ports")
 	agent := fs.String("agent", "Agent", "the name the agent calls the server by, which its trace is read for")
 	flake := fs.String("flake", ".", "the flake the agent runs its other commands in")
+	person := fs.Bool("person", false, "a person answers the agent's questions between its turns (docs/adr/0032)")
 	dir, err := parseWithDir(fs, args)
 	if err != nil {
 		return err
@@ -174,7 +176,7 @@ func evalServeCmd(args []string) error {
 		return err
 	}
 	fmt.Printf("run %s on build %s, serving %s\n\nThe agent's prompt:\n\n", name, short(b.Commit), endpoint)
-	fmt.Print(agentPrompt(doc, bin, *agent, endpoint, *flake, name))
+	fmt.Print(agentPrompt(doc, bin, *agent, endpoint, *flake, name, *person))
 	return nil
 }
 
@@ -183,11 +185,17 @@ func evalServeCmd(args []string) error {
 // test environment (scripts/dev, docs/CONTAINERS.md), every command goes
 // through the command that reaches it, and scratch files sit in the
 // workspace on the host, which the environment reads at /src.
-func agentPrompt(doc, bin, agent, endpoint, flake, run string) string {
+func agentPrompt(doc, bin, agent, endpoint, flake, run string, person bool) string {
+	alone := "Your person is not available; work from the document alone."
+	if person {
+		// Their answers come between the agent's turns: the evaluator
+		// answers as the person, by the criteria file's policy.
+		alone = "Your person is here and answers what only they can decide: end your turn with your questions, and their answers come in the next message."
+	}
 	var b strings.Builder
 	hostRun, hostWorkspace := os.Getenv("CARTOGRAPH_HOST_RUN"), os.Getenv("CARTOGRAPH_HOST_WORKSPACE")
 	if hostRun == "" || hostWorkspace == "" {
-		fmt.Fprintf(&b, "Port the document in %s into Cartograph, and propose the change set. Your person is not available; work from the document alone.\n\n", doc)
+		fmt.Fprintf(&b, "Port the document in %s into Cartograph, and propose the change set. %s\n\n", doc, alone)
 		fmt.Fprintf(&b, "Cartograph's MCP server is reached with `%s eval call -as %s %s` (`--init` for its instructions, `--tools`, or `<tool> '<json>'`; `@file.json` for long arguments).\n\n", bin, agent, endpoint)
 		fmt.Fprintf(&b, "Run every other command inside the flake (`nix develop %s -c <command>`), never a tool installed on the machine. ", flake)
 		fmt.Fprintf(&b, "Keep scratch files under %s and touch nothing else. Report the change set id.\n", filepath.Join(filepath.Dir(doc), "work"))
@@ -195,7 +203,7 @@ func agentPrompt(doc, bin, agent, endpoint, flake, run string) string {
 	}
 	work := filepath.Join(hostWorkspace, ".eval", filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(doc)))), run)
 	inside := "/src" + strings.TrimPrefix(work, hostWorkspace)
-	fmt.Fprintf(&b, "Port the document at %s in the test environment into Cartograph, and propose the change set. Your person is not available; work from the document alone.\n\n", doc)
+	fmt.Fprintf(&b, "Port the document at %s in the test environment into Cartograph, and propose the change set. %s\n\n", doc, alone)
 	fmt.Fprintf(&b, "Every command runs in the test environment: prefix it with `%s` (read the document with `%s cat %s`). ", hostRun, hostRun, doc)
 	fmt.Fprintf(&b, "Cartograph's MCP server is reached with `%s %s eval call -as %s %s` (`--init` for its instructions, `--tools`, or `<tool> '<json>'`; `@file.json` for long arguments).\n\n", hostRun, bin, agent, endpoint)
 	fmt.Fprintf(&b, "Keep scratch files under %s on this machine; the test environment reads them at %s (pass `@%s/<file>.json` to a call). Touch nothing else. Report the change set id.\n", work, inside, inside)
