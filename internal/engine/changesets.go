@@ -554,9 +554,17 @@ func (e *Engine) Assume(ctx context.Context, set, kind, id string, decided []Ass
 	on := kind + "/" + id
 	for _, d := range decided {
 		field, took := strings.TrimSpace(d.Field), strings.TrimSpace(d.Took)
+		if field == "" && took == "" {
+			continue
+		}
+		// One a field; a decision on no one field is told apart by what
+		// was decided, so several on a record all stay (eval run 010).
+		same := func(a store.Assumption) bool {
+			return a.On == on && a.Field == field && (field != "" || a.Took == took)
+		}
 		kept := cs.Assumptions[:0:0]
 		for _, a := range cs.Assumptions {
-			if a.On != on || a.Field != field {
+			if !same(a) {
 				kept = append(kept, a)
 			}
 		}
@@ -686,7 +694,28 @@ func (e *Engine) DiscardChangeItem(ctx context.Context, set, kind, id string) (e
 	if len(naming) > 0 {
 		return &ValidationError{Problems: naming}
 	}
-	return s.DeleteChangeItem(ctx, cs.ID, kind, id)
+	if err := s.DeleteChangeItem(ctx, cs.ID, kind, id); err != nil {
+		return err
+	}
+	// What was decided and left on the draft goes with it: the person
+	// reviews only what the change set holds (eval run 010).
+	on := kind + "/" + id
+	keptA, keptW := cs.Assumptions[:0:0], cs.Waivers[:0:0]
+	for _, a := range cs.Assumptions {
+		if a.On != on {
+			keptA = append(keptA, a)
+		}
+	}
+	for _, w := range cs.Waivers {
+		if w.On != on {
+			keptW = append(keptW, w)
+		}
+	}
+	if len(keptA) == len(cs.Assumptions) && len(keptW) == len(cs.Waivers) {
+		return nil
+	}
+	cs.Assumptions, cs.Waivers, cs.Updated = keptA, keptW, timeNow().UTC()
+	return s.PutChangeSet(ctx, cs)
 }
 
 // IncludeChangeItem includes an item in the next acceptance, or trims it

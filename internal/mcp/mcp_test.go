@@ -1623,6 +1623,20 @@ func TestDecisionsTakenForThePersonAreKeptApart(t *testing.T) {
 	if sum = took(map[string]any{"field": "/spec/timeline/start", "took": ""}); !strings.Contains(sum, `"decidedForYourPerson":[]`) {
 		t.Fatalf("taken back: %s", sum)
 	}
+	// Decisions on no one field are told apart by what was decided, and
+	// all stay (eval run 010 lost them to each other).
+	sum = took(map[string]any{"took": "The project manager owns both risks", "why": "Not named"},
+		map[string]any{"took": "Escalates to the sponsor, then the board", "why": "Not named"})
+	if !strings.Contains(sum, "owns both risks") || !strings.Contains(sum, "Escalates to the sponsor") {
+		t.Fatalf("two decisions without a field: %s", sum)
+	}
+	// A draft discarded takes what was decided on it along (eval run 010).
+	if res, text := callTool(t, cs, "discard_draft", map[string]any{"kind": kind, "id": id}); res.IsError {
+		t.Fatalf("discard: %s", text)
+	}
+	if _, sum = callTool(t, cs, "work_summary", map[string]any{}); strings.Contains(sum, "owns both risks") {
+		t.Fatalf("a decision on a discarded draft stayed: %s", sum)
+	}
 }
 
 // A check left for the person without asking them comes back in the next

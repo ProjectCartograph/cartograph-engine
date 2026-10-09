@@ -571,6 +571,12 @@ func roundOf(c call, set string, found bool, workIn []string, locale string) (an
 		out["next"] = "Nothing to ask this round: write the records in write, each naming the record it settles, then call round again."
 	default:
 		out["how"] = roundHow
+		if srcs, err := e.Sources(c.ctx, set); err == nil && len(srcs) > 0 {
+			// A port's change set is written with port: the same how, in
+			// the one tool it takes (eval run 010 was refused settle twice).
+			out["how"] = strings.NewReplacer("with settle;", "with port records;",
+				"in one settle call, leave_open with their words what they ", "in one port call with records, leaving open on each, with their words as asked, what they ").Replace(roundHow)
+		}
 	}
 	return out, nil
 }
