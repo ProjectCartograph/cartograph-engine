@@ -71,7 +71,7 @@ test-postgres *args="./...": embed
     go test -count=1 -tags integration {{args}}
 
 # What CI runs, in this order; green here is green there
-ci: generate drift vet fmt-check lint arch test words clean-tree compat build
+ci: generate drift vet fmt-check lint arch words clean-tree compat check
 
 # --- the contract ---------------------------------------------------------
 
@@ -83,6 +83,10 @@ generate:
     cp contract/flows/*.json internal/contract/flows/
     cp -r contract/guidance/. internal/contract/guidance/
     cd internal/api && go generate ./...
+    # Each module as its own derivation, and the packages to compile into
+    # the dependencies' build cache (docs/adr/0031); downloads only when
+    # go.mod's modules change.
+    scripts/gomod2nix
     # The Automerge module, built from crdt/ by the flake (docs/adr/0007).
     # Its bytes are those x86_64 Linux builds: a compiler hosted on another
     # architecture emits different, equivalent WebAssembly, so elsewhere
@@ -124,11 +128,10 @@ fmt-check:
 fmt:
     gofmt -w .
 
-# staticcheck, the analyser the style guide names, and gopls, the
-# language server's own diagnostics: either finding anything fails
+# staticcheck, the analyser the style guide names, and actionlint on the
+# workflows: either finding anything fails
 lint: embed
     staticcheck ./...
-    out="$(gopls check $(git ls-files '*.go' | grep -v '/gen/'))"; [ -z "$out" ] || { echo "$out"; exit 1; }
     actionlint .github/workflows/*.yml
 
 # The dependency rule: inward only (internal/arch)
@@ -158,7 +161,6 @@ compat base="": embed
     #!{{toolchain}} bash
     set -euo pipefail
     scripts/check-compat {{base}}
-    # gorelease is not packaged in nixpkgs; the Go toolchain fetches it.
     # The base is the last release before this commit: a tag on HEAD is
     # the release being checked.
     tag=$(git tag --list 'v*' --sort=-v:refname --no-contains HEAD | head -n 1)
@@ -166,15 +168,21 @@ compat base="": embed
     major=$(cut -d. -f1 VERSION)
     base=${tag#v}
     if [ "${base%%.*}" != "$major" ]; then
-      # A new major has a new module path (/v<major>), so there is no base
-      # for gorelease to compare with; check-compat above has already
-      # required the bump.
-      echo "VERSION $(cat VERSION) is a new major after $tag: no gorelease base"
+      # A new major has a new module path (/v<major>), so pkg/ may break;
+      # check-compat above has already required the bump.
+      echo "VERSION $(cat VERSION) is a new major after $tag: pkg/ may change"
       exit 0
     fi
-    go run golang.org/x/exp/cmd/gorelease@latest -base="$tag" 2>&1 | tail -n 20
+    scripts/check-api "$tag"
 
 # --- build and run --------------------------------------------------------
+
+# The binary as Nix builds it, every test in its check phase within the
+# gate's budget, and every output of the flake evaluated. In CI this is
+# the test run, and the tested binary goes to the cache, where the image
+# and deploy jobs fetch it instead of building it again.
+check:
+    nix --extra-experimental-features 'nix-command flakes' flake check --print-build-logs
 
 build: embed
     go build ./...

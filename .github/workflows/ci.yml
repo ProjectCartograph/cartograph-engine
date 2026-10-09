@@ -57,7 +57,7 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # Images live in the registry; the cache keeps what builds them.
           pushFilter: '\.tar\.gz$'
-      - run: nix develop --command just ci
+      - run: nix develop .#ci --command just ci
 
   commits:
     if: github.event_name == 'pull_request'
@@ -90,11 +90,13 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # Images live in the registry; the cache keeps what builds them.
           pushFilter: '\.tar\.gz$'
-      - run: nix develop --command just commit-check origin/${{ github.base_ref }}
+      - run: nix develop .#commits --command just commit-check origin/${{ github.base_ref }}
 
   # The binary and the image from the flake, on both architectures; the
-  # image is started and asked whether it is ready.
+  # image is started and asked whether it is ready. After ci: an image is
+  # made of what ci has built, tested and pushed to the cache.
   image:
+    needs: ci
     strategy:
       # Each architecture reports for itself; one failing must not hide
       # the other's result.
@@ -128,7 +130,6 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # Images live in the registry; the cache keeps what builds them.
           pushFilter: '\.tar\.gz$'
-      - run: nix flake check --print-build-logs
       - run: nix run .#cartograph -- validate examples/minimal
       - run: nix build .#image --out-link result-image && docker load < result-image
       - name: seed a volume and start the container
@@ -142,36 +143,11 @@ jobs:
         run: |
           for _ in $(seq 1 60); do curl -sf http://localhost:8080/readyz && exit 0; sleep 0.5; done
           docker logs cartograph; exit 1
-
-  # The Helm chart: rendered and validated without a cluster, then
-  # installed on a kind cluster with the image the flake builds, two
-  # replicas on one Postgres, probed, and made to lose a pod.
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          # Keep what the development shell and the builds were made
-          # from, so the cached store rebuilds nothing.
-          extra-conf: |
-            keep-outputs = true
-            keep-env-derivations = true
-      # Every store path built here, by its own hash: in the Actions cache
-      # (magic-nix-cache) and, where one is named, in Cachix; each fetched
-      # by the next run instead of built (docs/CONTAINERS.md, "CI").
-      - if: env.CARTOGRAPH_CACHE_GHA == 'on'
-        uses: DeterminateSystems/magic-nix-cache-action@main
-        with:
-          # The Actions cache only: FlakeHub needs an account this
-          # organisation does not have, and asking for it logs an error.
-          use-flakehub: false
-          use-gha-cache: true
-      - if: env.CARTOGRAPH_CACHIX != ''
-        uses: cachix/cachix-action@v15
-        with:
-          name: ${{ env.CARTOGRAPH_CACHIX }}
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          # Images live in the registry; the cache keeps what builds them.
-          pushFilter: '\.tar\.gz$'
-      - run: nix develop --command just helm-lint helm-kind
+      # The Helm chart, on x86_64, with the image just built: rendered and
+      # validated without a cluster, then installed on a kind cluster, two
+      # replicas on one Postgres, probed, and made to lose a pod. Here, not
+      # a job of its own, so it needs no runner, no Nix and no image again.
+      - if: matrix.runner == 'ubuntu-latest'
+        run: docker rm -f cartograph
+      - if: matrix.runner == 'ubuntu-latest'
+        run: nix develop .#deploy --command just helm-lint helm-kind

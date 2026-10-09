@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Keep gomod2nix.toml in step with go.mod (docs/adr/0031): one entry per
+# module, each built as its own derivation, and cachePackages, the
+# dependencies' packages the flake compiles once into a build cache.
+#
+# Nothing is downloaded while go.mod's modules match the file's: the
+# package list is computed from the vendor tree the development shell
+# links. Only a changed module runs gomod2nix generate, which fetches
+# each new module to hash it.
+set -euo pipefail
+
+module=$(go list -m)
+
+# go.mod lists every module the build needs (Go 1.17 and later), so its
+# requirements are the file's entries exactly.
+wanted=$(awk '/^require \(/{b=1; next} b && /^\)/{b=0} b && NF >= 2 {print $1 "@" $2} /^require [^(]/{print $2 "@" $3}' go.mod | LC_ALL=C sort)
+have=$(awk "/^  \[mod\\./{gsub(/^  \\[mod\\.'|'\\]\$/, \"\"); p = \$0} /^    version = /{gsub(/'/, \"\", \$3); print p \"@\" \$3}" gomod2nix.toml 2>/dev/null | LC_ALL=C sort)
+# The shell's vendor tree is the old one until it is entered again, so
+# with a module changed the packages are listed from the module cache.
+listflags=${GOFLAGS:-}
+if [ "$wanted" != "$have" ]; then
+    echo "gomod2nix.toml: go.mod's modules changed; hashing them"
+    GOFLAGS=-mod=mod gomod2nix generate >/dev/null
+    listflags=-mod=mod
+fi
+
+# gomod2nix's own list (generate --with-deps) also names programs, such
+# as a go.mod tool's, which cannot be imported; one such line fails the
+# whole cache build. This is its filter, without them.
+# -e: a package's embedded files (internal/spa's web build) may not be
+# fetched yet; its imports are known all the same.
+packages=$(GOFLAGS=$listflags go list -e -f '{{if ne .Name "main"}}{{.ImportPath}}{{end}}' all |
+    grep -v "^$module\(/\|\$\)" | grep -v '^vendor/' | grep -v '/internal' | grep '\.' |
+    LC_ALL=C sort -u)
+{
+    echo 'schema = 3'
+    echo 'cachePackages = ['
+    printf "  '%s',\n" $packages
+    echo ']'
+    echo
+    sed -n '/^\[mod\]$/,$p' gomod2nix.toml
+} > gomod2nix.toml.new
+mv gomod2nix.toml.new gomod2nix.toml

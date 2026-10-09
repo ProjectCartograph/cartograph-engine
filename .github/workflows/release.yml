@@ -1,4 +1,5 @@
 name: release
+          set -o pipefail
 
 # A release is a tag v<VERSION> on main (VERSIONING.md). The binaries for
 # both architectures, the images, the Helm chart and the notes come from
@@ -51,16 +52,23 @@ jobs:
       - run: test "v$(cat VERSION)" = "${GITHUB_REF_NAME}" || (echo "tag ${GITHUB_REF_NAME} does not match VERSION $(cat VERSION)" && exit 1)
       # Every platform's binary and SHA256SUMS, cross-compiled on this
       # one Linux runner (docs/CROSS.md).
-      - run: nix develop --command just release
+      - run: nix develop .#ci --command just release
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true
 
-  # Every image for both architectures, built on one x86_64 runner: an
+  # Every image for both architectures, built on x86_64 runners: an
   # image is files, and an arm64 one is put together from arm64's own
-  # packages without running any of them (docs/CROSS.md).
+  # packages without running any of them (docs/CROSS.md). One job per
+  # architecture, side by side, after the binaries, which put every Go
+  # build in the cache the images are made from.
   images:
+    needs: binaries
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -93,22 +101,23 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: build and push every image for both architectures
+      - name: build and push this architecture's images
         run: |
+          set -o pipefail
           version=$(cat VERSION)
           repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cartograph
-          for arch in amd64 arm64; do
-            for target in image image-chromium image-laya; do
-              case "$target" in
-                image) tag="$repo:$version-$arch" ;;
-                image-chromium) tag="$repo:$version-chromium-$arch" ;;
-                image-laya) tag="$repo-laya:$version-$arch" ;;
-              esac
-              nix build ".#$target-linux-$arch" --out-link "result-$target-$arch"
-              name=$(docker load < "result-$target-$arch" | sed -n 's/^Loaded image: //p')
-              docker tag "$name" "$tag"
-              docker push "$tag"
-            done
+          arch=${{ matrix.arch }}
+          for target in image image-chromium image-laya; do
+            case "$target" in
+              image) tag="$repo:$version-$arch" ;;
+              image-chromium) tag="$repo:$version-chromium-$arch" ;;
+              image-laya) tag="$repo-laya:$version-$arch" ;;
+            esac
+            # Streamed to the registry: no gzipped tarball to load into
+            # docker and compress again. skopeo reads the login above.
+            stream=$(nix build ".#stream-$target-linux-$arch" --no-link --print-out-paths)
+            "$stream" | nix run --inputs-from . nixpkgs#skopeo -- copy --insecure-policy \
+              docker-archive:/dev/stdin "docker://$tag"
           done
 
   # Each architecture's images, pulled and run on that architecture: the
@@ -169,7 +178,7 @@ jobs:
           repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cartograph-laya
           docker run -d --name laya -p 8411:8411 "$repo:$(cat VERSION)-${{ matrix.arch }}"
           for _ in $(seq 1 120); do curl -sf http://localhost:8411/ready && break; sleep 1; done
-          nix develop --command just decide-measure http://localhost:8411
+          nix develop .#ci --command just decide-measure http://localhost:8411
 
   manifest:
     needs: verify
@@ -195,6 +204,7 @@ jobs:
   # The Helm chart at VERSION, as an OCI artifact next to the images:
   # helm install cartograph oci://ghcr.io/<owner>/charts/cartograph --version <VERSION>
   chart:
+    needs: manifest
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -222,13 +232,13 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # Images live in the registry; the cache keeps what builds them.
           pushFilter: '\.tar\.gz$'
-      - run: nix develop --command just helm-lint
+      - run: nix develop .#deploy --command just helm-lint
       - name: package and push the chart
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           version=$(cat VERSION)
           repo=oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts
-          nix develop --command helm package deploy/helm/cartograph --version "$version" --app-version "$version" --destination dist
-          echo "$GITHUB_TOKEN" | nix develop --command helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
-          nix develop --command helm push "dist/cartograph-$version.tgz" "$repo"
+          nix develop .#deploy --command helm package deploy/helm/cartograph --version "$version" --app-version "$version" --destination dist
+          echo "$GITHUB_TOKEN" | nix develop .#deploy --command helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+          nix develop .#deploy --command helm push "dist/cartograph-$version.tgz" "$repo"

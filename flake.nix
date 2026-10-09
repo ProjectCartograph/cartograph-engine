@@ -7,15 +7,24 @@
   # else; the development shell does not carry it.
   inputs.rust-overlay.url = "github:oxalica/rust-overlay";
   inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+  # Go the way Nix builds it: one derivation per module, from
+  # gomod2nix.toml, and the dependencies compiled once into a build cache
+  # in the store, so neither a build nor the development shell downloads
+  # or compiles a dependency Cachix already holds (docs/adr/0031).
+  inputs.gomod2nix.url = "github:nix-community/gomod2nix";
+  inputs.gomod2nix.inputs.nixpkgs.follows = "nixpkgs";
 
-  outputs = { self, nixpkgs, rust-overlay }:
+  outputs = { self, nixpkgs, rust-overlay, gomod2nix }:
     let
       # The systems the flake builds on: both architectures the releases
       # target, plus Apple silicon for laptops. Nixpkgs no longer builds
       # for Intel macOS; its binary is cross-compiled here like every
       # other platform's (cartograph-darwin-amd64, docs/CROSS.md).
       systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
-      forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+      forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f (import nixpkgs {
+        inherit system;
+        overlays = [ gomod2nix.overlays.default ];
+      }));
       version = builtins.replaceStrings [ "\n" ] [ "" ] (builtins.readFile ./VERSION);
       trim = f: builtins.replaceStrings [ "\n" " " ] [ "" "" ] (builtins.readFile f);
     in
@@ -69,25 +78,42 @@
             meta.license = lib.licenses.asl20;
           };
 
-          # The binary. Tests run in the build (buildGoModule's checkPhase),
-          # so `nix build` is also the gate.
-          cartograph = pkgs.buildGoModule {
+          # The binary. Tests run in the build (the check phase), so `nix
+          # build` is also the gate. Each module is its own derivation, from
+          # gomod2nix.toml, and the dependencies compile once into a build
+          # cache derivation (passthru.goCacheEnv) the shell reads too.
+          cartograph = pkgs.buildGoApplication {
             pname = "cartograph";
             inherit version;
+            inherit (pkgs) go;
             src = lib.cleanSource ./.;
-            vendorHash = "sha256-wmRy0uULoA0ZKcmL9kPCIpzWEsFFLfrGb5xLAbAPSVU=";
+            pwd = ./.;
+            modules = ./gomod2nix.toml;
             subPackages = [ "cmd/cartograph" ];
-            env.CGO_ENABLED = 0;
+            CGO_ENABLED = 0;
             ldflags = [ "-s" "-w" "-X main.version=${version}" ];
             preBuild = ''
               rm -rf internal/spa/dist && mkdir -p internal/spa/dist
               tar -xzf ${ui} -C internal/spa/dist
             '';
             # subPackages narrows the check phase to cmd/cartograph, which
-            # has no tests of its own; the gate is every package.
+            # has no tests of its own; the gate is every package, held to
+            # its budget as `just test` holds it: compiled first, then the
+            # tests timed, their temporary files on a tmpfs where there is
+            # one. CI's tests are this phase (`just check`), so the tested
+            # binary is a store path the later jobs fetch.
             checkPhase = ''
               runHook preCheck
+              go test -count=1 -run '^$' ./... >/dev/null
+              if [ -d /dev/shm ] && [ -w /dev/shm ]; then
+                export GOTMPDIR="$TMPDIR"
+                export TMPDIR=$(mktemp -d /dev/shm/cartograph-test.XXXXXX)
+              fi
+              start=$(date +%s%3N)
               go test -count=1 ./...
+              end=$(date +%s%3N)
+              echo "tests completed in $((end - start))ms"
+              test $((end - start)) -lt 5000
               runHook postCheck
             '';
             meta = {
@@ -95,6 +121,23 @@
               mainProgram = "cartograph";
               license = lib.licenses.asl20;
             };
+          };
+
+          # apidiff, which `just compat` runs on pkg/ (scripts/check-api): not
+          # in nixpkgs, so built from golang.org/x/exp at one commit.
+          apidiff = pkgs.buildGoModule {
+            pname = "apidiff";
+            version = "0-unstable-2026-10-07";
+            src = pkgs.fetchFromGitHub {
+              owner = "golang";
+              repo = "exp";
+              rev = "f45ad48fbe92f5666f71f75cf3e6dc0977a3c9d1";
+              hash = "sha256-ufKalh7FoqMdRr8sZZ53zqeeQCuaq82u1AG1i74EF+I=";
+            };
+            vendorHash = "sha256-OusVBrddEL2Gb1RdEzVsxdhb+WQE6ONpbmYEJUxGyCQ=";
+            subPackages = [ "cmd/apidiff" ];
+            doCheck = false;
+            meta.license = lib.licenses.bsd3;
           };
 
           # The Laya decision model (docs/adr/0023): its ONNX bundle at one
@@ -180,7 +223,8 @@
           # build on this machine. Tests run in the native build only.
           binaryFor = goos: goarch: cartograph.overrideAttrs (o: {
             pname = "cartograph-${goos}-${goarch}";
-            env = o.env // { GOOS = goos; GOARCH = goarch; };
+            GOOS = goos;
+            GOARCH = goarch;
             doCheck = false;
             postBuild = ''
               dir=$GOPATH/bin/${goos}_${goarch}
@@ -215,9 +259,13 @@
           # A container image is a Linux root filesystem: the binary, CA
           # certificates, a writable /vault owned by the runtime user, and
           # the binary's own readiness check. No shell, no browser.
-          imageFor = { name, arch ? pkgs.go.GOARCH, extra ? [ ], env ? [ ] }:
+          # stream: the image as a script that writes it to stdout, for the
+          # release to push with skopeo, instead of a gzipped tarball that
+          # docker would load and compress again.
+          layered = stream: if stream then pkgs.dockerTools.streamLayeredImage else pkgs.dockerTools.buildLayeredImage;
+          imageFor = { name, arch ? pkgs.go.GOARCH, extra ? [ ], env ? [ ], stream ? false }:
             let bin = if arch == pkgs.go.GOARCH && pkgs.stdenv.hostPlatform.isLinux then cartograph else binaries."linux-${arch}"; in
-            pkgs.dockerTools.buildLayeredImage {
+            layered stream {
             inherit name;
             tag = version;
             architecture = arch;
@@ -242,16 +290,16 @@
               };
             };
           };
-          imageChromium = arch: imageFor {
+          imageChromium = arch: stream: imageFor {
             name = "cartograph-chromium";
-            inherit arch;
+            inherit arch stream;
             extra = [ linuxOf.${arch}.chromium ];
             env = [ "CARTOGRAPH_CHROMIUM=${linuxOf.${arch}.chromium}/bin/chromium" ];
           };
           layaOn = arch: if arch == pkgs.go.GOARCH then laya else layaFor linuxOf.${arch};
-          imageLaya = arch:
+          imageLaya = arch: stream:
             let l = layaOn arch; in
-            pkgs.dockerTools.buildLayeredImage {
+            layered stream {
               name = "cartograph-laya";
               tag = version;
               architecture = arch;
@@ -268,60 +316,122 @@
               };
             };
         in
-        { inherit cartograph automerge-wasm laya laya-model release; default = cartograph; }
+        { inherit cartograph automerge-wasm apidiff laya laya-model release; default = cartograph; }
         // lib.mapAttrs' (t: b: lib.nameValuePair "cartograph-${t}" b) binaries
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           image = imageFor { name = "cartograph"; };
           # The same, plus Chromium for PDF printing.
-          image-chromium = imageChromium pkgs.go.GOARCH;
+          image-chromium = imageChromium pkgs.go.GOARCH false;
           # The Laya sidecar, its model inside: no download when it starts.
-          image-laya = imageLaya pkgs.go.GOARCH;
+          image-laya = imageLaya pkgs.go.GOARCH false;
         }
         # Every architecture's images, built on this one (docs/CROSS.md).
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux (lib.concatMapAttrs (arch: _: {
           "image-linux-${arch}" = imageFor { name = "cartograph"; inherit arch; };
-          "image-chromium-linux-${arch}" = imageChromium arch;
-          "image-laya-linux-${arch}" = imageLaya arch;
+          "image-chromium-linux-${arch}" = imageChromium arch false;
+          "image-laya-linux-${arch}" = imageLaya arch false;
+          # The same images as streams, for the release to push.
+          "stream-image-linux-${arch}" = imageFor { name = "cartograph"; inherit arch; stream = true; };
+          "stream-image-chromium-linux-${arch}" = imageChromium arch true;
+          "stream-image-laya-linux-${arch}" = imageLaya arch true;
           "laya-linux-${arch}" = layaOn arch;
         }) linuxOf));
 
       devShells = forEachSystem (pkgs:
-        let haveChromium = pkgs.stdenv.hostPlatform.isLinux; in {
-          default = pkgs.mkShell {
-            name = "cartograph-engine";
-            packages = with pkgs; [
-              go
-              go-tools # staticcheck
-              gopls # the language server: just check runs its diagnostics
-              actionlint # the workflows, before GitHub refuses one
-              (python3.withPackages (ps: [ ps.pyyaml ])) # scripts/check-compat
+        let
+          haveChromium = pkgs.stdenv.hostPlatform.isLinux;
+          built = self.packages.${pkgs.stdenv.hostPlatform.system};
+          gomod = built.cartograph.passthru;
+          # Each CI job enters the shell with what its recipes run and no
+          # more, so a job fetches no browser, database, cluster or Go build
+          # cache it does not use. The default shell has them all.
+          basePackages = with pkgs; [
               just
               bashInteractive
               coreutils
               diffutils
               gnugrep
               gnused
+              gawk # scripts/check-commit-msg
+              gnutar
+              gzip
               curl
               git
-              jujutsu # version control: colocated with git, the one agents use
-              rsync # scripts/dev syncs the workspace into the test environment's copy
-              postgresql # `just test-postgres` starts a throwaway server
-              # The Laya sidecar (deploy/laya): `just serve laya`
-              # starts it beside the server (docs/adr/0023).
-              nodejs_22
-              # The Helm chart in deploy/helm: `just helm-lint` renders and
-              # validates it, `just helm-kind` installs it on a kind cluster
-              # (Docker comes from the host).
+          ];
+          # The Helm chart in deploy/helm: `just helm-lint` renders and
+          # validates it, `just helm-kind` installs it on a kind cluster
+          # (Docker comes from the host).
+          deployPackages = with pkgs; [
               kubernetes-helm
               kubeconform
               kind
               kubectl
-            ] ++ pkgs.lib.optionals haveChromium [ chromium ];
-            shellHook = ''
-              ${pkgs.lib.optionalString haveChromium ''export CHROMIUM="${pkgs.chromium}/bin/chromium"''}
+          ];
+          # What `just ci` runs.
+          ciPackages = basePackages ++ (with pkgs; [
+              go
+              pkgs.gomod2nix # writes gomod2nix.toml from go.mod (just generate)
+              oapi-codegen # internal/api/generate.go, at the version nixpkgs pins
+              built.apidiff # just compat
+              zstd # unpacks the dependencies' build cache
+              go-tools # staticcheck
+              actionlint # the workflows, before GitHub refuses one
+              (python3.withPackages (ps: [ ps.pyyaml ])) # scripts/check-compat
+              nodejs_22 # scripts/check-compat; and the Laya sidecar, `just serve laya` (docs/adr/0023)
+          ]);
+          plainHook = ''
+              export CARTOGRAPH_TOOLCHAIN=1
+          '';
+          goHook = ''
               export GOTOOLCHAIN=local
               export CARTOGRAPH_TOOLCHAIN=1
-            '';
+              # Every module from the store, as the build reads them: vendor/
+              # links to gomod2nix's tree, so nothing is downloaded. The
+              # flags are the build's, so the dependencies compiled in
+              # go-cache-env are hits in GOCACHE, unpacked once per cache
+              # (docs/adr/0031). A new dependency: GOFLAGS=-mod=mod go get,
+              # then just generate.
+              root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+              ln -sfn ${gomod.vendorEnv} "$root/vendor"
+              export GOFLAGS="-mod=vendor -trimpath"
+              export GO_NO_VENDOR_CHECKS=1 # nixpkgs' Go: gomod2nix's modules.txt lists no explicit marks
+              export CGO_ENABLED=0
+              export GOCACHE="''${XDG_CACHE_HOME:-$HOME/.cache}/cartograph/go-build-${builtins.substring 11 12 (toString gomod.goCacheEnv)}"
+              if [ ! -d "$GOCACHE" ]; then
+                mkdir -p "$GOCACHE.tmp"
+                zstd -d -c ${gomod.goCacheEnv}/cache.tar.zst | tar -xf - -C "$GOCACHE.tmp"
+                chmod -R u+w "$GOCACHE.tmp" && mv "$GOCACHE.tmp" "$GOCACHE"
+              fi
+          '';
+        in {
+          ci = pkgs.mkShell {
+            name = "cartograph-engine-ci";
+            packages = ciPackages;
+            shellHook = goHook;
+          };
+          # `just commit-check`: bash, git and awk.
+          commits = pkgs.mkShell {
+            name = "cartograph-engine-commits";
+            packages = basePackages;
+            shellHook = plainHook;
+          };
+          # `just helm-lint helm-kind`, and the release's chart.
+          deploy = pkgs.mkShell {
+            name = "cartograph-engine-deploy";
+            packages = basePackages ++ deployPackages;
+            shellHook = plainHook;
+          };
+          default = pkgs.mkShell {
+            name = "cartograph-engine";
+            packages = ciPackages ++ deployPackages ++ (with pkgs; [
+              gopls # the language server, for editors
+              jujutsu # version control: colocated with git, the one agents use
+              rsync # scripts/dev syncs the workspace into the test environment's copy
+              postgresql # `just test-postgres` starts a throwaway server
+            ] ++ pkgs.lib.optionals haveChromium [ chromium ]);
+            shellHook = ''
+              ${pkgs.lib.optionalString haveChromium ''export CHROMIUM="${pkgs.chromium}/bin/chromium"''}
+'' + goHook;
           };
         });
 
