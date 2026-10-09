@@ -277,3 +277,29 @@ func span2(a, b string) string {
 	}
 	return when(a) + " to " + when(b)
 }
+
+// result is a success criterion's latest result, in words: "Met, 412,
+// March 2027 (the depot audit)": what was judged, the value measured, when,
+// and the evidence (TAXONOMY.md D52).
+func (p plan) result(id string) string {
+	evs := p.events["successCriteria/"+id]
+	for i := len(evs) - 1; i >= 0; i-- {
+		e := evs[i]
+		h := str(e["happened"])
+		if h != "met" && h != "notMet" {
+			continue
+		}
+		out := label("happened", h)
+		if v := number(e["value"]); v != "" {
+			out += ", " + thousands(v)
+		}
+		if d := when(str(e["date"])); d != "" {
+			out += ", " + d
+		}
+		if ev := str(e["evidence"]); ev != "" {
+			out += " (" + ev + ")"
+		}
+		return out
+	}
+	return ""
+}

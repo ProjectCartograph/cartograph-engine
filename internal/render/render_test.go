@@ -454,3 +454,49 @@ func TestCharterBudgetIncludesComponents(t *testing.T) {
 		t.Errorf("charter lacks %q", want)
 	}
 }
+
+// A success criterion's result, once recorded, is printed beside it:
+// what was judged, the value measured, when and the evidence (TAXONOMY.md
+// D52); before any is, the table reads as it always has.
+func TestCharterPrintsSuccessCriteriaResults(t *testing.T) {
+	ctx := context.Background()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := func(events string) []byte {
+		return []byte(`apiVersion: cartograph/v1
+kind: Project
+metadata:
+  id: test-project
+  name: Test Project
+spec:
+  team: test-team
+  successCriteria:
+    - {id: sc-1, statement: Depots grade on one standard, metric: business, standard: "400 crates a week", confirmedBy: {external: Board}, when: atClosing}
+` + events)
+	}
+	if err := e.PutWorking(ctx, "Project", "test-project", project("")); err != nil {
+		t.Fatal(err)
+	}
+	html, _, err := Charter(ctx, e, "test-project", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if contains(string(html), "<th>Result</th>") {
+		t.Error("a Result column before anything is judged")
+	}
+	events := "  events:\n    - {id: e1, on: {local: successCriteria, id: sc-1}, happened: met, date: \"2027-03-01\", value: 4120, evidence: the depot audit}\n"
+	if err := e.PutWorking(ctx, "Project", "test-project", project(events)); err != nil {
+		t.Fatal(err)
+	}
+	html, _, err = Charter(ctx, e, "test-project", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"<th>Result</th>", "Met, 4,120, 1 March 2027 (the depot audit)"} {
+		if !contains(string(html), want) {
+			t.Errorf("charter lacks %q", want)
+		}
+	}
+}

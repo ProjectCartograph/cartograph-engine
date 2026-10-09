@@ -176,16 +176,27 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 	if len(criteria) > 0 {
 		d.h2("Success criteria and handover")
 		var rows [][]string
+		results := false
 		for _, c := range criteria {
 			judged := str(c["when"])
 			if judged == "" {
 				judged = "atClosing"
 			}
+			result := p.result(str(c["id"]))
+			results = results || result != ""
 			rows = append(rows, []string{
-				str(c["statement"]), str(c["standard"]), label("when", judged), p.who(c["confirmedBy"]),
+				str(c["statement"]), str(c["standard"]), label("when", judged), p.who(c["confirmedBy"]), result,
 			})
 		}
-		d.table([]string{"Criterion", "Target", "Judged", "Signed off by"}, rows)
+		heads := []string{"Criterion", "Target", "Judged", "Signed off by", "Result"}
+		if !results {
+			// Before anything is judged, the charter reads as it always has.
+			heads = heads[:4]
+			for i := range rows {
+				rows[i] = rows[i][:4]
+			}
+		}
+		d.table(heads, rows)
 	}
 	var kpiNames []string
 	for _, k := range list(spec["kpis"]) {
