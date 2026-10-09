@@ -529,7 +529,7 @@ func (c call) reading(set string) call {
 }
 
 // proposeChangeSet proposes the change set, and announces it.
-func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[string]map[string]string) (any, error) {
+func proposeChangeSet(c call, cs store.ChangeSet, reason, asked string, waive map[string]map[string]string) (any, error) {
 	e := c.o.Engine
 	if strings.TrimSpace(reason) == "" {
 		// Why, in the person's words, is the change set's own title.
@@ -542,6 +542,24 @@ func proposeChangeSet(c call, cs store.ChangeSet, reason string, waive map[strin
 			if engine.WrittenFromTheDocument(check) {
 				return nil, fmt.Errorf("%w: %s on %s is what the document itself says: write it with settle, or leave it open with leave_open "+
 					"saying what your person answered", engine.ErrBadEdit, check, rec)
+			}
+		}
+	}
+	// A check left at propose carries what the person was asked, as one
+	// left on the way does (eval run sonnet 003 waived three here, and
+	// they reached the person as never asked).
+	if len(waive) > 0 && strings.TrimSpace(asked) == "" {
+		return nil, fmt.Errorf("%w: pass asked with openChecks: what you asked your person about them and what they answered, "+
+			"or \"not available\" when you were told to work without them", engine.ErrBadEdit)
+	}
+	for rec, checks := range waive {
+		kind, id, _ := strings.Cut(rec, "/")
+		for check, why := range checks {
+			if strings.TrimSpace(why) == "" {
+				continue
+			}
+			if err := e.LeaveOpen(c.ctx, cs.ID, kind, id, check, why, asked, false); err != nil {
+				return nil, err
 			}
 		}
 	}

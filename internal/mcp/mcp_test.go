@@ -1724,3 +1724,70 @@ func TestAPortSaysWhatTheWorkspaceHolds(t *testing.T) {
 		t.Fatalf("port's first answer: %s", text)
 	}
 }
+
+// A check left at propose carries what the person was asked: without it
+// the proposal is refused, with it each check is left as leave_open would
+// leave it (eval run sonnet 003).
+func TestProposeLeavesChecksWithWhatWasAsked(t *testing.T) {
+	t.Parallel()
+	e, _, cs := setup(t, nil)
+	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-sound", "name": "Sound fruit"},
+		"spec": map[string]any{"level": "goal", "objective": "Fruit arrives sound"}}
+	callTool(t, cs, "start_work", map[string]any{"title": "A goal"})
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-sound", "manifest": goal})
+	_, text := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-sound"})
+	var report struct {
+		Open []struct {
+			ID string `json:"id"`
+		} `json:"open"`
+	}
+	if err := json.Unmarshal([]byte(text), &report); err != nil || len(report.Open) == 0 {
+		t.Fatalf("checks: %s", text)
+	}
+	waive := map[string]any{}
+	for _, o := range report.Open {
+		waive[o.ID] = "The board decides it in December"
+	}
+	open := map[string]any{"Goal/g-sound": waive}
+	if res, text := callTool(t, cs, "propose", map[string]any{"openChecks": open}); !res.IsError || !strings.Contains(text, "pass asked") {
+		t.Fatalf("waived without asked: %s", text)
+	}
+	asked := "Asked who owns it; the board decides in December"
+	if res, text := callTool(t, cs, "propose", map[string]any{"openChecks": open, "asked": asked}); res.IsError {
+		t.Fatalf("propose with asked: %s", text)
+	}
+	sets, _ := e.ChangeSets(identity.WithPrincipal(context.Background(), ada), "proposed", false)
+	if len(sets) == 0 || len(sets[0].Waivers) == 0 || sets[0].Waivers[0].Asked != asked {
+		t.Fatalf("the proposal's waivers: %+v", sets)
+	}
+}
+
+// Milestones and risks a document lists in sentences are named back to
+// the agent until the project holds them (eval run sonnet 003 proposed
+// with neither).
+func TestAPortNamesWhatTheDocumentListsUnwritten(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	doc := "Depot Checks Charter\n\n## Scope\n\nEvery depot is in scope, with its graders and its checklist.\n\n" +
+		"## Risks\n\nGrader turnover at the two smallest depots could leave a depot unchecked, and the committee may not meet in July.\n"
+	callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "text": doc, "fileSize": len(doc)})
+	_, text := callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "pieces": []any{map[string]any{"name": "Depot checks", "none": true}}})
+	var out struct {
+		Records []struct {
+			Record string `json:"record"`
+		} `json:"records"`
+	}
+	_ = json.Unmarshal([]byte(text), &out)
+	project := ""
+	for _, r := range out.Records {
+		if strings.HasPrefix(r.Record, "Project/") {
+			project = r.Record
+		}
+	}
+	_, text = callTool(t, cs, "port", map[string]any{"title": "Depot Checks Charter", "records": []any{
+		map[string]any{"record": project, "set": map[string]any{"/spec/objectives/0/objective": "Produce is graded the same at every depot"}},
+	}})
+	if !strings.Contains(text, `"notYetWritten":[`) || !strings.Contains(text, "holds no risks") {
+		t.Fatalf("risks the document lists are not named: %s", text)
+	}
+}

@@ -190,6 +190,14 @@ func portRecords(c call, set string, records []engine.PortRecord) (any, error) {
 		}
 	}
 	out := map[string]any{"changeSet": set, "records": results}
+	if missing := unported(c, set); len(missing) > 0 {
+		out["notYetWritten"] = missing
+		out["next"] = "The document lists what these projects do not hold yet (notYetWritten): write each with port records, then carry on with what is still open."
+		if len(still) > 0 {
+			out["stillOpen"] = still
+		}
+		return out, nil
+	}
 	if len(still) > 0 {
 		out["stillOpen"] = still
 		out["next"] = "Call port again with records for what is still open: set it from the document, or open it with the reason the document does not say it. " +
@@ -198,4 +206,56 @@ func portRecords(c call, set string, records []engine.PortRecord) (any, error) {
 		out["next"] = "Every record is settled. Propose the change set with propose; report from work_summary."
 	}
 	return out, nil
+}
+
+// unported names the lists a document gives in prose that the project it
+// describes does not hold yet: a register read from a table is written by
+// port, but milestones and risks the document lists in sentences are the
+// agent's to write, and nothing else asks for them (eval run sonnet 003
+// proposed with neither). A project another lists as its component is
+// passed by: the document's lists are the whole work's.
+func unported(c call, set string) []string {
+	e := c.o.Engine
+	view, err := e.ViewChangeSet(c.ctx, set)
+	if err != nil {
+		return nil
+	}
+	docs := map[string]map[string]any{}
+	parts := map[string]bool{}
+	for _, it := range view.Items {
+		if it.Item.Kind != "Project" {
+			continue
+		}
+		var doc map[string]any
+		if e.Codec().DecodeInto(it.Item.Text, &doc) != nil {
+			continue
+		}
+		spec, _ := doc["spec"].(map[string]any)
+		docs[it.Item.ID] = spec
+		comps, _ := spec["components"].([]any)
+		for _, cp := range comps {
+			if m, _ := cp.(map[string]any); m != nil {
+				if id, _ := m["id"].(string); id != "" {
+					parts[id] = true
+				}
+			}
+		}
+	}
+	var out []string
+	for id, spec := range docs {
+		if parts[id] {
+			continue
+		}
+		for _, f := range []struct{ key, what string }{{"milestones", "milestones"}, {"risks", "risks"}} {
+			if l, _ := spec[f.key].([]any); len(l) > 0 {
+				continue
+			}
+			if secs := e.SectionsFor(c.ctx, set, "/spec/"+f.key); len(secs) > 0 {
+				out = append(out, fmt.Sprintf("Project/%s holds no %s, and the document lists them (sections %s): write each from there, with port records",
+					id, f.what, strings.Join(secs, ", ")))
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
 }
