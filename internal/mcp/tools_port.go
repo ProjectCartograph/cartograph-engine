@@ -119,7 +119,7 @@ func registerPortTools(s *sdk.Server, o Options, person identity.Principal) {
 			}
 			rows, added, refused, drafted := reg.Rows, reg.Added, taught(c, in.Kind, reg.Refused), reg.Drafted
 			if rows == 0 {
-				return nil, fmt.Errorf("%w: section %s holds no rows Cartograph can read as %s: write them with settle", engine.ErrNotFound, in.Section, in.Field)
+				return nil, fmt.Errorf("%w: section %s holds no table Cartograph can read as %s: write the items yourself from its text, with port records in a port's change set, else with settle", engine.ErrNotFound, in.Section, in.Field)
 			}
 			if c.ctx, err = e.InChangeSet(c.ctx, cs.ID); err != nil {
 				return nil, err

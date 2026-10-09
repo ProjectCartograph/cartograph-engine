@@ -533,7 +533,7 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 		if e.operationFunded(ctx, operation) {
 			c.add("landing-service-funding", "landing", phaseLanding, checkOK, "The service names what pays to run it.")
 		} else {
-			c.add("landing-service-funding", "landing", phaseLanding, checkWarn, "Who pays to run the service once the project closes? It names no funding yet.")
+			c.add("landing-service-funding", "landing", phaseLanding, checkWarn, fmt.Sprintf("Who pays to run the service once the project closes? It names no funding yet: write it on the service itself, Operation %s, under funding.", operation))
 		}
 	}
 	if isComponent && !criterionExists(criteria, "atLanding") && !criterionExists(criteria, "postClosingCycle") {

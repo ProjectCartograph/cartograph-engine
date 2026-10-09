@@ -66,7 +66,8 @@ func portOnly(c call, name string, in any) error {
 		return nil
 	}
 	return fmt.Errorf("%w: change set %s is a port of a document: write its records with port and records, "+
-		`[{"record": "Kind/id", "set": {"/spec/...": ...}, "unset": ["/spec/..."], "open": [{"check": "...", "reason": "..."}]}], every record in one call; `+
+		`[{"record": "Kind/id", "set": {"/spec/...": ...}, "unset": ["/spec/..."], "open": [{"check": "...", "reason": "..."}], "asked": "..."}], every record in one call, `+
+		"supporting records (a team, a role, a data source) too, as new Kind/id records: in a port every record is written with port; "+
 		"port answers what is still open on each. Call port with records now", engine.ErrBadEdit, cs.ID)
 }
 
@@ -160,8 +161,16 @@ func portPieces(c call, set string, src engine.Source, raws []any) (any, error) 
 	for i := range layout.Registers {
 		layout.Registers[i].Refused = taught(c, main, layout.Registers[i].Refused)
 	}
+	// Registers are read from the document's tables; a document that lists
+	// its milestones and risks in prose has none, and says so, so they are
+	// written with the records rather than looked for.
+	drafted := "The structure is drafted and the registers written."
+	if len(layout.Registers) == 0 {
+		drafted = "The structure is drafted. The document has no register as a table, so nothing was written from one: " +
+			"write its milestones, deliverables, risks and indicators with the records, from the sections that list them."
+	}
 	return map[string]any{"changeSet": set, "work": layout.Structure.Work, "pieces": layout.Structure.Pieces, "registers": layout.Registers, "records": layout.Records,
-		"next": "The structure is drafted and the registers written. Now call port a third time with records: every record listed here, " +
+		"next": drafted + " Now call port a third time with records: every record listed here, and any supporting record the work needs (a team, a role, a data source) as a new Kind/id, " +
 			"each with set (every field in its fill, written from the sections read names) and open (each check the document does not answer, with its reason). " +
 			"One call for all of them; then propose; report from work_summary."}, nil
 }
