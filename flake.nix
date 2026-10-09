@@ -97,10 +97,23 @@
               tar -xzf ${ui} -C internal/spa/dist
             '';
             # subPackages narrows the check phase to cmd/cartograph, which
-            # has no tests of its own; the gate is every package.
+            # has no tests of its own; the gate is every package, held to
+            # its budget as `just test` holds it: compiled first, then the
+            # tests timed, their temporary files on a tmpfs where there is
+            # one. CI's tests are this phase (`just check`), so the tested
+            # binary is a store path the later jobs fetch.
             checkPhase = ''
               runHook preCheck
+              go test -count=1 -run '^$' ./... >/dev/null
+              if [ -d /dev/shm ] && [ -w /dev/shm ]; then
+                export GOTMPDIR="$TMPDIR"
+                export TMPDIR=$(mktemp -d /dev/shm/cartograph-test.XXXXXX)
+              fi
+              start=$(date +%s%3N)
               go test -count=1 ./...
+              end=$(date +%s%3N)
+              echo "tests completed in $((end - start))ms"
+              test $((end - start)) -lt 5000
               runHook postCheck
             '';
             meta = {

@@ -71,7 +71,7 @@ test-postgres *args="./...": embed
     go test -count=1 -tags integration {{args}}
 
 # What CI runs, in this order; green here is green there
-ci: generate drift vet fmt-check lint arch test words clean-tree compat build
+ci: generate drift vet fmt-check lint arch words clean-tree compat check
 
 # --- the contract ---------------------------------------------------------
 
@@ -177,6 +177,13 @@ compat base="": embed
     scripts/check-api "$tag"
 
 # --- build and run --------------------------------------------------------
+
+# The binary as Nix builds it, every test in its check phase within the
+# gate's budget, and every output of the flake evaluated. In CI this is
+# the test run, and the tested binary goes to the cache, where the image
+# and deploy jobs fetch it instead of building it again.
+check:
+    nix --extra-experimental-features 'nix-command flakes' flake check --print-build-logs
 
 build: embed
     go build ./...

@@ -130,7 +130,6 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # Images live in the registry; the cache keeps what builds them.
           pushFilter: '\.tar\.gz$'
-      - run: nix flake check --print-build-logs
       - run: nix run .#cartograph -- validate examples/minimal
       - run: nix build .#image --out-link result-image && docker load < result-image
       - name: seed a volume and start the container
