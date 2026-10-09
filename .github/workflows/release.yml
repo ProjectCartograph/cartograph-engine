@@ -151,6 +151,13 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # Images live in the registry; the cache keeps what builds them.
           pushFilter: '\.tar\.gz$'
+      # The package is private on GHCR, so pulling the images to check
+      # them needs the same login that pushed them.
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: the binary answers ready
         run: |
           repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cartograph

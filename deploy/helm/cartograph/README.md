@@ -23,7 +23,7 @@ Releases publish the chart next to the image, at the engine's version:
 
 ```
 helm install cartograph oci://ghcr.io/projectcartograph/charts/cartograph \
-  --version 2.10.0 \
+  --version 2.10.1 \
   --set store.existingSecret=cartograph-db
 ```
 
@@ -42,7 +42,7 @@ One replica on a volume instead:
 
 ```
 helm install cartograph oci://ghcr.io/projectcartograph/charts/cartograph \
-  --version 2.10.0 --set replicaCount=1 --set vault.enabled=true
+  --version 2.10.1 --set replicaCount=1 --set vault.enabled=true
 ```
 
 The volume claim is kept when the release is removed.
