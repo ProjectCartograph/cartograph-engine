@@ -71,3 +71,29 @@ func TestClipCutsAtABoundary(t *testing.T) {
 		}
 	}
 }
+
+const riskRegister = "    No.   Risk                               Schedule Impact   Cost Impact   Likelihood   Response Strategy   Mitigation\n\n" +
+	"    R1    The board meets after the season   High              Low           Medium       Reduce              Put the results to the board early\n\n" +
+	"    R2    Forms run short at the depots      Medium                          Low          Accept              Hold a reserve of forms\n"
+
+// A register that scores each side on its own places each risk on the
+// triple constraint, and reads its response strategy (TAXONOMY.md D60).
+func TestARiskRegisterPlacesRisksOnTheTripleConstraint(t *testing.T) {
+	t.Parallel()
+	items := document.RegisterItems("/spec/risks", document.ReadRegister(riskRegister))
+	if len(items) != 2 {
+		t.Fatalf("items %+v", items)
+	}
+	first := items[0]
+	affects, _ := first["affects"].([]any)
+	if len(affects) != 2 || affects[0].(map[string]any)["constraint"] != "schedule" || affects[0].(map[string]any)["impact"] != "high" ||
+		affects[1].(map[string]any)["constraint"] != "cost" || affects[1].(map[string]any)["impact"] != "low" {
+		t.Errorf("affects %+v", first["affects"])
+	}
+	if first["response"] != "mitigate" || items[1]["response"] != "accept" {
+		t.Errorf("responses %v, %v", first["response"], items[1]["response"])
+	}
+	if first["mitigation"] != "Put the results to the board early" {
+		t.Errorf("mitigation %v", first["mitigation"])
+	}
+}

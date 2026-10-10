@@ -215,6 +215,12 @@ func headerRole(h string) string {
 	h = strings.ToLower(h)
 	for _, r := range []struct{ role, words string }{
 		{"code", "no.|ref|id|#|code"},
+		// A side's own impact column comes before impact in general, and
+		// a strategy column before the response it names.
+		{"scheduleImpact", "schedule impact|time impact|impact on schedule|impact on time|delay impact"},
+		{"costImpact", "cost impact|budget impact|financial impact|impact on cost|impact on budget"},
+		{"scopeImpact", "scope impact|impact on scope"},
+		{"strategy", "strategy|response type|treatment type"},
 		{"mitigation", "mitigation|response|treatment|action"},
 		{"impact", "impact|severity"},
 		{"likelihood", "likelihood|probability"},
@@ -334,6 +340,22 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 			}
 			if o := leadOf(byRole["owner"]); o != "" {
 				item["owner"] = o
+			}
+			// A register that scores each side on its own places the risk
+			// on the triple constraint (TAXONOMY.md D60).
+			var affects []any
+			for _, side := range []struct{ role, constraint string }{
+				{"scopeImpact", "scope"}, {"scheduleImpact", "schedule"}, {"costImpact", "cost"},
+			} {
+				if lvl := level(byRole[side.role]); lvl != "" {
+					affects = append(affects, map[string]any{"constraint": side.constraint, "impact": lvl})
+				}
+			}
+			if len(affects) > 0 {
+				item["affects"] = affects
+			}
+			if r := responseOf(byRole["strategy"]); r != "" {
+				item["response"] = r
 			}
 		case "kpis":
 			// An indicator row carries a baseline or a target; a fragment
@@ -648,4 +670,24 @@ func WorkstreamNames(sections []Section) []string {
 		}
 	}
 	return out
+}
+
+// responseOf reads a risk's response strategy as a register writes it:
+// the four PMBOK responses to a threat, with the words registers use for
+// each ("reduce" is to mitigate, "retain" or "tolerate" to accept).
+func responseOf(cell string) string {
+	c := strings.ToLower(cell)
+	for _, r := range []struct{ response, words string }{
+		{"avoid", "avoid|eliminat"},
+		{"transfer", "transfer|insur|share|outsourc"},
+		{"accept", "accept|retain|toleran|tolerat"},
+		{"mitigate", "mitigat|reduc|lessen|control"},
+	} {
+		for _, w := range strings.Split(r.words, "|") {
+			if strings.Contains(c, w) {
+				return r.response
+			}
+		}
+	}
+	return ""
 }

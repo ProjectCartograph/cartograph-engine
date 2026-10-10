@@ -178,3 +178,34 @@ func TestRoundsAreJudgedFromWhatIsLeft(t *testing.T) {
 		}
 	}
 }
+
+// The triangle is judged from what was left for the person: a side's
+// stance or a risk's side may be theirs to decide, but only if they were
+// asked (TAXONOMY.md D60).
+func TestTheTriangleIsAskedNotLeftSilent(t *testing.T) {
+	t.Parallel()
+	c := evaluate.Criteria{Agent: "Agent", Runs: 3, Triangle: true}
+	run := []trace.Call{{Tool: "propose", Agent: "Agent", Outcome: trace.OK}}
+	asked := fake{status: "proposed", records: mainProject, left: []map[string]any{
+		{"on": "Project/p-main", "check": "constraints-stated", "asked": "Asked whether the dates or the budget give first; the board decides"},
+	}}
+	s, err := evaluate.ScoreRun(context.Background(), asked, c, "cs1", run, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.Pass {
+		t.Fatalf("a stance left with the person's answer failed: %+v", s.Checks)
+	}
+	silent := fake{status: "proposed", records: mainProject, left: []map[string]any{
+		{"on": "Project/p-main", "check": "risks-constrained", "asked": "not available"},
+	}}
+	s, err = evaluate.ScoreRun(context.Background(), silent, c, "cs1", run, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Pass {
+		t.Fatalf("a side left without asking passed: %+v", s.Checks)
+	}
+}
+
+var mainProject = []map[string]any{{"record": "Project/p-main", "name": "Grading rollout"}}
