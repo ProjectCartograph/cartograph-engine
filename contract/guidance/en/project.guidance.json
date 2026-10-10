@@ -755,7 +755,12 @@
     "landing-owner": "Name a service owner in Resources to accept the handover.",
     "measures-kpis-once": "Name each KPI once, with one reason; merge the reasons if it was named twice.",
     "risks-placed": "Give every risk an impact and a likelihood.",
-    "compliance-as-criteria": "Record each compliance line as a success criterion with metric compliance, naming the role that confirms it; then remove the line."
+    "compliance-as-criteria": "Record each compliance line as a success criterion with metric compliance, naming the role that confirms it; then remove the line.",
+    "constraints-stated": "Say for each of scope, schedule and cost whether you hold it, adjust it or concede it.",
+    "constraints-all-held": "Let at least one of scope, schedule and cost give: say which moves first.",
+    "risks-constrained": "Say which of scope, schedule and cost each risk and issue would move.",
+    "risks-held-accepted": "Avoid, mitigate or transfer each risk on a side you hold, rather than accepting it.",
+    "risks-spend-held": "Make each response spend a side you adjust or concede, not one you hold."
   },
   "fromIdea": {
     "for": {

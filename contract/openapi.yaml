@@ -571,6 +571,34 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /manifests/Project/{id}/constraints:
+    get:
+      operationId: getProjectConstraints
+      summary: A project's triple constraint, and how exposed each side is to its risks
+      description: >-
+        Scope, schedule and cost (TAXONOMY.md D60): the stance the project
+        takes on each, the risks that would move it with each one's weight
+        (likelihood times impact on that side, low 1, medium 2, high 3),
+        the sum and share of each side, and the most constrained side. A
+        milestone whose timing names a risk counts as that risk on the
+        schedule there. Every interface draws the triangle from this.
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripleConstraint"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /manifests/KPI/{id}/control:
     get:
       operationId: getKPIControlChart
@@ -3611,6 +3639,77 @@ components:
         sign:
           type: boolean
           description: Whether a wait showed it was waiting (a skeleton or a count).
+    TripleConstraint:
+      type: object
+      required: [sides]
+      properties:
+        sides:
+          type: array
+          description: Scope, schedule and cost, in that order.
+          items:
+            $ref: "#/components/schemas/ConstraintSide"
+        mostConstrained:
+          type: string
+          description: The side with the most weighted risk; absent when none carries any or two lead together.
+        unplaced:
+          type: array
+          description: The ids of risks and issues that name no side.
+          items:
+            type: string
+    ConstraintSide:
+      type: object
+      required: [constraint, exposure, share, risks, unweighed, unanswered]
+      properties:
+        constraint:
+          type: string
+          enum: [scope, schedule, cost]
+          x-enum-varnames: [SideScope, SideSchedule, SideCost]
+        stance:
+          type: string
+          enum: [hold, adjust, concede]
+          x-enum-varnames: [StanceHold, StanceAdjust, StanceConcede]
+          description: Absent when the project has not said.
+        exposure:
+          type: integer
+          description: The sum over its risks of likelihood times impact on this side.
+        share:
+          type: number
+          description: This side's part of the exposure of all three, from 0 to 1.
+        risks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConstraintRisk"
+        unweighed:
+          type: integer
+          description: Its risks with no likelihood or no impact on it.
+        unanswered:
+          type: integer
+          description: Its risks with neither a response nor a mitigation.
+    ConstraintRisk:
+      type: object
+      required: [id, type, weight]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        impact:
+          type: string
+        likelihood:
+          type: string
+        weight:
+          type: integer
+          description: Likelihood times impact on this side; 0 when either is missing.
+        "on":
+          type: string
+          description: The deliverable, milestone or cost line it bears on.
+        response:
+          type: string
+        spends:
+          type: string
+        implied:
+          type: boolean
+          description: Placed on the schedule by a milestone whose timing names it, not by the risk itself.
     SessionAccess:
       type: object
       description: >-

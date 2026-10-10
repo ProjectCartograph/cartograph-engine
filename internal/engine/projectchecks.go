@@ -373,6 +373,7 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 
 	// risks
 	addRiskChecks(c, spec)
+	addConstraintChecks(c, spec)
 
 	// The two dependency facts no single manifest carries. They need the
 	// whole vault, so they cannot sit with the rest of the risk checks.
