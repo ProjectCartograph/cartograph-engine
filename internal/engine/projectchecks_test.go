@@ -946,3 +946,31 @@ func TestAProjectObjectiveIsJudgedByTheModel(t *testing.T) {
 		}
 	}
 }
+
+// A criterion without a role to confirm it saves, and blocks on its own
+// check until one is named: the criterion is the document's, the confirmer
+// the person's (eval run sonnet 001).
+func TestASuccessCriterionWaitsForItsConfirmerOnItsOwn(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	ctx := context.Background()
+	state := func(confirmed string) string {
+		y := projectYAML("p-sc", "  successCriteria:\n    - id: sc-1\n      statement: Nine audit crates in ten graded the same\n      metric: business\n      when: atLanding\n"+confirmed)
+		checks, err := e.ChecksOf(ctx, "Project", "p-sc", []byte(y))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range checks {
+			if c.ID == "success-confirmer" {
+				return c.State
+			}
+		}
+		return ""
+	}
+	if got := state(""); got != "block" {
+		t.Fatalf("a criterion with no confirmer: %q", got)
+	}
+	if got := state("      confirmedBy: {external: Board}\n"); got != "ok" {
+		t.Fatalf("a criterion with its confirmer: %q", got)
+	}
+}

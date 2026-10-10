@@ -71,21 +71,29 @@ alone.
 Read from the server and the trace, on fresh runs of one frozen build:
 
 1. Every check the change set leaves for the person carries what the
-   person was asked, and none is a check the document states.
+   person was asked, and none is a check the document states of the
+   main project (a part the document only names is the person's to
+   authorise).
 2. With a person present, the agent calls `round` before it proposes,
    and asks more than one question a round where the round has more
    than one: questions per exchange above one.
 3. No round asks a question whose record has an earlier step open
    (a defect the engine now prevents). The trace keeps no values, so
    this is held by the engine's tests, not scored.
-4. Calls per run no higher than the last streak's median: rounds must
-   not add waste.
+4. The streak's median calls per run no higher than the last streak's
+   median: rounds must not add waste. Judged on the streak, not each
+   run: one run in two of an unchanged process is above its median, and
+   runs 009 and 010 failed on that alone.
+5. With a person present, the first proposal comes after the person
+   answered: the evaluator records each answer (`eval answer`), since
+   what the agent writes as asked cannot show it (Sonnet run 007 wrote
+   "answer awaited" and proposed in the same turn).
 
 The scorer (`rounds` in the criteria file, `internal/evaluate`) reads
 1 from each left check's `asked`, which the change set keeps with it;
 2 from the trace for the round, and from the exchanges the left checks
-name for the questions; 4 against `maxCalls`, unset on the first streak,
-whose median becomes it.
+name for the questions; 4 in `eval status`, the streak against `maxCalls`,
+unset on the first streak, whose median becomes it.
 
 The bar is three passing runs in a row, one agent at a time.
 

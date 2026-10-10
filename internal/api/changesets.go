@@ -36,6 +36,13 @@ func toChangeSet(cs store.ChangeSet) apigen.ChangeSet {
 		}
 		out.Waivers = &ws
 	}
+	if len(cs.Assumptions) > 0 {
+		as := make([]apigen.Assumption, len(cs.Assumptions))
+		for i, a := range cs.Assumptions {
+			as[i] = apigen.Assumption{On: a.On, Field: opt(a.Field), Took: a.Took, Why: a.Why}
+		}
+		out.Assumptions = &as
+	}
 	return out
 }
 

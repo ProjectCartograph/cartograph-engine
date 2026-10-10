@@ -1,6 +1,7 @@
 package document_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/document"
@@ -112,5 +113,22 @@ func TestARiskListPortsAsARegister(t *testing.T) {
 	}
 	if items[1]["id"] != "r2" {
 		t.Errorf("second %+v", items[1])
+	}
+}
+
+// A short section is a section: a heading with a sentence under it keeps
+// its own heading, and only a heading with nothing under it (a contents
+// line) is folded into the one before (eval run 005 lost "Objective",
+// "Budget" and "Roles").
+func TestAShortSectionKeepsItsHeading(t *testing.T) {
+	t.Parallel()
+	text := "# Charter\n\n## Contents\n\n1. Scope\n2. Budget\n\n## Scope\n\nIn scope: the six depots' grading of fresh vegetables, a written checklist and training for every grader.\n\n" +
+		"- Grader turnover at the two smallest depots.\n## Budget\n\nTo be confirmed.\n"
+	var headings []string
+	for _, s := range document.Split("Charter", text) {
+		headings = append(headings, s.Heading)
+	}
+	if strings.Join(headings, "|") != "Opening|Scope|Budget" {
+		t.Fatalf("headings %q", headings)
 	}
 }

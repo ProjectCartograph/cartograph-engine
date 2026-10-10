@@ -50,6 +50,9 @@ type evalRun struct {
 	Agent    string    `json:"agent"`
 	Document string    `json:"document"`
 	Started  time.Time `json:"started"`
+	// Person is whether a person answers between the agent's turns: the
+	// evaluator records each answer with eval answer.
+	Person bool `json:"person,omitempty"`
 }
 
 // runEval judges a change agents use by DMAIC: freeze a build, serve
@@ -68,6 +71,8 @@ func runEval(args []string) error {
 		return evalCallCmd(args[1:])
 	case "score":
 		return evalScoreCmd(args[1:])
+	case "answer":
+		return evalAnswerCmd(args[1:])
 	case "status":
 		return evalStatusCmd(args[1:])
 	case "stop":
@@ -92,6 +97,7 @@ const evalUsage = `usage:
                                                              call the server as an agent does
   cartograph eval score <dir> <run> -criteria <file> -change-set <id>
                                                              score a run from the server and its trace
+  cartograph eval answer <dir> <run>                         record that the person answered, before replying as them
   cartograph eval status <dir> -criteria <file>              every run, and the streak against the bar
   cartograph eval stop <dir> [<run>]                         stop a run's server, or every run's` + evalUXUsage
 
@@ -179,7 +185,7 @@ func evalServeCmd(args []string) error {
 		_ = cmd.Process.Kill()
 		return err
 	}
-	run := evalRun{Name: name, Commit: b.Commit, Endpoint: endpoint, PID: cmd.Process.Pid, Agent: *agent, Document: doc, Started: time.Now().UTC()}
+	run := evalRun{Name: name, Commit: b.Commit, Endpoint: endpoint, PID: cmd.Process.Pid, Agent: *agent, Document: doc, Started: time.Now().UTC(), Person: *person}
 	if err := writeJSON(filepath.Join(rd, "run.json"), run); err != nil {
 		return err
 	}
@@ -311,7 +317,18 @@ func evalScoreCmd(args []string) error {
 		return err
 	}
 	defer srv.Close()
-	s, err := evaluate.ScoreRun(ctx, srv, c, *changeSet, calls, string(doc))
+	var answered []time.Time
+	if run.Person {
+		answered = []time.Time{}
+		if b, err := os.ReadFile(filepath.Join(rd, "answers.txt")); err == nil {
+			for _, l := range strings.Fields(string(b)) {
+				if t, err := time.Parse(time.RFC3339Nano, l); err == nil {
+					answered = append(answered, t)
+				}
+			}
+		}
+	}
+	s, err := evaluate.ScoreRun(ctx, srv, c, *changeSet, calls, string(doc), answered)
 	if err != nil {
 		return err
 	}
@@ -329,7 +346,7 @@ func evalStatusCmd(args []string) error {
 	if err != nil {
 		return err
 	}
-	bar := 3
+	bar, maxCalls := 3, 0
 	name := ""
 	if *criteriaPath != "" {
 		c, err := evaluate.ReadCriteria(*criteriaPath)
@@ -337,6 +354,9 @@ func evalStatusCmd(args []string) error {
 			return err
 		}
 		bar, name = c.Runs, c.Name
+		if c.Rounds != nil {
+			maxCalls = c.Rounds.MaxCalls
+		}
 	}
 	runs, err := evalRuns(dir)
 	if err != nil {
@@ -358,13 +378,16 @@ func evalStatusCmd(args []string) error {
 		scored = append(scored, er)
 	}
 	_ = w.Flush()
-	st := evaluate.StreakOf(scored, bar)
+	st := evaluate.StreakOf(scored, bar, maxCalls)
 	if name != "" {
 		fmt.Printf("\n%s: ", name)
 	} else {
 		fmt.Println()
 	}
 	fmt.Printf("%d of %d in a row on build %s", st.InARow, st.Bar, short(st.Commit))
+	if st.MaxCalls > 0 && st.InARow > 0 {
+		fmt.Printf(", median %d calls against %d", st.MedianCalls, st.MaxCalls)
+	}
 	if st.Closed {
 		fmt.Println(": the bar is met.")
 	} else {
@@ -505,4 +528,36 @@ func short(commit string) string {
 		return "(none)"
 	}
 	return commit
+}
+
+// evalAnswerCmd records, in the run's answers, the time the evaluator
+// answers as the person: a run with a person present is scored on
+// proposing only after an answer, which the agent's own words cannot
+// show (Sonnet run 007 wrote "answer awaited" as asked, and proposed).
+func evalAnswerCmd(args []string) error {
+	if len(args) != 2 {
+		return errors.New(evalUsage)
+	}
+	runs, err := evalRuns(args[0])
+	if err != nil {
+		return err
+	}
+	for _, r := range runs {
+		if r.Name != args[1] {
+			continue
+		}
+		path := filepath.Join(args[0], "runs", r.Name, "answers.txt")
+		f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		at := time.Now().UTC().Format(time.RFC3339Nano)
+		if _, err := fmt.Fprintln(f, at); err != nil {
+			return err
+		}
+		fmt.Printf("run %s: answered at %s\n", r.Name, at)
+		return nil
+	}
+	return fmt.Errorf("no run %s in %s", args[1], args[0])
 }

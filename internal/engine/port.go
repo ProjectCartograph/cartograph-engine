@@ -311,11 +311,12 @@ func (e *Engine) RegisterInto(ctx context.Context, set, kind, id, section, field
 // document gives, those to clear, and the checks it does not answer with
 // their reasons.
 type PortRecord struct {
-	Record string         `json:"record" jsonschema:"the record, as Kind/id"`
-	Set    map[string]any `json:"set,omitempty" jsonschema:"every field the document gives, by JSON pointer"`
-	Unset  []string       `json:"unset,omitempty" jsonschema:"fields to clear, by JSON pointer"`
-	Open   []OpenReason   `json:"open,omitempty" jsonschema:"each check the document does not answer, with the reason your person will read; an empty reason takes back one left before"`
-	Asked  string         `json:"asked,omitempty" jsonschema:"with open: what you asked your person about these checks and what they answered, or \"not available\" when you were told to work without them"`
+	Record  string         `json:"record" jsonschema:"the record, as Kind/id"`
+	Set     map[string]any `json:"set,omitempty" jsonschema:"every field the document gives, by JSON pointer"`
+	Unset   []string       `json:"unset,omitempty" jsonschema:"fields to clear, by JSON pointer"`
+	Open    []OpenReason   `json:"open,omitempty" jsonschema:"each check the document does not answer, with the reason your person will read; an empty reason takes back one left before"`
+	Asked   string         `json:"asked,omitempty" jsonschema:"with open: what you asked your person about these checks and what they answered, or \"not available\" when you were told to work without them"`
+	Assumed []Assumed      `json:"assumed,omitempty" jsonschema:"each decision you took for your person here with no document and no answer behind it (a month a figure was taken, where a cycle starts): your person reviews each"`
 }
 
 // OpenReason is a check left open, with the reason a person reads.
@@ -413,6 +414,9 @@ func (e *Engine) PortRecords(ctx context.Context, set string, records []PortReco
 				continue
 			}
 			res.Left = append(res.Left, o.Check)
+		}
+		if err := e.Assume(ctx, set, k, id, r.Assumed); err != nil {
+			res.NotLeft = append(res.NotLeft, "assumed: "+err.Error())
 		}
 		results = append(results, res)
 	}

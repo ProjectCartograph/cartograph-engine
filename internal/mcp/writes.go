@@ -47,7 +47,7 @@ func settleOf(raw map[string]any) (settleIn, error) {
 }
 
 // settleKeys are settle's own inputs.
-var settleKeys = map[string]bool{"changeSet": true, "kind": true, "id": true, "set": true, "unset": true, "open": true, "asked": true, "work": true}
+var settleKeys = map[string]bool{"changeSet": true, "kind": true, "id": true, "set": true, "unset": true, "open": true, "asked": true, "assumed": true, "work": true}
 
 // withFields adds to each refused field what goes there, from the kind's
 // guide, so an agent sent "additional properties 'statement' not allowed"

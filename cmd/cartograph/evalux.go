@@ -189,7 +189,7 @@ func evalUXStatusCmd(args []string) error {
 		scored = append(scored, er)
 	}
 	_ = w.Flush()
-	st := evaluate.StreakOf(scored, bar)
+	st := evaluate.StreakOf(scored, bar, 0)
 	if name != "" {
 		fmt.Printf("\n%s: ", name)
 	} else {

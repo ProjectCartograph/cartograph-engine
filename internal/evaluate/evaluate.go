@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/trace"
 )
@@ -88,11 +89,12 @@ type KPIs struct {
 // Rounds judges a run with a person present, whose decisions are asked
 // in rounds (docs/adr/0032).
 type Rounds struct {
-	// NotLeft are checks, by id, the document states: none may be left
-	// for the person.
+	// NotLeft are checks, by id, the document states of the main project:
+	// none may be left there for the person.
 	NotLeft []string `json:"notLeft,omitempty"`
-	// MaxCalls is the last streak's median calls per run, the most a run
-	// may make; 0 leaves it unjudged, as on the first streak.
+	// MaxCalls is the last streak's median calls per run, the most this
+	// streak's median may be (StreakOf); 0 leaves it unjudged, as on the
+	// first streak.
 	MaxCalls int `json:"maxCalls,omitempty"`
 }
 
@@ -157,7 +159,7 @@ type record struct {
 // ScoreRun scores one run's change set against the criteria: the server
 // for what was written, calls for what the agent did, and the document
 // for the names it gives people.
-func ScoreRun(ctx context.Context, srv Server, c Criteria, changeSet string, calls []trace.Call, document string) (Score, error) {
+func ScoreRun(ctx context.Context, srv Server, c Criteria, changeSet string, calls []trace.Call, document string, answered []time.Time) (Score, error) {
 	out := Score{ChangeSet: changeSet}
 	var mine []trace.Call
 	for _, call := range calls {
@@ -314,7 +316,14 @@ func ScoreRun(ctx context.Context, srv Server, c Criteria, changeSet string, cal
 		add("proposed", status == "proposed", "status %s", status)
 	}
 	if r := c.Rounds; r != nil {
-		scoreRounds(r, left, mine, add)
+		mainRecord := ""
+		if main != nil {
+			mainRecord = main.Record
+		}
+		scoreRounds(r, mainRecord, left, mine, add)
+		if answered != nil {
+			scoreAnswered(answered, mine, add)
+		}
 	}
 	if c.Triangle {
 		// A risk's side is read from the risk, so it is never left; a stance
@@ -462,7 +471,7 @@ func anyMatch(pattern string, names []string) bool {
 // is read as each left check keeps it, an exchange to a question: a
 // question left open names the exchange it was asked in, and several
 // questions in one exchange share it.
-func scoreRounds(r *Rounds, left []leftCheck, mine []trace.Call, add func(string, bool, string, ...any)) {
+func scoreRounds(r *Rounds, mainRecord string, left []leftCheck, mine []trace.Call, add func(string, bool, string, ...any)) {
 	notLeft := map[string]bool{}
 	for _, c := range r.NotLeft {
 		notLeft[c] = true
@@ -474,7 +483,10 @@ func scoreRounds(r *Rounds, left []leftCheck, mine []trace.Call, add func(string
 		if asked == "" || strings.EqualFold(asked, "not available") {
 			unasked = append(unasked, l.On+" "+l.Check)
 		}
-		if notLeft[l.Check] {
+		// What the document states it states of the main project: a part
+		// it only names (a survey run on its own) is the person's to
+		// authorise, so its checks may be left (eval run sonnet 002).
+		if notLeft[l.Check] && (mainRecord == "" || l.On == mainRecord) {
 			stated = append(stated, l.On+" "+l.Check)
 		}
 		// An exchange is one the person had: "not available" is none.
@@ -505,8 +517,25 @@ func scoreRounds(r *Rounds, left []leftCheck, mine []trace.Call, add func(string
 	// One question left open can only have been one exchange.
 	together := asked <= 1 || asked > len(questions)
 	add("asked together", together, "%d questions left open over %d exchanges", asked, len(questions))
+}
 
-	if r.MaxCalls > 0 {
-		add("no more calls", len(mine) <= r.MaxCalls, "%d calls; the last streak's median is %d", len(mine), r.MaxCalls)
+// scoreAnswered judges, with a person present, that the agent proposed
+// only after the person answered: the evaluator records each answer (eval
+// answer), and the first propose must come after one. What the agent
+// writes as asked cannot show it; an agent may write "answer awaited".
+func scoreAnswered(answered []time.Time, mine []trace.Call, add func(string, bool, string, ...any)) {
+	var propose time.Time
+	for _, call := range mine {
+		if call.Tool == "propose" {
+			propose = call.At
+			break
+		}
 	}
+	before := 0
+	for _, a := range answered {
+		if propose.IsZero() || a.Before(propose) {
+			before++
+		}
+	}
+	add("answered before propose", before > 0, "%d answers from the person before the first propose (%d in all)", before, len(answered))
 }

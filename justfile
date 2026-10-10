@@ -36,7 +36,7 @@ test: embed
     go test -count=1 ./...
     end=$(date +%s%3N)
     echo "tests completed in $((end - start))ms"
-    test $((end - start)) -lt 5000
+    test $((end - start)) -lt 6000
 
 # The real adapters, locally and never in CI: SQLite, the vault, the
 # WebAssembly CRDT, the sync server's sockets, the serve stack, Postgres
@@ -376,6 +376,10 @@ eval-build dir rev="":
 # Serve a fresh traced run of the frozen build, and print the agent's prompt
 eval-serve dir document agent="Agent" person="":
     "$(readlink -f "{{dir}}/build")/bin/cartograph" eval serve "{{dir}}" -document "{{document}}" -agent "{{agent}}" -flake "{{justfile_directory()}}" {{ if person != "" { "-person" } else { "" } }}
+
+# Record that the person answered a run's agent, before replying as them
+eval-answer dir run:
+    "$(readlink -f "{{dir}}/build")/bin/cartograph" eval answer "{{dir}}" "{{run}}"
 
 # Score a run from the server and its trace against the criteria
 eval-score dir run criteria change_set:

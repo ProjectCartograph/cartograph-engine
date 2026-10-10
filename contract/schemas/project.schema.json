@@ -597,7 +597,6 @@
               "id",
               "statement",
               "metric",
-              "confirmedBy",
               "when"
             ],
             "properties": {

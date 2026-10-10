@@ -1035,6 +1035,7 @@
             "key": "id",
             "checks": [
               "success-criteria",
+              "success-confirmer",
               "success-measured",
               "success-owner",
               "landing-criteria"

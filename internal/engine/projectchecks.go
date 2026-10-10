@@ -436,6 +436,23 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 		c.addFix("success-criteria", "success", phaseInitiation, checkOK,
 			fmt.Sprintf("%d success criteri%s.", len(criteria), plural2(len(criteria), "on", "a")),
 			phaseInitiation, "success")
+		// What a criterion says is the document's; who confirms it is a
+		// decision, asked and left on its own (eval run sonnet 001 could
+		// not write stated criteria while the confirmer was undecided).
+		unconfirmed := 0
+		for _, cr := range criteria {
+			if m, _ := cr.(map[string]any); m != nil && m["confirmedBy"] == nil {
+				unconfirmed++
+			}
+		}
+		if unconfirmed > 0 {
+			c.addFix("success-confirmer", "success", phaseInitiation, checkBlock,
+				fmt.Sprintf("%d success criteri%s name%s no role to confirm %s yet.", unconfirmed, plural2(unconfirmed, "on", "a"),
+					map[bool]string{true: "s", false: ""}[unconfirmed == 1], map[bool]string{true: "it", false: "them"}[unconfirmed == 1]),
+				phaseInitiation, "success")
+		} else {
+			c.addFix("success-confirmer", "success", phaseInitiation, checkOK, "Every success criterion names who confirms it.", phaseInitiation, "success")
+		}
 		// A criterion read once, at closing or at landing, needs its
 		// standard and source but no cycle: only one judged after closing
 		// is read again and again.
@@ -533,7 +550,7 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 		if e.operationFunded(ctx, operation) {
 			c.add("landing-service-funding", "landing", phaseLanding, checkOK, "The service names what pays to run it.")
 		} else {
-			c.add("landing-service-funding", "landing", phaseLanding, checkWarn, "Who pays to run the service once the project closes? It names no funding yet.")
+			c.add("landing-service-funding", "landing", phaseLanding, checkWarn, fmt.Sprintf("Who pays to run the service once the project closes? It names no funding yet: write it on the service itself, Operation %s, under funding.", operation))
 		}
 	}
 	if isComponent && !criterionExists(criteria, "atLanding") && !criterionExists(criteria, "postClosingCycle") {
@@ -1409,7 +1426,7 @@ var blockingChecks = map[string]bool{
 	"deliverables-count": true, "closing-criteria": true, "landing-criteria": true, "success-criteria": true,
 	"success-measured": true, "goals-aligned": true, "goals-functional-level": true, "goals-key-results-baseline": true,
 	"goals-key-results-count": true, "goals-key-results-source": true, "goals-key-results-target": true,
-	"goals-objective": true, "landing-operation": true, "resources-sponsor-lead": true, "timeline-start-phases": true,
+	"goals-objective": true, "landing-operation": true, "resources-sponsor-lead": true, "timeline-start-phases": true, "success-confirmer": true,
 }
 
 // someBlocking are blocking checks that ask only some definitions:

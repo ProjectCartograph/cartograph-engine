@@ -35,6 +35,19 @@ type ChangeSet struct {
 	DecidedBy      string
 	DecidedAt      time.Time
 	DecisionReason string
+	// Assumptions are what an agent decided on its person's behalf, with
+	// no document and no answer behind it, as it declared them
+	// (docs/adr/0033): kept apart, so the person reviews each one.
+	Assumptions []Assumption
+}
+
+// Assumption is one decision an agent took for its person: the record
+// and field it wrote, what it took, and why it took it without asking.
+type Assumption struct {
+	On    string `json:"on"`
+	Field string `json:"field,omitempty"`
+	Took  string `json:"took"`
+	Why   string `json:"why"`
 }
 
 // ChangeItem is one manifest's draft in a change set.

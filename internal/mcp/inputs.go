@@ -37,14 +37,15 @@ type (
 		IDs       []string `json:"ids" jsonschema:"the sections to read, by the ids the outline gave"`
 	}
 	settleIn struct {
-		ChangeSet string         `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out"`
-		Kind      string         `json:"kind"`
-		ID        string         `json:"id"`
-		Set       map[string]any `json:"set,omitempty" jsonschema:"every field the documents give, by JSON pointer, such as {\"/spec/summary/about\": \"...\", \"/spec/objectives/0/objective\": \"...\"}"`
-		Unset     []string       `json:"unset,omitempty" jsonschema:"fields to clear, by JSON pointer"`
-		Open      []settleOpen   `json:"open,omitempty" jsonschema:"each check on this record the documents do not answer, with the reason your person will read"`
-		Asked     string         `json:"asked,omitempty" jsonschema:"what you asked your person and what they answered; \"not available\" when you were told to work without them. Required with open"`
-		Work      []string       `json:"work,omitempty" jsonschema:"the work list start_work returned: the answer then says what comes next across it"`
+		ChangeSet string           `json:"changeSet,omitempty" jsonschema:"the change set to work in; your latest open one when left out"`
+		Kind      string           `json:"kind"`
+		ID        string           `json:"id"`
+		Set       map[string]any   `json:"set,omitempty" jsonschema:"every field the documents give, by JSON pointer, such as {\"/spec/summary/about\": \"...\", \"/spec/objectives/0/objective\": \"...\"}"`
+		Unset     []string         `json:"unset,omitempty" jsonschema:"fields to clear, by JSON pointer"`
+		Open      []settleOpen     `json:"open,omitempty" jsonschema:"each check on this record the documents do not answer, with the reason your person will read"`
+		Asked     string           `json:"asked,omitempty" jsonschema:"what you asked your person and what they answered; \"not available\" when you were told to work without them. Required with open"`
+		Work      []string         `json:"work,omitempty" jsonschema:"the work list start_work returned: the answer then says what comes next across it"`
+		Assumed   []engine.Assumed `json:"assumed,omitempty" jsonschema:"each decision you took for your person on this record with no document and no answer behind it: your person reviews each"`
 	}
 	settleOpen struct {
 		Check  string `json:"check"`
@@ -135,8 +136,9 @@ type (
 	}
 	proposeIn struct {
 		ChangeSet  string                       `json:"changeSet,omitempty" jsonschema:"the change set to propose; your latest open one when left out"`
-		Reason     string                       `json:"reason" jsonschema:"why, in a sentence the person will read"`
+		Reason     string                       `json:"reason,omitempty" jsonschema:"why, in a sentence the person will read; the change set's title when left out"`
 		OpenChecks map[string]map[string]string `json:"openChecks,omitempty" jsonschema:"only for checks you cannot meet without your person: Kind/id to (check id to why); every other open check refuses the proposal"`
+		Asked      string                       `json:"asked,omitempty" jsonschema:"with openChecks: what you asked your person about them and what they answered, or \"not available\" when you were told to work without them"`
 	}
 	nextIn struct {
 		ChangeSet string   `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
@@ -180,6 +182,7 @@ type (
 		// Checks the agent could not meet, each with why; the person sees
 		// them on the proposal.
 		OpenChecks map[string]string `json:"openChecks,omitempty" jsonschema:"only for a check you cannot meet without your person: check id to why it is left open; every other open check refuses the proposal"`
+		Asked      string            `json:"asked,omitempty" jsonschema:"with openChecks: what you asked your person about them and what they answered, or \"not available\" when you were told to work without them"`
 	}
 	proposeSetIn struct {
 		ChangeSet string        `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
@@ -187,6 +190,7 @@ type (
 		Reason    string        `json:"reason" jsonschema:"why, in a sentence the person will read"`
 		// Checks the agent could not meet, by Kind/id, then check id.
 		OpenChecks map[string]map[string]string `json:"openChecks,omitempty" jsonschema:"only for checks you cannot meet without your person: Kind/id to (check id to why); every other open check refuses the set"`
+		Asked      string                       `json:"asked,omitempty" jsonschema:"with openChecks: what you asked your person about them and what they answered, or \"not available\" when you were told to work without them"`
 	}
 	setMemberIn struct {
 		Kind     string         `json:"kind"`

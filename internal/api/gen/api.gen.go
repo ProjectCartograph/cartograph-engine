@@ -88,6 +88,51 @@ func (e ChangeSetItemOp) Valid() bool {
 	}
 }
 
+// Defines values for CharterPartDiffLinesOp.
+const (
+	CharterPartDiffLinesOpAdded   CharterPartDiffLinesOp = "added"
+	CharterPartDiffLinesOpRemoved CharterPartDiffLinesOp = "removed"
+	CharterPartDiffLinesOpSame    CharterPartDiffLinesOp = "same"
+)
+
+// Valid indicates whether the value is a known member of the CharterPartDiffLinesOp enum.
+func (e CharterPartDiffLinesOp) Valid() bool {
+	switch e {
+	case CharterPartDiffLinesOpAdded:
+		return true
+	case CharterPartDiffLinesOpRemoved:
+		return true
+	case CharterPartDiffLinesOpSame:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CharterPartDiffState.
+const (
+	CharterPartDiffStateAdded   CharterPartDiffState = "added"
+	CharterPartDiffStateChanged CharterPartDiffState = "changed"
+	CharterPartDiffStateRemoved CharterPartDiffState = "removed"
+	CharterPartDiffStateSame    CharterPartDiffState = "same"
+)
+
+// Valid indicates whether the value is a known member of the CharterPartDiffState enum.
+func (e CharterPartDiffState) Valid() bool {
+	switch e {
+	case CharterPartDiffStateAdded:
+		return true
+	case CharterPartDiffStateChanged:
+		return true
+	case CharterPartDiffStateRemoved:
+		return true
+	case CharterPartDiffStateSame:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ComponentNodeKind.
 const (
 	ComponentNodeKindProgramme ComponentNodeKind = "Programme"
@@ -648,16 +693,16 @@ func (e ProposalStatus) Valid() bool {
 
 // Defines values for Proposed.
 const (
-	Changed Proposed = "changed"
-	New     Proposed = "new"
+	ProposedChanged Proposed = "changed"
+	ProposedNew     Proposed = "new"
 )
 
 // Valid indicates whether the value is a known member of the Proposed enum.
 func (e Proposed) Valid() bool {
 	switch e {
-	case Changed:
+	case ProposedChanged:
 		return true
-	case New:
+	case ProposedNew:
 		return true
 	default:
 		return false
@@ -972,6 +1017,21 @@ type ApplyRequest struct {
 	Refs *[]string `json:"refs,omitempty"`
 }
 
+// Assumption A decision an agent took for its person with no document and no answer behind it (docs/adr/0033).
+type Assumption struct {
+	// Field The field it wrote, as a JSON pointer.
+	Field *string `json:"field,omitempty"`
+
+	// On The record it is on, as Kind/id.
+	On string `json:"on"`
+
+	// Took What the agent decided.
+	Took string `json:"took"`
+
+	// Why Why it decided without asking.
+	Why string `json:"why"`
+}
+
 // Change defines model for Change.
 type Change struct {
 	From interface{} `json:"from,omitempty"`
@@ -1004,12 +1064,15 @@ type ChangeControl struct {
 // ChangeSet A piece of work kept apart from the record and from every other piece of work until it is accepted, as a pull request is (docs/adr/0022).
 type ChangeSet struct {
 	// Agent The agent working in it, if one is.
-	Agent          *string    `json:"agent,omitempty"`
-	At             time.Time  `json:"at"`
-	DecidedAt      *time.Time `json:"decidedAt,omitempty"`
-	DecidedBy      *string    `json:"decidedBy,omitempty"`
-	DecisionReason *string    `json:"decisionReason,omitempty"`
-	Description    *string    `json:"description,omitempty"`
+	Agent *string `json:"agent,omitempty"`
+
+	// Assumptions What the agent decided on its person's behalf, with no document and no answer behind it, as it declared them (docs/adr/0033): each for the person to review.
+	Assumptions    *[]Assumption `json:"assumptions,omitempty"`
+	At             time.Time     `json:"at"`
+	DecidedAt      *time.Time    `json:"decidedAt,omitempty"`
+	DecidedBy      *string       `json:"decidedBy,omitempty"`
+	DecisionReason *string       `json:"decisionReason,omitempty"`
+	Description    *string       `json:"description,omitempty"`
 
 	// For The person it is for, who accepts it.
 	For *string `json:"for,omitempty"`
@@ -1117,6 +1180,25 @@ type CharterPart struct {
 	Step  *string `json:"step,omitempty"`
 	Title string  `json:"title"`
 }
+
+// CharterPartDiff One part of a charter as a change set leaves it, against the record.
+type CharterPartDiff struct {
+	Lines []struct {
+		Op   CharterPartDiffLinesOp `json:"op"`
+		Text string                 `json:"text"`
+	} `json:"lines"`
+	State CharterPartDiffState `json:"state"`
+
+	// Step The step of the project's walk the part is written in.
+	Step  *string `json:"step,omitempty"`
+	Title string  `json:"title"`
+}
+
+// CharterPartDiffLinesOp defines model for CharterPartDiff.Lines.Op.
+type CharterPartDiffLinesOp string
+
+// CharterPartDiffState defines model for CharterPartDiff.State.
+type CharterPartDiffState string
 
 // ComponentEdge defines model for ComponentEdge.
 type ComponentEdge struct {
@@ -3154,6 +3236,9 @@ type ServerInterface interface {
 	// CloseChangeSet End a change set without saving it.
 	// (POST /changesets/{set}/close)
 	CloseChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// GetChangeSetCharter The charter a change set leaves a project with, against the record
+	// (GET /changesets/{set}/items/Project/{id}/charter)
+	GetChangeSetCharter(w http.ResponseWriter, r *http.Request, set ChangeSetParam, id IdParam)
 	// MoveInChangeSet Make the change set move this project to another state when it is rolled in (docs/adr/0024): after its saves and deletes, checked as a direct state change is. A hand-off renders the charter then.
 	// (PUT /changesets/{set}/items/Project/{id}/state)
 	MoveInChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam, id IdParam)
@@ -3744,6 +3829,41 @@ func (siw *ServerInterfaceWrapper) CloseChangeSet(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CloseChangeSet(w, r, set)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetChangeSetCharter operation middleware
+func (siw *ServerInterfaceWrapper) GetChangeSetCharter(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "set" -------------
+	var set ChangeSetParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "set", r.PathValue("set"), &set, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "set", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetChangeSetCharter(w, r, set, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6874,6 +6994,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/changesets/{set}", wrapper.GetChangeSet)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/changesets/{set}", wrapper.RetitleChangeSet)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}/document", wrapper.GetChangeSetDocument)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/changesets/{set}/items/Project/{id}/charter", wrapper.GetChangeSetCharter)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}/removal", wrapper.RemoveInChangeSet)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/changesets/{set}/items/Project/{id}/state", wrapper.MoveInChangeSet)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/changesets/{set}/items/{kind}/{id}", wrapper.DropChangeSetItem)
@@ -7813,6 +7934,71 @@ func (response CloseChangeSet409JSONResponse) VisitCloseChangeSetResponse(w http
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetCharterRequestObject struct {
+	Set ChangeSetParam `json:"set"`
+	Id  IdParam        `json:"id"`
+}
+
+type GetChangeSetCharterResponseObject interface {
+	VisitGetChangeSetCharterResponse(w http.ResponseWriter) error
+}
+
+type GetChangeSetCharter200JSONResponse []CharterPartDiff
+
+func (response GetChangeSetCharter200JSONResponse) VisitGetChangeSetCharterResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetCharter401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetChangeSetCharter401JSONResponse) VisitGetChangeSetCharterResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetCharter403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetChangeSetCharter403JSONResponse) VisitGetChangeSetCharterResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetChangeSetCharter404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetChangeSetCharter404JSONResponse) VisitGetChangeSetCharterResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -13381,6 +13567,9 @@ type StrictServerInterface interface {
 	// CloseChangeSet End a change set without saving it.
 	// (POST /changesets/{set}/close)
 	CloseChangeSet(ctx context.Context, request CloseChangeSetRequestObject) (CloseChangeSetResponseObject, error)
+	// GetChangeSetCharter The charter a change set leaves a project with, against the record
+	// (GET /changesets/{set}/items/Project/{id}/charter)
+	GetChangeSetCharter(ctx context.Context, request GetChangeSetCharterRequestObject) (GetChangeSetCharterResponseObject, error)
 	// MoveInChangeSet Make the change set move this project to another state when it is rolled in (docs/adr/0024): after its saves and deletes, checked as a direct state change is. A hand-off renders the charter then.
 	// (PUT /changesets/{set}/items/Project/{id}/state)
 	MoveInChangeSet(ctx context.Context, request MoveInChangeSetRequestObject) (MoveInChangeSetResponseObject, error)
@@ -14047,6 +14236,33 @@ func (sh *strictHandler) CloseChangeSet(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CloseChangeSetResponseObject); ok {
 		if err := validResponse.VisitCloseChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetChangeSetCharter operation middleware
+func (sh *strictHandler) GetChangeSetCharter(w http.ResponseWriter, r *http.Request, set ChangeSetParam, id IdParam) {
+	var request GetChangeSetCharterRequestObject
+
+	request.Set = set
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetChangeSetCharter(ctx, request.(GetChangeSetCharterRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetChangeSetCharter")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetChangeSetCharterResponseObject); ok {
+		if err := validResponse.VisitGetChangeSetCharterResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

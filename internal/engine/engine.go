@@ -307,6 +307,19 @@ func schemaProblems(err error) []Problem {
 	if len(problems) == 0 {
 		problems = append(problems, Problem{Path: "", Message: err.Error()})
 	}
+	// A figure the document gives without its month is kept in the shape
+	// for what is not known yet, never dropped or dated by guess (eval run
+	// sonnet 003 removed a 41% baseline and a 90% target to pass this).
+	for i, p := range problems {
+		switch {
+		case strings.HasSuffix(p.Path, "/baseline") && (strings.Contains(p.Message, "'date'") || strings.Contains(p.Message, "'at'")):
+			problems[i].Message += `: a figure given with no month is kept as {"unknownReason": "41% in the 2025 audit; its month is not given"}, ` +
+				"with expectedBy where it is known, never dropped or dated by guess"
+		case strings.HasSuffix(p.Path, "/target") && strings.Contains(p.Message, "'due'"):
+			problems[i].Message += `: a target whose date is not set yet is kept as {"setWhen": {...}, "direction": "at least 90%"}, ` +
+				"never dropped or dated by guess"
+		}
+	}
 	return problems
 }
 

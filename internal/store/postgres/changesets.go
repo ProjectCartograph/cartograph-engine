@@ -15,14 +15,14 @@ import (
 
 var _ store.ChangeSetStore = (*ManifestStore)(nil)
 
-const changeSetColumns = `id, title, description, owner, agent, for_person, status, reason, waivers, at, updated, decided_by, decided_at, decision_reason`
+const changeSetColumns = `id, title, description, owner, agent, for_person, status, reason, waivers, at, updated, decided_by, decided_at, decision_reason, assumptions`
 
 func scanChangeSet(r pgx.Row) (store.ChangeSet, error) {
 	var cs store.ChangeSet
 	var decided *time.Time
-	var waivers string
+	var waivers, assumptions string
 	if err := r.Scan(&cs.ID, &cs.Title, &cs.Description, &cs.Owner, &cs.Agent, &cs.For, &cs.Status, &cs.Reason, &waivers,
-		&cs.At, &cs.Updated, &cs.DecidedBy, &decided, &cs.DecisionReason); err != nil {
+		&cs.At, &cs.Updated, &cs.DecidedBy, &decided, &cs.DecisionReason, &assumptions); err != nil {
 		return store.ChangeSet{}, err
 	}
 	cs.At, cs.Updated = cs.At.UTC(), cs.Updated.UTC()
@@ -32,6 +32,11 @@ func scanChangeSet(r pgx.Row) (store.ChangeSet, error) {
 	if waivers != "" {
 		if err := json.Unmarshal([]byte(waivers), &cs.Waivers); err != nil {
 			return store.ChangeSet{}, fmt.Errorf("change set %s waivers: %w", cs.ID, err)
+		}
+	}
+	if assumptions != "" {
+		if err := json.Unmarshal([]byte(assumptions), &cs.Assumptions); err != nil {
+			return store.ChangeSet{}, fmt.Errorf("change set %s assumptions: %w", cs.ID, err)
 		}
 	}
 	return cs, nil
@@ -54,14 +59,21 @@ func (m *ManifestStore) PutChangeSet(ctx context.Context, cs store.ChangeSet) er
 	if cs.Waivers == nil {
 		waivers = []byte("[]")
 	}
+	assumptions, err := json.Marshal(cs.Assumptions)
+	if err != nil {
+		return err
+	}
+	if cs.Assumptions == nil {
+		assumptions = []byte("[]")
+	}
 	_, err = m.q.Exec(ctx, `INSERT INTO change_sets (`+changeSetColumns+`)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, owner = EXCLUDED.owner,
 		agent = EXCLUDED.agent, for_person = EXCLUDED.for_person, status = EXCLUDED.status, reason = EXCLUDED.reason,
 		waivers = EXCLUDED.waivers, updated = EXCLUDED.updated, decided_by = EXCLUDED.decided_by,
-		decided_at = EXCLUDED.decided_at, decision_reason = EXCLUDED.decision_reason`,
+		decided_at = EXCLUDED.decided_at, decision_reason = EXCLUDED.decision_reason, assumptions = EXCLUDED.assumptions`,
 		cs.ID, cs.Title, cs.Description, cs.Owner, cs.Agent, cs.For, cs.Status, cs.Reason, string(waivers),
-		cs.At.UTC(), cs.Updated.UTC(), cs.DecidedBy, nullTime(cs.DecidedAt), cs.DecisionReason)
+		cs.At.UTC(), cs.Updated.UTC(), cs.DecidedBy, nullTime(cs.DecidedAt), cs.DecisionReason, string(assumptions))
 	if err != nil {
 		return fmt.Errorf("put change set: %w", err)
 	}

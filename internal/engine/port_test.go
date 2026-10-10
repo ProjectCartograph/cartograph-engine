@@ -127,3 +127,21 @@ func TestPortRecordsNameEachOtherByID(t *testing.T) {
 		t.Errorf("%d goals drafted, want 2: an id was read as a name", goals)
 	}
 }
+
+// A figure the document gives without its month is refused with the
+// shape that keeps it, never dropped (eval run sonnet 003 removed one).
+func TestAFigureWithoutItsMonthIsRefusedWithTheShapeThatKeepsIt(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	y := "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k1\n  name: Graded the same\nspec:\n  definition: Share of crates graded the same\n  direction: increase\n  baseline: {value: 41}\n"
+	problems, err := e.Validate(context.Background(), "KPI", []byte(y))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range problems {
+		if strings.HasSuffix(p.Path, "/baseline") && strings.Contains(p.Message, "unknownReason") {
+			return
+		}
+	}
+	t.Fatalf("no shape to keep the figure: %+v", problems)
+}

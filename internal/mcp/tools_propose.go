@@ -21,7 +21,7 @@ func registerProposeTools(s *sdk.Server, o Options, person identity.Principal) {
 			if err != nil {
 				return nil, err
 			}
-			return proposeChangeSet(c, cs, in.Reason, in.OpenChecks)
+			return proposeChangeSet(c, cs, in.Reason, in.Asked, in.OpenChecks)
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "propose_save", Description: "Propose your change set, after saving this manifest into it when you pass one: the same as propose, kept for agents that know it.", Annotations: proposal},
@@ -43,7 +43,7 @@ func registerProposeTools(s *sdk.Server, o Options, person identity.Principal) {
 			if len(in.OpenChecks) > 0 {
 				waive[in.Kind+"/"+in.ID] = in.OpenChecks
 			}
-			return proposeChangeSet(c, cs, in.Reason, waive)
+			return proposeChangeSet(c, cs, in.Reason, in.Asked, waive)
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "propose_set", Description: "Propose your change set, after saving these manifests into it when you pass them: the same as propose, kept for agents that know it.", Annotations: proposal},
@@ -64,7 +64,7 @@ func registerProposeTools(s *sdk.Server, o Options, person identity.Principal) {
 					return nil, err
 				}
 			}
-			return proposeChangeSet(c, cs, in.Reason, in.OpenChecks)
+			return proposeChangeSet(c, cs, in.Reason, in.Asked, in.OpenChecks)
 		})
 
 	tool(s, o, person, &sdk.Tool{Name: "propose_item", Description: "Propose recording one item of a series, such as a KPI reading (kind KPIReadings, series readings), for your person to accept.", Annotations: proposal},

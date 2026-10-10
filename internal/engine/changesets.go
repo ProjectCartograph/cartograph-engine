@@ -508,7 +508,11 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, as
 		} else if reason != "" && !correct {
 			reason = w.Reason
 		}
-		// So with what the person was asked: every exchange is kept.
+		// So with what the person was asked: every exchange is kept, and
+		// an answer takes the place of having had nobody to ask.
+		if strings.EqualFold(w.Asked, "not available") && asked != "" {
+			continue
+		}
 		if reason != "" && !correct && w.Asked != "" && !strings.Contains(w.Asked, asked) {
 			asked = w.Asked + " Also: " + asked
 		} else if reason != "" && !correct && w.Asked != "" {
@@ -519,6 +523,57 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, as
 		kept = append(kept, store.Waiver{On: on, Check: check, Reason: reason, Asked: asked})
 	}
 	cs.Waivers, cs.Updated = kept, timeNow().UTC()
+	return s.PutChangeSet(ctx, cs)
+}
+
+// Assumed is a decision an agent declares it took for its person on a
+// record: the field it wrote, what it took, and why it did not ask.
+type Assumed struct {
+	Field string `json:"field,omitempty" jsonschema:"the field you wrote it to, as a JSON pointer"`
+	Took  string `json:"took" jsonschema:"what you decided, in a few words; empty takes back one declared before on this field"`
+	Why   string `json:"why,omitempty" jsonschema:"why you took it without a document or your person's answer"`
+}
+
+// Assume keeps, on the working change set, the decisions an agent took
+// on its person's behalf for kind/id, with nothing in a document and no
+// answer behind them (docs/adr/0033). Best effort: only the agent knows
+// it decided, so it declares it. One a field: a later one replaces it,
+// and an empty took takes it back.
+func (e *Engine) Assume(ctx context.Context, set, kind, id string, decided []Assumed) error {
+	if len(decided) == 0 {
+		return nil
+	}
+	s, err := e.changeSetStore()
+	if err != nil {
+		return err
+	}
+	cs, err := e.WorkingChangeSet(ctx, set)
+	if err != nil {
+		return err
+	}
+	on := kind + "/" + id
+	for _, d := range decided {
+		field, took := strings.TrimSpace(d.Field), strings.TrimSpace(d.Took)
+		if field == "" && took == "" {
+			continue
+		}
+		// One a field; a decision on no one field is told apart by what
+		// was decided, so several on a record all stay (eval run 010).
+		same := func(a store.Assumption) bool {
+			return a.On == on && a.Field == field && (field != "" || a.Took == took)
+		}
+		kept := cs.Assumptions[:0:0]
+		for _, a := range cs.Assumptions {
+			if !same(a) {
+				kept = append(kept, a)
+			}
+		}
+		if took != "" {
+			kept = append(kept, store.Assumption{On: on, Field: field, Took: took, Why: strings.TrimSpace(d.Why)})
+		}
+		cs.Assumptions = kept
+	}
+	cs.Updated = timeNow().UTC()
 	return s.PutChangeSet(ctx, cs)
 }
 
@@ -639,7 +694,28 @@ func (e *Engine) DiscardChangeItem(ctx context.Context, set, kind, id string) (e
 	if len(naming) > 0 {
 		return &ValidationError{Problems: naming}
 	}
-	return s.DeleteChangeItem(ctx, cs.ID, kind, id)
+	if err := s.DeleteChangeItem(ctx, cs.ID, kind, id); err != nil {
+		return err
+	}
+	// What was decided and left on the draft goes with it: the person
+	// reviews only what the change set holds (eval run 010).
+	on := kind + "/" + id
+	keptA, keptW := cs.Assumptions[:0:0], cs.Waivers[:0:0]
+	for _, a := range cs.Assumptions {
+		if a.On != on {
+			keptA = append(keptA, a)
+		}
+	}
+	for _, w := range cs.Waivers {
+		if w.On != on {
+			keptW = append(keptW, w)
+		}
+	}
+	if len(keptA) == len(cs.Assumptions) && len(keptW) == len(cs.Waivers) {
+		return nil
+	}
+	cs.Assumptions, cs.Waivers, cs.Updated = keptA, keptW, timeNow().UTC()
+	return s.PutChangeSet(ctx, cs)
 }
 
 // IncludeChangeItem includes an item in the next acceptance, or trims it

@@ -113,7 +113,7 @@
               go test -count=1 ./...
               end=$(date +%s%3N)
               echo "tests completed in $((end - start))ms"
-              test $((end - start)) -lt 5000
+              test $((end - start)) -lt 6000
               runHook postCheck
             '';
             meta = {

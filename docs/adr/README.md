@@ -42,6 +42,7 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0030](0030-meaning-is-system-one.md) | Meaning in text is judged by a System-1 model, or not at all | Accepted |
 | [0031](0031-go-is-built-by-nix-per-module.md) | Go modules and their compiled packages come from the Nix store | Accepted |
 | [0032](0032-decisions-are-asked-in-rounds.md) | Decisions are asked in rounds the engine computes | Accepted |
+| [0033](0033-decisions-taken-for-the-person-are-kept-apart.md) | Decisions taken for the person are kept apart | Accepted |
 | [0034](0034-what-people-do-is-traced-by-its-shape.md) | What people do is traced by its shape | Accepted |
 
 ## Writing one

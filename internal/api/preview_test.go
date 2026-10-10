@@ -37,7 +37,7 @@ func TestTheWorkspaceReadsAsIfAChangeSetWereAccepted(t *testing.T) {
 
 	resp = doJSON(t, http.MethodGet, base+"/manifests/Team/t9?changeSet="+set, nil, nil)
 	view := decode[apigen.ManifestView](t, resp)
-	if view.Proposed == nil || *view.Proposed != apigen.New || !strings.Contains(view.Yaml, "Intake team") {
+	if view.Proposed == nil || *view.Proposed != apigen.ProposedNew || !strings.Contains(view.Yaml, "Intake team") {
 		t.Fatalf("a record the change set creates: %+v", view)
 	}
 	if resp := doJSON(t, http.MethodGet, base+"/manifests/Team/t9", nil, nil); resp.StatusCode != http.StatusNotFound {
@@ -103,5 +103,35 @@ func TestAChangeSetDeletesOverHTTP(t *testing.T) {
 	}
 	if resp := doJSON(t, http.MethodPut, base+"/changesets/"+set+"/items/Team/none/removal", nil, nil); resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("deleting what is not there: %d", resp.StatusCode)
+	}
+}
+
+// A change set's charter reads against the record: a project new in the
+// change set is added whole, its lines added (engine issue 30).
+func TestAChangeSetsCharterReadsAgainstTheRecord(t *testing.T) {
+	t.Parallel()
+	_, base := newTestServer(t)
+	commitTeam(t, base, "t1", "anyone")
+	resp := doJSON(t, http.MethodPost, base+"/changesets", map[string]string{"title": "A project"}, nil)
+	set := decode[apigen.ChangeSet](t, resp).Id
+	yaml := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p1\n  name: Depot checks\nspec:\n  team: t1\n  summary:\n    problems:\n" +
+		"      - id: pr-1\n        problem: {situation: depots grade produce differently}\n"
+	if resp := doJSON(t, http.MethodPut, base+"/changesets/"+set+"/items/Project/p1", apigen.ChangeSetEdit{Yaml: yaml}, nil); resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("draft: %d %s", resp.StatusCode, b)
+	}
+	resp = doJSON(t, http.MethodGet, base+"/changesets/"+set+"/items/Project/p1/charter", nil, nil)
+	parts := decode[[]apigen.CharterPartDiff](t, resp)
+	found := false
+	for _, p := range parts {
+		if p.State != apigen.CharterPartDiffStateAdded {
+			t.Fatalf("a part of a new project is not added: %+v", p)
+		}
+		for _, l := range p.Lines {
+			found = found || (l.Op == apigen.CharterPartDiffLinesOpAdded && l.Text == "Lead team")
+		}
+	}
+	if !found {
+		t.Fatalf("the lead team is not added in the diff: %+v", parts)
 	}
 }

@@ -14,13 +14,13 @@ import (
 
 var _ store.ChangeSetStore = (*ManifestStore)(nil)
 
-const changeSetColumns = `id, title, description, owner, agent, for_person, status, reason, waivers, at, updated, decided_by, decided_at, decision_reason`
+const changeSetColumns = `id, title, description, owner, agent, for_person, status, reason, waivers, at, updated, decided_by, decided_at, decision_reason, assumptions`
 
 func scanChangeSet(r rowScanner) (store.ChangeSet, error) {
 	var cs store.ChangeSet
-	var waivers, at, updated, decided string
+	var waivers, at, updated, decided, assumptions string
 	if err := r.Scan(&cs.ID, &cs.Title, &cs.Description, &cs.Owner, &cs.Agent, &cs.For, &cs.Status, &cs.Reason, &waivers,
-		&at, &updated, &cs.DecidedBy, &decided, &cs.DecisionReason); err != nil {
+		&at, &updated, &cs.DecidedBy, &decided, &cs.DecisionReason, &assumptions); err != nil {
 		return store.ChangeSet{}, err
 	}
 	cs.At, _ = unstamp(at)
@@ -29,6 +29,11 @@ func scanChangeSet(r rowScanner) (store.ChangeSet, error) {
 	if waivers != "" {
 		if err := json.Unmarshal([]byte(waivers), &cs.Waivers); err != nil {
 			return store.ChangeSet{}, fmt.Errorf("change set %s waivers: %w", cs.ID, err)
+		}
+	}
+	if assumptions != "" {
+		if err := json.Unmarshal([]byte(assumptions), &cs.Assumptions); err != nil {
+			return store.ChangeSet{}, fmt.Errorf("change set %s assumptions: %w", cs.ID, err)
 		}
 	}
 	return cs, nil
@@ -43,13 +48,20 @@ func (m *ManifestStore) PutChangeSet(ctx context.Context, cs store.ChangeSet) er
 	if cs.Waivers == nil {
 		waivers = []byte("[]")
 	}
-	_, err = m.ex.ExecContext(ctx, `INSERT INTO change_sets (`+changeSetColumns+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+	assumptions, err := json.Marshal(cs.Assumptions)
+	if err != nil {
+		return err
+	}
+	if cs.Assumptions == nil {
+		assumptions = []byte("[]")
+	}
+	_, err = m.ex.ExecContext(ctx, `INSERT INTO change_sets (`+changeSetColumns+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT (id) DO UPDATE SET title = excluded.title, description = excluded.description, owner = excluded.owner,
 		agent = excluded.agent, for_person = excluded.for_person, status = excluded.status, reason = excluded.reason,
 		waivers = excluded.waivers, updated = excluded.updated, decided_by = excluded.decided_by,
-		decided_at = excluded.decided_at, decision_reason = excluded.decision_reason`,
+		decided_at = excluded.decided_at, decision_reason = excluded.decision_reason, assumptions = excluded.assumptions`,
 		cs.ID, cs.Title, cs.Description, cs.Owner, cs.Agent, cs.For, cs.Status, cs.Reason, string(waivers),
-		stamp(cs.At), stamp(cs.Updated), cs.DecidedBy, stamp(cs.DecidedAt), cs.DecisionReason)
+		stamp(cs.At), stamp(cs.Updated), cs.DecidedBy, stamp(cs.DecidedAt), cs.DecisionReason, string(assumptions))
 	return err
 }
 
