@@ -599,6 +599,34 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /manifests/Project/{id}/round:
+    get:
+      operationId: getProjectRound
+      summary: The decisions a project's walk can settle now, in the order agents are asked them
+      description: >-
+        The frontier of the project's open checks (docs/adr/0032): what
+        the documents state (settle), what is the person's to decide (ask),
+        and the records to write next (write), each with the step and the
+        field that answer it and the id of its question; and how many wait
+        behind them. The same tree the MCP server hands an agent, so a
+        person and an agent walk a definition alike (#60).
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectRound"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /manifests/KPI/{id}/control:
     get:
       operationId: getKPIControlChart
@@ -4964,6 +4992,56 @@ components:
           enum: [Project, Programme]
         id:
           type: string
+    RoundTask:
+      type: object
+      required: [kind, id, check, state, message]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        check:
+          type: string
+        state:
+          type: string
+        message:
+          type: string
+        step:
+          type: string
+          description: The step of the walk that settles it.
+        do:
+          type: string
+          description: What the guidance says to do about it.
+        field:
+          type: string
+          description: The field that settles it, as a JSON pointer, where one field does.
+        question:
+          type: string
+          description: The id a round gives it, which an answer left with it names.
+    ProjectRound:
+      type: object
+      required: [settle, ask, write, waiting]
+      properties:
+        settle:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoundTask"
+          description: What the documents themselves state.
+        ask:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoundTask"
+          description: The person's decisions, every one answerable now.
+        write:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoundTask"
+          description: Records to write next, each settling a link.
+        waiting:
+          type: integer
+          description: Open checks behind this round, asked once its answers are given.
     StructureQuestion:
       type: object
       required: [field, question, then]
