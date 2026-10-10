@@ -558,6 +558,9 @@ func roundOf(c call, set string, found bool, workIn []string, locale string) (an
 		return nil, err
 	}
 	out := map[string]any{"settle": r.Settle, "ask": r.Ask, "write": r.Write, "waiting": r.Waiting}
+	if t := trianglesFor(c, r); len(t) > 0 {
+		out["triangle"] = t
+	}
 	switch {
 	case r.Done():
 		out["next"] = "Every check is met or left with your person's own answer. Show them what was decided (work_summary), " +
@@ -568,4 +571,42 @@ func roundOf(c call, set string, found bool, workIn []string, locale string) (an
 		out["how"] = roundHow
 	}
 	return out, nil
+}
+
+// triangleChecks are the checks a project's triple constraint settles
+// (TAXONOMY.md D60).
+var triangleChecks = map[string]bool{
+	"constraints-stated": true, "constraints-all-held": true,
+	"risks-constrained": true, "risks-held-accepted": true, "risks-spend-held": true,
+}
+
+// trianglesFor gives, for each project a round asks about its triple
+// constraint, each side's stance, weighted risk and the risks it
+// carries, so the person is asked how to hold a side knowing what it
+// carries.
+func trianglesFor(c call, r engine.Round) map[string]any {
+	out := map[string]any{}
+	tasks := append([]engine.Task(nil), r.Settle...)
+	for _, q := range r.Ask {
+		tasks = append(tasks, q.Task)
+	}
+	for _, t := range tasks {
+		if t.Kind != "Project" || !triangleChecks[t.Check] || out[t.ID] != nil {
+			continue
+		}
+		tri, err := c.o.Engine.Constraints(c.ctx, t.ID)
+		if err != nil {
+			continue
+		}
+		var sides []map[string]any
+		for _, s := range tri.Sides {
+			ids := make([]string, 0, len(s.Risks))
+			for _, rk := range s.Risks {
+				ids = append(ids, rk.ID)
+			}
+			sides = append(sides, map[string]any{"constraint": s.Constraint, "stance": s.Stance, "exposure": s.Exposure, "risks": ids})
+		}
+		out[t.ID] = map[string]any{"mostConstrained": tri.MostConstrained, "sides": sides, "unplaced": tri.Unplaced}
+	}
+	return out
 }
