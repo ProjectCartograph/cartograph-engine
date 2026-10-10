@@ -1593,6 +1593,22 @@ func TestAPortWithoutARegisterSaysSo(t *testing.T) {
 	}
 }
 
+// A note beside a figure is refused with where a guess belongs: declared
+// in assumed, so the person sees it (eval run 011 guessed a baseline's
+// month and could say so nowhere).
+func TestARefusedNoteNamesAssumed(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "Grading"})
+	kpi := map[string]any{"apiVersion": "cartograph/v1", "kind": "KPI", "metadata": map[string]any{"id": "graded-alike", "name": "Share graded alike"}, "spec": map[string]any{}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "KPI", "id": "graded-alike", "manifest": kpi})
+	_, text := callTool(t, cs, "settle", map[string]any{"kind": "KPI", "id": "graded-alike",
+		"set": map[string]any{"/spec/baseline": map[string]any{"date": "2025-12", "value": 41, "note": "The month is a guess"}}})
+	if !strings.Contains(text, "declare it in assumed") || !strings.Contains(text, `"field":"/spec/baseline/`) {
+		t.Fatalf("a refused note: %s", text)
+	}
+}
+
 // A decision the agent takes for its person, with no document and no
 // answer behind it, is kept apart for them to review (docs/adr/0033):
 // declared on settle, one a field, and taken back with an empty took.
