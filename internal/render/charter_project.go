@@ -178,6 +178,7 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 		d.costsBrief(p)
 	}
 
+	d.constraintsBrief(spec)
 	d.risksBrief(p, list(spec["risks"]))
 
 	// How anyone will know it worked, and who runs it afterwards.

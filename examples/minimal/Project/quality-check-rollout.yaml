@@ -196,6 +196,12 @@ spec:
       - id: rollout-to-every-depot
         name: Rollout to every depot
         months: 6
+  # The season fixes the dates; what the check covers can move first,
+  # and the budget can grow if both hold (TAXONOMY.md D60).
+  constraints:
+    scope: adjust
+    schedule: hold
+    cost: concede
   risks:
     - id: vendor-delay
       description: The quality check tool's printer runs low on supply during the pilot.
@@ -203,13 +209,25 @@ spec:
       impact: medium
       likelihood: low
       detection: high
+      affects:
+        - constraint: schedule
+          impact: medium
+      response: mitigate
       mitigation: Order a second season of forms before the pilot starts.
+      spends: cost
     - id: late-transcription
       description: Some quality check forms arrive at the depot office after the season closes.
       type: issue
       impact: medium
       likelihood: medium
+      affects:
+        - constraint: schedule
+          impact: medium
+        - constraint: cost
+          impact: low
+      response: mitigate
       mitigation: Move to same-day transcription during the pilot.
+      spends: cost
       escalate:
         flag: true
         reason: Late forms are already delaying quality reporting to the board this season.

@@ -192,6 +192,7 @@ func (d *doc) costsBrief(p plan) {
 // risksBrief prints the risks a sponsor must know: high impact, issues
 // already happening, and anything escalated. The rest are counted.
 func (d *doc) risksBrief(p plan, items []map[string]any) {
+	moves := movesOf(p.spec)
 	// Highest impact first, then likelihood; at most five, as a charter
 	// names the few risks that shape the decision.
 	order := map[string]int{"high": 0, "medium": 1, "low": 2}
@@ -219,14 +220,14 @@ func (d *doc) risksBrief(p plan, items []map[string]any) {
 		if owner == "" {
 			owner = label("role", "manager")
 		}
-		rows = append(rows, []string{chip("riskType", str(r["type"])), str(r["description"]), chip("level", str(r["impact"])), owner, str(r["mitigation"])})
+		rows = append(rows, []string{chip("riskType", str(r["type"])), str(r["description"]), chip("level", str(r["impact"])), moves[str(r["id"])], owner, responseOf(r)})
 	}
 	if len(rows) == 0 && len(items) == 0 {
 		return
 	}
 	d.h2("Key risks")
 	if len(rows) > 0 {
-		d.table([]string{"Type", "Risk", "Impact", "Owner", "Response"}, rows)
+		d.table([]string{"Type", "Risk", "Impact", "Moves", "Owner", "Response"}, rows)
 	}
 	if rest := len(items) - len(rows); rest > 0 {
 		d.note(fmt.Sprintf("%d more risk%s, dependencies and constraints of lower impact in Cartograph.", rest, plural(rest)))
