@@ -1575,3 +1575,41 @@ func TestARoundAsksIndependentRecordsTogether(t *testing.T) {
 		t.Fatalf("round asks %v, how %q: want both projects in one round, with how to ask: %.600s", asked, out.How, text)
 	}
 }
+
+// A round that asks how a project holds scope, schedule and cost carries
+// the triangle, so the person decides knowing what each side carries
+// (TAXONOMY.md D60).
+func TestARoundAskingTheStancesCarriesTheTriangle(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "Rollout"})
+	project := map[string]any{"apiVersion": "cartograph/v1", "kind": "Project", "metadata": map[string]any{"id": "rollout", "name": "Grading rollout"},
+		"spec": map[string]any{"risks": []any{map[string]any{"id": "board", "type": "risk", "description": "The board meets after the season opens",
+			"likelihood": "medium", "affects": []any{map[string]any{"constraint": "schedule", "impact": "high"}}}}}}
+	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "Project", "id": "rollout", "manifest": project}); res.IsError {
+		t.Fatalf("save_draft: %s", text)
+	}
+	res, text := callTool(t, cs, "round", map[string]any{"work": []string{"Project/rollout"}})
+	var out struct {
+		Ask []struct {
+			Check string `json:"check"`
+		} `json:"ask"`
+		Waiting  int `json:"waiting"`
+		Triangle map[string]struct {
+			MostConstrained string `json:"mostConstrained"`
+		} `json:"triangle"`
+	}
+	if res.IsError || json.Unmarshal([]byte(text), &out) != nil {
+		t.Fatalf("round: %s", text)
+	}
+	asked := false
+	for _, q := range out.Ask {
+		asked = asked || q.Check == "constraints-stated"
+	}
+	if !asked {
+		t.Fatalf("the stances are not asked (waiting %d): %.800s", out.Waiting, text)
+	}
+	if out.Triangle["rollout"].MostConstrained != "schedule" {
+		t.Fatalf("triangle %+v: %.800s", out.Triangle, text)
+	}
+}

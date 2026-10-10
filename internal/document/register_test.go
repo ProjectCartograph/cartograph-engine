@@ -71,3 +71,46 @@ func TestClipCutsAtABoundary(t *testing.T) {
 		}
 	}
 }
+
+const riskRegister = "    No.   Risk                               Schedule Impact   Cost Impact   Likelihood   Response Strategy   Mitigation\n\n" +
+	"    R1    The board meets after the season   High              Low           Medium       Reduce              Put the results to the board early\n\n" +
+	"    R2    Forms run short at the depots      Medium                          Low          Accept              Hold a reserve of forms\n"
+
+// A register that scores each side on its own places each risk on the
+// triple constraint, and reads its response strategy (TAXONOMY.md D60).
+func TestARiskRegisterPlacesRisksOnTheTripleConstraint(t *testing.T) {
+	t.Parallel()
+	items := document.RegisterItems("/spec/risks", document.ReadRegister(riskRegister))
+	if len(items) != 2 {
+		t.Fatalf("items %+v", items)
+	}
+	first := items[0]
+	affects, _ := first["affects"].([]any)
+	if len(affects) != 2 || affects[0].(map[string]any)["constraint"] != "schedule" || affects[0].(map[string]any)["impact"] != "high" ||
+		affects[1].(map[string]any)["constraint"] != "cost" || affects[1].(map[string]any)["impact"] != "low" {
+		t.Errorf("affects %+v", first["affects"])
+	}
+	if first["response"] != "mitigate" || items[1]["response"] != "accept" {
+		t.Errorf("responses %v, %v", first["response"], items[1]["response"])
+	}
+	if first["mitigation"] != "Put the results to the board early" {
+		t.Errorf("mitigation %v", first["mitigation"])
+	}
+}
+
+// A risk register written as a list ports as one written as columns: each
+// item, wrapped lines joined, is a risk.
+func TestARiskListPortsAsARegister(t *testing.T) {
+	t.Parallel()
+	text := "- Grader turnover at the two smallest depots could leave untrained\n  graders in post.\n- The quality committee may not meet in July, delaying approval.\n\nRoles follow.\n"
+	items := document.RegisterItems("/spec/risks", document.ReadList(text, "Risk", "R"))
+	if len(items) != 2 {
+		t.Fatalf("items %+v", items)
+	}
+	if items[0]["description"] != "Grader turnover at the two smallest depots could leave untrained graders in post." || items[0]["type"] != "risk" || items[0]["id"] != "r1" {
+		t.Errorf("first %+v", items[0])
+	}
+	if items[1]["id"] != "r2" {
+		t.Errorf("second %+v", items[1])
+	}
+}

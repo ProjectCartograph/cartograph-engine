@@ -56,6 +56,10 @@ type Criteria struct {
 	KPIs *KPIs `json:"kpis,omitempty"`
 	// Rounds judges the asking, with a person present.
 	Rounds *Rounds `json:"rounds,omitempty"`
+	// Triangle: every risk is placed on scope, schedule or cost, and each
+	// project says how it holds them, or the person was asked
+	// (TAXONOMY.md D60).
+	Triangle bool `json:"triangle,omitempty"`
 }
 
 // Structure is the main project's components, the services the work
@@ -311,6 +315,23 @@ func ScoreRun(ctx context.Context, srv Server, c Criteria, changeSet string, cal
 	}
 	if r := c.Rounds; r != nil {
 		scoreRounds(r, left, mine, add)
+	}
+	if c.Triangle {
+		// A risk's side is read from the risk, so it is never left; a stance
+		// is the person's, so it may be left only once they were asked.
+		var unplaced, unasked []string
+		for _, l := range left {
+			switch l.Check {
+			case "risks-constrained":
+				unplaced = append(unplaced, l.On)
+			case "constraints-stated":
+				if a := strings.TrimSpace(l.Asked); a == "" || strings.EqualFold(a, "not available") {
+					unasked = append(unasked, l.On)
+				}
+			}
+		}
+		add("triangle placed", len(projects) > 0 && len(unplaced) == 0 && len(unasked) == 0,
+			"%d projects; risks left on no side: %v; stances left without asking the person: %v", len(projects), unplaced, unasked)
 	}
 	out.Pass = len(out.Checks) > 0 && out.Passed() == len(out.Checks)
 	return out, nil

@@ -217,3 +217,41 @@ func TestScoreRunHoldsTheTaskToItsBar(t *testing.T) {
 		t.Errorf("no project was defined: %+v", c)
 	}
 }
+
+// A risk raised beside the milestone it bears on is in context; one
+// raised in the register is not; a version saved with the stances unsaid
+// counts against the project (TAXONOMY.md D60).
+func TestCrossCuttingElementsAreMeasured(t *testing.T) {
+	t.Parallel()
+	flows, err := Flows()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t0 := time.Date(2026, 10, 10, 9, 0, 0, 0, time.UTC)
+	ui := func(d time.Duration, e Event) Event {
+		e.At, e.Source, e.Session, e.Person, e.Kind, e.Record = t0.Add(d), Interface, "w", "p", "Project", "p1"
+		return e
+	}
+	acts := []Event{
+		ui(0, Event{Name: FlowOpen, Target: "new"}),
+		ui(time.Second, Event{Name: FieldSet, Step: "timeline", Field: "/spec/risks/{late-board}/affects"}),
+		ui(2*time.Second, Event{Name: FieldSet, Step: "risks", Field: "/spec/risks/{rain}/description"}),
+		ui(3*time.Second, Event{Name: FieldSet, Step: "risks", Field: "/spec/risks/{rain}/likelihood"}),
+		{At: t0.Add(time.Minute), Name: VersionSave, Source: Server, Person: "p", Kind: "Project", Record: "p1", Outcome: OK,
+			Checks: []string{"constraints-stated", "risks-constrained"}},
+	}
+	r := Analyse(acts, flows, Options{})
+	got := map[string]Criterion{}
+	for _, c := range r.CrossCutting {
+		got[c.Name] = c
+	}
+	if c := got["a risk raised in the register, not where it bears"]; c.Count != 2 || c.Base != 3 {
+		t.Errorf("in the register: %+v", c)
+	}
+	if c := got["a side with no stance when saved"]; c.Count != 1 || c.Base != 1 {
+		t.Errorf("no stance: %+v", c)
+	}
+	if c := got["a risk on no side when saved"]; c.Count != 1 {
+		t.Errorf("no side: %+v", c)
+	}
+}

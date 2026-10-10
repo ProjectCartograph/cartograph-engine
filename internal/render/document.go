@@ -265,6 +265,9 @@ var sectionSteps = map[string]string{
 	"Milestones":                     "timeline",
 	"Schedule and milestones":        "timeline",
 	"Risks, issues and dependencies": "risks",
+	"Key risks":                      "risks",
+	"Scope, schedule and cost":       "risks",
+	"Schedule":                       "timeline",
 	"Data requirements":              "data",
 	"Approval":                       "approval",
 	"Record of events":               "approval",
@@ -578,7 +581,7 @@ nav.contents ol { columns: 2; column-gap: 2.5rem; }
   p.note { margin: .25rem 0 .7rem; }
   a { color: inherit; text-decoration: none; }
 }
-` + diagramCSS + `</style>
+` + diagramCSS + triangleCSS + `</style>
 </head>
 <body>
 <header class="cover">

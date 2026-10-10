@@ -569,6 +569,34 @@
             "control": "list",
             "title": "Out of scope",
             "hint": "What people might expect that this will not do."
+          },
+          {
+            "path": "/spec/constraints/scope",
+            "control": "choice",
+            "title": "Scope",
+            "hint": "When something has to give: hold it, adjust it first, or concede it.",
+            "checks": [
+              "constraints-stated",
+              "constraints-all-held"
+            ]
+          },
+          {
+            "path": "/spec/constraints/schedule",
+            "control": "choice",
+            "title": "Schedule",
+            "checks": [
+              "constraints-stated",
+              "constraints-all-held"
+            ]
+          },
+          {
+            "path": "/spec/constraints/cost",
+            "control": "choice",
+            "title": "Cost",
+            "checks": [
+              "constraints-stated",
+              "constraints-all-held"
+            ]
           }
         ]
       },
@@ -844,7 +872,10 @@
               "risks-escalated",
               "risks-dependency-edges",
               "risks-dependency-cycle",
-              "risks-dependency-schedule"
+              "risks-dependency-schedule",
+              "risks-constrained",
+              "risks-held-accepted",
+              "risks-spend-held"
             ],
             "fields": [
               {
@@ -868,14 +899,56 @@
                 "control": "choice"
               },
               {
+                "path": "/affects",
+                "control": "list",
+                "key": "constraint",
+                "title": "Would move",
+                "hint": "Scope, schedule or cost, and how far.",
+                "fields": [
+                  {
+                    "path": "/constraint",
+                    "control": "choice"
+                  },
+                  {
+                    "path": "/impact",
+                    "control": "choice",
+                    "title": "How far"
+                  },
+                  {
+                    "path": "/on",
+                    "control": "reference",
+                    "title": "Bears on"
+                  }
+                ],
+                "checks": [
+                  "risks-constrained"
+                ]
+              },
+              {
                 "path": "/detection",
                 "control": "choice"
+              },
+              {
+                "path": "/response",
+                "control": "choice",
+                "title": "Response",
+                "checks": [
+                  "risks-held-accepted"
+                ]
               },
               {
                 "path": "/mitigation",
                 "control": "sentence",
                 "checks": [
                   "risks-mitigation"
+                ]
+              },
+              {
+                "path": "/spends",
+                "control": "choice",
+                "title": "The response spends",
+                "checks": [
+                  "risks-spend-held"
                 ]
               },
               {

@@ -1727,3 +1727,36 @@ deliverable needing redesign, a milestone slipped, with **cause** naming the
 event it follows from, recorded in one change set with the trigger, so the
 chain from cause to every reaction is kept. Nothing is rescheduled: the
 person decides what changes.
+
+### D60. A risk is placed on scope, schedule and cost. *(resolved)*
+
+**The problem.** Risks were one list at the end of the charter, while
+what they threaten sits in its other sections: a late board decision
+threatens a milestone, an uncosted service a cost line, a supplier
+failing a deliverable. Nothing said which side of the work a risk would
+move, so nobody could see where the project was most exposed, nor hold
+the responses to what the project could afford to give up (engine #37).
+
+**The discipline.** The project management triangle (the triple
+constraint) holds scope, schedule and cost against each other: when one
+moves, another pays. PMBOK rates a risk's impact on each project
+objective on its own scale, not one impact for everything, and the
+project flexibility matrix asks, before the work starts, which
+constraint is held, which adjusts first and which is conceded. Risk
+responses to a threat are avoid, mitigate, transfer and accept, with
+escalation for what is beyond the project's authority.
+
+**What Cartograph does.** A risk keeps its overall impact and
+likelihood, and gains **affects**: each side it would move (scope,
+schedule or cost), how far, and the deliverable, milestone or cost line
+it bears on, if one. A milestone whose timing names a risk (D47) is read
+as that risk affecting schedule there, so documents saved before keep
+their meaning; nothing is written back. The risk's **response** is one
+of the four, and **spends** names the side the response draws on. The
+project's **constraints** say, for each side, hold, adjust or concede.
+The engine works out each side's **exposure**, likelihood times impact
+on it summed over its risks, so every interface and the charter show
+which side is most constrained; checks advise when a risk sits on no
+side, when a held side's risk is only accepted, and when a response
+spends a held side. A risk is declared once, in the register, and shown
+beside everything it bears on; the register reads as the overview.

@@ -44,6 +44,10 @@ func WholeFile(text string, fileSize int) error {
 var writtenFromTheDocument = map[string]bool{
 	"goals-objective": true, "aim-problem-change": true, "beneficiaries-named": true, "scope-in": true,
 	"deliverables-count": true, "success-criteria": true, "timeline-start-phases": true, "aim-mandate": true,
+	// Which of scope, schedule and cost a risk would move is read from the
+	// risk as the document writes it and where it puts it (TAXONOMY.md
+	// D60): the agent places it, rather than leaving it for the person.
+	"risks-constrained": true,
 }
 
 // WrittenFromTheDocument reports whether a check is on what a document
@@ -53,6 +57,12 @@ func WrittenFromTheDocument(check string) bool { return writtenFromTheDocument[c
 // MayLeave refuses leaving open, with no person to ask, a check the
 // document answers.
 func MayLeave(check, asked string) error {
+	// A risk always moves something its own words name: which side is
+	// read from the risk, so it is placed, never left (TAXONOMY.md D60).
+	if check == "risks-constrained" {
+		return fmt.Errorf("%w: risks-constrained is never left open: place each risk on the side its words say it would move "+
+			"(scope, schedule or cost; edit_draft /spec/risks/{id}/affects), on the deliverable, milestone or cost line the document puts it beside", ErrBadEdit)
+	}
 	if writtenFromTheDocument[check] && strings.EqualFold(strings.TrimSpace(asked), "not available") {
 		return fmt.Errorf("%w: %s is what the document itself says: write it from the document, rather than leave it open. "+
 			"If the document truly does not say it, do not propose: tell your person what it lacks", ErrBadEdit, check)

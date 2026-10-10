@@ -106,6 +106,48 @@ func (e ComponentNodeKind) Valid() bool {
 	}
 }
 
+// Defines values for ConstraintSideConstraint.
+const (
+	SideCost     ConstraintSideConstraint = "cost"
+	SideSchedule ConstraintSideConstraint = "schedule"
+	SideScope    ConstraintSideConstraint = "scope"
+)
+
+// Valid indicates whether the value is a known member of the ConstraintSideConstraint enum.
+func (e ConstraintSideConstraint) Valid() bool {
+	switch e {
+	case SideCost:
+		return true
+	case SideSchedule:
+		return true
+	case SideScope:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConstraintSideStance.
+const (
+	StanceAdjust  ConstraintSideStance = "adjust"
+	StanceConcede ConstraintSideStance = "concede"
+	StanceHold    ConstraintSideStance = "hold"
+)
+
+// Valid indicates whether the value is a known member of the ConstraintSideStance enum.
+func (e ConstraintSideStance) Valid() bool {
+	switch e {
+	case StanceAdjust:
+		return true
+	case StanceConcede:
+		return true
+	case StanceHold:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ControlChartPointsSignals.
 const (
 	Beyond ControlChartPointsSignals = "beyond"
@@ -1132,6 +1174,52 @@ type ConflictResponse struct {
 	// Theirs The YAML text currently on disk (vault only)
 	Theirs string `json:"theirs"`
 }
+
+// ConstraintRisk defines model for ConstraintRisk.
+type ConstraintRisk struct {
+	Id     string  `json:"id"`
+	Impact *string `json:"impact,omitempty"`
+
+	// Implied Placed on the schedule by a milestone whose timing names it, not by the risk itself.
+	Implied    *bool   `json:"implied,omitempty"`
+	Likelihood *string `json:"likelihood,omitempty"`
+
+	// On The deliverable, milestone or cost line it bears on.
+	On       *string `json:"on,omitempty"`
+	Response *string `json:"response,omitempty"`
+	Spends   *string `json:"spends,omitempty"`
+	Type     string  `json:"type"`
+
+	// Weight Likelihood times impact on this side; 0 when either is missing.
+	Weight int `json:"weight"`
+}
+
+// ConstraintSide defines model for ConstraintSide.
+type ConstraintSide struct {
+	Constraint ConstraintSideConstraint `json:"constraint"`
+
+	// Exposure The sum over its risks of likelihood times impact on this side.
+	Exposure int              `json:"exposure"`
+	Risks    []ConstraintRisk `json:"risks"`
+
+	// Share This side's part of the exposure of all three, from 0 to 1.
+	Share float32 `json:"share"`
+
+	// Stance Absent when the project has not said.
+	Stance *ConstraintSideStance `json:"stance,omitempty"`
+
+	// Unanswered Its risks with neither a response nor a mitigation.
+	Unanswered int `json:"unanswered"`
+
+	// Unweighed Its risks with no likelihood or no impact on it.
+	Unweighed int `json:"unweighed"`
+}
+
+// ConstraintSideConstraint defines model for ConstraintSide.Constraint.
+type ConstraintSideConstraint string
+
+// ConstraintSideStance Absent when the project has not said.
+type ConstraintSideStance string
 
 // ControlChart defines model for ControlChart.
 type ControlChart struct {
@@ -2299,6 +2387,18 @@ type Summary struct {
 	Version   int       `json:"version"`
 }
 
+// TripleConstraint defines model for TripleConstraint.
+type TripleConstraint struct {
+	// MostConstrained The side with the most weighted risk; absent when none carries any or two lead together.
+	MostConstrained *string `json:"mostConstrained,omitempty"`
+
+	// Sides Scope, schedule and cost, in that order.
+	Sides []ConstraintSide `json:"sides"`
+
+	// Unplaced The ids of risks and issues that name no side.
+	Unplaced *[]string `json:"unplaced,omitempty"`
+}
+
 // Understanding defines model for Understanding.
 type Understanding struct {
 	// Available False when no decision model answered; matches are then by the words they share, and there are no routes.
@@ -2659,6 +2759,12 @@ type GetProjectCharterPartsParams struct {
 
 // GetProjectChecksParams defines parameters for GetProjectChecks.
 type GetProjectChecksParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
+// GetProjectConstraintsParams defines parameters for GetProjectConstraints.
+type GetProjectConstraintsParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
@@ -3159,6 +3265,9 @@ type ServerInterface interface {
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
 	GetProjectChecks(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectChecksParams)
+	// GetProjectConstraints A project's triple constraint, and how exposed each side is to its risks
+	// (GET /manifests/Project/{id}/constraints)
+	GetProjectConstraints(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectConstraintsParams)
 	// GetProjectDMAIC Whether a project can be taken through DMAIC, phase by phase
 	// (GET /manifests/Project/{id}/dmaic)
 	GetProjectDMAIC(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectDMAICParams)
@@ -4988,6 +5097,48 @@ func (siw *ServerInterfaceWrapper) GetProjectChecks(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// GetProjectConstraints operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectConstraints(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectConstraintsParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProjectConstraints(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetProjectDMAIC operation middleware
 func (siw *ServerInterfaceWrapper) GetProjectDMAIC(w http.ResponseWriter, r *http.Request) {
 
@@ -6675,6 +6826,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/manifests/Goal/{id}", wrapper.DeleteGoal)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/checks", wrapper.GetProjectChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/dmaic", wrapper.GetProjectDMAIC)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/constraints", wrapper.GetProjectConstraints)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/KPI/{id}/control", wrapper.GetKPIControlChart)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.GetProjectState)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.TransitionProjectState)
@@ -10026,6 +10178,71 @@ func (response GetProjectChecks404JSONResponse) VisitGetProjectChecksResponse(w 
 	return err
 }
 
+type GetProjectConstraintsRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetProjectConstraintsParams
+}
+
+type GetProjectConstraintsResponseObject interface {
+	VisitGetProjectConstraintsResponse(w http.ResponseWriter) error
+}
+
+type GetProjectConstraints200JSONResponse TripleConstraint
+
+func (response GetProjectConstraints200JSONResponse) VisitGetProjectConstraintsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectConstraints401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetProjectConstraints401JSONResponse) VisitGetProjectConstraintsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectConstraints403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProjectConstraints403JSONResponse) VisitGetProjectConstraintsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectConstraints404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProjectConstraints404JSONResponse) VisitGetProjectConstraintsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetProjectDMAICRequestObject struct {
 	Id     IdParam `json:"id"`
 	Params GetProjectDMAICParams
@@ -13275,6 +13492,9 @@ type StrictServerInterface interface {
 	// GetProjectChecks Every per-section check for a project (goals, aim, scope, deliverables, beneficiaries, timeline, data, risks, closing, landing). Checks never block a save; state block stops submission.
 	// (GET /manifests/Project/{id}/checks)
 	GetProjectChecks(ctx context.Context, request GetProjectChecksRequestObject) (GetProjectChecksResponseObject, error)
+	// GetProjectConstraints A project's triple constraint, and how exposed each side is to its risks
+	// (GET /manifests/Project/{id}/constraints)
+	GetProjectConstraints(ctx context.Context, request GetProjectConstraintsRequestObject) (GetProjectConstraintsResponseObject, error)
 	// GetProjectDMAIC Whether a project can be taken through DMAIC, phase by phase
 	// (GET /manifests/Project/{id}/dmaic)
 	GetProjectDMAIC(ctx context.Context, request GetProjectDMAICRequestObject) (GetProjectDMAICResponseObject, error)
@@ -14873,6 +15093,33 @@ func (sh *strictHandler) GetProjectChecks(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProjectChecksResponseObject); ok {
 		if err := validResponse.VisitGetProjectChecksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProjectConstraints operation middleware
+func (sh *strictHandler) GetProjectConstraints(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectConstraintsParams) {
+	var request GetProjectConstraintsRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProjectConstraints(ctx, request.(GetProjectConstraintsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProjectConstraints")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProjectConstraintsResponseObject); ok {
+		if err := validResponse.VisitGetProjectConstraintsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

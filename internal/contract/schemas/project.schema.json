@@ -834,7 +834,96 @@
                     "description": "When the work waiting needs it (TAXONOMY.md D47): a month, a window, or after one of this project's milestones. A dependency the other project's milestones place after it is a schedule conflict."
                   }
                 }
+              },
+              "affects": {
+                "type": "array",
+                "x-cartograph-list-key": "constraint",
+                "description": "Which of scope, schedule and cost this would move, and by how much on each: the impact on each project objective, rated on its own (TAXONOMY.md D60). on names the deliverable, milestone or cost line it bears on, when it bears on one.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "constraint"
+                  ],
+                  "properties": {
+                    "constraint": {
+                      "type": "string",
+                      "enum": [
+                        "scope",
+                        "schedule",
+                        "cost"
+                      ],
+                      "description": "The side of the triangle it would move."
+                    },
+                    "impact": {
+                      "type": "string",
+                      "enum": [
+                        "low",
+                        "medium",
+                        "high"
+                      ],
+                      "description": "How far it would move that side if it happened."
+                    },
+                    "on": {
+                      "$ref": "common.schema.json#/$defs/Slug",
+                      "description": "The id of the deliverable (scope), milestone (schedule) or cost line (cost) of this project it bears on."
+                    }
+                  }
+                }
+              },
+              "response": {
+                "type": "string",
+                "enum": [
+                  "avoid",
+                  "mitigate",
+                  "transfer",
+                  "accept"
+                ],
+                "description": "How the project answers it: avoid (change the plan so it cannot happen), mitigate (make it less likely or less harmful), transfer (another party carries it) or accept (carry it as it is). Escalating is escalate."
+              },
+              "spends": {
+                "type": "string",
+                "enum": [
+                  "scope",
+                  "schedule",
+                  "cost"
+                ],
+                "description": "The side of the triangle the response draws on: a mitigation that costs money spends cost, one that adds work spends scope or schedule."
               }
+            }
+          }
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "How the project holds scope, schedule and cost when something has to give (the project flexibility matrix, TAXONOMY.md D60): which is fixed, which moves first, which is given up.",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": [
+                "hold",
+                "adjust",
+                "concede"
+              ],
+              "description": "How the project treats its scope when something has to give: hold it fixed, adjust it first, or concede it."
+            },
+            "schedule": {
+              "type": "string",
+              "enum": [
+                "hold",
+                "adjust",
+                "concede"
+              ],
+              "description": "How the project treats its schedule when something has to give: hold it fixed, adjust it first, or concede it."
+            },
+            "cost": {
+              "type": "string",
+              "enum": [
+                "hold",
+                "adjust",
+                "concede"
+              ],
+              "description": "How the project treats its cost when something has to give: hold it fixed, adjust it first, or concede it."
             }
           }
         },

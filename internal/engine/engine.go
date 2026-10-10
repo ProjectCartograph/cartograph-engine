@@ -354,7 +354,7 @@ func docID(doc map[string]any) (string, bool) {
 // actor is recorded as given (see checkActor's own doc comment for why actor
 // validation was removed).
 func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, actor, reason string) (_ Version, err error) {
-	defer func() { e.noteOutcome(ctx, activity.Event{Name: activity.VersionSave, Kind: kind, Record: id}, err) }()
+	defer func() { e.noteVersion(ctx, kind, id, yamlBytes, err) }()
 	if err := refuseAgent(ctx); err != nil {
 		return Version{}, err
 	}

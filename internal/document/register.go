@@ -215,6 +215,12 @@ func headerRole(h string) string {
 	h = strings.ToLower(h)
 	for _, r := range []struct{ role, words string }{
 		{"code", "no.|ref|id|#|code"},
+		// A side's own impact column comes before impact in general, and
+		// a strategy column before the response it names.
+		{"scheduleImpact", "schedule impact|time impact|impact on schedule|impact on time|delay impact"},
+		{"costImpact", "cost impact|budget impact|financial impact|impact on cost|impact on budget"},
+		{"scopeImpact", "scope impact|impact on scope"},
+		{"strategy", "strategy|response type|treatment type"},
 		{"mitigation", "mitigation|response|treatment|action"},
 		{"impact", "impact|severity"},
 		{"likelihood", "likelihood|probability"},
@@ -334,6 +340,22 @@ func RegisterItems(field string, rows []RegisterRow) []map[string]any {
 			}
 			if o := leadOf(byRole["owner"]); o != "" {
 				item["owner"] = o
+			}
+			// A register that scores each side on its own places the risk
+			// on the triple constraint (TAXONOMY.md D60).
+			var affects []any
+			for _, side := range []struct{ role, constraint string }{
+				{"scopeImpact", "scope"}, {"scheduleImpact", "schedule"}, {"costImpact", "cost"},
+			} {
+				if lvl := level(byRole[side.role]); lvl != "" {
+					affects = append(affects, map[string]any{"constraint": side.constraint, "impact": lvl})
+				}
+			}
+			if len(affects) > 0 {
+				item["affects"] = affects
+			}
+			if r := responseOf(byRole["strategy"]); r != "" {
+				item["response"] = r
 			}
 		case "kpis":
 			// An indicator row carries a baseline or a target; a fragment
@@ -646,6 +668,58 @@ func WorkstreamNames(sections []Section) []string {
 			}
 			i = to
 		}
+	}
+	return out
+}
+
+// responseOf reads a risk's response strategy as a register writes it:
+// the four PMBOK responses to a threat, with the words registers use for
+// each ("reduce" is to mitigate, "retain" or "tolerate" to accept).
+func responseOf(cell string) string {
+	c := strings.ToLower(cell)
+	for _, r := range []struct{ response, words string }{
+		{"avoid", "avoid|eliminat"},
+		{"transfer", "transfer|insur|share|outsourc"},
+		{"accept", "accept|retain|toleran|tolerat"},
+		{"mitigate", "mitigat|reduc|lessen|control"},
+	} {
+		for _, w := range strings.Split(r.words, "|") {
+			if strings.Contains(c, w) {
+				return r.response
+			}
+		}
+	}
+	return ""
+}
+
+var listItem = regexp.MustCompile(`^\s{0,3}(?:[-*•]|[0-9]{1,2}[.)])\s+(.*)$`)
+
+// ReadList reads a section written as a list rather than a table: each
+// item, its wrapped lines joined, is a row whose one cell is under
+// header, coded by its place (R1, R2, ...), so a register written as
+// bullets ports as one written as columns does.
+func ReadList(text, header, prefix string) []RegisterRow {
+	var items []string
+	for _, l := range strings.Split(text, "\n") {
+		if m := listItem.FindStringSubmatch(l); m != nil {
+			items = append(items, strings.TrimSpace(m[1]))
+			continue
+		}
+		t := strings.TrimSpace(l)
+		if t == "" || len(items) == 0 {
+			continue
+		}
+		// A wrapped line carries on the item above it; anything else ends
+		// the list.
+		if strings.HasPrefix(l, " ") {
+			items[len(items)-1] += " " + t
+			continue
+		}
+		break
+	}
+	out := make([]RegisterRow, 0, len(items))
+	for i, it := range items {
+		out = append(out, RegisterRow{Code: fmt.Sprintf("%s%d", prefix, i+1), Cells: map[string]string{header: it}})
 	}
 	return out
 }

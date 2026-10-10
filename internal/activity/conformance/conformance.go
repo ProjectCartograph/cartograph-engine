@@ -22,7 +22,7 @@ func Run(t *testing.T, open Open) {
 	acts := []activity.Event{
 		{At: t0.Add(2 * time.Second), Name: activity.VersionSave, Source: activity.Server, Person: "p", Build: "2.11.0",
 			Kind: "Goal", Record: "g1", ChangeSet: "cs1", Outcome: activity.Refused, Problems: 2,
-			Paths: []string{"/spec/objective", "/spec/keyResults/-/target"}},
+			Paths: []string{"/spec/objective", "/spec/keyResults/-/target"}, Checks: []string{"risks-constrained"}},
 		{At: t0, Name: activity.FlowOpen, Source: activity.Interface, Session: "w1", Person: "p", Interface: "web",
 			Surface: "goals/$id", Kind: "Goal", Record: "g1", Target: "new"},
 		{At: t0.Add(time.Second), Name: activity.Press, Source: activity.Interface, Session: "w1", Person: "p",

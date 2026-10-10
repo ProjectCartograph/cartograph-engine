@@ -214,5 +214,13 @@ func (e *Engine) RegisterOf(ctx context.Context, set, section, field string) ([]
 	if err != nil {
 		return nil, err
 	}
-	return document.RegisterItems(field, document.ReadRegister(secs[0].Text)), nil
+	rows := document.ReadRegister(secs[0].Text)
+	// A risk register is often a list, not a table. Under a heading that
+	// names risks or issues, each item is a risk, written as columns are,
+	// so every risk reaches the triangle (TAXONOMY.md D60). An assumption
+	// is not a risk, though its heading feeds the same list.
+	if h := strings.ToLower(secs[0].Heading); len(rows) == 0 && field == "/spec/risks" && (strings.Contains(h, "risk") || strings.Contains(h, "issue")) {
+		rows = document.ReadList(secs[0].Text, "Risk", "R")
+	}
+	return document.RegisterItems(field, rows), nil
 }

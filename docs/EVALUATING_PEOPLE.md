@@ -137,6 +137,35 @@ A diff with noise is the defect "A save changes what you changed, and
 nothing else" (`DESIGN_RULES.md`) was written against; it is next to
 measure.
 
+### Cross-cutting elements: what bears on several sections at once
+
+Some of what a person records belongs to no one section: it bears on
+several. A risk threatens a milestone, a deliverable or a cost line,
+and moves scope, schedule or cost (TAXONOMY.md D60). An assumption sits
+on the link it conditions. A dependency joins two pieces of work. An
+owner is a role named in many places. A timing names the risks that
+could move it (D47). Each is declared once and shown wherever it bears,
+and each has two ways to go wrong: it is captured away from where it
+bears, so the person leaves the section to record it and back
+(transport), or it is saved without being placed, so the record cannot
+say what it threatens (a defect).
+
+| Criterion | Seen as | Figure |
+|---|---|---|
+| A risk raised in the register, not where it bears | an answer about a risk given in the risks step rather than beside the deliverable, milestone or cost line | share of risk answers |
+| A risk on no side when saved | a project version with `risks-constrained` open | per hundred project versions |
+| A side with no stance when saved | a project version with `constraints-stated` open | per hundred project versions |
+| A held side's risk only accepted when saved | a project version with `risks-held-accepted` open | per hundred project versions |
+| A response spending a held side when saved | a project version with `risks-spend-held` open | per hundred project versions |
+
+The server records, with each version a person saves, the ids of the
+checks still open on it: what was left unmet when they decided, never
+what was written. `cartograph ux` prints these under "Cross-cutting".
+The register stays the place to see every risk at once and to add one;
+a share of risks raised there is expected, and the figure is read
+against its own baseline, not against zero. Assumptions, dependencies
+and owners are measured the same way as their checks name them.
+
 ## Measure
 
 ### Where the figures come from
