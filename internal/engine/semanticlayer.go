@@ -125,7 +125,7 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		def, _ := spec["definition"].(string)
 		filter, _ := mt["filter"].(string)
 		name := dbtName(d.id)
-		m := semantic.Metric{Name: name, KPI: d.id, Label: nameOf(d.doc, d.id), Description: def, Filter: filter}
+		m := semantic.Metric{Name: name, KPI: d.id, Label: nameOf(d.doc, d.id), Description: withFormula(def, mt), Filter: filter}
 		m.Type, _ = mt["type"].(string)
 		ok := true
 		switch m.Type {
@@ -159,4 +159,39 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		}
 	}
 	return l, notes, nil
+}
+
+// whereWords are the conditions' comparisons, as the description reads them.
+var whereWords = map[string]string{"is": "is", "isNot": "is not", "above": "is above", "below": "is below", "atLeast": "is at least", "atMost": "is at most", "oneOf": "is one of"}
+
+// withFormula adds to a metric's description what its definer said it
+// counts and which rows count, in their words (TAXONOMY.md D63): what an
+// analyst maps to columns and a filter, carried into the export.
+func withFormula(def string, mt map[string]any) string {
+	var parts []string
+	for _, side := range []string{"measure", "numerator", "denominator"} {
+		if m, ok := mt[side].(map[string]any); ok {
+			if c, _ := m["counts"].(string); c != "" {
+				label := map[string]string{"measure": "Counts", "numerator": "Counts", "denominator": "Out of"}[side]
+				parts = append(parts, label+": "+c+".")
+			}
+		}
+	}
+	var conds []string
+	for _, w := range anyList(mt["where"]) {
+		wm, _ := w.(map[string]any)
+		in, _ := wm["input"].(string)
+		op, _ := wm["op"].(string)
+		v, _ := wm["value"].(string)
+		if in != "" && v != "" {
+			conds = append(conds, in+" "+whereWords[op]+" "+v)
+		}
+	}
+	if len(conds) > 0 {
+		parts = append(parts, "Only where "+strings.Join(conds, "; ")+".")
+	}
+	if len(parts) == 0 {
+		return def
+	}
+	return strings.TrimSpace(def + " " + strings.Join(parts, " "))
 }

@@ -1796,3 +1796,24 @@ name that matches no line is refused. The interface raises such risks
 beside the line they name, as it raises a missed milestone's beside the
 milestone, a deliverable's beside the deliverable and a cost's beside
 the cost line, so a risk is met where its consequence is decided.
+
+### D63. An indicator is formulated from named parts, not written in dbt. *(resolved)*
+
+**The problem.** The metric step asked people for a SQL expression and a
+dbt filter in free text (#55). Most people who define an indicator know
+the metric, not the shape of their data; what they typed varied without
+limit, and could not be checked.
+
+**The discipline.** Cartograph is not the source of truth for metrics:
+the warehouse and its semantic layer are. What a definition owes them is
+the formula, unambiguous: what is counted or added up, which rows count,
+what a share is out of, over what window.
+
+**What Cartograph does.** A measure carries **counts**, what is counted
+in the definer's words, beside the optional column (expr). A metric
+carries **where**, conditions built from named parts: an input named in
+the definer's words, a comparison from a fixed list and a value. The
+interface builds both by choice, leaving the column and the dbt filter
+to an analyst or an agent, under their own heading. The export carries
+the words into each metric's description, so the analyst maps them.
+Agents may write the dbt shape directly, as before.

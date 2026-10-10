@@ -191,9 +191,21 @@
             }
           },
           {
+            "path": "/spec/metric/measure/counts",
+            "control": "text",
+            "hint": "What is counted or added up, in your words, such as crates graded twice.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "simple",
+                "cumulative"
+              ]
+            }
+          },
+          {
             "path": "/spec/metric/measure/expr",
             "control": "text",
-            "hint": "What is counted: the column, or expression, added up. Leave it empty to count rows.",
+            "hint": "For an analyst: the column, or expression, added up. Leave it empty to count rows.",
             "when": {
               "path": "/spec/metric/type",
               "in": [
@@ -217,6 +229,17 @@
             "path": "/spec/metric/numerator/agg",
             "control": "choice",
             "hint": "What is counted: how the rows are added up.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "ratio"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/numerator/counts",
+            "control": "text",
+            "hint": "What is counted, in your words, such as crates graded alike.",
             "when": {
               "path": "/spec/metric/type",
               "in": [
@@ -250,6 +273,17 @@
             "path": "/spec/metric/denominator/agg",
             "control": "choice",
             "hint": "Out of what: how the rows are added up.",
+            "when": {
+              "path": "/spec/metric/type",
+              "in": [
+                "ratio"
+              ]
+            }
+          },
+          {
+            "path": "/spec/metric/denominator/counts",
+            "control": "text",
+            "hint": "What it is counted out of, in your words, such as crates graded twice.",
             "when": {
               "path": "/spec/metric/type",
               "in": [
@@ -302,9 +336,14 @@
             }
           },
           {
+            "path": "/spec/metric/where",
+            "control": "list",
+            "hint": "Only the rows it counts, each as what is compared, how, and the value. Leave it empty to count every row."
+          },
+          {
             "path": "/spec/metric/filter",
             "control": "text",
-            "hint": "Only the rows it counts, as a dbt filter. Leave it empty to count every row."
+            "hint": "For an analyst: the rows it counts, as a dbt filter, written from the conditions above."
           }
         ]
       },
