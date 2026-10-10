@@ -691,3 +691,35 @@ func responseOf(cell string) string {
 	}
 	return ""
 }
+
+var listItem = regexp.MustCompile(`^\s{0,3}(?:[-*•]|[0-9]{1,2}[.)])\s+(.*)$`)
+
+// ReadList reads a section written as a list rather than a table: each
+// item, its wrapped lines joined, is a row whose one cell is under
+// header, coded by its place (R1, R2, ...), so a register written as
+// bullets ports as one written as columns does.
+func ReadList(text, header, prefix string) []RegisterRow {
+	var items []string
+	for _, l := range strings.Split(text, "\n") {
+		if m := listItem.FindStringSubmatch(l); m != nil {
+			items = append(items, strings.TrimSpace(m[1]))
+			continue
+		}
+		t := strings.TrimSpace(l)
+		if t == "" || len(items) == 0 {
+			continue
+		}
+		// A wrapped line carries on the item above it; anything else ends
+		// the list.
+		if strings.HasPrefix(l, " ") {
+			items[len(items)-1] += " " + t
+			continue
+		}
+		break
+	}
+	out := make([]RegisterRow, 0, len(items))
+	for i, it := range items {
+		out = append(out, RegisterRow{Code: fmt.Sprintf("%s%d", prefix, i+1), Cells: map[string]string{header: it}})
+	}
+	return out
+}

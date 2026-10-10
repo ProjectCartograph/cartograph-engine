@@ -97,3 +97,20 @@ func TestARiskRegisterPlacesRisksOnTheTripleConstraint(t *testing.T) {
 		t.Errorf("mitigation %v", first["mitigation"])
 	}
 }
+
+// A risk register written as a list ports as one written as columns: each
+// item, wrapped lines joined, is a risk.
+func TestARiskListPortsAsARegister(t *testing.T) {
+	t.Parallel()
+	text := "- Grader turnover at the two smallest depots could leave untrained\n  graders in post.\n- The quality committee may not meet in July, delaying approval.\n\nRoles follow.\n"
+	items := document.RegisterItems("/spec/risks", document.ReadList(text, "Risk", "R"))
+	if len(items) != 2 {
+		t.Fatalf("items %+v", items)
+	}
+	if items[0]["description"] != "Grader turnover at the two smallest depots could leave untrained graders in post." || items[0]["type"] != "risk" || items[0]["id"] != "r1" {
+		t.Errorf("first %+v", items[0])
+	}
+	if items[1]["id"] != "r2" {
+		t.Errorf("second %+v", items[1])
+	}
+}

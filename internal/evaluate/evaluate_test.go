@@ -179,9 +179,9 @@ func TestRoundsAreJudgedFromWhatIsLeft(t *testing.T) {
 	}
 }
 
-// The triangle is judged from what was left for the person: a side's
-// stance or a risk's side may be theirs to decide, but only if they were
-// asked (TAXONOMY.md D60).
+// The triangle is judged from what was left for the person (TAXONOMY.md
+// D60): a stance may be theirs to decide once asked, but a risk's side is
+// read from the risk and never left, whatever was said about asking.
 func TestTheTriangleIsAskedNotLeftSilent(t *testing.T) {
 	t.Parallel()
 	c := evaluate.Criteria{Agent: "Agent", Runs: 3, Triangle: true}
@@ -197,7 +197,7 @@ func TestTheTriangleIsAskedNotLeftSilent(t *testing.T) {
 		t.Fatalf("a stance left with the person's answer failed: %+v", s.Checks)
 	}
 	silent := fake{status: "proposed", records: mainProject, left: []map[string]any{
-		{"on": "Project/p-main", "check": "risks-constrained", "asked": "not available"},
+		{"on": "Project/p-main", "check": "risks-constrained", "asked": "Asked the person about everything left: leave it open"},
 	}}
 	s, err = evaluate.ScoreRun(context.Background(), silent, c, "cs1", run, document)
 	if err != nil {

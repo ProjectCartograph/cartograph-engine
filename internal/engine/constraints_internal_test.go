@@ -122,3 +122,20 @@ func TestAVersionRecordsTheChecksItLeavesOpen(t *testing.T) {
 		t.Fatalf("refused act %+v", k)
 	}
 }
+
+// A risk's side is never left open, however the leaving is worded, and
+// propose does not waive it either (TAXONOMY.md D60).
+func TestARisksSideIsNeverLeftOpen(t *testing.T) {
+	t.Parallel()
+	for _, asked := range []string{"not available", "Asked the person: leave everything open"} {
+		if err := MayLeave("risks-constrained", asked); err == nil {
+			t.Errorf("left with %q", asked)
+		}
+	}
+	if err := MayLeave("constraints-stated", "Asked whether the dates or the budget give first; the board decides"); err != nil {
+		t.Errorf("a stance the person was asked about: %v", err)
+	}
+	if !WrittenFromTheDocument("risks-constrained") {
+		t.Error("a risk's side is the agent's to write from the document")
+	}
+}
