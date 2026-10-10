@@ -888,6 +888,11 @@
                   "cost"
                 ],
                 "description": "The side of the triangle the response draws on: a mitigation that costs money spends cost, one that adds work spends scope or schedule."
+              },
+              "scopeLine": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "The line of the scope, in or out, this risk would move, word for word: how scope could creep across it (TAXONOMY.md D62)."
               }
             }
           }

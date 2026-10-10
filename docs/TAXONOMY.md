@@ -1776,3 +1776,23 @@ case, and its project manager runs the project day to day for them.
 sponsor and one project manager; a second is refused on the role, saying
 which entry already holds it. Every other role may be held by several.
 An interface offers the two roles only while they are free.
+
+### D62. A risk may bear on a line of the scope. *(resolved)*
+
+**The problem.** Risks are cross-cutting (D60), and the scope step is
+where scope creep is foreseen: for each line of what is in and what is
+out, how the work could grow across it and what is assumed to keep it
+from doing so (#59). A risk could bear on a deliverable, a milestone or
+a cost line by id, but the scope's lines have no ids: they are
+sentences.
+
+**The discipline.** Scope creep is the scope growing without the
+schedule and cost growing with it (PMBOK); a scope statement's
+inclusions and exclusions are where it is foreseen and controlled.
+
+**What Cartograph does.** A risk may name **scopeLine**: a line of the
+scope, in or out, word for word, as the line is its own identity. A
+name that matches no line is refused. The interface raises such risks
+beside the line they name, as it raises a missed milestone's beside the
+milestone, a deliverable's beside the deliverable and a cost's beside
+the cost line, so a risk is met where its consequence is decided.

@@ -699,6 +699,9 @@
           "why": "The response spends the side you said is fixed. Spend one you adjust or concede, or say why not."
         }
       ]
+    },
+    "/spec/risks/-/scopeLine": {
+      "guide": "For a risk to the scope: the line of the scope, in or out, it would move, as written. Say how the scope could creep across it, and what you assume that keeps it from happening."
     }
   },
   "links": {

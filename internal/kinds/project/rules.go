@@ -272,12 +272,29 @@ func affectsProblems(spec map[string]any) []kit.Problem {
 			}
 		}
 	}
+	// The scope's lines, in and out, as written: a risk names one word for
+	// word (TAXONOMY.md D62).
+	lines := map[string]bool{}
+	if summary, ok := spec["summary"].(map[string]any); ok {
+		for _, list := range []string{"scopeIn", "scopeOut"} {
+			entries, _ := summary[list].([]any)
+			for _, e := range entries {
+				if t, ok := e.(string); ok {
+					lines[t] = true
+				}
+			}
+		}
+	}
 	var problems []kit.Problem
 	risks, _ := spec["risks"].([]any)
 	for i, r := range risks {
 		rm, ok := r.(map[string]any)
 		if !ok {
 			continue
+		}
+		if line, _ := rm["scopeLine"].(string); line != "" && !lines[line] {
+			problems = append(problems, kit.Problem{Path: fmt.Sprintf("/spec/risks/%d/scopeLine", i),
+				Message: fmt.Sprintf("names the scope line %q, which this project's scope does not have, in or out: name one as it is written", line)})
 		}
 		affects, _ := rm["affects"].([]any)
 		seen := map[string]bool{}

@@ -952,6 +952,11 @@
                 ]
               },
               {
+                "path": "/scopeLine",
+                "control": "text",
+                "title": "The scope line it would move"
+              },
+              {
                 "path": "/owner",
                 "control": "reference",
                 "title": "Owned by",
