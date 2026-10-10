@@ -69,24 +69,26 @@ type Piece struct {
 var Keys = map[string]bool{"name": true, "outOfScope": true, "policy": true, "ongoing": true, "runsToday": true, "groupsForFunding": true,
 	"coordinatesProjects": true, "outputOf": true, "changeOfItsOwn": true, "dependedOnBy": true, "none": true, "change": true, "deliverable": true}
 
-// Question is one question, as people and agents are asked it.
+// Question is one question: as an agent is asked it, with what to send,
+// and as a person is asked it, in plain words (#54).
 type Question struct {
 	Field    string `json:"field"`
 	Question string `json:"question"`
 	Then     string `json:"then"`
+	Person   string `json:"person"`
 }
 
 // Questions are asked of every piece, in this order; the first
 // yes decides.
 var Questions = []Question{
-	{"outOfScope", "Does another body lead and fund it to its own plan, so the work only depends on it or mentions it?", "Not a record here: a scope-out line of the work, and a dependency risk if the work waits on it."},
-	{"policy", "Is it a standing policy or rule with no end date that the work puts into effect?", "A Goal at goal level, its horizon ending at its next review. The rules taking effect go in the project's notes."},
-	{"ongoing", "Does it keep running with no end date: a service or a function, whether it runs today or a project will set it up?", "An Operation: running if it runs today, otherwise planned and named by the project that sets it up as where it lands."},
-	{"groupsForFunding", "Does it group projects or programmes only to decide what to fund and in what order?", "A Portfolio, with its strategic objectives."},
-	{"coordinatesProjects", "Does it coordinate several projects, each with its own sponsor or budget, that together bring about one change?", "A Programme, with its theory of change; the projects are its components."},
-	{"changeOfItsOwn", "Does it bring about a change of its own that another piece of work depends on: a survey that sets a baseline, a system or portal people use, an app, a study? Yes even when it also hands over a report, a dataset or a list. Where the document has a deliverable register, give deliverable, the code of the row that hands it over (D4).", "A Project of its own, with one objective, listed as a component of each piece that depends on it."},
-	{"outputOf", "Is it an output another piece of work hands over: a document, materials, a toolkit, a training delivered, an event?", "A deliverable of that piece of work, whoever leads it."},
-	{"", "None of these (answer none: true):", "A Project: work that ends, with one objective. A project the others are components of is the parent."},
+	{"outOfScope", "Does another body lead and fund it to its own plan, so the work only depends on it or mentions it?", "Not a record here: a scope-out line of the work, and a dependency risk if the work waits on it.", "Does another organisation lead and pay for it, so your work only relies on it?"},
+	{"policy", "Is it a standing policy or rule with no end date that the work puts into effect?", "A Goal at goal level, its horizon ending at its next review. The rules taking effect go in the project's notes.", "Is it a standing policy or rule, with no end date, that your work puts into effect?"},
+	{"ongoing", "Does it keep running with no end date: a service or a function, whether it runs today or a project will set it up?", "An Operation: running if it runs today, otherwise planned and named by the project that sets it up as where it lands.", "Does it keep running with no end date, like a service or a team's regular work?"},
+	{"groupsForFunding", "Does it group projects or programmes only to decide what to fund and in what order?", "A Portfolio, with its strategic objectives.", "Does it group projects or programmes only to decide which to fund, and in what order?"},
+	{"coordinatesProjects", "Does it coordinate several projects, each with its own sponsor or budget, that together bring about one change?", "A Programme, with its theory of change; the projects are its components.", "Does it coordinate several projects, each with its own sponsor or budget, towards one change?"},
+	{"changeOfItsOwn", "Does it bring about a change of its own that another piece of work depends on: a survey that sets a baseline, a system or portal people use, an app, a study? Yes even when it also hands over a report, a dataset or a list. Where the document has a deliverable register, give deliverable, the code of the row that hands it over (D4).", "A Project of its own, with one objective, listed as a component of each piece that depends on it.", "Does it make a change of its own that other work relies on, such as a survey that sets a baseline, a system people use, or a study?"},
+	{"outputOf", "Is it an output another piece of work hands over: a document, materials, a toolkit, a training delivered, an event?", "A deliverable of that piece of work, whoever leads it.", "Is it something another piece of work hands over, such as a report, materials, a training or an event?"},
+	{"", "None of these (answer none: true):", "A Project: work that ends, with one objective. A project the others are components of is the parent.", "None of these. It is work with a start and an end."},
 }
 
 // Placed is what one piece is, and where it goes.

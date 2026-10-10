@@ -1760,3 +1760,60 @@ which side is most constrained; checks advise when a risk sits on no
 side, when a held side's risk is only accepted, and when a response
 spends a held side. A risk is declared once, in the register, and shown
 beside everything it bears on; the register reads as the overview.
+
+### D61. A project has one sponsor and one project manager. *(resolved)*
+
+**The problem.** A project could name several sponsors and several
+project managers, and the interface offered the role again once it was
+taken (#58). Two people accountable for the same project is the
+ambiguity a sponsor exists to remove.
+
+**The discipline.** GovS 002 gives a project one senior responsible
+owner; PRINCE2's Executive is a single person who owns the business
+case, and its project manager runs the project day to day for them.
+
+**What Cartograph does.** A project's resources name at most one
+sponsor and one project manager; a second is refused on the role, saying
+which entry already holds it. Every other role may be held by several.
+An interface offers the two roles only while they are free.
+
+### D62. A risk may bear on a line of the scope. *(resolved)*
+
+**The problem.** Risks are cross-cutting (D60), and the scope step is
+where scope creep is foreseen: for each line of what is in and what is
+out, how the work could grow across it and what is assumed to keep it
+from doing so (#59). A risk could bear on a deliverable, a milestone or
+a cost line by id, but the scope's lines have no ids: they are
+sentences.
+
+**The discipline.** Scope creep is the scope growing without the
+schedule and cost growing with it (PMBOK); a scope statement's
+inclusions and exclusions are where it is foreseen and controlled.
+
+**What Cartograph does.** A risk may name **scopeLine**: a line of the
+scope, in or out, word for word, as the line is its own identity. A
+name that matches no line is refused. The interface raises such risks
+beside the line they name, as it raises a missed milestone's beside the
+milestone, a deliverable's beside the deliverable and a cost's beside
+the cost line, so a risk is met where its consequence is decided.
+
+### D63. An indicator is formulated from named parts, not written in dbt. *(resolved)*
+
+**The problem.** The metric step asked people for a SQL expression and a
+dbt filter in free text (#55). Most people who define an indicator know
+the metric, not the shape of their data; what they typed varied without
+limit, and could not be checked.
+
+**The discipline.** Cartograph is not the source of truth for metrics:
+the warehouse and its semantic layer are. What a definition owes them is
+the formula, unambiguous: what is counted or added up, which rows count,
+what a share is out of, over what window.
+
+**What Cartograph does.** A measure carries **counts**, what is counted
+in the definer's words, beside the optional column (expr). A metric
+carries **where**, conditions built from named parts: an input named in
+the definer's words, a comparison from a fixed list and a value. The
+interface builds both by choice, leaving the column and the dbt filter
+to an analyst or an agent, under their own heading. The export carries
+the words into each metric's description, so the analyst maps them.
+Agents may write the dbt shape directly, as before.

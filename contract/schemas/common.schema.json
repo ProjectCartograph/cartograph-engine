@@ -39,7 +39,12 @@
           "expr": {
             "type": "string",
             "maxLength": 500,
-            "description": "The column or SQL expression aggregated; the measure counts rows when it is left out and agg is count."
+            "description": "For an analyst: the column or SQL expression aggregated; the measure counts rows when it is left out and agg is count."
+          },
+          "counts": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "What is counted or added up, in the words of the person who defines it, such as crates graded twice (TAXONOMY.md D63). An analyst or an agent maps it to a column in expr later; neither is needed for the other."
           }
         }
       },
