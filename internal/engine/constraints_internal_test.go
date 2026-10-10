@@ -1,7 +1,13 @@
 package engine
 
 import (
+	"context"
 	"testing"
+
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 // A project that holds its dates and adjusts its cost: a late board on
@@ -80,5 +86,39 @@ func TestConstraintChecksHoldTheStances(t *testing.T) {
 		if it.ID == "constraints-all-held" && it.State != checkWarn {
 			t.Errorf("all three held should warn: %+v", it)
 		}
+	}
+}
+
+type keptActsInternal []activity.Event
+
+func (k *keptActsInternal) Record(e activity.Event) { *k = append(*k, e) }
+
+// A person's version records the checks it leaves open, by id, so the
+// analysis can count what was left unmet when they decided.
+func TestAVersionRecordsTheChecksItLeavesOpen(t *testing.T) {
+	t.Parallel()
+	var k keptActsInternal
+	e, err := New(memory.NewManifestStore(), memory.NewOperationalStore(), WithCodec(codecyaml.New()), WithActivity(&k))
+	if err != nil {
+		t.Fatal(err)
+	}
+	person := ByPerson(identity.WithPrincipal(context.Background(), identity.Principal{Subject: "p"}))
+	y := []byte("apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p1\n  name: Rollout\nspec:\n  risks:\n    - {id: rain, type: risk, description: Rain, impact: low, likelihood: low}\n")
+	e.noteVersion(person, "Project", "p1", y, nil)
+	if len(k) != 1 {
+		t.Fatalf("acts %+v", k)
+	}
+	has := map[string]bool{}
+	for _, c := range k[0].Checks {
+		has[c] = true
+	}
+	if !has["constraints-stated"] || !has["risks-constrained"] {
+		t.Fatalf("open at the version: %v", k[0].Checks)
+	}
+	// A refused version carries no checks.
+	k = nil
+	e.noteVersion(person, "Project", "p1", y, &ValidationError{Problems: []Problem{{Path: "/spec/team"}}})
+	if len(k) != 1 || k[0].Checks != nil || k[0].Outcome != activity.Refused {
+		t.Fatalf("refused act %+v", k)
 	}
 }

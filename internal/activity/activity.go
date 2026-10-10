@@ -101,6 +101,9 @@ type Event struct {
 	// it named, list items as "-".
 	Problems int      `json:"cartograph.problems,omitempty"`
 	Paths    []string `json:"cartograph.problem.paths,omitempty"`
+	// Checks are the ids of the checks still open on a version as it was
+	// saved: what was left unmet, never what was written.
+	Checks []string `json:"cartograph.checks.open,omitempty"`
 }
 
 // Recorder keeps acts. Record never fails the act it records.

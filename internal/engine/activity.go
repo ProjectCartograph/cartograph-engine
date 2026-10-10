@@ -90,3 +90,21 @@ func problemPaths(ps []Problem) []string {
 	}
 	return out
 }
+
+// noteVersion records a version saved or refused. A saved one carries
+// the checks still open on it, by id: what the person left unmet when
+// they decided (docs/EVALUATING_PEOPLE.md, cross-cutting elements).
+// Worked out only while a trace is kept.
+func (e *Engine) noteVersion(ctx context.Context, kind, id string, text []byte, err error) {
+	act := activity.Event{Name: activity.VersionSave, Kind: kind, Record: id}
+	if err == nil && !activity.IsOff(e.activity) && ctx.Value(byPersonKey{}) != nil {
+		if checks, cerr := e.ChecksOf(ctx, kind, id, text); cerr == nil {
+			for _, c := range checks {
+				if c.State == checkWarn || c.State == checkBlock {
+					act.Checks = append(act.Checks, c.ID)
+				}
+			}
+		}
+	}
+	e.noteOutcome(ctx, act, err)
+}

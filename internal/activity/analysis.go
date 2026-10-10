@@ -66,6 +66,9 @@ type Task struct {
 	Reworked     int `json:"reworked"`
 	Hunting      int `json:"hunting"`
 	Drafts       int `json:"drafts"`
+	// OpenAtVersion are the checks left open on the version that
+	// finished it.
+	OpenAtVersion []string `json:"openAtVersion,omitempty"`
 	// Build is the server build its last act was recorded on.
 	Build string `json:"build,omitempty"`
 	// Submitted is when a change set was sent for review.
@@ -171,9 +174,12 @@ type Report struct {
 	Tasks           []TaskStats    `json:"tasks"`
 	Steps           []StepStats    `json:"steps,omitempty"`
 	Waste           []Criterion    `json:"waste"`
-	LeadTimes       []LeadTime     `json:"leadTimes,omitempty"`
-	Inventory       []Stock        `json:"inventory"`
-	Pareto          []Cause        `json:"pareto,omitempty"`
+	// CrossCutting are the figures for what bears on several sections at
+	// once (risks, stances): raised where it bears, and placed when saved.
+	CrossCutting []Criterion `json:"crossCutting"`
+	LeadTimes    []LeadTime  `json:"leadTimes,omitempty"`
+	Inventory    []Stock     `json:"inventory"`
+	Pareto       []Cause     `json:"pareto,omitempty"`
 	// NotMeasured are the criteria the document names that this build
 	// does not count yet.
 	NotMeasured []string `json:"notMeasured"`
@@ -283,6 +289,7 @@ func Analyse(acts []Event, flows map[string]Flow, o Options) Report {
 						t.Refused = append(t.Refused, Cause{Kind: a.Kind, Step: flows[a.Kind].StepFor(p), Field: p, Count: 1})
 					}
 				} else if a.Outcome == OK || a.Outcome == "" {
+					t.OpenAtVersion = a.Checks
 					closeTask(t, Finished, a.At)
 					delete(open, key)
 				}
@@ -383,6 +390,7 @@ func Analyse(acts []Event, flows map[string]Flow, o Options) Report {
 	r.FirstPassYield = ratio(passed, closed)
 	r.Completion = ratio(finished, closed)
 	r.Waste = waste(tasks, acts, r)
+	r.CrossCutting = crossCutting(tasks, acts)
 	for _, c := range r.Waste {
 		switch c.Waste {
 		case "motion", "waiting", "transport":
@@ -800,4 +808,48 @@ func or(s, def string) string {
 		return def
 	}
 	return s
+}
+
+// crossCutting measures what bears on several sections at once
+// (docs/EVALUATING_PEOPLE.md, "Cross-cutting elements"): whether a risk
+// was raised where it bears or away in the register, and whether a
+// project's version left its risks off the triangle or its stances
+// unsaid (TAXONOMY.md D60).
+func crossCutting(tasks []*Task, acts []Event) []Criterion {
+	inRegister, risks := 0, 0
+	for _, a := range acts {
+		if a.Name != FieldSet || !strings.HasPrefix(a.Field, "/spec/risks") {
+			continue
+		}
+		risks++
+		if a.Step == "risks" {
+			inRegister++
+		}
+	}
+	versions, unplaced, unstated, accepted, spent := 0, 0, 0, 0, 0
+	for _, t := range tasks {
+		if t.Kind != "Project" || t.Status != Finished || (t.Type != Define && t.Type != Change) {
+			continue
+		}
+		versions++
+		for _, c := range t.OpenAtVersion {
+			switch c {
+			case "risks-constrained":
+				unplaced++
+			case "constraints-stated":
+				unstated++
+			case "risks-held-accepted":
+				accepted++
+			case "risks-spend-held":
+				spent++
+			}
+		}
+	}
+	return []Criterion{
+		crit("transport", "a risk raised in the register, not where it bears", inRegister, risks, 1, "share of risk answers"),
+		crit("defects", "a risk on no side when saved", unplaced, versions, 1e2, "per hundred project versions"),
+		crit("defects", "a side with no stance when saved", unstated, versions, 1e2, "per hundred project versions"),
+		crit("defects", "a held side's risk only accepted when saved", accepted, versions, 1e2, "per hundred project versions"),
+		crit("defects", "a response spending a held side when saved", spent, versions, 1e2, "per hundred project versions"),
+	}
 }
