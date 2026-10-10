@@ -14,7 +14,7 @@
     "intended outcome",
     "impact"
   ],
-  "definition": "An aim is something your organisation sets out to achieve, at one of three levels. A goal is a broad direction you keep working towards, such as raise produce quality. An objective is one concrete change made for a goal, such as hold every depot to one standard; it is done once it is made. An outcome is what is then true of people or things, such as depot staff apply the standard alike. Goals sit under your purpose, objectives under goals, and outcomes under objectives. An outcome closes a gap: the difference between how things are and how they should be. Numbers go in the measures, not in the aim itself. An aim is not a project (work that ends), an operation (work that continues) or a KPI (a number you track).",
+  "definition": "An aim is something your organisation sets out to achieve, at one of three levels. A goal is a broad direction you keep working towards, such as raise produce quality. An objective is one concrete change made for a goal, such as hold every depot to one standard; it is done once it is made. An outcome is what is then true of people or things, such as depot staff apply the standard alike. Goals sit under your purpose, objectives under goals, and outcomes under objectives. A goal can be written before your purpose is: only its relevance check waits for the purpose. An outcome closes a gap: the difference between how things are and how they should be. Numbers go in the measures, not in the aim itself. An aim is not a project (work that ends), an operation (work that continues) or a KPI (a number you track).",
   "levels": {
     "goal": "A broad direction your organisation keeps working towards.",
     "objective": "One concrete change your organisation sets out to make.",
@@ -31,7 +31,7 @@
       "guide": "Goal, objective or outcome. Choose this first: it decides what the aim says and what it sits under."
     },
     "/spec/parent": {
-      "guide": "The aim this one belongs to: a goal for an objective, an objective for an outcome. A goal sits directly under your purpose. If the aim you need does not exist yet, add it first.",
+      "guide": "The aim this one belongs to: a goal for an objective, an objective for an outcome. A goal sits directly under your purpose, and can be written before the purpose is. If the aim you need does not exist yet, add it first.",
       "levels": {
         "outcome": {
           "guide": "The objective that is met once this outcome is true."
