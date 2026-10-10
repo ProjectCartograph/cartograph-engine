@@ -569,6 +569,22 @@
             "control": "list",
             "title": "Out of scope",
             "hint": "What people might expect that this will not do."
+          },
+          {
+            "path": "/spec/constraints/scope",
+            "control": "choice",
+            "title": "Scope",
+            "hint": "When something has to give: hold it, adjust it first, or concede it."
+          },
+          {
+            "path": "/spec/constraints/schedule",
+            "control": "choice",
+            "title": "Schedule"
+          },
+          {
+            "path": "/spec/constraints/cost",
+            "control": "choice",
+            "title": "Cost"
           }
         ]
       },
@@ -868,8 +884,36 @@
                 "control": "choice"
               },
               {
+                "path": "/affects",
+                "control": "list",
+                "key": "constraint",
+                "title": "Would move",
+                "hint": "Scope, schedule or cost, and how far.",
+                "fields": [
+                  {
+                    "path": "/constraint",
+                    "control": "choice"
+                  },
+                  {
+                    "path": "/impact",
+                    "control": "choice",
+                    "title": "How far"
+                  },
+                  {
+                    "path": "/on",
+                    "control": "reference",
+                    "title": "Bears on"
+                  }
+                ]
+              },
+              {
                 "path": "/detection",
                 "control": "choice"
+              },
+              {
+                "path": "/response",
+                "control": "choice",
+                "title": "Response"
               },
               {
                 "path": "/mitigation",
@@ -877,6 +921,11 @@
                 "checks": [
                   "risks-mitigation"
                 ]
+              },
+              {
+                "path": "/spends",
+                "control": "choice",
+                "title": "The response spends"
               },
               {
                 "path": "/owner",

@@ -121,6 +121,7 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 	problems = append(problems, kit.MandateProblems(spec)...)
 	// A project schedules, so a dependency may land by one of its phases.
 	problems = append(problems, kit.RiskProblems(spec, true)...)
+	problems = append(problems, affectsProblems(spec)...)
 
 	return problems
 }
@@ -223,6 +224,49 @@ func referenceProblems(spec map[string]any) []kit.Problem {
 			continue
 		}
 		add(kit.LocalRefProblem(spec, dep["on"], fmt.Sprintf("/spec/risks/%d/depends/on", i)))
+	}
+	return problems
+}
+
+// affectsProblems holds a risk's place on the triple constraint
+// (TAXONOMY.md D60) to the project: each side named once, and what it
+// bears on a deliverable, milestone or cost line this project has.
+func affectsProblems(spec map[string]any) []kit.Problem {
+	items := map[string]bool{}
+	for _, list := range []string{"deliverables", "milestones", "costs"} {
+		entries, _ := spec[list].([]any)
+		for _, e := range entries {
+			if em, ok := e.(map[string]any); ok {
+				if id, _ := em["id"].(string); id != "" {
+					items[id] = true
+				}
+			}
+		}
+	}
+	var problems []kit.Problem
+	risks, _ := spec["risks"].([]any)
+	for i, r := range risks {
+		rm, ok := r.(map[string]any)
+		if !ok {
+			continue
+		}
+		affects, _ := rm["affects"].([]any)
+		seen := map[string]bool{}
+		for j, a := range affects {
+			am, ok := a.(map[string]any)
+			if !ok {
+				continue
+			}
+			path := fmt.Sprintf("/spec/risks/%d/affects/%d", i, j)
+			side, _ := am["constraint"].(string)
+			if seen[side] {
+				problems = append(problems, kit.Problem{Path: path + "/constraint", Message: fmt.Sprintf("names %s twice: give each side once, with its impact", side)})
+			}
+			seen[side] = true
+			if on, _ := am["on"].(string); on != "" && !items[on] {
+				problems = append(problems, kit.Problem{Path: path + "/on", Message: fmt.Sprintf("bears on %q, which is not a deliverable, milestone or cost line of this project", on)})
+			}
+		}
 	}
 	return problems
 }

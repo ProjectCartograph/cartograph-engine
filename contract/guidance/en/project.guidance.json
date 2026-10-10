@@ -651,6 +651,54 @@
       "good": [
         "Project board, then steering committee, then the national government"
       ]
+    },
+    "/spec/constraints": {
+      "guide": "Scope, schedule and cost pull against each other: when one moves, another pays. Say up front which you hold fixed, which you adjust first, and which you would concede."
+    },
+    "/spec/constraints/scope": {
+      "guide": "Hold: every deliverable must land. Adjust: some can move to a later piece of work. Concede: the work can do less if it must."
+    },
+    "/spec/constraints/schedule": {
+      "guide": "Hold: the dates cannot move. Adjust: they can move a little. Concede: they can move if the rest is kept."
+    },
+    "/spec/constraints/cost": {
+      "guide": "Hold: the budget is fixed. Adjust: more can be found with a reason. Concede: it can grow if scope and dates are kept."
+    },
+    "/spec/risks/-/affects": {
+      "guide": "Which of scope, schedule and cost this would move if it happened, and how far on each. Name the deliverable, milestone or cost line it bears on, so it shows beside it.",
+      "good": [
+        "Schedule, high, on the pilot milestone: the board meets after the season opens."
+      ],
+      "poor": [
+        {
+          "text": "All three, high.",
+          "why": "Say which side it actually moves. If it moves all three, it may be several risks."
+        }
+      ]
+    },
+    "/spec/risks/-/affects/-/constraint": {
+      "guide": "Scope (what is delivered), schedule (when) or cost (what it takes)."
+    },
+    "/spec/risks/-/affects/-/impact": {
+      "guide": "How far it would move that side if it happened: low, medium or high."
+    },
+    "/spec/risks/-/affects/-/on": {
+      "guide": "The deliverable, milestone or cost line it bears on, when it bears on one."
+    },
+    "/spec/risks/-/response": {
+      "guide": "Avoid it (change the plan so it cannot happen), mitigate it (make it less likely or less harmful), transfer it (another party carries it) or accept it (carry it as it is). A risk on a side you hold needs more than accepting."
+    },
+    "/spec/risks/-/spends": {
+      "guide": "What the response costs you, as a side of the triangle: paying for a second supplier spends cost, adding a check spends schedule or scope. A response should spend a side you adjust or concede, not one you hold.",
+      "good": [
+        "Cost: a reserve vehicle is hired for the peak weeks."
+      ],
+      "poor": [
+        {
+          "text": "Schedule, on a project that holds its dates.",
+          "why": "The response spends the side you said is fixed. Spend one you adjust or concede, or say why not."
+        }
+      ]
     }
   },
   "links": {
