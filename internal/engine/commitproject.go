@@ -3,13 +3,17 @@ package engine
 import (
 	"context"
 	"fmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
 
 // CommitProject validates and stores a new version of a Project, exactly
 // like the generic Commit.
-func (e *Engine) CommitProject(ctx context.Context, id string, yamlBytes []byte, actor, reason string) (Version, error) {
+func (e *Engine) CommitProject(ctx context.Context, id string, yamlBytes []byte, actor, reason string) (_ Version, err error) {
+	defer func() {
+		e.noteOutcome(ctx, activity.Event{Name: activity.VersionSave, Kind: "Project", Record: id}, err)
+	}()
 	if err := refuseAgent(ctx); err != nil {
 		return Version{}, err
 	}

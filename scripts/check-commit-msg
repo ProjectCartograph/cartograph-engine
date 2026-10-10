@@ -12,7 +12,7 @@ set -euo pipefail
 # The types are Angular's. The scopes are this repository's areas
 # (CONTRIBUTING.md lists them); a change across several has none.
 types='build|ci|docs|feat|fix|perf|refactor|test'
-scopes='adr api arch auth chart cli client codec commits compose config contract contributing crdt deployment deps engine fanout flake kinds layout mcp oauth release render spa store syncserver ui vault'
+scopes='activity adr api arch auth chart cli client codec commits compose config contract contributing crdt deployment deps engine fanout flake kinds layout mcp oauth release render spa store syncserver ui vault'
 # The lines that are trailers, not body, in any capitalisation; the
 # spelling and the order are checked on their own.
 trailers='Fixes #|Refs #|Signed-off-by:|Co-authored-by:|Claude-Session:|Change-Id:|Reviewed-by:'

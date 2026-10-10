@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
 	"sort"
 	"strings"
 
@@ -55,6 +56,9 @@ type Engine struct {
 	// (TAXONOMY.md D57); empty when none is configured.
 	semantic  map[string]semantic.Exporter
 	decisions *decisionCache
+	// activity keeps what people do by its shape (docs/adr/0034); nil
+	// keeps nothing.
+	activity activity.Recorder
 }
 
 // Option configures an Engine beyond its two required stores.
@@ -349,7 +353,8 @@ func docID(doc map[string]any) (string, bool) {
 // immutable version. The id in the manifest's metadata must match id.
 // actor is recorded as given (see checkActor's own doc comment for why actor
 // validation was removed).
-func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, actor, reason string) (Version, error) {
+func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, actor, reason string) (_ Version, err error) {
+	defer func() { e.noteOutcome(ctx, activity.Event{Name: activity.VersionSave, Kind: kind, Record: id}, err) }()
 	if err := refuseAgent(ctx); err != nil {
 		return Version{}, err
 	}
@@ -707,7 +712,8 @@ func (e *Engine) GetWorking(ctx context.Context, kind, id string) ([]byte, bool,
 // store holds as saved. Stores that keep no staging directory have nothing
 // to discard, so this is a no-op for them rather than an error: the caller
 // asked for the draft to be gone, and it is.
-func (e *Engine) DiscardWorking(ctx context.Context, kind, id string) error {
+func (e *Engine) DiscardWorking(ctx context.Context, kind, id string) (err error) {
+	defer func() { e.noteOutcome(ctx, activity.Event{Name: activity.DraftDiscard, Kind: kind, Record: id}, err) }()
 	if err := refuseAgent(ctx); err != nil {
 		return err
 	}
@@ -742,7 +748,8 @@ func (e *Engine) DiscardWorking(ctx context.Context, kind, id string) error {
 // PutWorking writes a manifest's YAML as the working copy without creating
 // a version. Used for autosave writes that don't create an explicit snapshot.
 // It also re-indexes the manifest's outgoing references.
-func (e *Engine) PutWorking(ctx context.Context, kind, id string, yamlBytes []byte) error {
+func (e *Engine) PutWorking(ctx context.Context, kind, id string, yamlBytes []byte) (err error) {
+	defer func() { e.noteOutcome(ctx, activity.Event{Name: activity.DraftSave, Kind: kind, Record: id}, err) }()
 	if err := e.guardText(ctx, kind, id, yamlBytes); err != nil {
 		return err
 	}

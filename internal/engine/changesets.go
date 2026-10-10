@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
 	"sort"
 	"strings"
 
@@ -56,7 +57,8 @@ func ownerOf(p identity.Principal) string {
 }
 
 // StartChangeSet opens a change set for the principal on ctx to work in.
-func (e *Engine) StartChangeSet(ctx context.Context, title, description string) (store.ChangeSet, error) {
+func (e *Engine) StartChangeSet(ctx context.Context, title, description string) (cs store.ChangeSet, err error) {
+	defer func() { e.noteOutcome(ctx, activity.Event{Name: activity.ChangeSetStart, ChangeSet: cs.ID}, err) }()
 	s, err := e.changeSetStore()
 	if err != nil {
 		return store.ChangeSet{}, err
@@ -89,7 +91,7 @@ func (e *Engine) StartChangeSet(ctx context.Context, title, description string) 
 			return cs, s.PutChangeSet(ctx, cs)
 		}
 	}
-	cs := store.ChangeSet{ID: newProposalID(), Title: strings.TrimSpace(title), Description: strings.TrimSpace(description),
+	cs = store.ChangeSet{ID: newProposalID(), Title: strings.TrimSpace(title), Description: strings.TrimSpace(description),
 		Owner: ownerOf(p), Agent: p.Agent, For: personKey(p), Status: store.ChangeSetOpen, At: now, Updated: now}
 	return cs, s.PutChangeSet(ctx, cs)
 }
@@ -169,19 +171,25 @@ func (e *Engine) ChangeSetText(ctx context.Context, set, kind, id string) ([]byt
 }
 
 // SaveInChangeSet keeps a whole manifest as a change set's draft of it.
-func (e *Engine) SaveInChangeSet(ctx context.Context, set, kind, id string, text []byte) error {
+func (e *Engine) SaveInChangeSet(ctx context.Context, set, kind, id string, text []byte) (err error) {
+	defer func() {
+		e.noteOutcome(ctx, activity.Event{Name: activity.DraftSave, Kind: kind, Record: id, ChangeSet: set}, err)
+	}()
 	return e.writeItem(ctx, set, kind, id, func([]byte) ([]byte, error) { return text, nil })
 }
 
 // EditInChangeSet sets and clears single fields of a change set's draft of
 // a manifest, starting it from the record when the change set has none,
 // and returns the draft as it then stands.
-func (e *Engine) EditInChangeSet(ctx context.Context, set, kind, id string, put map[string]any, unset []string) ([]byte, error) {
+func (e *Engine) EditInChangeSet(ctx context.Context, set, kind, id string, put map[string]any, unset []string) (_ []byte, err error) {
+	defer func() {
+		e.noteOutcome(ctx, activity.Event{Name: activity.DraftSave, Kind: kind, Record: id, ChangeSet: set}, err)
+	}()
 	// A list item keyed by id that arrives without one is given one,
 	// whoever writes it: ids are generated, never left to the writer.
 	e.withItemIDs(kind, put)
 	var out []byte
-	err := e.writeItem(ctx, set, kind, id, func(cur []byte) ([]byte, error) {
+	err = e.writeItem(ctx, set, kind, id, func(cur []byte) ([]byte, error) {
 		doc := map[string]any{"apiVersion": "cartograph/v1", "kind": kind, "metadata": map[string]any{"id": id}, "spec": map[string]any{}}
 		if cur != nil {
 			if err := e.codec.DecodeInto(cur, &doc); err != nil {
@@ -473,7 +481,10 @@ func (e *Engine) UnnamedInChangeSet(ctx context.Context, set string) ([]Ref, err
 // reason, so an agent says why once, as it goes, rather than all at the
 // end. An empty reason takes it back; a second reason is added to the
 // first unless correct puts it in its place.
-func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, asked string, correct bool) error {
+func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, asked string, correct bool) (err error) {
+	defer func() {
+		e.noteOutcome(ctx, activity.Event{Name: activity.CheckLeave, Kind: kind, Record: id, ChangeSet: set}, err)
+	}()
 	s, err := e.changeSetStore()
 	if err != nil {
 		return err
@@ -587,7 +598,10 @@ func leftFor(ctx context.Context, kind, id, check string) string {
 // in, as if it had never been drafted there: a draft saved under the wrong
 // id, or one the work no longer needs. Refused while another draft in the
 // set names it, listing them, since those would then name nothing.
-func (e *Engine) DiscardChangeItem(ctx context.Context, set, kind, id string) error {
+func (e *Engine) DiscardChangeItem(ctx context.Context, set, kind, id string) (err error) {
+	defer func() {
+		e.noteOutcome(ctx, activity.Event{Name: activity.DraftDiscard, Kind: kind, Record: id, ChangeSet: set}, err)
+	}()
 	s, err := e.changeSetStore()
 	if err != nil {
 		return err
@@ -765,7 +779,8 @@ func (e *Engine) MarkInChangeSet(ctx context.Context, set, kind, id, op, to stri
 // ProposeChangeSet puts a change set up for its person to accept: every
 // included item checked as one set, as a proposal set is, open checks
 // refused unless waived with a reason (by Kind/id, then check id).
-func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive map[string]map[string]string) (store.ChangeSet, error) {
+func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive map[string]map[string]string) (_ store.ChangeSet, err error) {
+	defer func() { e.noteOutcome(ctx, activity.Event{Name: activity.ChangeSetSubmit, ChangeSet: id}, err) }()
 	s, err := e.changeSetStore()
 	if err != nil {
 		return store.ChangeSet{}, err
@@ -921,7 +936,8 @@ type AcceptResult struct {
 	Kept    []Problem
 }
 
-func (e *Engine) AcceptChangeSet(ctx context.Context, id, reason string) (AcceptResult, error) {
+func (e *Engine) AcceptChangeSet(ctx context.Context, id, reason string) (_ AcceptResult, err error) {
+	defer func() { e.noteOutcome(ctx, activity.Event{Name: activity.ChangeSetAccept, ChangeSet: id}, err) }()
 	saved, done, kept, err := e.acceptChangeSet(ctx, id, reason)
 	out := AcceptResult{Saved: saved, Kept: kept}
 	for _, it := range done {
@@ -1116,7 +1132,8 @@ func (e *Engine) acceptChangeSet(ctx context.Context, id, reason string) ([]Vers
 
 // CloseChangeSet ends a change set without saving it: its person, or who
 // works in it.
-func (e *Engine) CloseChangeSet(ctx context.Context, id, reason string) (store.ChangeSet, error) {
+func (e *Engine) CloseChangeSet(ctx context.Context, id, reason string) (_ store.ChangeSet, err error) {
+	defer func() { e.noteOutcome(ctx, activity.Event{Name: activity.ChangeSetClose, ChangeSet: id}, err) }()
 	s, err := e.changeSetStore()
 	if err != nil {
 		return store.ChangeSet{}, err
@@ -1144,7 +1161,8 @@ func (e *Engine) CloseChangeSet(ctx context.Context, id, reason string) (store.C
 
 // ReopenChangeSet takes a proposed change set back to work, as its person
 // asking for changes, or who works in it withdrawing it.
-func (e *Engine) ReopenChangeSet(ctx context.Context, id, reason string) (store.ChangeSet, error) {
+func (e *Engine) ReopenChangeSet(ctx context.Context, id, reason string) (_ store.ChangeSet, err error) {
+	defer func() { e.noteOutcome(ctx, activity.Event{Name: activity.ChangeSetReopen, ChangeSet: id}, err) }()
 	s, err := e.changeSetStore()
 	if err != nil {
 		return store.ChangeSet{}, err

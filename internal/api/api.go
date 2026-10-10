@@ -83,7 +83,7 @@ func New(e *engine.Engine, deps Deps) http.Handler {
 	}
 	strict := apigen.NewStrictHandlerWithOptions(&Server{Engine: e, Printer: p, Authz: z, Reports: deps.Reports, AgentTokens: deps.AgentTokens, AgentsOn: deps.AgentsOn}, nil,
 		apigen.StrictHTTPServerOptions{ResponseErrorHandlerFunc: writeError})
-	return apigen.Handler(strict)
+	return byPerson(apigen.Handler(strict))
 }
 
 // actor is who a write records: the authenticated principal, or the

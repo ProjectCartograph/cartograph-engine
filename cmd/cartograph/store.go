@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/access"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide/laya"
@@ -70,10 +71,13 @@ type composition struct {
 // file, or a postgres:// URL. Fanout is "memory", "postgres", or empty
 // for the default: postgres with a Postgres store, memory otherwise.
 type storeOptions struct {
-	Target string
-	Watch  bool
-	Codec  string
-	Fanout string
+	// Activity keeps what people do by its shape (docs/adr/0034); nil
+	// keeps nothing. Only serve sets it.
+	Activity activity.Recorder
+	Target   string
+	Watch    bool
+	Codec    string
+	Fanout   string
 	// FanoutURL, when set, is where the Postgres fan-out listens: a
 	// direct connection when Target goes through a transaction pooler.
 	FanoutURL string
@@ -158,7 +162,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		counted := &countedBus{Bus: bus}
 		accessOpts, authz, bind := accessControl(o, postgres.NewAccessStore(pool))
 		e, err := engine.New(postgres.NewManifestStore(pool), postgres.NewOperationalStore(pool),
-			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), semanticExporters(o.Semantic), decider(o), engine.WithBundles(postgres.NewBundleStore(pool)))...)
+			append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), semanticExporters(o.Semantic), decider(o), engine.WithActivity(o.Activity), engine.WithBundles(postgres.NewBundleStore(pool)))...)
 		if err != nil {
 			bus.Close()
 			pool.Close()
@@ -197,7 +201,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 		bus := fanoutmemory.New()
 		counted := &countedBus{Bus: bus}
 		accessOpts, authz, bind := accessControl(o, v.Index().Access())
-		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), semanticExporters(o.Semantic), decider(o))...)
+		e, err := engine.New(v, v.Index().Operational(), append(append(shared(v.Index().Docs(), counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), semanticExporters(o.Semantic), decider(o), engine.WithActivity(o.Activity))...)
 		if err != nil {
 			bus.Close()
 			v.Close()
@@ -229,7 +233,7 @@ func compose(ctx context.Context, o storeOptions) (*composition, error) {
 	docs := sqlite.NewDocStore(db)
 	counted := &countedBus{Bus: bus}
 	accessOpts, authz, bind := accessControl(o, sqlite.NewAccessStore(db))
-	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), semanticExporters(o.Semantic), decider(o))...)
+	e, err := engine.New(sqlite.NewManifestStore(db), sqlite.NewOperationalStore(db), append(append(shared(docs, counted, o.DocCache), accessOpts...), engine.WithCodec(c), engine.WithLayout(graphLayout(o.GraphLayout)), semanticExporters(o.Semantic), decider(o), engine.WithActivity(o.Activity))...)
 	if err != nil {
 		bus.Close()
 		db.Close()

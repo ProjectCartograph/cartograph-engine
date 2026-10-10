@@ -119,10 +119,11 @@ func (c *Client) SaveWorking(ctx context.Context, kind, id string, doc map[strin
 	if err != nil {
 		return err
 	}
-	return c.E.PutWorking(ctx, kind, id, text)
+	return c.E.PutWorking(engine.ByPerson(ctx), kind, id, text)
 }
 
 func (c *Client) SaveVersion(ctx context.Context, kind, id string, doc map[string]any, reason string) (client.Version, error) {
+	ctx = engine.ByPerson(ctx)
 	text, err := c.E.Codec().Encode(doc)
 	if err != nil {
 		return client.Version{}, err
