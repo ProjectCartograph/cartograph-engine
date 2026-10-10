@@ -139,6 +139,7 @@ type (
 		Reason     string                       `json:"reason,omitempty" jsonschema:"why, in a sentence the person will read; the change set's title when left out"`
 		OpenChecks map[string]map[string]string `json:"openChecks,omitempty" jsonschema:"only for checks you cannot meet without your person: Kind/id to (check id to why); every other open check refuses the proposal"`
 		Asked      string                       `json:"asked,omitempty" jsonschema:"with openChecks: what you asked your person about them and what they answered, with the question id the round gave each check, or \"not available\" when you were told to work without them"`
+		Confirm    string                       `json:"confirm,omitempty" jsonschema:"confirm.token from the work_summary your person said yes to; required"`
 	}
 	nextIn struct {
 		ChangeSet string   `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
@@ -183,6 +184,7 @@ type (
 		// them on the proposal.
 		OpenChecks map[string]string `json:"openChecks,omitempty" jsonschema:"only for a check you cannot meet without your person: check id to why it is left open; every other open check refuses the proposal"`
 		Asked      string            `json:"asked,omitempty" jsonschema:"with openChecks: what you asked your person about them and what they answered, with the question id the round gave each check, or \"not available\" when you were told to work without them"`
+		Confirm    string            `json:"confirm,omitempty" jsonschema:"confirm.token from the work_summary your person said yes to, taken before this manifest is saved; required"`
 	}
 	proposeSetIn struct {
 		ChangeSet string        `json:"changeSet,omitempty" jsonschema:"the change set to work in: your own, or your person's when they ask you to help with it (change_sets lists them); your latest open one when left out, and a new one when you have none"`
@@ -191,6 +193,7 @@ type (
 		// Checks the agent could not meet, by Kind/id, then check id.
 		OpenChecks map[string]map[string]string `json:"openChecks,omitempty" jsonschema:"only for checks you cannot meet without your person: Kind/id to (check id to why); every other open check refuses the set"`
 		Asked      string                       `json:"asked,omitempty" jsonschema:"with openChecks: what you asked your person about them and what they answered, with the question id the round gave each check, or \"not available\" when you were told to work without them"`
+		Confirm    string                       `json:"confirm,omitempty" jsonschema:"confirm.token from the work_summary your person said yes to; required"`
 	}
 	setMemberIn struct {
 		Kind     string         `json:"kind"`

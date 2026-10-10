@@ -547,7 +547,18 @@ func registerReadTools(s *sdk.Server, o Options, person identity.Principal) {
 				left[i] = map[string]any{"on": w.On, "check": w.Check, "reason": w.Reason, "asked": w.Asked}
 			}
 			assumed := assumedOut(view.ChangeSet.Assumptions)
-			return map[string]any{"changeSet": cs.ID, "status": view.ChangeSet.Status, "records": records, "leftForYourPerson": left, "decidedForYourPerson": assumed,
-				"said": "This is all the change set holds. Report from it only."}, nil
+			out := map[string]any{"changeSet": cs.ID, "status": view.ChangeSet.Status, "records": records, "leftForYourPerson": left, "decidedForYourPerson": assumed,
+				"said": "This is all the change set holds. Report from it only."}
+			// While it is open, what the person confirms is named, for
+			// propose to carry.
+			// The ask travels with the token: an agent that reads out only
+			// the token still reads it (run 005 printed confirm alone, and
+			// proposed without asking).
+			if token, err := e.ConfirmToken(c.ctx, cs.ID); err == nil {
+				out["confirm"] = map[string]string{"token": token,
+					"first": "Show your person this summary and ask them to confirm it says what they meant. End your turn and wait for their yes; " +
+						"then propose with confirm set to this token. Any change after this needs a new summary, and their confirmation of it."}
+			}
+			return out, nil
 		})
 }

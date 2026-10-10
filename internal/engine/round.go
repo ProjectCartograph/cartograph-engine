@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"sort"
 	"strings"
 )
 
@@ -224,4 +226,38 @@ func (e *Engine) namesIn(ctx context.Context, tasks []Task) map[Ref][]Named {
 		}
 	}
 	return out
+}
+
+// ConfirmToken names what a change set holds now: every draft, every check
+// left for the person and every decision taken for them. It is worked out,
+// never kept, and changes with any of them, so a proposal that carries it
+// proposes what the person was shown (docs/adr/0032, the confirmation
+// gate; several runs proposed straight after their last writes).
+func (e *Engine) ConfirmToken(ctx context.Context, set string) (string, error) {
+	s, err := e.changeSetStore()
+	if err != nil {
+		return "", err
+	}
+	cs, err := e.WorkingChangeSet(ctx, set)
+	if err != nil {
+		return "", err
+	}
+	items, err := s.ListChangeItems(ctx, cs.ID)
+	if err != nil {
+		return "", err
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Kind+"/"+items[i].ID < items[j].Kind+"/"+items[j].ID
+	})
+	h := sha256.New()
+	for _, it := range items {
+		_, _ = h.Write([]byte(it.Kind + "/" + it.ID + "\x00" + it.Op + "\x00"))
+		_, _ = h.Write(it.Text)
+		if it.Included {
+			_, _ = h.Write([]byte{1})
+		}
+	}
+	rest, _ := json.Marshal([]any{cs.Waivers, cs.Assumptions})
+	_, _ = h.Write(rest)
+	return "c-" + hex.EncodeToString(h.Sum(nil)[:4]), nil
 }

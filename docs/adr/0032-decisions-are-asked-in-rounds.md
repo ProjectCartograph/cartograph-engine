@@ -60,7 +60,11 @@ agent with how to ask it (`round`).
   nothing left tells the agent to show the person the summary and ask
   them to confirm before proposing, and nothing becomes the record until
   the person accepts the change set in Cartograph. `leave_open` already
-  refuses a check left open without the person's answer.
+  refuses a check left open without the person's answer. The summary
+  carries a `confirm` token, worked out from what the change set holds
+  and never kept, and `propose` refuses without the current one: a
+  change after the summary the person confirmed needs a new summary
+  (several runs proposed straight after their last writes, #38).
 - **Question ids.** Every item of a round carries a `question` id,
   worked out from the change set, the record and the check, never
   kept. An agent leaves a check with its person's answer only when

@@ -172,7 +172,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 		t.Fatalf("the draft was announced on %v, want Ada's feed alone", docs)
 	}
 
-	res, text := callTool(t, cs, "propose_save", map[string]any{"kind": "Team", "id": "t1", "reason": "describe the team"})
+	res, text := callTool(t, cs, "propose_save", map[string]any{"kind": "Team", "id": "t1", "reason": "describe the team", "confirm": confirmed(t, cs)})
 	if res.IsError {
 		t.Fatalf("propose_save: %s", text)
 	}
@@ -189,7 +189,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 
 	// Problems come back by field, for the agent to fix.
 	bad := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t1", "name": "T"}, "spec": map[string]any{"nope": 1}}
-	if res, text := callTool(t, cs, "propose_save", map[string]any{"kind": "Team", "id": "t1", "manifest": bad, "reason": "r"}); !res.IsError || !strings.Contains(text, "Not valid") {
+	if res, text := callTool(t, cs, "propose_save", map[string]any{"kind": "Team", "id": "t1", "manifest": bad, "reason": "r", "confirm": confirmed(t, cs)}); !res.IsError || !strings.Contains(text, "Not valid") {
 		t.Fatalf("an invalid proposal: %v %s", res.IsError, text)
 	}
 }
@@ -429,7 +429,7 @@ func TestChecksAndProposeAgree(t *testing.T) {
 	if err := json.Unmarshal([]byte(set), &whole); err != nil {
 		t.Fatal(err)
 	}
-	res, refused := callTool(t, cs, "propose", map[string]any{"reason": "r"})
+	res, refused := callTool(t, cs, "propose", map[string]any{"reason": "r", "confirm": confirmed(t, cs)})
 	if !res.IsError || !strings.Contains(refused, fmt.Sprintf("%d check", len(whole.Open))) {
 		t.Fatalf("checks found %d open; propose said: %s", len(whole.Open), refused)
 	}
@@ -445,7 +445,7 @@ func TestAnAgentFollowsTheChangeSetItProposed(t *testing.T) {
 		"spec": map[string]any{"description": "Drafted by an agent"}}
 	callTool(t, cs, "start_work", map[string]any{"title": "Describe the team"})
 	callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t1", "manifest": team})
-	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "describe the team"}); res.IsError {
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "describe the team", "confirm": confirmed(t, cs)}); res.IsError {
 		t.Fatalf("propose: %s", text)
 	}
 	res, text := callTool(t, cs, "my_proposals", map[string]any{})
@@ -554,7 +554,7 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 	if !strings.Contains(after, `"left":[`) || !strings.Contains(after, `"open":[]`) {
 		t.Fatalf("the left checks are still open: %s", after)
 	}
-	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a goal"}); res.IsError {
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a goal", "confirm": confirmed(t, cs)}); res.IsError {
 		t.Fatalf("propose refused what was left with reasons: %s", text)
 	}
 	sets, _ := e.ChangeSets(identity.WithPrincipal(context.Background(), ada), "proposed", false)
@@ -753,7 +753,7 @@ func TestAnAgentHelpsInItsPersonsChangeSet(t *testing.T) {
 		!strings.Contains(text, "theirs to propose and merge") || strings.Contains(text, "with propose") {
 		t.Fatalf("checks on Ada's change set: %s", text)
 	}
-	if res, text := callTool(t, cs, "propose", map[string]any{"changeSet": set.ID, "reason": "ready"}); !res.IsError || !strings.Contains(text, "propose it themselves") {
+	if res, text := callTool(t, cs, "propose", map[string]any{"changeSet": set.ID, "reason": "ready", "confirm": confirmed(t, cs, set.ID)}); !res.IsError || !strings.Contains(text, "propose it themselves") {
 		t.Fatalf("the agent proposed Ada's change set: %s", text)
 	}
 	if res, text := callTool(t, cs, "edit_draft", map[string]any{"changeSet": other.ID, "kind": "Team", "id": "t1", "set": map[string]any{"/spec/description": "x"}}); !res.IsError {
@@ -1367,7 +1367,7 @@ func TestARegisterGivesItsKPIsBaselinesAndTargets(t *testing.T) {
 	if !strings.Contains(text, "KPI/") {
 		t.Fatalf("no KPIs: %s\nport: %s", text, ported[strings.Index(ported, `"registers"`):])
 	}
-	_, text = callTool(t, cs, "propose", map[string]any{"reason": "check"})
+	_, text = callTool(t, cs, "propose", map[string]any{"reason": "check", "confirm": confirmed(t, cs)})
 	for _, bad := range []string{"kpi-baseline", "missing property 'team'", "periodMonths"} {
 		if strings.Contains(text, bad) && !strings.Contains(text, "Grading disputes") {
 			t.Errorf("%s still open: %s", bad, text)
@@ -1586,6 +1586,49 @@ func TestAPortWithoutARegisterSaysSo(t *testing.T) {
 	}})
 	if res.IsError || strings.Contains(text, "registers written") || !strings.Contains(text, "no register as a table") {
 		t.Fatalf("port, second call: %s", text)
+	}
+}
+
+// confirmed is the confirm token of the change set's summary, as the
+// person confirmed it (the agent's own latest change set, or set).
+func confirmed(t *testing.T, cs *sdk.ClientSession, set ...string) string {
+	t.Helper()
+	args := map[string]any{}
+	if len(set) > 0 {
+		args["changeSet"] = set[0]
+	}
+	_, text := callTool(t, cs, "work_summary", args)
+	var out struct {
+		Confirm struct {
+			Token string `json:"token"`
+			First string `json:"first"`
+		} `json:"confirm"`
+	}
+	_ = json.Unmarshal([]byte(text), &out)
+	if !strings.Contains(out.Confirm.First, "wait for their yes") {
+		t.Fatalf("the token comes without the ask: %s", text)
+	}
+	return out.Confirm.Token
+}
+
+// A proposal carries the token of the summary the person confirmed: none,
+// or one from before a later change, is refused (docs/adr/0032, #38).
+func TestAProposalCarriesWhatThePersonConfirmed(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	team := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t1", "name": "Grading team"}, "spec": map[string]any{"description": "Grades produce at the depots"}}
+	callTool(t, cs, "start_work", map[string]any{"title": "A team"})
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t1", "manifest": team})
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a team"}); !res.IsError || !strings.Contains(text, "pass confirm") {
+		t.Fatalf("a proposal with no confirmation: %s", text)
+	}
+	token := confirmed(t, cs)
+	callTool(t, cs, "edit_draft", map[string]any{"kind": "Team", "id": "t1", "set": map[string]any{"/spec/description": "Grades produce at every depot"}})
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a team", "confirm": token}); !res.IsError || !strings.Contains(text, "changed after the summary") {
+		t.Fatalf("a proposal after a change the person did not see: %s", text)
+	}
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a team", "confirm": confirmed(t, cs)}); res.IsError {
+		t.Fatalf("a confirmed proposal: %s", text)
 	}
 }
 
@@ -1863,11 +1906,11 @@ func TestProposeLeavesChecksWithWhatWasAsked(t *testing.T) {
 		ids = append(ids, q)
 	}
 	open := map[string]any{"Goal/g-sound": waive}
-	if res, text := callTool(t, cs, "propose", map[string]any{"openChecks": open}); !res.IsError || !strings.Contains(text, "pass asked") {
+	if res, text := callTool(t, cs, "propose", map[string]any{"openChecks": open, "confirm": confirmed(t, cs)}); !res.IsError || !strings.Contains(text, "pass asked") {
 		t.Fatalf("waived without asked: %s", text)
 	}
 	asked := "Asked who owns it; the board decides in December (" + strings.Join(ids, ", ") + ")"
-	if res, text := callTool(t, cs, "propose", map[string]any{"openChecks": open, "asked": asked}); res.IsError {
+	if res, text := callTool(t, cs, "propose", map[string]any{"openChecks": open, "asked": asked, "confirm": confirmed(t, cs)}); res.IsError {
 		t.Fatalf("propose with asked: %s", text)
 	}
 	sets, _ := e.ChangeSets(identity.WithPrincipal(context.Background(), ada), "proposed", false)

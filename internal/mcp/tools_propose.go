@@ -3,10 +3,12 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
 )
 
@@ -21,6 +23,9 @@ func registerProposeTools(s *sdk.Server, o Options, person identity.Principal) {
 			if err != nil {
 				return nil, err
 			}
+			if err := confirmedBy(c, cs.ID, in.Confirm); err != nil {
+				return nil, err
+			}
 			return proposeChangeSet(c, cs, in.Reason, in.Asked, in.OpenChecks)
 		})
 
@@ -28,6 +33,9 @@ func registerProposeTools(s *sdk.Server, o Options, person identity.Principal) {
 		func(c call, in proposeSaveIn) (any, error) {
 			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
 			if err != nil {
+				return nil, err
+			}
+			if err := confirmedBy(c, cs.ID, in.Confirm); err != nil {
 				return nil, err
 			}
 			if in.Manifest != nil {
@@ -50,6 +58,9 @@ func registerProposeTools(s *sdk.Server, o Options, person identity.Principal) {
 		func(c call, in proposeSetIn) (any, error) {
 			cs, c, _, err := c.inChangeSet(in.ChangeSet, true)
 			if err != nil {
+				return nil, err
+			}
+			if err := confirmedBy(c, cs.ID, in.Confirm); err != nil {
 				return nil, err
 			}
 			for _, m := range in.Manifests {
@@ -102,5 +113,25 @@ func registerProposeTools(s *sdk.Server, o Options, person identity.Principal) {
 					"ask me for what only I know with examples, save drafts and meet every check, then propose. The guide:\n\n" + string(b)
 				return &sdk.GetPromptResult{Messages: []*sdk.PromptMessage{{Role: "user", Content: &sdk.TextContent{Text: text}}}}, nil
 			})
+	}
+}
+
+// confirmedBy refuses a proposal that does not carry the token of what
+// the change set holds now: the person confirms what work_summary shows,
+// and a change after it is not what they confirmed (docs/adr/0032).
+func confirmedBy(c call, set, token string) error {
+	now, err := c.o.Engine.ConfirmToken(c.ctx, set)
+	if err != nil {
+		return err
+	}
+	switch strings.TrimSpace(token) {
+	case now:
+		return nil
+	case "":
+		return fmt.Errorf("%w: not proposed: pass confirm, the token work_summary gives under confirm. Call work_summary, show your person what it holds, "+
+			"ask them to confirm it says what they meant, and once they say yes, propose with confirm set to its token", engine.ErrBadEdit)
+	default:
+		return fmt.Errorf("%w: not proposed: the change set changed after the summary your person confirmed. Call work_summary again, "+
+			"show them what changed, and propose with its new confirm token once they confirm", engine.ErrBadEdit)
 	}
 }

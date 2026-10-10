@@ -568,7 +568,7 @@ func roundOf(c call, set string, found bool, workIn []string, locale string) (an
 	switch {
 	case r.Done():
 		out["next"] = "Every check is met or left with your person's own answer. Show them what was decided (work_summary), " +
-			"ask them to confirm it says what they meant, and only then propose: they accept it in Cartograph."
+			"ask them to confirm it says what they meant, and only then propose, with the summary's confirm token: they accept it in Cartograph."
 	case len(r.Ask) == 0 && len(r.Settle) == 0 && len(r.Write) > 0:
 		out["next"] = "Nothing to ask this round: write the records in write, each naming the record it settles, then call round again."
 	default:
