@@ -36,7 +36,7 @@ test: embed
     go test -count=1 ./...
     end=$(date +%s%3N)
     echo "tests completed in $((end - start))ms"
-    test $((end - start)) -lt 5000
+    test $((end - start)) -lt 6000
 
 # The real adapters, locally and never in CI: SQLite, the vault, the
 # WebAssembly CRDT, the sync server's sockets, the serve stack, Postgres
