@@ -18,25 +18,11 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/postgres"
 )
 
-// copyDir copies the example into a directory of the test's own.
-func copyDir(t *testing.T, from string) string {
+// exampleCopy copies the example into a directory of the test's own.
+func exampleCopy(t *testing.T, from string) string {
 	t.Helper()
 	to := t.TempDir()
-	err := filepath.Walk(from, func(p string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(from, p)
-		if info.IsDir() {
-			return os.MkdirAll(filepath.Join(to, rel), 0o755)
-		}
-		b, err := os.ReadFile(p)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(filepath.Join(to, rel), b, 0o644)
-	})
-	if err != nil {
+	if err := copyDir(from, to); err != nil {
 		t.Fatal(err)
 	}
 	return to
@@ -85,7 +71,7 @@ func TestSeriesAndReportsAcrossStores(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	vault, err := compose(ctx, storeOptions{Target: copyDir(t, example)})
+	vault, err := compose(ctx, storeOptions{Target: exampleCopy(t, example)})
 	if err != nil {
 		t.Fatal(err)
 	}
