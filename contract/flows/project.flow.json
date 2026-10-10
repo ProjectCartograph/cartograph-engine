@@ -574,17 +574,29 @@
             "path": "/spec/constraints/scope",
             "control": "choice",
             "title": "Scope",
-            "hint": "When something has to give: hold it, adjust it first, or concede it."
+            "hint": "When something has to give: hold it, adjust it first, or concede it.",
+            "checks": [
+              "constraints-stated",
+              "constraints-all-held"
+            ]
           },
           {
             "path": "/spec/constraints/schedule",
             "control": "choice",
-            "title": "Schedule"
+            "title": "Schedule",
+            "checks": [
+              "constraints-stated",
+              "constraints-all-held"
+            ]
           },
           {
             "path": "/spec/constraints/cost",
             "control": "choice",
-            "title": "Cost"
+            "title": "Cost",
+            "checks": [
+              "constraints-stated",
+              "constraints-all-held"
+            ]
           }
         ]
       },
@@ -860,7 +872,10 @@
               "risks-escalated",
               "risks-dependency-edges",
               "risks-dependency-cycle",
-              "risks-dependency-schedule"
+              "risks-dependency-schedule",
+              "risks-constrained",
+              "risks-held-accepted",
+              "risks-spend-held"
             ],
             "fields": [
               {
@@ -904,6 +919,9 @@
                     "control": "reference",
                     "title": "Bears on"
                   }
+                ],
+                "checks": [
+                  "risks-constrained"
                 ]
               },
               {
@@ -913,7 +931,10 @@
               {
                 "path": "/response",
                 "control": "choice",
-                "title": "Response"
+                "title": "Response",
+                "checks": [
+                  "risks-held-accepted"
+                ]
               },
               {
                 "path": "/mitigation",
@@ -925,7 +946,10 @@
               {
                 "path": "/spends",
                 "control": "choice",
-                "title": "The response spends"
+                "title": "The response spends",
+                "checks": [
+                  "risks-spend-held"
+                ]
               },
               {
                 "path": "/owner",
