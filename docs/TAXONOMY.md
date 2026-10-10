@@ -1760,3 +1760,19 @@ which side is most constrained; checks advise when a risk sits on no
 side, when a held side's risk is only accepted, and when a response
 spends a held side. A risk is declared once, in the register, and shown
 beside everything it bears on; the register reads as the overview.
+
+### D61. A project has one sponsor and one project manager. *(resolved)*
+
+**The problem.** A project could name several sponsors and several
+project managers, and the interface offered the role again once it was
+taken (#58). Two people accountable for the same project is the
+ambiguity a sponsor exists to remove.
+
+**The discipline.** GovS 002 gives a project one senior responsible
+owner; PRINCE2's Executive is a single person who owns the business
+case, and its project manager runs the project day to day for them.
+
+**What Cartograph does.** A project's resources name at most one
+sponsor and one project manager; a second is refused on the role, saying
+which entry already holds it. Every other role may be held by several.
+An interface offers the two roles only while they are free.

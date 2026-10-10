@@ -218,7 +218,7 @@
       ]
     },
     "/spec/objectives": {
-      "guide": "The change this project makes and how, as one or more objectives. Each has one to three key results that measure the change, not the effort. Put numbers in the key results."
+      "guide": "Objectives are a qualitative description of what the project sets out to achieve; key results are the quantitative (numerical) measures of how you progress towards that outcome. Each objective has one to three key results, measuring the change, not the effort."
     },
     "/spec/objectives/-/objective": {
       "guide": "The change and how you will make it, such as: Catch faults at intake by checking every delivery. Put targets in the key results.",

@@ -2429,7 +2429,12 @@ type StructurePiece struct {
 // StructureQuestion defines model for StructureQuestion.
 type StructureQuestion struct {
 	// Field The answer this question sets on a StructurePiece; empty for the last, which applies when none does.
-	Field    string `json:"field"`
+	Field string `json:"field"`
+
+	// Person The question as a person is asked it, in plain words. An interface shows this, never question.
+	Person *string `json:"person,omitempty"`
+
+	// Question The question as an agent is asked it, with what to send.
 	Question string `json:"question"`
 	Then     string `json:"then"`
 }
