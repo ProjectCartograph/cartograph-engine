@@ -2,6 +2,8 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 )
 
@@ -56,7 +58,33 @@ func (e *Engine) Round(ctx context.Context, set string, work []Ref, locale strin
 	r := frontier(w.Tasks, len(sources) > 0, e.namesIn(ctx, w.Tasks))
 	e.recommend(ctx, r.Ask)
 	r.Ask = append(r.Ask, e.unasked(ctx, set)...)
+	for _, ts := range [][]Task{r.Settle, r.Write} {
+		for i := range ts {
+			ts[i].Question = QuestionID(set, ts[i].Kind, ts[i].ID, ts[i].Check)
+		}
+	}
+	for i := range r.Ask {
+		q := &r.Ask[i]
+		q.Question = QuestionID(set, q.Kind, q.ID, q.Check)
+	}
 	return r, nil
+}
+
+// QuestionID names a check of a record as a round puts it to the person,
+// in change set set. It is worked out, never kept: the same check in the
+// same change set always has the same id, and nothing else gives it, so
+// an answer that cites it was given to a question a round asked (an agent
+// left two checks it never asked with one sentence for all, eval run
+// sonnet 012).
+func QuestionID(set, kind, id, check string) string {
+	h := sha256.Sum256([]byte(set + "\x00" + kind + "/" + id + "#" + check))
+	return "q-" + hex.EncodeToString(h[:4])
+}
+
+// citesQuestion reports whether what the person answered names the
+// round's question for the check, or says there was nobody to ask.
+func citesQuestion(set, kind, id, check, asked string) bool {
+	return strings.EqualFold(asked, "not available") || strings.Contains(asked, QuestionID(set, kind, id, check))
 }
 
 // unasked are the checks the change set leaves for the person without

@@ -496,6 +496,20 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, as
 	}
 	on := kind + "/" + id
 	reason, asked = strings.TrimSpace(reason), strings.TrimSpace(asked)
+	// An agent leaves a check with its person's answer only to a question
+	// a round put to them, named by its id; the id is never said here, so
+	// it comes from a round.
+	cited := citesQuestion(set, kind, id, check, asked)
+	for _, w := range cs.Waivers {
+		// Left before with an answer to its question: what is added to it
+		// was asked there.
+		cited = cited || (w.On == on && w.Check == check && citesQuestion(set, kind, id, check, w.Asked) && !strings.EqualFold(w.Asked, "not available"))
+	}
+	if p := identity.PrincipalFrom(ctx); p.Agent != "" && reason != "" && asked != "" && !cited {
+		return fmt.Errorf("%w: %s on %s: asked names no question a round put to your person. Every item of a round has a question id: "+
+			"send the same call again with asked naming it after their words, or ask it in a round first; \"not available\" when you were told to work without them",
+			ErrBadEdit, check, on)
+	}
 	kept := cs.Waivers[:0:0]
 	for _, w := range cs.Waivers {
 		if w.On != on || w.Check != check {

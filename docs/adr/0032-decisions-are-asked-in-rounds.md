@@ -61,6 +61,13 @@ agent with how to ask it (`round`).
   them to confirm before proposing, and nothing becomes the record until
   the person accepts the change set in Cartograph. `leave_open` already
   refuses a check left open without the person's answer.
+- **Question ids.** Every item of a round carries a `question` id,
+  worked out from the change set, the record and the check, never
+  kept. An agent leaves a check with its person's answer only when
+  `asked` names that check's id, or when the check was left before
+  with an answer that did; the refusal never says the id, so it comes
+  from a round. One sentence for every check, asked of none, is
+  refused (Sonnet run 012). "not available" needs no id.
 
 The instructions change with it: ask in rounds, never ask what `settle`
 lists, never answer a question in `ask`. `next` stays, for working
