@@ -2086,6 +2086,21 @@ type ProjectChecks struct {
 	Items      []ProjectCheckItem `json:"items"`
 }
 
+// ProjectRound defines model for ProjectRound.
+type ProjectRound struct {
+	// Ask The person's decisions, every one answerable now.
+	Ask []RoundTask `json:"ask"`
+
+	// Settle What the documents themselves state.
+	Settle []RoundTask `json:"settle"`
+
+	// Waiting Open checks behind this round, asked once its answers are given.
+	Waiting int `json:"waiting"`
+
+	// Write Records to write next, each settling a link.
+	Write []RoundTask `json:"write"`
+}
+
 // ProjectState defines model for ProjectState.
 type ProjectState struct {
 	History []ProjectStateEntry `json:"history"`
@@ -2229,6 +2244,28 @@ type Report struct {
 
 // Role A role on the access list (TAXONOMY.md D27). A reader sees everything and changes nothing; a contributor changes the work of their teams and the teams beneath them and keeps the shared registers; a strategy editor shapes the goals and the vision and mission; an administrator does everything, for every team, and manages access.
 type Role string
+
+// RoundTask defines model for RoundTask.
+type RoundTask struct {
+	Check string `json:"check"`
+
+	// Do What the guidance says to do about it.
+	Do *string `json:"do,omitempty"`
+
+	// Field The field that settles it, as a JSON pointer, where one field does.
+	Field   *string `json:"field,omitempty"`
+	Id      string  `json:"id"`
+	Kind    string  `json:"kind"`
+	Message string  `json:"message"`
+	Name    *string `json:"name,omitempty"`
+
+	// Question The id a round gives it, which an answer left with it names.
+	Question *string `json:"question,omitempty"`
+	State    string  `json:"state"`
+
+	// Step The step of the walk that settles it.
+	Step *string `json:"step,omitempty"`
+}
 
 // Route defines model for Route.
 type Route struct {
@@ -2873,6 +2910,12 @@ type MatchWhatHappenedParams struct {
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
+// GetProjectRoundParams defines parameters for GetProjectRound.
+type GetProjectRoundParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetProjectScheduleParams defines parameters for GetProjectSchedule.
 type GetProjectScheduleParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -3364,6 +3407,9 @@ type ServerInterface interface {
 	// MatchWhatHappened The items of a project what a person says happened is about
 	// (POST /manifests/Project/{id}/happened)
 	MatchWhatHappened(w http.ResponseWriter, r *http.Request, id IdParam, params MatchWhatHappenedParams)
+	// GetProjectRound The decisions a project's walk can settle now, in the order agents are asked them
+	// (GET /manifests/Project/{id}/round)
+	GetProjectRound(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectRoundParams)
 	// GetProjectSchedule A project's milestones placed on time
 	// (GET /manifests/Project/{id}/schedule)
 	GetProjectSchedule(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectScheduleParams)
@@ -5348,6 +5394,48 @@ func (siw *ServerInterfaceWrapper) MatchWhatHappened(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// GetProjectRound operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectRound(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectRoundParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProjectRound(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetProjectSchedule operation middleware
 func (siw *ServerInterfaceWrapper) GetProjectSchedule(w http.ResponseWriter, r *http.Request) {
 
@@ -6952,6 +7040,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/checks", wrapper.GetProjectChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/dmaic", wrapper.GetProjectDMAIC)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/constraints", wrapper.GetProjectConstraints)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/round", wrapper.GetProjectRound)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/KPI/{id}/control", wrapper.GetKPIControlChart)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.GetProjectState)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.TransitionProjectState)
@@ -10565,6 +10654,71 @@ func (response MatchWhatHappened404JSONResponse) VisitMatchWhatHappenedResponse(
 	return err
 }
 
+type GetProjectRoundRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetProjectRoundParams
+}
+
+type GetProjectRoundResponseObject interface {
+	VisitGetProjectRoundResponse(w http.ResponseWriter) error
+}
+
+type GetProjectRound200JSONResponse ProjectRound
+
+func (response GetProjectRound200JSONResponse) VisitGetProjectRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectRound401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetProjectRound401JSONResponse) VisitGetProjectRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectRound403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProjectRound403JSONResponse) VisitGetProjectRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectRound404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProjectRound404JSONResponse) VisitGetProjectRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetProjectScheduleRequestObject struct {
 	Id     IdParam `json:"id"`
 	Params GetProjectScheduleParams
@@ -13695,6 +13849,9 @@ type StrictServerInterface interface {
 	// MatchWhatHappened The items of a project what a person says happened is about
 	// (POST /manifests/Project/{id}/happened)
 	MatchWhatHappened(ctx context.Context, request MatchWhatHappenedRequestObject) (MatchWhatHappenedResponseObject, error)
+	// GetProjectRound The decisions a project's walk can settle now, in the order agents are asked them
+	// (GET /manifests/Project/{id}/round)
+	GetProjectRound(ctx context.Context, request GetProjectRoundRequestObject) (GetProjectRoundResponseObject, error)
 	// GetProjectSchedule A project's milestones placed on time
 	// (GET /manifests/Project/{id}/schedule)
 	GetProjectSchedule(ctx context.Context, request GetProjectScheduleRequestObject) (GetProjectScheduleResponseObject, error)
@@ -15402,6 +15559,33 @@ func (sh *strictHandler) MatchWhatHappened(w http.ResponseWriter, r *http.Reques
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(MatchWhatHappenedResponseObject); ok {
 		if err := validResponse.VisitMatchWhatHappenedResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProjectRound operation middleware
+func (sh *strictHandler) GetProjectRound(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectRoundParams) {
+	var request GetProjectRoundRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProjectRound(ctx, request.(GetProjectRoundRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProjectRound")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProjectRoundResponseObject); ok {
+		if err := validResponse.VisitGetProjectRoundResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
