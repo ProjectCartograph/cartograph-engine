@@ -31,7 +31,9 @@ script can run against the server.
 A criteria file is JSON: what is judged, the agent's name, the bar, and
 the checks (`wholeDocument`, `proposed`, `oneObjectiveEach`,
 `noPeople`, `structure` with the component and operation patterns,
-`rounds` for a run with a person present (docs/adr/0032),
+`rounds` for a run with a person present (docs/adr/0032), `triangle`
+for risks placed on scope, schedule and cost and stances asked rather
+than left silent (TAXONOMY.md D60),
 `totals` across projects, and the `kpis` that must and must not exist).
 `internal/evaluate` defines it.
 

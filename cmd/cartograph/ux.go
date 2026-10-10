@@ -143,6 +143,10 @@ func printUX(w io.Writer, r activity.Report) {
 	for _, c := range r.Waste {
 		fmt.Fprintf(w, "  %-18s %-32s %5d of %-6d %10.3f %s\n", c.Waste, c.Name, c.Count, c.Base, c.Rate, c.Per)
 	}
+	fmt.Fprintf(w, "\nCross-cutting:\n")
+	for _, c := range r.CrossCutting {
+		fmt.Fprintf(w, "  %-18s %-46s %5d of %-6d %10.3f %s\n", c.Waste, c.Name, c.Count, c.Base, c.Rate, c.Per)
+	}
 	fmt.Fprintf(w, "\nLead times:\n")
 	for _, l := range r.LeadTimes {
 		fmt.Fprintf(w, "  %-46s %4d  median %.0f s, p95 %.0f s\n", l.Name, l.Count, l.Median, l.P95)
