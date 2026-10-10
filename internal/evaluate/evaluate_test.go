@@ -265,6 +265,36 @@ func TestNotLeftHoldsOnTheMainProject(t *testing.T) {
 	}
 }
 
+// With a person present, the person answers after the agent's last write
+// and before it proposes: they confirmed what is proposed (#38).
+func TestThePersonConfirmsWhatIsProposed(t *testing.T) {
+	t.Parallel()
+	c := evaluate.Criteria{Agent: "Agent", Runs: 3, Rounds: &evaluate.Rounds{}}
+	at := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
+	run := []trace.Call{{Tool: "round", Agent: "Agent", Outcome: trace.OK, At: at}, {Tool: "settle", Agent: "Agent", Outcome: trace.OK, At: at.Add(time.Minute)},
+		{Tool: "work_summary", Agent: "Agent", Outcome: trace.OK, At: at.Add(2 * time.Minute)}, {Tool: "propose", Agent: "Agent", Outcome: trace.OK, At: at.Add(4 * time.Minute)}}
+	srv := fake{status: "proposed"}
+	judged := func(answered ...time.Time) bool {
+		s, err := evaluate.ScoreRun(context.Background(), srv, c, "cs1", run, document, answered)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, ch := range s.Checks {
+			if ch.Name == "confirmed before propose" {
+				return ch.Pass
+			}
+		}
+		t.Fatal("not judged")
+		return false
+	}
+	if judged(at.Add(30 * time.Second)) {
+		t.Error("an answer before the last write passed as a confirmation")
+	}
+	if !judged(at.Add(30*time.Second), at.Add(3*time.Minute)) {
+		t.Error("the person's confirmation after the summary failed")
+	}
+}
+
 // With a person present, a run proposes only after the person answered:
 // the evaluator's record says when, whatever the agent wrote as asked
 // (Sonnet run 007 wrote "answer awaited" and proposed).
