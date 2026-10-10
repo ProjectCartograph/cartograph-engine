@@ -151,3 +151,19 @@ func TestAWorkstreamIsRefusedAndAChangeIsSaid(t *testing.T) {
 		t.Fatalf("problems: %v", s.Problems)
 	}
 }
+
+// A person is asked each question in plain words: no code from the
+// taxonomy, no field to send, nothing written for an agent (#54).
+func TestEveryQuestionHasAPersonsWording(t *testing.T) {
+	t.Parallel()
+	for _, q := range structure.Questions {
+		if q.Person == "" {
+			t.Errorf("%q has no wording for a person", q.Field)
+		}
+		for _, agentOnly := range []string{"(D", "answer ", "true", "give deliverable", ":"} {
+			if strings.Contains(q.Person, agentOnly) {
+				t.Errorf("%q asks a person with %q: %s", q.Field, agentOnly, q.Person)
+			}
+		}
+	}
+}
