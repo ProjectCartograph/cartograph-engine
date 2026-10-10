@@ -122,8 +122,37 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 	// A project schedules, so a dependency may land by one of its phases.
 	problems = append(problems, kit.RiskProblems(spec, true)...)
 	problems = append(problems, affectsProblems(spec)...)
+	problems = append(problems, singleRoleProblems(spec)...)
 
 	return problems
+}
+
+// singleRoles are the roles a project holds once (TAXONOMY.md D61): one
+// sponsor answers for it, one project manager runs it.
+var singleRoles = map[string]string{"sponsor": "sponsor", "manager": "project manager"}
+
+// singleRoleProblems refuses a second sponsor or project manager.
+func singleRoleProblems(spec map[string]any) []kit.Problem {
+	var out []kit.Problem
+	resources, _ := spec["resources"].([]any)
+	first := map[string]int{}
+	for i, r := range resources {
+		m, _ := r.(map[string]any)
+		role, _ := m["role"].(string)
+		name, single := singleRoles[role]
+		if !single {
+			continue
+		}
+		if at, dup := first[role]; dup {
+			out = append(out, kit.Problem{
+				Path:    fmt.Sprintf("/spec/resources/%d/role", i),
+				Message: fmt.Sprintf("a project has one %s, named at resources %d: give this one another role, or replace that one", name, at),
+			})
+			continue
+		}
+		first[role] = i
+	}
+	return out
 }
 
 // fundingCurrencyProblems enforces at most one funding line per currency.
