@@ -79,6 +79,7 @@ The type is one of Angular's:
 The scope names the area the change is in; a change across several
 has none. In this repository:
 
+- `activity`: internal/activity, the people's trace and its analysis
 - `adr`: docs/adr
 - `api`: internal/api, the HTTP adapter
 - `arch`: internal/arch, the dependency rule
