@@ -792,6 +792,14 @@ func (e *Engine) ProposeChangeSet(ctx context.Context, id, reason string, waive 
 	if p := identity.PrincipalFrom(ctx); p.Agent != "" && cs.Owner != ownerOf(p) {
 		return store.ChangeSet{}, ErrTheirsToPropose
 	}
+	// What may never be left is not waived at proposing either.
+	for _, checks := range waive {
+		for check, reason := range checks {
+			if err := MayLeave(check, reason); err != nil && check == "risks-constrained" {
+				return store.ChangeSet{}, err
+			}
+		}
+	}
 	// A shape the strict profile refuses is never proposed, whoever drafted
 	// it and whatever reason is given: no waiver reaches it (docs/adr/0029).
 	items, err := s.ListChangeItems(ctx, cs.ID)
