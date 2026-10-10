@@ -41,9 +41,12 @@ func structureDescription() string {
 	return b.String()
 }
 
-// portWrites are the tools that write a record one field or one check at
-// a time: in a port, port writes every record at once instead.
-var portWrites = map[string]bool{"edit_draft": true, "save_draft": true, "save_drafts": true, "settle": true, "leave_open": true}
+// portWrites are the tools that write a record one field at a time: in a
+// port, port writes every record at once instead. leave_open writes no
+// field, only what the person was asked, and the instructions name it for
+// what they cannot answer: refused in a port, agents sent it 7 and 22
+// times in a run (#38).
+var portWrites = map[string]bool{"edit_draft": true, "save_draft": true, "save_drafts": true, "settle": true}
 
 // portOnly refuses a one-at-a-time write in a change set that holds a
 // document: a port has one path, port with records, so an agent cannot

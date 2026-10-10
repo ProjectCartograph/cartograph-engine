@@ -1456,8 +1456,9 @@ func TestAComponentNamesItsDeliverableRow(t *testing.T) {
 	}
 }
 
-// A change set holding a document is a port: a one-at-a-time write in
-// it is refused and sent to port with records.
+// A change set holding a document is a port: a one-field-at-a-time write
+// in it is refused and sent to port with records; leaving a check is not
+// such a write.
 func TestAPortHasOneWritePath(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
@@ -1470,6 +1471,12 @@ func TestAPortHasOneWritePath(t *testing.T) {
 	res, text := callTool(t, cs, "edit_draft", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/summary/about": "x"}})
 	if !res.IsError || !strings.Contains(text, "Call port with records now") {
 		t.Fatalf("edit_draft in a port: %s", text)
+	}
+	// Leaving a check writes no field: it is the port's as much as port's
+	// open is.
+	if res, text := callTool(t, cs, "leave_open", map[string]any{"kind": kind, "id": id, "check": "resources-funding", "reason": "The budget is to be confirmed",
+		"asked": "not available"}); res.IsError {
+		t.Fatalf("leave_open in a port: %s", text)
 	}
 }
 
