@@ -42,6 +42,10 @@ type Task struct {
 	// Field is the field that settles it, as a JSON pointer, where one
 	// field does.
 	Field string `json:"field,omitempty"`
+	// Question names it in a round (docs/adr/0032): what the person
+	// answered is left with it, so an answer is held to a question
+	// that was put to them. Only a round gives it.
+	Question string `json:"question,omitempty"`
 	// By is the kind written to settle it, where that is another kind (a
 	// gap settles an outcome's closes-gap): the stage it waits for.
 	By string `json:"by,omitempty"`

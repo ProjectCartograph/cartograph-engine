@@ -26,6 +26,9 @@ const (
 var writes = map[string]bool{"port": true, "settle_register": true, "bring_document": true, "start_work": true, "save_draft": true, "save_drafts": true, "edit_draft": true, "settle": true,
 	"leave_open": true, "discard_draft": true, "propose": true, "propose_item": true, "propose_save": true, "propose_set": true, "propose_state": true}
 
+// IsWrite reports whether a tool changes a change set.
+func IsWrite(tool string) bool { return writes[tool] }
+
 // ToolStats is one tool's line in the report.
 type ToolStats struct {
 	Tool      string  `json:"tool"`

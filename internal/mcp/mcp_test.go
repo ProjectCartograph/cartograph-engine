@@ -172,7 +172,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 		t.Fatalf("the draft was announced on %v, want Ada's feed alone", docs)
 	}
 
-	res, text := callTool(t, cs, "propose_save", map[string]any{"kind": "Team", "id": "t1", "reason": "describe the team"})
+	res, text := callTool(t, cs, "propose_save", map[string]any{"kind": "Team", "id": "t1", "reason": "describe the team", "confirm": confirmed(t, cs)})
 	if res.IsError {
 		t.Fatalf("propose_save: %s", text)
 	}
@@ -189,7 +189,7 @@ func TestAnAgentReadsDraftsAndProposes(t *testing.T) {
 
 	// Problems come back by field, for the agent to fix.
 	bad := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t1", "name": "T"}, "spec": map[string]any{"nope": 1}}
-	if res, text := callTool(t, cs, "propose_save", map[string]any{"kind": "Team", "id": "t1", "manifest": bad, "reason": "r"}); !res.IsError || !strings.Contains(text, "Not valid") {
+	if res, text := callTool(t, cs, "propose_save", map[string]any{"kind": "Team", "id": "t1", "manifest": bad, "reason": "r", "confirm": confirmed(t, cs)}); !res.IsError || !strings.Contains(text, "Not valid") {
 		t.Fatalf("an invalid proposal: %v %s", res.IsError, text)
 	}
 }
@@ -429,7 +429,7 @@ func TestChecksAndProposeAgree(t *testing.T) {
 	if err := json.Unmarshal([]byte(set), &whole); err != nil {
 		t.Fatal(err)
 	}
-	res, refused := callTool(t, cs, "propose", map[string]any{"reason": "r"})
+	res, refused := callTool(t, cs, "propose", map[string]any{"reason": "r", "confirm": confirmed(t, cs)})
 	if !res.IsError || !strings.Contains(refused, fmt.Sprintf("%d check", len(whole.Open))) {
 		t.Fatalf("checks found %d open; propose said: %s", len(whole.Open), refused)
 	}
@@ -445,7 +445,7 @@ func TestAnAgentFollowsTheChangeSetItProposed(t *testing.T) {
 		"spec": map[string]any{"description": "Drafted by an agent"}}
 	callTool(t, cs, "start_work", map[string]any{"title": "Describe the team"})
 	callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t1", "manifest": team})
-	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "describe the team"}); res.IsError {
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "describe the team", "confirm": confirmed(t, cs)}); res.IsError {
 		t.Fatalf("propose: %s", text)
 	}
 	res, text := callTool(t, cs, "my_proposals", map[string]any{})
@@ -533,24 +533,20 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 	if err := json.Unmarshal([]byte(before), &report); err != nil || len(report.Open) == 0 {
 		t.Fatalf("no open checks to leave: %s", before)
 	}
-	for _, o := range report.Open {
-		if res, text := callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, because the document is silent; they will decide later", "kind": "Goal", "id": "g-sound", "check": o.ID, "reason": "Only the person knows " + o.ID}); res.IsError {
-			t.Fatalf("leave_open: %s", text)
-		}
-	}
+	leaveByRounds(t, cs, "Goal/g-sound", "Asked who sets it, because the document is silent; they will decide later", false)
 	// Leaving a check without having asked is refused: the person may
 	// know the figure, or decide it now.
 	if res, text := callTool(t, cs, "leave_open", map[string]any{"kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "Unknown"}); !res.IsError || !strings.Contains(text, "ask your person first") {
 		t.Fatalf("a check was left without asking: %s", text)
 	}
 	// A second missing fact behind the same check adds its reason.
-	callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, because the document is silent; they will decide later", "kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "A second fact is missing"})
+	callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, again: a second fact is missing too", "kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "A second fact is missing"})
 	_, after := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-sound"})
 	if !strings.Contains(after, "Only the person knows "+report.Open[0].ID+" Also: A second fact is missing") {
 		t.Fatalf("the first reason was lost: %s", after)
 	}
 	// A correction puts its reason in place of the first.
-	callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, because the document is silent; they will decide later", "kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "Only the person knows " + report.Open[0].ID, "correct": true})
+	callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, again: only the first holds", "kind": "Goal", "id": "g-sound", "check": report.Open[0].ID, "reason": "Only the person knows " + report.Open[0].ID, "correct": true})
 	_, after = callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-sound"})
 	if strings.Contains(after, "A second fact is missing") {
 		t.Fatalf("a correction kept the reason it corrects: %s", after)
@@ -558,7 +554,7 @@ func TestAnAgentLeavesACheckForItsPerson(t *testing.T) {
 	if !strings.Contains(after, `"left":[`) || !strings.Contains(after, `"open":[]`) {
 		t.Fatalf("the left checks are still open: %s", after)
 	}
-	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a goal"}); res.IsError {
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a goal", "confirm": confirmed(t, cs)}); res.IsError {
 		t.Fatalf("propose refused what was left with reasons: %s", text)
 	}
 	sets, _ := e.ChangeSets(identity.WithPrincipal(context.Background(), ada), "proposed", false)
@@ -665,7 +661,7 @@ func TestAnAimWaitsOnItsKPIsLeftFigure(t *testing.T) {
 	if res, text := callTool(t, cs, "save_draft", map[string]any{"kind": "KPI", "id": "k-graded", "manifest": kpi}); res.IsError {
 		t.Fatalf("save the KPI: %s", text)
 	}
-	callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, because the document is silent; they will decide later", "kind": "KPI", "id": "k-graded", "check": "kpi-target", "reason": "The board sets the target after the baseline"})
+	callTool(t, cs, "leave_open", map[string]any{"asked": answered(t, cs, "Asked who sets it, because the document is silent; they will decide later", "KPI/k-graded#kpi-target"), "kind": "KPI", "id": "k-graded", "check": "kpi-target", "reason": "The board sets the target after the baseline"})
 	_, text := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-graded"})
 	var report struct {
 		Open []struct {
@@ -696,7 +692,7 @@ func TestAGoalWaitsOnAVisionLeftOpen(t *testing.T) {
 	goal := map[string]any{"apiVersion": "cartograph/v1", "kind": "Goal", "metadata": map[string]any{"id": "g-quality", "name": "Quality"},
 		"spec": map[string]any{"level": "goal", "objective": "Raise produce quality", "whyItMatters": "Buyers reject bruised produce."}}
 	callTool(t, cs, "save_draft", map[string]any{"kind": "Purpose", "id": "default", "manifest": purpose})
-	callTool(t, cs, "leave_open", map[string]any{"asked": "Asked who sets it, because the document is silent; they will decide later", "kind": "Purpose", "id": "default", "check": "purpose-vision", "reason": "Only the board can state the vision",
+	callTool(t, cs, "leave_open", map[string]any{"asked": answered(t, cs, "Asked who sets it, because the document is silent; they will decide later", "Purpose/default#purpose-vision"), "kind": "Purpose", "id": "default", "check": "purpose-vision", "reason": "Only the board can state the vision",
 		"also": []any{map[string]any{"kind": "Purpose", "id": "default", "check": "purpose-mission"}}})
 	callTool(t, cs, "save_draft", map[string]any{"kind": "Goal", "id": "g-quality", "manifest": goal})
 	_, text := callTool(t, cs, "checks", map[string]any{"kind": "Goal", "id": "g-quality"})
@@ -757,7 +753,7 @@ func TestAnAgentHelpsInItsPersonsChangeSet(t *testing.T) {
 		!strings.Contains(text, "theirs to propose and merge") || strings.Contains(text, "with propose") {
 		t.Fatalf("checks on Ada's change set: %s", text)
 	}
-	if res, text := callTool(t, cs, "propose", map[string]any{"changeSet": set.ID, "reason": "ready"}); !res.IsError || !strings.Contains(text, "propose it themselves") {
+	if res, text := callTool(t, cs, "propose", map[string]any{"changeSet": set.ID, "reason": "ready", "confirm": confirmed(t, cs, set.ID)}); !res.IsError || !strings.Contains(text, "propose it themselves") {
 		t.Fatalf("the agent proposed Ada's change set: %s", text)
 	}
 	if res, text := callTool(t, cs, "edit_draft", map[string]any{"changeSet": other.ID, "kind": "Team", "id": "t1", "set": map[string]any{"/spec/description": "x"}}); !res.IsError {
@@ -1371,7 +1367,7 @@ func TestARegisterGivesItsKPIsBaselinesAndTargets(t *testing.T) {
 	if !strings.Contains(text, "KPI/") {
 		t.Fatalf("no KPIs: %s\nport: %s", text, ported[strings.Index(ported, `"registers"`):])
 	}
-	_, text = callTool(t, cs, "propose", map[string]any{"reason": "check"})
+	_, text = callTool(t, cs, "propose", map[string]any{"reason": "check", "confirm": confirmed(t, cs)})
 	for _, bad := range []string{"kpi-baseline", "missing property 'team'", "periodMonths"} {
 		if strings.Contains(text, bad) && !strings.Contains(text, "Grading disputes") {
 			t.Errorf("%s still open: %s", bad, text)
@@ -1460,8 +1456,9 @@ func TestAComponentNamesItsDeliverableRow(t *testing.T) {
 	}
 }
 
-// A change set holding a document is a port: a one-at-a-time write in
-// it is refused and sent to port with records.
+// A change set holding a document is a port: a one-field-at-a-time write
+// in it is refused and sent to port with records; leaving a check is not
+// such a write.
 func TestAPortHasOneWritePath(t *testing.T) {
 	t.Parallel()
 	_, _, cs := setup(t, nil)
@@ -1474,6 +1471,12 @@ func TestAPortHasOneWritePath(t *testing.T) {
 	res, text := callTool(t, cs, "edit_draft", map[string]any{"kind": kind, "id": id, "set": map[string]any{"/spec/summary/about": "x"}})
 	if !res.IsError || !strings.Contains(text, "Call port with records now") {
 		t.Fatalf("edit_draft in a port: %s", text)
+	}
+	// Leaving a check writes no field: it is the port's as much as port's
+	// open is.
+	if res, text := callTool(t, cs, "leave_open", map[string]any{"kind": kind, "id": id, "check": "resources-funding", "reason": "The budget is to be confirmed",
+		"asked": "not available"}); res.IsError {
+		t.Fatalf("leave_open in a port: %s", text)
 	}
 }
 
@@ -1593,6 +1596,152 @@ func TestAPortWithoutARegisterSaysSo(t *testing.T) {
 	}
 }
 
+// confirmed is the confirm token of the change set's summary, as the
+// person confirmed it (the agent's own latest change set, or set).
+func confirmed(t *testing.T, cs *sdk.ClientSession, set ...string) string {
+	t.Helper()
+	args := map[string]any{}
+	if len(set) > 0 {
+		args["changeSet"] = set[0]
+	}
+	_, text := callTool(t, cs, "work_summary", args)
+	var out struct {
+		Confirm struct {
+			Token string `json:"token"`
+			First string `json:"first"`
+		} `json:"confirm"`
+	}
+	_ = json.Unmarshal([]byte(text), &out)
+	if !strings.Contains(out.Confirm.First, "wait for their yes") {
+		t.Fatalf("the token comes without the ask: %s", text)
+	}
+	return out.Confirm.Token
+}
+
+// A proposal carries the token of the summary the person confirmed: none,
+// or one from before a later change, is refused (docs/adr/0032, #38).
+func TestAProposalCarriesWhatThePersonConfirmed(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	team := map[string]any{"apiVersion": "cartograph/v1", "kind": "Team", "metadata": map[string]any{"id": "t1", "name": "Grading team"}, "spec": map[string]any{"description": "Grades produce at the depots"}}
+	callTool(t, cs, "start_work", map[string]any{"title": "A team"})
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Team", "id": "t1", "manifest": team})
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a team"}); !res.IsError || !strings.Contains(text, "pass confirm") {
+		t.Fatalf("a proposal with no confirmation: %s", text)
+	}
+	token := confirmed(t, cs)
+	callTool(t, cs, "edit_draft", map[string]any{"kind": "Team", "id": "t1", "set": map[string]any{"/spec/description": "Grades produce at every depot"}})
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a team", "confirm": token}); !res.IsError || !strings.Contains(text, "changed after the summary") {
+		t.Fatalf("a proposal after a change the person did not see: %s", text)
+	}
+	if res, text := callTool(t, cs, "propose", map[string]any{"reason": "a team", "confirm": confirmed(t, cs)}); res.IsError {
+		t.Fatalf("a confirmed proposal: %s", text)
+	}
+}
+
+// roundOf is the round of one record ("Kind/id"): each check it puts to
+// the person, by its question's id, and how many wait behind them.
+func roundOf(t *testing.T, cs *sdk.ClientSession, rec string) (map[string]string, int) {
+	t.Helper()
+	_, text := callTool(t, cs, "round", map[string]any{"work": []string{rec}})
+	var r struct {
+		Settle, Ask, Write []struct {
+			Kind     string `json:"kind"`
+			ID       string `json:"id"`
+			Check    string `json:"check"`
+			Question string `json:"question"`
+		}
+		Waiting int `json:"waiting"`
+	}
+	if err := json.Unmarshal([]byte(text), &r); err != nil {
+		t.Fatalf("round: %s", text)
+	}
+	out := map[string]string{}
+	for _, q := range append(append(r.Settle, r.Ask...), r.Write...) {
+		if q.Kind+"/"+q.ID == rec {
+			out[q.Check] = q.Question
+		}
+	}
+	return out, r.Waiting
+}
+
+// answered is what the person answered, with the id of the round's
+// question for each record's check ("Kind/id#check"), as an agent leaves
+// it after asking them in a round.
+func answered(t *testing.T, cs *sdk.ClientSession, answer string, checks ...string) string {
+	t.Helper()
+	var ids []string
+	for _, c := range checks {
+		rec, check, _ := strings.Cut(c, "#")
+		qs, _ := roundOf(t, cs, rec)
+		if qs[check] == "" {
+			t.Fatalf("the round does not ask %s: %v", c, qs)
+		}
+		ids = append(ids, qs[check])
+	}
+	return answer + " (" + strings.Join(ids, ", ") + ")"
+}
+
+// leaveByRounds leaves each check of rec the rounds put to the person,
+// round by round, with their answer, until only the last round is left
+// (keepLast) or nothing is; it returns the round it stopped at.
+func leaveByRounds(t *testing.T, cs *sdk.ClientSession, rec, answer string, keepLast bool) map[string]string {
+	t.Helper()
+	kind, id, _ := strings.Cut(rec, "/")
+	for range 10 {
+		qs, waiting := roundOf(t, cs, rec)
+		if len(qs) == 0 || (keepLast && waiting == 0) {
+			return qs
+		}
+		for check, q := range qs {
+			if res, text := callTool(t, cs, "leave_open", map[string]any{"asked": answer + " (" + q + ")", "kind": kind, "id": id, "check": check,
+				"reason": "Only the person knows " + check}); res.IsError {
+				t.Fatalf("leave_open %s: %s", check, text)
+			}
+		}
+	}
+	t.Fatalf("the rounds of %s never ended", rec)
+	return nil
+}
+
+// What the person answered is left only with a question a round put to
+// them: one sentence for every check, asked of none, is refused, and the
+// refusal never gives the id (eval run sonnet 012).
+func TestAnAnswerNamesTheRoundsQuestion(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "A survey"})
+	project := map[string]any{"apiVersion": "cartograph/v1", "kind": "Project", "metadata": map[string]any{"id": "survey", "name": "Depot survey"}, "spec": map[string]any{}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "Project", "id": "survey", "manifest": project})
+	blanket := "Asked in the round of questions; the person's answer is in each open reason."
+	_, text := callTool(t, cs, "settle", map[string]any{"kind": "Project", "id": "survey", "asked": blanket,
+		"open": []any{map[string]any{"check": "resources-funding", "reason": "The budget is to be confirmed"}}})
+	if !strings.Contains(text, "names no question a round put to your person") || strings.Contains(text, "q-") {
+		t.Fatalf("a blanket answer: %s", text)
+	}
+	asked := answered(t, cs, "Asked the budget; the board sets it in December", "Project/survey#resources-funding")
+	if _, text = callTool(t, cs, "settle", map[string]any{"kind": "Project", "id": "survey", "asked": asked,
+		"open": []any{map[string]any{"check": "resources-funding", "reason": "The budget is to be confirmed"}}}); !strings.Contains(text, `"left":["resources-funding"]`) {
+		t.Fatalf("an answer to the round's question: %s", text)
+	}
+}
+
+// A note beside a figure is refused with where a guess belongs: declared
+// in assumed, so the person sees it (eval run 011 guessed a baseline's
+// month and could say so nowhere).
+func TestARefusedNoteNamesAssumed(t *testing.T) {
+	t.Parallel()
+	_, _, cs := setup(t, nil)
+	callTool(t, cs, "start_work", map[string]any{"title": "Grading"})
+	kpi := map[string]any{"apiVersion": "cartograph/v1", "kind": "KPI", "metadata": map[string]any{"id": "graded-alike", "name": "Share graded alike"}, "spec": map[string]any{}}
+	callTool(t, cs, "save_draft", map[string]any{"kind": "KPI", "id": "graded-alike", "manifest": kpi})
+	_, text := callTool(t, cs, "settle", map[string]any{"kind": "KPI", "id": "graded-alike",
+		"set": map[string]any{"/spec/baseline": map[string]any{"date": "2025-12", "value": 41, "note": "The month is a guess"}}})
+	if !strings.Contains(text, "declare it in assumed") || !strings.Contains(text, `"field":"/spec/baseline/`) {
+		t.Fatalf("a refused note: %s", text)
+	}
+}
+
 // A decision the agent takes for its person, with no document and no
 // answer behind it, is kept apart for them to review (docs/adr/0033):
 // declared on settle, one a field, and taken back with an empty took.
@@ -1630,6 +1779,16 @@ func TestDecisionsTakenForThePersonAreKeptApart(t *testing.T) {
 	if !strings.Contains(sum, "owns both risks") || !strings.Contains(sum, "Escalates to the sponsor") {
 		t.Fatalf("two decisions without a field: %s", sum)
 	}
+	// A decision that says nothing is refused, and the call keeps the
+	// others (eval run 005 reached the person's list with "a").
+	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id,
+		"assumed": []any{map[string]any{"took": "a", "why": "probing"}, map[string]any{"field": "/spec/timeline/start", "took": "2026-06", "why": "The charter gives the year only"}}})
+	if res.IsError || !strings.Contains(text, `says nothing your person can review`) {
+		t.Fatalf("a decision of one letter: %s", text)
+	}
+	if _, sum = callTool(t, cs, "work_summary", map[string]any{}); strings.Contains(sum, `"took":"a"`) || !strings.Contains(sum, "2026-06") {
+		t.Fatalf("what was kept: %s", sum)
+	}
 	// A draft discarded takes what was decided on it along (eval run 010).
 	if res, text := callTool(t, cs, "discard_draft", map[string]any{"kind": kind, "id": id}); res.IsError {
 		t.Fatalf("discard: %s", text)
@@ -1657,7 +1816,7 @@ func TestARoundAsksWhatWasLeftWithoutAsking(t *testing.T) {
 	if text := round(); !strings.Contains(text, `"check":"resources-funding"`) || !strings.Contains(text, "without asking them") {
 		t.Fatalf("a check left unasked is not asked again: %.800s", text)
 	}
-	asked := "Asked the budget; it is set at the board's December meeting"
+	asked := answered(t, cs, "Asked the budget; it is set at the board's December meeting", "Project/survey#resources-funding")
 	callTool(t, cs, "settle", map[string]any{"kind": "Project", "id": "survey", "asked": asked,
 		"open": []any{map[string]any{"check": "resources-funding", "reason": "The budget is to be confirmed"}}})
 	if text := round(); strings.Contains(text, "without asking them") {
@@ -1744,16 +1903,21 @@ func TestProposeLeavesChecksWithWhatWasAsked(t *testing.T) {
 	if err := json.Unmarshal([]byte(text), &report); err != nil || len(report.Open) == 0 {
 		t.Fatalf("checks: %s", text)
 	}
+	// The rounds before the last are left on the way; the last is left at
+	// propose, each check with what the person answered to its question.
+	last := leaveByRounds(t, cs, "Goal/g-sound", "Asked who owns it", true)
 	waive := map[string]any{}
-	for _, o := range report.Open {
-		waive[o.ID] = "The board decides it in December"
+	var ids []string
+	for check, q := range last {
+		waive[check] = "The board decides it in December"
+		ids = append(ids, q)
 	}
 	open := map[string]any{"Goal/g-sound": waive}
-	if res, text := callTool(t, cs, "propose", map[string]any{"openChecks": open}); !res.IsError || !strings.Contains(text, "pass asked") {
+	if res, text := callTool(t, cs, "propose", map[string]any{"openChecks": open, "confirm": confirmed(t, cs)}); !res.IsError || !strings.Contains(text, "pass asked") {
 		t.Fatalf("waived without asked: %s", text)
 	}
-	asked := "Asked who owns it; the board decides in December"
-	if res, text := callTool(t, cs, "propose", map[string]any{"openChecks": open, "asked": asked}); res.IsError {
+	asked := "Asked who owns it; the board decides in December (" + strings.Join(ids, ", ") + ")"
+	if res, text := callTool(t, cs, "propose", map[string]any{"openChecks": open, "asked": asked, "confirm": confirmed(t, cs)}); res.IsError {
 		t.Fatalf("propose with asked: %s", text)
 	}
 	sets, _ := e.ChangeSets(identity.WithPrincipal(context.Background(), ada), "proposed", false)

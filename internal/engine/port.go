@@ -315,7 +315,7 @@ type PortRecord struct {
 	Set     map[string]any `json:"set,omitempty" jsonschema:"every field the document gives, by JSON pointer"`
 	Unset   []string       `json:"unset,omitempty" jsonschema:"fields to clear, by JSON pointer"`
 	Open    []OpenReason   `json:"open,omitempty" jsonschema:"each check the document does not answer, with the reason your person will read; an empty reason takes back one left before"`
-	Asked   string         `json:"asked,omitempty" jsonschema:"with open: what you asked your person about these checks and what they answered, or \"not available\" when you were told to work without them"`
+	Asked   string         `json:"asked,omitempty" jsonschema:"with open: what you asked your person about these checks and what they answered, with the question id the round gave each check, or \"not available\" when you were told to work without them"`
 	Assumed []Assumed      `json:"assumed,omitempty" jsonschema:"each decision you took for your person here with no document and no answer behind it (a month a figure was taken, where a cycle starts): your person reviews each"`
 }
 

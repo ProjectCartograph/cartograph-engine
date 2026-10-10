@@ -26,7 +26,7 @@ var porting = []portingRule{
 	{"A project or document identifier (\"Project ID\")", "metadata.alias", "As written. The document's version, classification and approval status are document control: not ported."},
 
 	// The aim tree.
-	{"Long-term impact", "Goal, level goal", "The lasting change the organisation pursues."},
+	{"Long-term impact", "Goal, level goal", "The lasting change the organisation pursues. Write it even when no purpose is written: a goal stands without one, and only its smart-relevant check waits for the vision and mission."},
 	{"Intended outcome of a programme or project", "Goal, level objective, under the goal it serves", "One objective; the work's own outcomes sit under it."},
 	{"A logic model's outcomes column", "Goal, level outcome, under the objective", "Each clause of the column (split at semicolons or bullets) is one outcome: a state that is true once it is reached, not an activity."},
 	{"A logic model's inputs, activities and outputs", "Inputs: the project's resources and funding. Activities: tasks. Outputs: deliverables", "The outcomes column is the aim tree's (see above)."},

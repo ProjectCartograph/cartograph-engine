@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -94,10 +95,20 @@ func withFields(c call, kind string, err error) error {
 			}
 			p.Message += ". The fields there are: " + strings.Join(here, ", ")
 		}
+		// A record has no note for its person beside a figure: an agent
+		// that guessed a baseline's month tried one, and the guess went
+		// unsaid (eval run 011). What it decided without the document is
+		// declared in assumed.
+		if p.Keyword == "additionalProperties" && remark.MatchString(p.Message) {
+			p.Message += `. To tell your person what you decided without the document (a month you chose, a figure you rounded), declare it in assumed on settle or port: {"field":"` + p.Path + `/…","took":"…","why":"…"}`
+		}
 		out.Problems = append(out.Problems, p)
 	}
 	return out
 }
+
+// remark is a refused property that carries a remark rather than a value.
+var remark = regexp.MustCompile(`'(note|notes|comment|comments)'`)
 
 // schemaOnly reports whether every problem is the schema's: only then is
 // a whole manifest built field by field, so the order of work and the

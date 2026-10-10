@@ -68,7 +68,9 @@ tells the agent to prefix every command with `scripts/dev`.
   written beside the criteria before the first run and kept word for
   word across runs: what to answer to each kind of question, and what
   to say when it is a figure the person does not have yet. Before each
-  reply, `eval-answer` records it: a run proposes only after an answer.
+  reply, `eval-answer` records it: a run proposes only after an answer,
+  and only after one given since its last write, so the person
+  confirmed what is proposed rather than an earlier draft.
 - Score every run, every criterion, pass or fail.
 
 ## Analyse

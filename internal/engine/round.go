@@ -2,6 +2,10 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"sort"
 	"strings"
 )
 
@@ -56,7 +60,33 @@ func (e *Engine) Round(ctx context.Context, set string, work []Ref, locale strin
 	r := frontier(w.Tasks, len(sources) > 0, e.namesIn(ctx, w.Tasks))
 	e.recommend(ctx, r.Ask)
 	r.Ask = append(r.Ask, e.unasked(ctx, set)...)
+	for _, ts := range [][]Task{r.Settle, r.Write} {
+		for i := range ts {
+			ts[i].Question = QuestionID(set, ts[i].Kind, ts[i].ID, ts[i].Check)
+		}
+	}
+	for i := range r.Ask {
+		q := &r.Ask[i]
+		q.Question = QuestionID(set, q.Kind, q.ID, q.Check)
+	}
 	return r, nil
+}
+
+// QuestionID names a check of a record as a round puts it to the person,
+// in change set set. It is worked out, never kept: the same check in the
+// same change set always has the same id, and nothing else gives it, so
+// an answer that cites it was given to a question a round asked (an agent
+// left two checks it never asked with one sentence for all, eval run
+// sonnet 012).
+func QuestionID(set, kind, id, check string) string {
+	h := sha256.Sum256([]byte(set + "\x00" + kind + "/" + id + "#" + check))
+	return "q-" + hex.EncodeToString(h[:4])
+}
+
+// citesQuestion reports whether what the person answered names the
+// round's question for the check, or says there was nobody to ask.
+func citesQuestion(set, kind, id, check, asked string) bool {
+	return strings.EqualFold(asked, "not available") || strings.Contains(asked, QuestionID(set, kind, id, check))
 }
 
 // unasked are the checks the change set leaves for the person without
@@ -196,4 +226,38 @@ func (e *Engine) namesIn(ctx context.Context, tasks []Task) map[Ref][]Named {
 		}
 	}
 	return out
+}
+
+// ConfirmToken names what a change set holds now: every draft, every check
+// left for the person and every decision taken for them. It is worked out,
+// never kept, and changes with any of them, so a proposal that carries it
+// proposes what the person was shown (docs/adr/0032, the confirmation
+// gate; several runs proposed straight after their last writes).
+func (e *Engine) ConfirmToken(ctx context.Context, set string) (string, error) {
+	s, err := e.changeSetStore()
+	if err != nil {
+		return "", err
+	}
+	cs, err := e.WorkingChangeSet(ctx, set)
+	if err != nil {
+		return "", err
+	}
+	items, err := s.ListChangeItems(ctx, cs.ID)
+	if err != nil {
+		return "", err
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Kind+"/"+items[i].ID < items[j].Kind+"/"+items[j].ID
+	})
+	h := sha256.New()
+	for _, it := range items {
+		_, _ = h.Write([]byte(it.Kind + "/" + it.ID + "\x00" + it.Op + "\x00"))
+		_, _ = h.Write(it.Text)
+		if it.Included {
+			_, _ = h.Write([]byte{1})
+		}
+	}
+	rest, _ := json.Marshal([]any{cs.Waivers, cs.Assumptions})
+	_, _ = h.Write(rest)
+	return "c-" + hex.EncodeToString(h.Sum(nil)[:4]), nil
 }

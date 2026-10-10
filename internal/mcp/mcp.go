@@ -112,7 +112,8 @@ const instructions = `Porting a document? Do exactly this, in one pass:
    checks the document does not answer, each with its reason). One
    call for every record; it answers what is still open, and you call
    it again for that until nothing is.
-4. propose. Report from work_summary only.
+4. work_summary, then propose with its confirm token (with your person
+   there, once they confirm it). Report from work_summary only.
 To look at records, read them all in one get with records ["Kind/id",
 ...], never one call a record.
 Use no other tool unless an answer tells you to.

@@ -520,7 +520,8 @@ func scoreRounds(r *Rounds, mainRecord string, left []leftCheck, mine []trace.Ca
 }
 
 // scoreAnswered judges, with a person present, that the agent proposed
-// only after the person answered: the evaluator records each answer (eval
+// only after the person answered, and after they confirmed what it
+// wrote last: the evaluator records each answer (eval
 // answer), and the first propose must come after one. What the agent
 // writes as asked cannot show it; an agent may write "answer awaited".
 func scoreAnswered(answered []time.Time, mine []trace.Call, add func(string, bool, string, ...any)) {
@@ -538,4 +539,22 @@ func scoreAnswered(answered []time.Time, mine []trace.Call, add func(string, boo
 		}
 	}
 	add("answered before propose", before > 0, "%d answers from the person before the first propose (%d in all)", before, len(answered))
+	// The closing confirmation (docs/adr/0032): the person answers after
+	// the last change the agent made, so they confirmed what is proposed,
+	// not an earlier draft (several runs of #38 proposed straight after
+	// the last round's writes).
+	var last time.Time
+	for _, call := range mine {
+		if call.Tool == "propose" {
+			break
+		}
+		if trace.IsWrite(call.Tool) && call.Outcome == trace.OK {
+			last = call.At
+		}
+	}
+	confirmed := false
+	for _, a := range answered {
+		confirmed = confirmed || (a.After(last) && (propose.IsZero() || a.Before(propose)))
+	}
+	add("confirmed before propose", confirmed, "the person answered after the last write (%s) and before the first propose", last.Format(time.TimeOnly))
 }

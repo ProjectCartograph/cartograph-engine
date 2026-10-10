@@ -529,7 +529,9 @@ const roundHow = "Ask every question in ask in one message, numbered, each with 
 	"is a question, asked in this round. Any decision you still take without a document or an answer (a month, a start, a wording) " +
 	"goes in assumed on the record you write it to, for your person to review. " +
 	"Then save every answer in one settle call, leave_open with their words what they " +
-	"cannot decide yet, and call round again: the next round asks what these answers unblocked."
+	"cannot decide yet, and call round again: the next round asks what these answers unblocked. " +
+	"Every item has a question id: asked names the id of each question it answers (their words, then the ids), " +
+	"so each answer stays with the question it was given to."
 
 // roundOf is the next round of a piece of work.
 func roundOf(c call, set string, found bool, workIn []string, locale string) (any, error) {
@@ -566,7 +568,7 @@ func roundOf(c call, set string, found bool, workIn []string, locale string) (an
 	switch {
 	case r.Done():
 		out["next"] = "Every check is met or left with your person's own answer. Show them what was decided (work_summary), " +
-			"ask them to confirm it says what they meant, and only then propose: they accept it in Cartograph."
+			"ask them to confirm it says what they meant, and only then propose, with the summary's confirm token: they accept it in Cartograph."
 	case len(r.Ask) == 0 && len(r.Settle) == 0 && len(r.Write) > 0:
 		out["next"] = "Nothing to ask this round: write the records in write, each naming the record it settles, then call round again."
 	default:

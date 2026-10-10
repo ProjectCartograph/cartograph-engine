@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
 	"sort"
 	"strings"
+	"unicode"
 
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/identity"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
 )
@@ -495,6 +496,20 @@ func (e *Engine) LeaveOpen(ctx context.Context, set, kind, id, check, reason, as
 	}
 	on := kind + "/" + id
 	reason, asked = strings.TrimSpace(reason), strings.TrimSpace(asked)
+	// An agent leaves a check with its person's answer only to a question
+	// a round put to them, named by its id; the id is never said here, so
+	// it comes from a round.
+	cited := citesQuestion(set, kind, id, check, asked)
+	for _, w := range cs.Waivers {
+		// Left before with an answer to its question: what is added to it
+		// was asked there.
+		cited = cited || (w.On == on && w.Check == check && citesQuestion(set, kind, id, check, w.Asked) && !strings.EqualFold(w.Asked, "not available"))
+	}
+	if p := identity.PrincipalFrom(ctx); p.Agent != "" && reason != "" && asked != "" && !cited {
+		return fmt.Errorf("%w: %s on %s: asked names no question a round put to your person. Every item of a round has a question id: "+
+			"send the same call again with asked naming it after their words, or ask it in a round first; \"not available\" when you were told to work without them",
+			ErrBadEdit, check, on)
+	}
 	kept := cs.Waivers[:0:0]
 	for _, w := range cs.Waivers {
 		if w.On != on || w.Check != check {
@@ -552,9 +567,17 @@ func (e *Engine) Assume(ctx context.Context, set, kind, id string, decided []Ass
 		return err
 	}
 	on := kind + "/" + id
+	var said []string
 	for _, d := range decided {
 		field, took := strings.TrimSpace(d.Field), strings.TrimSpace(d.Took)
 		if field == "" && took == "" {
+			continue
+		}
+		// A decision the person cannot read is not one to review: "a",
+		// sent while probing the schema, reached a person's list (eval
+		// run 005). The others in the call are kept.
+		if took != "" && !saysSomething(took) {
+			said = append(said, fmt.Sprintf("%q says nothing your person can review: say what you decided, in a few words", took))
 			continue
 		}
 		// One a field; a decision on no one field is told apart by what
@@ -574,7 +597,25 @@ func (e *Engine) Assume(ctx context.Context, set, kind, id string, decided []Ass
 		cs.Assumptions = kept
 	}
 	cs.Updated = timeNow().UTC()
-	return s.PutChangeSet(ctx, cs)
+	if err := s.PutChangeSet(ctx, cs); err != nil {
+		return err
+	}
+	if len(said) > 0 {
+		return fmt.Errorf("%w: %s", ErrBadEdit, strings.Join(said, "; "))
+	}
+	return nil
+}
+
+// saysSomething is whether a decision has at least two letters or digits:
+// a month or a level says something, a lone letter or a dash does not.
+func saysSomething(took string) bool {
+	n := 0
+	for _, r := range took {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			n++
+		}
+	}
+	return n >= 2
 }
 
 // askedFor is what the person was asked about a check left by way of
