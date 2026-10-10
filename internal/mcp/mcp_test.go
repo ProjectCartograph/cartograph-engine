@@ -1630,6 +1630,16 @@ func TestDecisionsTakenForThePersonAreKeptApart(t *testing.T) {
 	if !strings.Contains(sum, "owns both risks") || !strings.Contains(sum, "Escalates to the sponsor") {
 		t.Fatalf("two decisions without a field: %s", sum)
 	}
+	// A decision that says nothing is refused, and the call keeps the
+	// others (eval run 005 reached the person's list with "a").
+	res, text := callTool(t, cs, "settle", map[string]any{"kind": kind, "id": id,
+		"assumed": []any{map[string]any{"took": "a", "why": "probing"}, map[string]any{"field": "/spec/timeline/start", "took": "2026-06", "why": "The charter gives the year only"}}})
+	if res.IsError || !strings.Contains(text, `says nothing your person can review`) {
+		t.Fatalf("a decision of one letter: %s", text)
+	}
+	if _, sum = callTool(t, cs, "work_summary", map[string]any{}); strings.Contains(sum, `"took":"a"`) || !strings.Contains(sum, "2026-06") {
+		t.Fatalf("what was kept: %s", sum)
+	}
 	// A draft discarded takes what was decided on it along (eval run 010).
 	if res, text := callTool(t, cs, "discard_draft", map[string]any{"kind": kind, "id": id}); res.IsError {
 		t.Fatalf("discard: %s", text)
