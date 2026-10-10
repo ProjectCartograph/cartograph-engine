@@ -125,7 +125,48 @@
             "filter": {
               "type": "string",
               "maxLength": 500,
-              "description": "A dbt where filter on the metric, such as {{ Dimension('depot__region') }} = 'north'."
+              "description": "For an analyst: a dbt where filter on the metric, such as {{ Dimension('depot__region') }} = 'north'. Written from where once its inputs are mapped to dimensions."
+            },
+            "where": {
+              "type": "array",
+              "maxItems": 5,
+              "description": "Which rows count, as conditions built from named parts (TAXONOMY.md D63): an input named in the person's words, how it compares and the value. An analyst or an agent writes it as filter later.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "input",
+                  "op",
+                  "value"
+                ],
+                "properties": {
+                  "input": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "description": "What is compared, named in the person's words, such as the depot's region."
+                  },
+                  "op": {
+                    "type": "string",
+                    "enum": [
+                      "is",
+                      "isNot",
+                      "above",
+                      "below",
+                      "atLeast",
+                      "atMost",
+                      "oneOf"
+                    ],
+                    "description": "How it compares."
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "description": "What it is compared with; for oneOf, the values separated by commas."
+                  }
+                }
+              }
             }
           }
         },

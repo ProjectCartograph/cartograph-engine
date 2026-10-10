@@ -17,6 +17,16 @@
     "kpi": "the name of a number to measure, such as a rate, a share, an average or a count"
   },
   "fields": {
+    "/spec/metric/measure/counts": {
+      "guide": "What is counted or added up, in your own words: the thing, not a column. An analyst maps it to the data later.",
+      "good": [
+        "crates graded twice",
+        "deliveries checked at intake"
+      ]
+    },
+    "/spec/metric/where": {
+      "guide": "Only the rows that count, each as what is compared, how, and the value, such as the depot's region is north. Leave it empty to count every row."
+    },
     "/spec/definition": {
       "guide": "Exactly what is counted, where and when. Leave out the target.",
       "good": [
