@@ -170,6 +170,10 @@ func TestProjectChecksGoalsSection(t *testing.T) {
 	if byID["goals-aligned"].State != "ok" || byID["aim-mandate"].State != "ok" {
 		t.Fatalf("expected both ok, got %+v", checks.Items)
 	}
+	// It says why it passes: what the project serves, by name.
+	if msg := byID["goals-aligned"].Message; !strings.HasPrefix(msg, "Serves 1 outcome: ") {
+		t.Errorf("goals-aligned names no outcome: %q", msg)
+	}
 }
 
 // TestProjectChecksGoalsStrategicLevel covers card §2's own rule directly:
@@ -917,7 +921,7 @@ func TestAProjectObjectiveIsJudgedByTheModel(t *testing.T) {
 	}{
 		{"read as a target", byText(true), "warn"},
 		{"read as a change", byText(false), "ok"},
-		{"no model", nil, ""},
+		{"no model", nil, "ok"},
 	} {
 		opts := []engine.Option{engine.WithCodec(codecyaml.New())}
 		if c.model != nil {
@@ -943,6 +947,10 @@ func TestAProjectObjectiveIsJudgedByTheModel(t *testing.T) {
 		}
 		if c.want == "warn" && !strings.Contains(got.Message, "likely reads as a target") {
 			t.Errorf("%s: the message says how sure: %q", c.name, got.Message)
+		}
+		// Without a model it passes, holding nothing up, and says why.
+		if c.model == nil && (!got.NotJudged || !strings.Contains(got.Message, "Not judged")) {
+			t.Errorf("%s: not marked as unjudged, or not saying why: %+v", c.name, got)
 		}
 	}
 }

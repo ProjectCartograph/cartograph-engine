@@ -309,7 +309,7 @@ func TestAContrastIsJudgedAtItsMeasuredThreshold(t *testing.T) {
 }
 
 // A text that names a person is a warning on any kind, pinned to its
-// field; with no model the check is off, and absent.
+// field; with no model it passes, marked not judged, and says why.
 func TestATextNamingAPersonIsAWarning(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -323,7 +323,7 @@ func TestATextNamingAPersonIsAWarning(t *testing.T) {
 	for _, c := range []struct {
 		d    decide.Decider
 		want string
-	}{{model, "warn"}, {nil, ""}} {
+	}{{model, "warn"}, {nil, "ok"}} {
 		opts := []engine.Option{engine.WithCodec(codecyaml.New())}
 		if c.d != nil {
 			opts = append(opts, engine.WithDecider(c.d))
@@ -340,7 +340,10 @@ func TestATextNamingAPersonIsAWarning(t *testing.T) {
 		for _, ch := range checks {
 			if ch.ID == "names-person" {
 				got = ch.State
-				if !strings.Contains(ch.Message, "/spec/purpose") {
+				switch {
+				case c.d == nil && (!ch.NotJudged || !strings.Contains(ch.Message, "CARTOGRAPH_DECIDE=off")):
+					t.Errorf("without a model, not marked as unjudged, or not saying why: %+v", ch)
+				case c.d != nil && !strings.Contains(ch.Message, "/spec/purpose"):
 					t.Errorf("not pinned to its field: %q", ch.Message)
 				}
 			}

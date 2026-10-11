@@ -41,6 +41,9 @@ type ProjectCheckItem struct {
 	State   string          `json:"state"`
 	Message string          `json:"message"`
 	Fix     ProjectCheckFix `json:"fix"`
+	// NotJudged marks a judgement of meaning the decision model did not
+	// make: the check passes, and its message says why.
+	NotJudged bool `json:"notJudged,omitempty"`
 }
 
 // ProjectChecks is the full result: the derived end month (empty when the
@@ -61,6 +64,15 @@ type checkAdder struct {
 
 func (a checkAdder) add(id, section, phase, state, message string) {
 	a.addFix(id, section, phase, state, message, phase, section)
+}
+
+// unjudged reports a judgement the decision model did not make: passed,
+// so it holds nothing up, with why it was not judged.
+func (a checkAdder) unjudged(id, section, phase, message string) {
+	a.pc.Items = append(a.pc.Items, ProjectCheckItem{
+		ID: id, Section: section, Phase: phase, State: checkOK, Message: message,
+		Fix: ProjectCheckFix{Phase: phase, Section: section}, NotJudged: true,
+	})
 }
 
 func (a checkAdder) addFix(id, section, phase, state, message, fixPhase, fixSection string) {
@@ -107,14 +119,22 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	goals, _ := alignment["goals"].([]any)
 	isComponent := componentParent(spec) != ""
 	if len(goals) > 0 {
-		c.add("goals-aligned", "goals", phaseInitiation, checkOK, "Aligned to at least one goal.")
+		// What it serves, by name: the reason it passes, not a count. A
+		// link, not a judgement of meaning: a model could not tell which
+		// outcome an objective serves well enough to say (measured,
+		// cartograph-engine#67).
+		names, err := e.goalNames(ctx, goals)
+		if err != nil {
+			return ProjectChecks{}, err
+		}
+		c.add("goals-aligned", "goals", phaseInitiation, checkOK, servesMessage(names))
 	} else if isComponent {
 		// A component serves its parent's objective, and through it the
 		// parent's goals (TAXONOMY.md D15): naming them again would be a
 		// second place to change them.
 		c.add("goals-aligned", "goals", phaseInitiation, checkOK, "Serves the goals of the project it is part of.")
 	} else {
-		c.add("goals-aligned", "goals", phaseInitiation, checkBlock, "Not linked to an outcome yet.")
+		c.add("goals-aligned", "goals", phaseInitiation, checkBlock, "Serves no outcome yet: choose the outcomes it helps reach.")
 	}
 	// A mandate counts once it names something: a row with no title is a
 	// row nobody filled in.
@@ -638,7 +658,7 @@ func (e *Engine) alignedToOutcome(ctx context.Context, goals []any) (hasFunction
 // reads as a target rather than a change said in words (docs/adr/0030):
 // an advisory check, met when none does. A number that names a group
 // ("2-year-olds") is the model's to tell from a figure to reach. Without
-// a model the check is not asked: it is off.
+// a model it says it was not judged, and why.
 func (e *Engine) addObjectiveJudgement(ctx context.Context, c checkAdder, spec map[string]any) {
 	objectives, _ := spec["objectives"].([]any)
 	asked, target, first, sure := false, false, 0, 0.0
@@ -650,6 +670,7 @@ func (e *Engine) addObjectiveJudgement(ctx context.Context, c checkAdder, spec m
 		}
 		j, ok := e.judge(ctx, "objective-target", text)
 		if !ok {
+			c.unjudged("goals-objective-aim", "measures", phaseInitiation, e.notJudged("Whether the objective reads as a target rather than a change in words"))
 			return
 		}
 		asked = true
@@ -663,7 +684,7 @@ func (e *Engine) addObjectiveJudgement(ctx context.Context, c checkAdder, spec m
 		c.add("goals-objective-aim", "measures", phaseInitiation, checkWarn, fmt.Sprintf(
 			"Objective %d %s reads as a target. Say the change the work makes in words, and put the figure in a key result.", first, sureWords(sure)))
 	default:
-		c.add("goals-objective-aim", "measures", phaseInitiation, checkOK, "Each objective says a change in words.")
+		c.add("goals-objective-aim", "measures", phaseInitiation, checkOK, "Each objective says a change in words, not a figure to reach.")
 	}
 }
 
@@ -1569,4 +1590,38 @@ func (e *Engine) nameOrID(ctx context.Context, kind, id string) string {
 		return id
 	}
 	return nameOf(doc, id)
+}
+
+// goalNames are the names of the goals ids name, in order; an id with no
+// record is given as it is.
+func (e *Engine) goalNames(ctx context.Context, ids []any) ([]string, error) {
+	var out []string
+	for _, g := range ids {
+		id, _ := g.(string)
+		if id == "" {
+			continue
+		}
+		doc, found, err := e.currentDoc(ctx, "Goal", id)
+		if err != nil {
+			return nil, err
+		}
+		name := id
+		if found {
+			if m, ok := doc["metadata"].(map[string]any); ok {
+				if n, _ := m["name"].(string); strings.TrimSpace(n) != "" {
+					name = n
+				}
+			}
+		}
+		out = append(out, name)
+	}
+	return out, nil
+}
+
+// servesMessage says what a project serves, by name.
+func servesMessage(names []string) string {
+	if len(names) == 1 {
+		return "Serves 1 outcome: " + names[0] + "."
+	}
+	return fmt.Sprintf("Serves %d outcomes: %s.", len(names), strings.Join(names, "; "))
 }

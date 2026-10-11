@@ -38,6 +38,9 @@ type ProgrammeCheck struct {
 	Section string `json:"section"`
 	State   string `json:"state"`
 	Message string `json:"message"`
+	// NotJudged marks a judgement of meaning the decision model did not
+	// make: the check passes, and its message says why.
+	NotJudged bool `json:"notJudged,omitempty"`
 }
 
 // ProgrammeChecks reads one programme and everything that points at it.

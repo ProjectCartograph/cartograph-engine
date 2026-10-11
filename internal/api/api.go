@@ -316,7 +316,7 @@ func toGoalTree(t engine.GoalTree) apigen.GoalTree {
 }
 
 func toGoalCheck(c engine.GoalCheck) apigen.GoalCheck {
-	out := apigen.GoalCheck{Id: c.ID, State: apigen.GoalCheckState(c.State), Message: c.Message}
+	out := apigen.GoalCheck{Id: c.ID, State: apigen.GoalCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged)}
 	if c.Fix != nil {
 		out.Fix = &apigen.GoalCheckFix{Section: c.Fix.Section}
 		if c.Fix.Goal != "" {
@@ -345,7 +345,7 @@ func (s *Server) GetGapChecks(ctx context.Context, req apigen.GetGapChecksReques
 	for i, c := range checks {
 		out[i] = apigen.ProgrammeCheck{
 			Id: c.ID, Section: c.Section,
-			State: apigen.ProgrammeCheckState(c.State), Message: c.Message,
+			State: apigen.ProgrammeCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged),
 		}
 	}
 	return out, nil
@@ -429,7 +429,7 @@ func (s *Server) GetOperationChecks(ctx context.Context, req apigen.GetOperation
 	for i, c := range checks {
 		out[i] = apigen.ProgrammeCheck{
 			Id: c.ID, Section: c.Section,
-			State: apigen.ProgrammeCheckState(c.State), Message: c.Message,
+			State: apigen.ProgrammeCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged),
 		}
 	}
 	return out, nil
@@ -451,7 +451,7 @@ func (s *Server) GetProgrammeChecks(ctx context.Context, req apigen.GetProgramme
 	for i, c := range checks {
 		out[i] = apigen.ProgrammeCheck{
 			Id: c.ID, Section: c.Section,
-			State: apigen.ProgrammeCheckState(c.State), Message: c.Message,
+			State: apigen.ProgrammeCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged),
 		}
 	}
 	return out, nil
@@ -475,7 +475,7 @@ func (s *Server) GetPortfolioChecks(ctx context.Context, req apigen.GetPortfolio
 	for i, c := range checks {
 		out[i] = apigen.ProgrammeCheck{
 			Id: c.ID, Section: c.Section,
-			State: apigen.ProgrammeCheckState(c.State), Message: c.Message,
+			State: apigen.ProgrammeCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged),
 		}
 	}
 	return out, nil
@@ -833,6 +833,7 @@ func toProjectCheckItem(i engine.ProjectCheckItem) apigen.ProjectCheckItem {
 	return apigen.ProjectCheckItem{
 		Id: i.ID, Section: i.Section, Phase: apigen.ProjectCheckItemPhase(i.Phase),
 		State: apigen.ProjectCheckState(i.State), Message: i.Message, Fix: toProjectCheckFix(i.Fix),
+		NotJudged: whenTrue(i.NotJudged),
 	}
 }
 
@@ -1903,4 +1904,12 @@ func (s *Server) GetProjectCharterParts(ctx context.Context, req apigen.GetProje
 		out[i] = o
 	}
 	return out, nil
+}
+
+// whenTrue is a flag the contract leaves out when false.
+func whenTrue(b bool) *bool {
+	if !b {
+		return nil
+	}
+	return &b
 }

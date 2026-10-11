@@ -96,6 +96,25 @@ func (e *Engine) contrast(ctx context.Context, id string, j GuideJudgement, text
 	return Judged{Holds: p >= m.Threshold, Sure: p}, true
 }
 
+// notJudged says why a judgement of meaning was not made, for the check
+// that needs it to say so rather than pass or vanish: the decision model
+// is standard, and running without it is valid but leaves these unjudged.
+// what is the judgement, as a sentence's subject ("Whether an objective
+// reads as a target").
+func (e *Engine) notJudged(what string) string {
+	if e.decider == nil {
+		return "Not judged: " + lowerFirst(what) + " is the decision model's to judge, and it is off (CARTOGRAPH_DECIDE=off)."
+	}
+	return "Not judged: " + lowerFirst(what) + " is the decision model's to judge, and it did not answer. Check that the Laya sidecar is running."
+}
+
+func lowerFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToLower(s[:1]) + s[1:]
+}
+
 // Judged is a judgement's answer about one text: whether it holds, and
 // how sure the model is, the averaged probability of yes.
 type Judged struct {
@@ -152,8 +171,8 @@ func sureWords(p float64) string {
 
 // personCheck asks whether any text the record holds names a person
 // (names-person): an advisory check, the exact rule having refused a
-// name with a title already (docs/adr/0029, 0030). asked is false
-// without a model: the check is off.
+// name with a title already (docs/adr/0029, 0030). Without a model it
+// says it was not judged, and why; asked is false only with nothing to ask.
 func (e *Engine) personCheck(ctx context.Context, kind string, doc map[string]any) (Check, bool) {
 	type text struct{ path, s string }
 	var texts []text
@@ -190,7 +209,7 @@ func (e *Engine) personCheck(ctx context.Context, kind string, doc map[string]an
 	for _, t := range texts {
 		one, ok := e.judge(ctx, "names-person", t.s)
 		if !ok {
-			return Check{}, false
+			return Check{ID: "names-person", State: checkOK, Message: e.notJudged("Whether a text names a person"), NotJudged: true}, true
 		}
 		asked = true
 		if one.Holds {
