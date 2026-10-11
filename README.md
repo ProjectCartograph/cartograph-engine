@@ -21,9 +21,16 @@ terminal interfaces are in [cartograph-ui](https://github.com/ProjectCartograph/
 ## Run it
 
 ```
-just serve        # a copy of examples/minimal on 127.0.0.1:8080
-just serve laya   # the same, with the Laya decision model (deploy/laya)
+just stack        # Cartograph and the Laya decision model in containers,
+                  # on a fresh copy of examples/minimal, on localhost:8080
+just stack-down   # stop it; it keeps nothing
 ```
+
+`just stack` is the canonical way to run Cartograph locally: the images
+the flake builds, every dependency included, nothing kept between runs.
+`just stack <dist>` serves a local cartograph-ui build in place of the
+embedded one (`just stack` in cartograph-ui does both). Without
+containers, `just serve laya` runs the same on the host.
 
 Open http://localhost:8080. `cartograph serve -h` lists every setting
 (`CARTOGRAPH_ADDR`, `CARTOGRAPH_VAULT`, `CARTOGRAPH_STORE`, `CARTOGRAPH_CODEC`, `CARTOGRAPH_AUTH`, ...);

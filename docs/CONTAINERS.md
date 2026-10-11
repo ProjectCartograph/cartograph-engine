@@ -100,6 +100,14 @@ Deployment uses images the flake builds, never a Containerfile:
 the decision model's, its model inside (`cartograph-laya:local`).
 `compose.yaml` runs them; `docs/DEPLOYMENT.md` has the settings.
 
+`just stack` runs both on the host's Docker, the canonical local run for
+trying Cartograph and testing against it: the example imported into a
+SQLite vault in memory, the decision model loaded before it says it is
+up, nothing kept (`compose.stack.yaml`; `just stack-down` stops it).
+`just stack <dist>` serves a cartograph-ui build from that directory
+(`CARTOGRAPH_UI_DIR`), and `just stack` in cartograph-ui builds one in
+the test environment and does that.
+
 ## For agents
 
 An agent works the same way, and `AGENTS.md` makes it a rule: every
