@@ -19,6 +19,7 @@ import (
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/spa"
 )
 
 // The sync socket must work through exactly the stack serve runs: the
@@ -39,7 +40,7 @@ func TestSyncSocketThroughTheServeStack(t *testing.T) {
 	var ready atomic.Bool
 	ready.Store(true)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	mux, _ := routes(comp.Engine, comp.Fanout, auth.NoAuthentication{}, auth.AllowAll{}, printer.None{}, comp.Reports, agentsConfig{}, &ready)
+	mux, _ := routes(comp.Engine, comp.Fanout, auth.NoAuthentication{}, auth.AllowAll{}, printer.None{}, comp.Reports, agentsConfig{}, &ready, spa.Handler())
 	srv := httptest.NewServer(requestLog(logger, newMetrics(), mux))
 	defer srv.Close()
 
@@ -86,7 +87,7 @@ func TestMetricsExposeTheScalingSignals(t *testing.T) {
 	defer comp.Close()
 	var ready atomic.Bool
 	mtr := newMetrics()
-	mux, syncSrv := routes(comp.Engine, comp.Fanout, auth.NoAuthentication{}, auth.AllowAll{}, printer.None{}, comp.Reports, agentsConfig{}, &ready)
+	mux, syncSrv := routes(comp.Engine, comp.Fanout, auth.NoAuthentication{}, auth.AllowAll{}, printer.None{}, comp.Reports, agentsConfig{}, &ready, spa.Handler())
 	mtr.watchShared(comp.Engine.Shared())
 	mtr.watchSync(syncSrv)
 	mtr.watchFanout(comp.Counted)

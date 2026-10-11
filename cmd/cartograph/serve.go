@@ -175,7 +175,14 @@ func runServe(args []string) error {
 			return err
 		}
 	}
-	mux, syncSrv := routes(e, comp.Fanout, authn, authz, pdf, comp.Reports, agents, &ready, syncserver.WithPing(cfg.SyncPing), syncserver.WithIdle(cfg.SyncIdle))
+	// The interface: the embedded build, or one from a directory.
+	ui := spa.Handler()
+	if cfg.UIDir != "" {
+		if ui, err = spa.Dir(cfg.UIDir); err != nil {
+			return err
+		}
+	}
+	mux, syncSrv := routes(e, comp.Fanout, authn, authz, pdf, comp.Reports, agents, &ready, ui, syncserver.WithPing(cfg.SyncPing), syncserver.WithIdle(cfg.SyncIdle))
 	mtr.watchShared(e.Shared())
 	mtr.watchSync(syncSrv)
 	mtr.watchFanout(comp.Counted)
@@ -351,7 +358,7 @@ func withSync(next, sync http.Handler) http.Handler {
 // routes is every route the server answers, behind the same middleware
 // for the API and the sync socket. Split out so a test drives exactly the
 // stack serve runs.
-func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, reports reporting.Reporter, agents agentsConfig, ready *atomic.Bool, syncOpts ...syncserver.Option) (*http.ServeMux, *syncserver.Server) {
+func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz auth.Authorizer, pdf printer.Printer, reports reporting.Reporter, agents agentsConfig, ready *atomic.Bool, ui http.Handler, syncOpts ...syncserver.Option) (*http.ServeMux, *syncserver.Server) {
 	mux := http.NewServeMux()
 	deps := api.Deps{Printer: pdf, Authorizer: authz, Reports: reports, AgentsOn: agents.On}
 	if agents.On && agents.OAuth != nil {
@@ -409,7 +416,7 @@ func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz au
 		}
 		fmt.Fprint(w, `{"status":"ready"}`)
 	})
-	mux.Handle("/", spa.Handler())
+	mux.Handle("/", ui)
 	return mux, syncSrv
 }
 

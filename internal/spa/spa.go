@@ -5,13 +5,17 @@
 //
 // The build is a cartograph-ui release, not source: `just ui` (and the
 // flake) unpack the release UI_VERSION names into dist, checked against
-// UI_SHA256, and `just ui <path>` puts a local build there instead.
+// UI_SHA256, and `just ui <path>` puts a local build there instead. Dir
+// serves a build from a directory at run time instead (CARTOGRAPH_UI_DIR),
+// so a container image tries an interface build without being rebuilt.
 package spa
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 	"net/http"
+	"os"
 )
 
 //go:embed all:dist
@@ -23,6 +27,21 @@ func Handler() http.Handler {
 	if err != nil {
 		panic(err) // programmer error: dist is always embedded
 	}
+	return serve(sub)
+}
+
+// Dir serves the build in dir, as Handler serves the embedded one. A
+// directory without an index.html is refused, so a wrong path fails at
+// start rather than as a blank page.
+func Dir(dir string) (http.Handler, error) {
+	sub := os.DirFS(dir)
+	if _, err := fs.Stat(sub, "index.html"); err != nil {
+		return nil, fmt.Errorf("CARTOGRAPH_UI_DIR %s: no index.html: %w", dir, err)
+	}
+	return serve(sub), nil
+}
+
+func serve(sub fs.FS) http.Handler {
 	fileServer := http.FileServer(http.FS(sub))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

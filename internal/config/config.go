@@ -65,6 +65,12 @@ type Config struct {
 	// do not count. CARTOGRAPH_SYNC_IDLE, default 10m; 0 never closes.
 	SyncIdle time.Duration
 
+	// UIDir serves the web interface from a directory instead of the
+	// build embedded in the binary: a local cartograph-ui build tried in
+	// a container (`just stack <dist>`). CARTOGRAPH_UI_DIR, default
+	// empty: the embedded build.
+	UIDir string
+
 	// DocCache bounds how many shared documents a replica keeps in
 	// memory; the least recently used are dropped first, and a dropped
 	// one is loaded again from the store when next needed.
@@ -262,6 +268,7 @@ func FromEnv(getenv Getenv) (Config, error) {
 			*d.to = p
 		}
 	}
+	c.UIDir = getenv("CARTOGRAPH_UI_DIR")
 	if v := getenv("CARTOGRAPH_DOC_CACHE"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil {
