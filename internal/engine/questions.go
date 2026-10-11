@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
 )
@@ -228,12 +230,54 @@ func (e *Engine) personCheck(ctx context.Context, kind string, doc map[string]an
 		}
 		asked = true
 		if one.Holds {
-			return Check{ID: "names-person", State: checkWarn, Section: e.stepOfField(kind, t.path),
-				Message: fmt.Sprintf("%s %s names a person. Cartograph names roles and bodies: name the role, such as the lead analyst, or the body.", t.path, sureWords(one.Sure))}, true
+			// Said in words a person reads: the field and the step it is
+			// written in, and what it says. The pointer is the check's
+			// path, for an agent (#76).
+			verb := map[string]string{"very likely": "very likely names", "likely": "likely names", "possibly": "may name"}[sureWords(one.Sure)]
+			field := fieldWords(t.path)
+			if step := e.stepTitleOfField(kind, t.path); step != "" {
+				field += ", under " + step + ","
+			}
+			return Check{ID: "names-person", State: checkWarn, Section: e.stepOfField(kind, t.path), Path: t.path,
+				Message: fmt.Sprintf("%s %s a person: %q. Name the role instead, such as the lead analyst, or the body.", field, verb, clip(t.s, 80))}, true
 		}
 	}
 	if !asked {
 		return Check{}, false
 	}
 	return Check{ID: "names-person", State: checkOK, Message: "No text names a person."}, true
+}
+
+// fieldWords names a field in words: its last key, as a heading reads it,
+// in quotes. "/spec/data/consumes/0/purpose" is "Purpose".
+func fieldWords(path string) string {
+	keys := strings.Split(strings.Trim(path, "/"), "/")
+	key := ""
+	for i := len(keys) - 1; i >= 0 && key == ""; i-- {
+		if _, err := strconv.Atoi(keys[i]); err != nil {
+			key = keys[i]
+		}
+	}
+	var b strings.Builder
+	for i, r := range key {
+		if i > 0 && unicode.IsUpper(r) {
+			b.WriteRune(' ')
+			r = unicode.ToLower(r)
+		}
+		b.WriteRune(r)
+	}
+	w := b.String()
+	if w == "" {
+		return "A text"
+	}
+	return "\u201c" + strings.ToUpper(w[:1]) + w[1:] + "\u201d"
+}
+
+// clip shortens a text to n runes, marking what was cut.
+func clip(s string, n int) string {
+	r := []rune(strings.TrimSpace(s))
+	if len(r) <= n {
+		return string(r)
+	}
+	return strings.TrimSpace(string(r[:n])) + "\u2026"
 }

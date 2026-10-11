@@ -343,8 +343,8 @@ func TestATextNamingAPersonIsAWarning(t *testing.T) {
 				switch {
 				case c.d == nil && (!ch.NotJudged || !strings.Contains(ch.Message, "CARTOGRAPH_DECIDE=off")):
 					t.Errorf("without a model, not marked as unjudged, or not saying why: %+v", ch)
-				case c.d != nil && !strings.Contains(ch.Message, "/spec/purpose"):
-					t.Errorf("not pinned to its field: %q", ch.Message)
+				case c.d != nil && (ch.Path != "/spec/purpose" || strings.Contains(ch.Message, "/spec/") || !strings.Contains(ch.Message, "\u201cPurpose\u201d")):
+					t.Errorf("not pinned to its field, or not said in words: %+v", ch)
 				}
 			}
 		}
