@@ -1,0 +1,42 @@
+# The whole stack on this machine, for trying Cartograph and testing
+# against it: Cartograph and the Laya sidecar, the images the flake builds
+# (`just image`, `just image-laya`), on a fresh copy of the example. It
+# keeps nothing: the vault is a SQLite file in memory, imported from the
+# example at every start, and gone when the stack stops.
+#
+#   just stack                  # build the images, start, wait for the model
+#   just stack <dist>        # the same, serving a local cartograph-ui build
+#   just stack-down             # stop it and drop everything
+#
+# Open http://localhost:8080 (CARTOGRAPH_PORT moves it).
+
+name: cartograph-stack
+
+services:
+  cartograph:
+    image: ${CARTOGRAPH_IMAGE:-cartograph:local}
+    ports:
+      - "${CARTOGRAPH_PORT:-8080}:8080"
+    environment:
+      CARTOGRAPH_VAULT: /data/cartograph.db
+      CARTOGRAPH_IMPORT: /example
+      CARTOGRAPH_LOG_FORMAT: json
+      CARTOGRAPH_MCP: ${CARTOGRAPH_MCP:-on}
+      # The decision model is part of the stack (docs/adr/0023, 0030).
+      CARTOGRAPH_DECIDE: laya
+      CARTOGRAPH_DECIDE_URL: http://laya:8411
+    volumes:
+      - ./examples/minimal:/example:ro
+    tmpfs:
+      - /data:mode=1777
+    depends_on:
+      - laya
+    healthcheck:
+      test: ["CMD", "/bin/cartograph", "ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  laya:
+    image: ${CARTOGRAPH_LAYA_IMAGE:-cartograph-laya:local}

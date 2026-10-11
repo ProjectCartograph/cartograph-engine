@@ -240,6 +240,48 @@ ha-up:
 ha-down:
     docker compose -f compose.ha.yaml down -v
 
+# Cartograph and the Laya sidecar in containers, on a fresh copy of the
+# example, kept nowhere (compose.stack.yaml); ready once the model is
+# loaded. A dist directory, given, serves a local cartograph-ui build in place of the
+# embedded one. `just stack-down` drops it all.
+# Run the whole stack locally for testing, the canonical way
+stack ui="":
+    #!{{toolchain}} bash
+    set -euo pipefail
+    # Each image is built by the flake and loaded only when it changed:
+    # the model's image is gigabytes.
+    stamps=${XDG_CACHE_HOME:-$HOME/.cache}/cartograph-stack
+    mkdir -p "$stamps"
+    load() {
+      out=$(nix build ".#$1" --no-link --print-out-paths)
+      if [ "$(cat "$stamps/$1" 2>/dev/null)" = "$out" ] && docker image inspect "$2:local" >/dev/null 2>&1; then return; fi
+      name=$(docker load < "$out" | sed -n 's/^Loaded image: //p')
+      docker tag "$name" "$2:local"
+      echo "$out" > "$stamps/$1"
+    }
+    load image cartograph
+    load image-laya cartograph-laya
+    files=(-f compose.stack.yaml)
+    if [ -n "{{ui}}" ]; then
+      src=$(cd "{{ui}}" && pwd)
+      [ -f "$src/index.html" ] || { echo "{{ui}}: no index.html; build it first (just build in cartograph-ui)"; exit 1; }
+      export CARTOGRAPH_UI_SOURCE="$src"
+      files+=(-f compose.stack.ui.yaml)
+    fi
+    docker compose "${files[@]}" up -d --force-recreate --remove-orphans --wait
+    url="http://localhost:${CARTOGRAPH_PORT:-8080}"
+    for _ in $(seq 1 300); do
+      curl -sf "$url/api/v1/decision-model" | grep -q '"ready":true' && { echo "up at $url, the decision model ready"; exit 0; }
+      sleep 1
+    done
+    echo "up at $url, but the decision model is not ready:"
+    docker compose -f compose.stack.yaml logs --tail 5 laya
+    exit 1
+
+# Stop the stack and drop everything it held
+stack-down:
+    docker compose -f compose.stack.yaml down -v --remove-orphans
+
 # --- deployment -----------------------------------------------------------
 
 # The Helm chart, without a cluster: its version is VERSION, it lints, it

@@ -1,0 +1,10 @@
+# Laid over compose.stack.yaml by `just stack <dist>`: serves a local
+# cartograph-ui build, mounted read-only, in place of the one the image
+# embeds (CARTOGRAPH_UI_DIR). The build is CARTOGRAPH_UI_SOURCE.
+
+services:
+  cartograph:
+    environment:
+      CARTOGRAPH_UI_DIR: /ui
+    volumes:
+      - ${CARTOGRAPH_UI_SOURCE:?the cartograph-ui build to serve}:/ui:ro

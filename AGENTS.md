@@ -26,7 +26,8 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 | Everything CI runs, in CI's order | `just ci` |
 | Regenerate from the contract | `just generate` |
 | Format, lint, dependency rule | `just fmt`, `just lint`, `just arch` |
-| Serve a copy of the example | `just serve` (`just serve laya` with the decision model) |
+| Run the whole stack, Laya included, in containers on a fresh copy of the example (the canonical local run) | `just stack`, `just stack-down` |
+| Serve a copy of the example without containers | `just serve laya` (`just serve` without the decision model, a non-standard setup) |
 | Release binaries for every platform, cross-compiled here | `just release` |
 | The container image, from the flake | `just image` |
 | How agents used the MCP server: defects, sigma, waste, variance | `cartograph traces [-agent name] <trace file>` |
