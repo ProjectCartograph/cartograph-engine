@@ -561,7 +561,9 @@ spec:
 	if problem == nil {
 		t.Fatalf("no problem statement part: %+v", parts)
 	}
-	if !contains(problem.HTML, "Depots grade produce differently") || len(problem.Fields) == 0 || problem.Fields[0] != "/spec/summary/problems/0/problem/situation" {
+	// One sentence (#79): who, what goes wrong, what changes, each a part.
+	if !contains(problem.HTML, `class="problem-statement"`) || !contains(problem.HTML, "depots grade produce differently") ||
+		!contains(problem.HTML, "The project will change this so that") || !hasField(problem.Fields, "/spec/summary/problems/0/problem/situation") {
 		t.Errorf("the problem part: %+v", problem)
 	}
 	// What a bare charter still has to say is a place to type it, where
@@ -599,5 +601,46 @@ func TestPartsCarryTheirStyles(t *testing.T) {
 		if contains(css, page) {
 			t.Errorf("the parts' styles carry the page's %q", page)
 		}
+	}
+}
+
+func hasField(fields []string, want string) bool {
+	for _, f := range fields {
+		if f == want {
+			return true
+		}
+	}
+	return false
+}
+
+// A problem reads as one sentence in the printed charter too: its groups
+// named, the parts lower-cased where it runs on, nothing marked (#79).
+func TestAProblemReadsAsASentence(t *testing.T) {
+	ctx := context.Background()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, y := range []string{
+		"apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata: {id: members, name: Delivering members}\nspec: {description: x}\n",
+		"apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata: {id: buyers, name: Retail partners}\nspec: {description: x}\n",
+	} {
+		m, _ := e.Codec().Decode([]byte(y))
+		md := m["metadata"].(map[string]any)
+		if err := e.PutWorking(ctx, "BeneficiaryGroup", md["id"].(string), []byte(y)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	y := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p\n  name: P\nspec:\n  team: t\n  summary:\n    problems:\n      - groups: [members, buyers]\n        problem: {situation: Learn of a failed delivery a season late, cause: Checks happen after dispatch.}\n        change: {what: Every delivery is checked at intake}\n"
+	if err := e.PutWorking(ctx, "Project", "p", []byte(y)); err != nil {
+		t.Fatal(err)
+	}
+	html, _, err := Charter(ctx, e, "p", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Delivering members and Retail partners learn of a failed delivery a season late, because checks happen after dispatch. The project will change this so that every delivery is checked at intake."
+	if !contains(string(html), want) {
+		t.Errorf("the problem does not read as %q", want)
 	}
 }
