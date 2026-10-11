@@ -174,8 +174,8 @@ spec:
 }
 
 // TestCharterSaysWhereEachPartIsDefined: a section names the step of the
-// walk that defines it, and a value written as one field names that field,
-// so an interface beside the walk can open or edit it in place.
+// walk that defines it. A value names its field in the charter as parts,
+// edited where it is read, and nowhere in the charter printed.
 func TestCharterSaysWhereEachPartIsDefined(t *testing.T) {
 	ctx := context.Background()
 	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
@@ -190,9 +190,23 @@ func TestCharterSaysWhereEachPartIsDefined(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`data-step="aim">Problem statement</h2>`, `data-field="/spec/summary/problems/0/problem/situation"`, `data-field="/spec/summary/problems/0/change/what"`} {
-		if !contains(string(html), want) {
-			t.Errorf("the charter lacks %s", want)
+	if !contains(string(html), `data-step="aim">Problem statement</h2>`) {
+		t.Error("the charter does not say the step a section is defined in")
+	}
+	if contains(string(html), "data-field") {
+		t.Error("the printed charter marks its values")
+	}
+	parts, err := CharterParts(ctx, e, "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var all string
+	for _, p := range parts {
+		all += p.HTML
+	}
+	for _, want := range []string{`data-field="/spec/summary/problems/0/problem/situation"`, `data-field="/spec/summary/problems/0/change/what"`, `data-field="/spec/team"`} {
+		if !contains(all, want) {
+			t.Errorf("the charter as parts lacks %s", want)
 		}
 	}
 }
@@ -546,14 +560,23 @@ spec:
 	if !contains(problem.HTML, "Depots grade produce differently") || len(problem.Fields) == 0 || problem.Fields[0] != "/spec/summary/problems/0/problem/situation" {
 		t.Errorf("the problem part: %+v", problem)
 	}
-	if empty == 0 {
-		t.Errorf("a charter this bare has sections still to say: %+v", parts)
+	// What a bare charter still has to say is a place to type it, where
+	// it will be read: the lead, the objective, a table's next row.
+	var all string
+	for _, p := range parts {
+		all += p.HTML
 	}
+	for _, want := range []string{`<span data-field="/spec/summary/about" data-empty="">`, `data-field="/spec/objectives/0/objective" data-empty=""`, `data-add="/spec/summary/problems"`} {
+		if !contains(all, want) {
+			t.Errorf("a bare charter as parts lacks %s", want)
+		}
+	}
+	_ = empty
 	html, _, err := Charter(ctx, e, "test-project", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !contains(string(html), problem.HTML) {
-		t.Error("the part is not what the charter prints")
+	if !contains(string(html), "Depots grade produce differently") || contains(string(html), "data-empty") || contains(string(html), "data-add") {
+		t.Error("the printed charter is not the charter as it was")
 	}
 }

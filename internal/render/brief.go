@@ -123,7 +123,9 @@ func (d *doc) keyMilestones(p plan, items []engine.ScheduleItem) {
 		if it.Late {
 			why = append(why, "Late")
 		}
-		rows = append(rows, []string{itemNumber("M", id, i), str(m["name"]), p.timing(m["timing"]), p.who(m["owner"]), strings.Join(why, "; "), p.status("milestones", id)})
+		at := fmt.Sprintf("/spec/milestones/%d", i)
+		rows = append(rows, []string{itemNumber("M", id, i), d.at(str(m["name"]), at+"/name"), d.from(p.timing(m["timing"]), at+"/timing"), d.at(p.who(m["owner"]), at+"/owner"),
+			strings.Join(why, "; "), d.from(p.status("milestones", id), "/spec/events")})
 	}
 	if len(rows) == 0 {
 		return
@@ -146,10 +148,12 @@ func (d *doc) deliverablesBrief(p plan) {
 				by = append(by, w)
 			}
 		}
-		rows = append(rows, []string{itemNumber("D", str(dv["id"]), i), str(dv["name"]), p.who(dv["owner"]), p.timing(dv["due"]),
-			strings.Join(by, ", "), p.status("deliverables", str(dv["id"]))})
+		at := fmt.Sprintf("/spec/deliverables/%d", i)
+		rows = append(rows, []string{itemNumber("D", str(dv["id"]), i), d.at(str(dv["name"]), at+"/name"), d.at(p.who(dv["owner"]), at+"/owner"), d.from(p.timing(dv["due"]), at+"/due"),
+			d.from(strings.Join(by, ", "), at+"/acceptance"), d.from(p.status("deliverables", str(dv["id"])), "/spec/events")})
 	}
 	d.table([]string{"No.", "Deliverable", "Owner", "Due", "Accepted by", "Status"}, rows)
+	d.addRow("/spec/deliverables", "Deliverable")
 }
 
 // costsBrief prints the cost lines; a funding source every line shares is
@@ -165,14 +169,15 @@ func (d *doc) costsBrief(p plan) {
 	}
 	shared := len(sources) == 1
 	var rows [][]string
-	for _, c := range cs {
+	for i, c := range cs {
+		at := fmt.Sprintf("/spec/costs/%d", i)
 		amount := number(c["amount"])
 		if amount != "" {
 			amount = strings.TrimSpace(str(c["currency"]) + " " + thousands(amount))
 		}
-		row := []string{str(c["category"]), amount, label("costStatus", str(c["status"]))}
+		row := []string{d.at(str(c["category"]), at+"/category"), d.at(amount, at+"/amount"), d.at(label("costStatus", str(c["status"])), at+"/status")}
 		if !shared {
-			row = append(row, p.n.of("FundingSource", str(c["source"])))
+			row = append(row, d.at(p.n.of("FundingSource", str(c["source"])), at+"/source"))
 		}
 		rows = append(rows, row)
 	}
@@ -182,6 +187,7 @@ func (d *doc) costsBrief(p plan) {
 	}
 	d.h3("Cost plan")
 	d.table(headers, rows)
+	d.addRow("/spec/costs", "Cost line")
 	for s := range sources {
 		if shared && s != "" {
 			d.note("Every line is funded from " + p.n.of("FundingSource", s) + ".")
@@ -196,16 +202,22 @@ func (d *doc) risksBrief(p plan, items []map[string]any) {
 	// Highest impact first, then likelihood; at most five, as a charter
 	// names the few risks that shape the decision.
 	order := map[string]int{"high": 0, "medium": 1, "low": 2}
-	sorted := append([]map[string]any(nil), items...)
-	sort.SliceStable(sorted, func(i, j int) bool {
-		ri, rj := order[str(sorted[i]["impact"])], order[str(sorted[j]["impact"])]
+	// Each keeps its place in the register, for its fields' pointers.
+	index := make([]int, len(items))
+	for i := range index {
+		index[i] = i
+	}
+	sort.SliceStable(index, func(a, b int) bool {
+		ri, rj := order[str(items[index[a]]["impact"])], order[str(items[index[b]]["impact"])]
 		if ri != rj {
 			return ri < rj
 		}
-		return order[str(sorted[i]["likelihood"])] < order[str(sorted[j]["likelihood"])]
+		return order[str(items[index[a]]["likelihood"])] < order[str(items[index[b]]["likelihood"])]
 	})
 	var rows [][]string
-	for _, r := range sorted {
+	for _, i := range index {
+		r := items[i]
+		at := fmt.Sprintf("/spec/risks/%d", i)
 		if len(rows) == 5 {
 			break
 		}
@@ -220,15 +232,17 @@ func (d *doc) risksBrief(p plan, items []map[string]any) {
 		if owner == "" {
 			owner = label("role", "manager")
 		}
-		rows = append(rows, []string{chip("riskType", str(r["type"])), str(r["description"]), chip("level", str(r["impact"])), moves[str(r["id"])], owner, responseOf(r)})
+		rows = append(rows, []string{d.at(chip("riskType", str(r["type"])), at+"/type"), d.at(str(r["description"]), at+"/description"), d.at(chip("level", str(r["impact"])), at+"/impact"),
+			d.from(moves[str(r["id"])], at), d.at(owner, at+"/owner"), d.from(responseOf(r), at)})
 	}
-	if len(rows) == 0 && len(items) == 0 {
+	if len(rows) == 0 && len(items) == 0 && !d.editable {
 		return
 	}
 	d.h2("Key risks")
 	if len(rows) > 0 {
 		d.table([]string{"Type", "Risk", "Impact", "Moves", "Owner", "Response"}, rows)
 	}
+	d.addRow("/spec/risks", "Risk")
 	if rest := len(items) - len(rows); rest > 0 {
 		d.note(fmt.Sprintf("%d more risk%s, dependencies and constraints of lower impact in Cartograph.", rest, plural(rest)))
 	}
@@ -297,6 +311,10 @@ func (d *doc) criticalLine(n names, g engine.ComponentGraph) {
 // and the change the project makes, each still naming its field so an
 // interface can open it in place.
 func (d *doc) problemsBrief(n names, items []map[string]any) {
+	if len(items) == 0 && d.editable {
+		// The first problem, still to say, where it will be read.
+		items = []map[string]any{{}}
+	}
 	if len(items) == 0 {
 		return
 	}
@@ -308,9 +326,10 @@ func (d *doc) problemsBrief(n names, items []map[string]any) {
 			pathed{"Problem", capital(str(problem["situation"])), at + "/problem/situation"},
 			pathed{"Cause", capital(str(problem["cause"])), at + "/problem/cause"},
 			pathed{"Change", capital(str(change["what"])), at + "/change/what"},
-			pathed{"Affects", strings.Join(n.all("BeneficiaryGroup", strs(pm["groups"])), ", "), ""},
+			pathed{"Affects", strings.Join(n.all("BeneficiaryGroup", strs(pm["groups"])), ", "), at + "/groups"},
 		)
 	}
+	d.addRow("/spec/summary/problems", "Problem")
 }
 
 // approvalBrief prints the conditions approval carries and the sign-off
@@ -332,10 +351,13 @@ func (d *doc) approvalBrief(p plan) bool {
 					}
 				}
 			}
-			rows = append(rows, []string{fmt.Sprintf("%d", i+1), str(c["action"]), p.who(c["owner"]), p.timing(c["due"]), holds, p.status("conditions", str(c["id"]))})
+			at := fmt.Sprintf("/spec/conditions/%d", i)
+			rows = append(rows, []string{fmt.Sprintf("%d", i+1), d.at(str(c["action"]), at+"/action"), d.at(p.who(c["owner"]), at+"/owner"), d.from(p.timing(c["due"]), at+"/due"),
+				d.from(holds, at+"/gates"), d.from(p.status("conditions", str(c["id"])), "/spec/events")})
 		}
 		d.h3("Conditions")
 		d.table([]string{"No.", "Condition", "Owner", "Due", "Holds back", "Status"}, rows)
+		d.addRow("/spec/conditions", "Condition")
 	}
 	if len(sos) > 0 {
 		// Blank cells stay for a wet signature (TAXONOMY.md D52); a line
@@ -343,7 +365,8 @@ func (d *doc) approvalBrief(p plan) bool {
 		d.h3("Sign-off")
 		d.flush()
 		d.b.WriteString("<table class=\"signoff\">\n<tr><th>Stage</th><th>Signs</th><th>Signature</th><th>Date</th></tr>\n")
-		for _, so := range sos {
+		for i, so := range sos {
+			at := fmt.Sprintf("/spec/signOffs/%d", i)
 			signs := p.who(so["role"])
 			if l := str(so["label"]); l != "" {
 				signs = l + " (" + signs + ")"
@@ -354,9 +377,9 @@ func (d *doc) approvalBrief(p plan) bool {
 				signed, date = label("decision", str(last["decision"]))+": "+str(last["recordedBy"]), when(str(last["date"]))
 			}
 			d.b.WriteString("<tr><td>")
-			d.b.WriteString(esc(label("stage", str(so["stage"]))))
+			d.b.WriteString(valueHTML(d.at(label("stage", str(so["stage"])), at+"/stage")))
 			d.b.WriteString("</td><td>")
-			d.b.WriteString(esc(signs))
+			d.b.WriteString(valueHTML(d.from(signs, at+"/role")))
 			d.b.WriteString("</td><td>")
 			d.b.WriteString(esc(signed))
 			d.b.WriteString("</td><td>")

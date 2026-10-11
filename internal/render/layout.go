@@ -64,7 +64,7 @@ const tocMark = "<!--contents-->"
 func (d *doc) lead(s string) {
 	d.flush()
 	d.b.WriteString("<p class=\"lead\">")
-	d.b.WriteString(esc(s))
+	d.b.WriteString(valueHTML(s))
 	d.b.WriteString("</p>\n")
 }
 
@@ -154,13 +154,23 @@ func plural(n int) string {
 	return "s"
 }
 
-// scopeColumns prints what is in and out side by side.
+// scopeColumns prints what is in and out side by side, each line marked
+// with its place in its list in an editable document.
 func (d *doc) scopeColumns(in, out []string) {
+	mark := func(items []string, path string) []string {
+		outs := make([]string, len(items))
+		for i, it := range items {
+			outs[i] = d.at(it, fmt.Sprintf("%s/%d", path, i))
+		}
+		return outs
+	}
 	d.flush()
 	d.b.WriteString("<div class=\"columns\">\n<div>")
-	d.list("In scope", in)
+	d.list("In scope", mark(in, "/spec/summary/scopeIn"))
+	d.addRow("/spec/summary/scopeIn", "In scope")
 	d.b.WriteString("</div>\n<div>")
-	d.list("Out of scope", out)
+	d.list("Out of scope", mark(out, "/spec/summary/scopeOut"))
+	d.addRow("/spec/summary/scopeOut", "Out of scope")
 	d.b.WriteString("</div>\n</div>\n")
 }
 
