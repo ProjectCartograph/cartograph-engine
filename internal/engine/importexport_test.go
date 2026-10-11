@@ -279,18 +279,31 @@ func TestTheExampleAsASemanticLayer(t *testing.T) {
 			model = &l.Models[i]
 		}
 	}
-	if model == nil || model.Ref != "stg_quality_checks" || model.TimeColumn != "checked_on" || len(model.Measures) != 2 || len(model.Dimensions) != 2 {
+	// The source names no warehouse model (TAXONOMY.md D64): written on
+	// a ref named after it, for the analyst, with each metric it gives
+	// as a measure, its condition folded into the expression.
+	if model == nil || model.Ref != "quality_check_tool" || len(model.Measures) != 2 {
 		t.Fatalf("model: %+v", model)
+	}
+	measures := map[string]semantic.Measure{}
+	for _, m := range model.Measures {
+		measures[m.Name] = m
+	}
+	if m := measures["quality_check_tool__deliveries_passed"]; m.Agg != "count" || m.Expr != "case when passed = true then 1 end" {
+		t.Errorf("deliveries passed: %+v", m)
 	}
 	byName := map[string]semantic.Metric{}
 	for _, m := range l.Metrics {
 		byName[m.Name] = m
 	}
 	rate := byName["quality_pass_rate"]
-	if rate.Type != semantic.Ratio || byName[rate.Numerator].Type != semantic.Simple || byName[rate.Denominator].Measure != "quality_pass_rate_denominator" {
+	if rate.Type != semantic.Ratio || rate.Numerator != "quality_check_tool__deliveries_passed" || rate.Denominator != "quality_check_tool__deliveries_checked" ||
+		byName[rate.Numerator].Type != semantic.Simple {
 		t.Fatalf("metrics: %+v", l.Metrics)
 	}
-	_ = notes
+	if !strings.Contains(strings.Join(notes, "\n"), "DataSource/quality-check-tool names no warehouse model") {
+		t.Errorf("notes: %v", notes)
+	}
 	v, err := e.Get(context.Background(), "KPI", "quality-pass-rate")
 	if err != nil {
 		t.Fatal(err)
@@ -300,7 +313,7 @@ func TestTheExampleAsASemanticLayer(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, c := range checks {
-		if c.ID == "kpi-metric" && c.Open() {
+		if c.ID == "kpi-metric" && (c.Open() || !strings.Contains(c.Message, `"Deliveries passed" of Quality Check Tool out of "Deliveries checked"`)) {
 			t.Errorf("the example's metric: %s", c.Message)
 		}
 	}

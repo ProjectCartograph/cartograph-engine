@@ -19,12 +19,12 @@ spec:
   goals: [raise-produce-quality, faults-found-before-dispatch]
   resultLevel: outcome
   disaggregations: [region, product-line]
-  # As the analytics engineer builds it (TAXONOMY.md D57): deliveries
-  # passing, out of deliveries checked, in the check tool's rows.
+  # Deliveries passed, out of deliveries checked: two of the check tool's
+  # metrics (TAXONOMY.md D64).
   metric:
     type: ratio
-    numerator: {source: quality-check-tool, agg: sum, expr: "case when passed then 1 else 0 end"}
-    denominator: {source: quality-check-tool, agg: count}
+    of: {dataSource: quality-check-tool, metric: deliveries-passed}
+    outOf: {dataSource: quality-check-tool, metric: deliveries-checked}
   # What holding the gain asks of it (TAXONOMY.md D58): the share buyers
   # accept, and what the quality lead does when a season falls below it.
   specLimits: {lower: 60}

@@ -1817,3 +1817,41 @@ interface builds both by choice, leaving the column and the dbt filter
 to an analyst or an agent, under their own heading. The export carries
 the words into each metric's description, so the analyst maps them.
 Agents may write the dbt shape directly, as before.
+
+### D64. A data source gives metrics, written as aggregations, and names no dbt model. *(resolved)*
+
+**The problem.** A data source carried a dbt semantic model (D57): the
+dbt model by its ref() name, its key and time columns, its dimensions.
+Those are the warehouse's names, which most people who keep a source do
+not know, and which Cartograph does not hold the truth of. And each
+indicator described its own formula (D63), so two indicators read from
+one source described the same count twice, in two ways.
+
+**The discipline.** A semantic layer separates what a source records
+(its rows), the aggregations over it (measures), and the numbers built
+from them (metrics). The warehouse model behind a source is the
+analyst's to name, in the warehouse.
+
+**What Cartograph does.** A data source says what one entry of it is, in
+words (`records`), and lists the metrics it gives (`metrics`): each a
+name, a description in words, and an aggregation written as pseudocode
+SQL, one aggregate function over one field or every row, with an
+optional condition on the source's own fields: `COUNT(*) WHERE graded_at
+= 'intake'`, `SUM(weight_kg)`. It names no table, no join and no other
+source; the engine reads it, says in words what it reads, and refuses
+what is not an aggregation (a FROM, a JOIN, a SELECT, a subquery, a name
+with a dot). An indicator's metric is one of a source's metrics (`of`),
+or one out of another for a share (`outOf`), over a window if
+cumulative. Which dbt model a source is, and which columns its names
+are, is set outside Cartograph; the export writes each source as a
+semantic model named after it, each metric as a measure whose condition
+becomes a CASE WHEN, and leaves the ref to the analyst.
+
+`semanticModel` on a data source, and an indicator's metric written as
+dbt measures (D57, D63), are still read, so saved definitions and agents
+that write them work as before; the interface no longer writes them.
+
+**Not adopted.** A builder of fields and conditions picked from lists
+(D63's): it described one condition well and an aggregation poorly, and
+could not carry a source's metrics for several indicators to share.
+Joins, which belong to the warehouse model, not to a metric.

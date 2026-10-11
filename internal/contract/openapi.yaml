@@ -1300,6 +1300,40 @@ paths:
                 items:
                   $ref: "#/components/schemas/Match"
 
+  /aggregations/read:
+    post:
+      operationId: readAggregation
+      summary: What a data source metric's aggregation reads as, or why it does not
+      description: >-
+        A metric's aggregation is pseudocode SQL (TAXONOMY.md D64): one
+        aggregate function over a field or every entry, with an optional
+        WHERE on the source's own fields. The answer says it in words, with
+        the fields it names and the measure a semantic layer builds from it;
+        or the problem and where it is, such as a FROM or a JOIN, which
+        belong to the warehouse model. Read only: nothing is saved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 400
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AggregationReading"
+
   /glossary:
     get:
       operationId: getGlossary
@@ -4147,6 +4181,34 @@ components:
         why:
           type: string
           description: Why it decided without asking.
+
+    AggregationReading:
+      type: object
+      required: [names]
+      description: >-
+        What an aggregation reads as (reading, names, agg, expr), or why it
+        does not (problem, at): one or the other.
+      properties:
+        reading:
+          type: string
+          description: What it says, in words.
+        names:
+          type: array
+          items:
+            type: string
+          description: The fields it names, each once, in the order written.
+        agg:
+          type: string
+          description: The measure's aggregation, in the semantic layer's words.
+        expr:
+          type: string
+          description: The expression it aggregates, its condition folded in as a CASE WHEN.
+        problem:
+          type: string
+          description: Why it does not read as an aggregation, in words.
+        at:
+          type: integer
+          description: Where in the text the problem is, as a byte offset.
 
     ManifestCheck:
       type: object

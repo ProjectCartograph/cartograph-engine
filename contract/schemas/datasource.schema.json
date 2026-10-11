@@ -27,6 +27,45 @@
         "team"
       ],
       "properties": {
+        "records": {
+          "type": "string",
+          "maxLength": 240,
+          "description": "What one entry of this source is, in words: one delivery weighed and graded at a depot (TAXONOMY.md D64)."
+        },
+        "metrics": {
+          "type": "array",
+          "description": "The numbers this source gives, each an aggregation over its entries (TAXONOMY.md D64). Indicators read them by id. Which warehouse model and columns they are is set outside Cartograph.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "aggregation"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Slug"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 400,
+                "description": "What the number is, in words, for whoever maps it to the warehouse."
+              },
+              "aggregation": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 400,
+                "description": "The aggregation, as pseudocode SQL: one aggregate function (COUNT, COUNT DISTINCT, SUM, AVG, MIN, MAX) over a field or every row, and an optional WHERE on the source's own fields, such as COUNT(*) WHERE graded_at = 'intake'. No table, join or other source: a check reads it and says what it reads."
+              }
+            }
+          }
+        },
         "semanticModel": {
           "type": "object",
           "additionalProperties": false,
@@ -34,7 +73,7 @@
             "model",
             "entity"
           ],
-          "description": "Where the source's data sits in the warehouse, as a dbt semantic model (TAXONOMY.md D57): the dbt model, what one row is, its time and the dimensions the KPIs read from it may be split by.",
+          "description": "Deprecated (TAXONOMY.md D64): read, never written by the interface; which warehouse model a source is is set outside Cartograph. Where the source's data sits in the warehouse, as a dbt semantic model (TAXONOMY.md D57): the dbt model, what one row is, its time and the dimensions the KPIs read from it may be split by.",
           "properties": {
             "model": {
               "$ref": "common.schema.json#/$defs/Identifier",

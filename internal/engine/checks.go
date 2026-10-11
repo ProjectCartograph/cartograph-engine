@@ -61,6 +61,8 @@ func (e *Engine) kindChecksOf(ctx context.Context, kind, id string, doc map[stri
 		advisory = e.stakeholderMapChecksOf
 	case "KPI":
 		advisory = e.kpiChecksOf
+	case "DataSource":
+		advisory = e.dataSourceChecksOf
 	case "Purpose":
 		advisory = purposeChecksOf
 	case "Resource":
@@ -75,7 +77,7 @@ func (e *Engine) kindChecksOf(ctx context.Context, kind, id string, doc map[stri
 			return nil, err
 		}
 		for _, c := range checks {
-			out = append(out, Check{ID: c.ID, State: c.State, Message: c.Message, Section: c.Section})
+			out = append(out, Check{ID: c.ID, State: c.State, Message: c.Message, Section: c.Section, NotJudged: c.NotJudged})
 		}
 		return out, nil
 	}
@@ -89,7 +91,7 @@ func (e *Engine) kindChecksOf(ctx context.Context, kind, id string, doc map[stri
 			if c.Fix != nil {
 				section = c.Fix.Section
 			}
-			out = append(out, Check{ID: c.ID, State: c.State, Message: c.Message, Section: section})
+			out = append(out, Check{ID: c.ID, State: c.State, Message: c.Message, Section: section, NotJudged: c.NotJudged})
 		}
 		return out, nil
 	}
@@ -105,7 +107,7 @@ func (e *Engine) kindChecksOf(ctx context.Context, kind, id string, doc map[stri
 		if section == "" {
 			section = c.Section
 		}
-		out = append(out, Check{ID: c.ID, State: c.State, Message: c.Message, Section: section})
+		out = append(out, Check{ID: c.ID, State: c.State, Message: c.Message, Section: section, NotJudged: c.NotJudged})
 	}
 	return out, nil
 }

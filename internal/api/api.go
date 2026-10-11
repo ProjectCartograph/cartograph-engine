@@ -1792,6 +1792,16 @@ func (s *Server) MatchExisting(ctx context.Context, req apigen.MatchExistingRequ
 	return apigen.MatchExisting200JSONResponse(out), nil
 }
 
+// ReadAggregation says what a data source metric's aggregation reads as,
+// or why it does not (TAXONOMY.md D64). Nothing is saved.
+func (s *Server) ReadAggregation(_ context.Context, req apigen.ReadAggregationRequestObject) (apigen.ReadAggregationResponseObject, error) {
+	var out apigen.AggregationReading
+	if err := convertJSON(engine.ReadAggregation(req.Body.Text), &out); err != nil {
+		return nil, err
+	}
+	return apigen.ReadAggregation200JSONResponse(out), nil
+}
+
 // convertJSON copies an engine value into its generated wire type, field
 // for field, by their shared JSON names.
 func convertJSON(from, to any) error {

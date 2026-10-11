@@ -27,6 +27,9 @@ func ActionFor(r *http.Request) Action {
 		a.Verb = VerbRead // validation changes nothing
 		a.Kind = parts[1]
 	}
+	if parts[0] == "aggregations" {
+		a.Verb = VerbRead // reading an aggregation changes nothing
+	}
 	switch parts[0] {
 	case ResourceAccess, ResourceVault, ResourceSession:
 		a.Resource = parts[0]

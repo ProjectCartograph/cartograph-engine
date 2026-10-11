@@ -13,7 +13,7 @@ import (
 // somewhere it is read from and how often, and the aims it measures. The
 // schema asks for its definition, unit, direction and source; these are
 // what a person still has to settle, each in the flow step that asks it.
-func (e *Engine) kpiChecksOf(_ context.Context, _ string, doc map[string]any) ([]ProgrammeCheck, error) {
+func (e *Engine) kpiChecksOf(ctx context.Context, _ string, doc map[string]any) ([]ProgrammeCheck, error) {
 	spec, _ := doc["spec"].(map[string]any)
 	if spec == nil {
 		spec = map[string]any{}
@@ -57,8 +57,17 @@ func (e *Engine) kpiChecksOf(_ context.Context, _ string, doc map[string]any) ([
 	goals, _ := spec["goals"].([]any)
 	add("kpi-aligned", "result", len(goals) > 0, "Measures at least one aim.", "Measures no aim yet: name the goal, objective or outcome it tells you about.")
 	if mt, _ := spec["metric"].(map[string]any); mt != nil {
-		problem := metricProblem(mt, stringsOf(spec["sources"]))
-		add("kpi-metric", "metric", problem == "", "Computed as a dbt metric from its sources.", problem)
+		if _, named := mt["of"]; named {
+			// One of its sources' metrics (TAXONOMY.md D64), said by name.
+			ok, message, err := e.sourceMetricCheck(ctx, mt, stringsOf(spec["sources"]))
+			if err != nil {
+				return nil, err
+			}
+			add("kpi-metric", "metric", ok, message, message)
+		} else {
+			problem := metricProblem(mt, stringsOf(spec["sources"]))
+			add("kpi-metric", "metric", problem == "", "Computed as a dbt metric from its sources.", problem)
+		}
 	}
 	if pc, ok := pendingCheck(doc); ok {
 		out = append(out, pc)
