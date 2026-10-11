@@ -86,10 +86,9 @@ func (d *doc) readinessBrief(items []engine.ProjectCheckItem) {
 	d.table([]string{"Part of the definition", "Status", "Still open"}, rows)
 }
 
-// keyMilestones prints the milestones a sponsor decides on: those on the
-// chain that sets the end date, those still to be set by an event, any
-// late, and any an approval condition holds back. The chart above shows
-// them all.
+// keyMilestones prints every milestone, each with why it matters where
+// it does: on the chain that sets the end date, still to be set by an
+// event, late, or held back by an approval condition (#74).
 func (d *doc) keyMilestones(p plan, items []engine.ScheduleItem) {
 	gated := map[string]bool{}
 	for _, c := range list(p.spec["conditions"]) {
@@ -107,9 +106,6 @@ func (d *doc) keyMilestones(p plan, items []engine.ScheduleItem) {
 	for i, m := range ms {
 		id := str(m["id"])
 		it := placed[id]
-		if !it.Critical && !it.Pending && !it.Late && !gated[id] {
-			continue
-		}
 		var why []string
 		if it.Critical {
 			why = append(why, "Sets the end date")
@@ -130,11 +126,9 @@ func (d *doc) keyMilestones(p plan, items []engine.ScheduleItem) {
 	if len(rows) == 0 {
 		return
 	}
-	d.h3("Key milestones")
+	d.h3("Milestones")
 	d.table([]string{"No.", "Milestone", "When", "Owner", "Why it matters", "Status"}, rows)
-	if rest := len(ms) - len(rows); rest > 0 {
-		d.note(fmt.Sprintf("%d more milestone%s in the chart above and in Cartograph.", rest, plural(rest)))
-	}
+	d.addRow("/spec/milestones", "Milestone")
 }
 
 // deliverablesBrief prints each deliverable by name, with its owner, when
@@ -195,12 +189,12 @@ func (d *doc) costsBrief(p plan) {
 	}
 }
 
-// risksBrief prints the risks a sponsor must know: high impact, issues
-// already happening, and anything escalated. The rest are counted.
+// risksBrief prints every risk, issue, dependency and constraint, the
+// highest impact first: the charter is the document read, so nothing in
+// the register is left out of it (#74).
 func (d *doc) risksBrief(p plan, items []map[string]any) {
 	moves := movesOf(p.spec)
-	// Highest impact first, then likelihood; at most five, as a charter
-	// names the few risks that shape the decision.
+	// Highest impact first, then likelihood.
 	order := map[string]int{"high": 0, "medium": 1, "low": 2}
 	// Each keeps its place in the register, for its fields' pointers.
 	index := make([]int, len(items))
@@ -218,16 +212,6 @@ func (d *doc) risksBrief(p plan, items []map[string]any) {
 	for _, i := range index {
 		r := items[i]
 		at := fmt.Sprintf("/spec/risks/%d", i)
-		if len(rows) == 5 {
-			break
-		}
-		escalated := false
-		if e, ok := r["escalate"].(map[string]any); ok {
-			escalated, _ = e["flag"].(bool)
-		}
-		if str(r["impact"]) != "high" && str(r["type"]) != "issue" && !escalated {
-			continue
-		}
 		owner := p.who(r["owner"])
 		if owner == "" {
 			owner = label("role", "manager")
@@ -243,9 +227,6 @@ func (d *doc) risksBrief(p plan, items []map[string]any) {
 		d.table([]string{"Type", "Risk", "Impact", "Moves", "Owner", "Response"}, rows)
 	}
 	d.addRow("/spec/risks", "Risk")
-	if rest := len(items) - len(rows); rest > 0 {
-		d.note(fmt.Sprintf("%d more risk%s, dependencies and constraints of lower impact in Cartograph.", rest, plural(rest)))
-	}
 }
 
 // note is a quiet line under a table.
@@ -307,9 +288,10 @@ func (d *doc) criticalLine(n names, g engine.ComponentGraph) {
 	}
 }
 
-// problemsBrief prints each problem as three lines: what is wrong, why,
-// and the change the project makes, each still naming its field so an
-// interface can open it in place.
+// problemsBrief prints each problem as the sentence it is: who is
+// affected, what goes wrong for them and why, then what the project
+// changes it to (#79). In an editable charter each part is marked as a
+// part of the sentence, edited where it stands and never typed into.
 func (d *doc) problemsBrief(n names, items []map[string]any) {
 	if len(items) == 0 && d.editable {
 		// The first problem, still to say, where it will be read.
@@ -320,14 +302,7 @@ func (d *doc) problemsBrief(n names, items []map[string]any) {
 	}
 	d.h2("Problem statement")
 	for i, pm := range items {
-		problem, change := obj(pm["problem"]), obj(pm["change"])
-		at := fmt.Sprintf("/spec/summary/problems/%d", i)
-		d.fieldsAt(
-			pathed{"Problem", capital(str(problem["situation"])), at + "/problem/situation"},
-			pathed{"Cause", capital(str(problem["cause"])), at + "/problem/cause"},
-			pathed{"Change", capital(str(change["what"])), at + "/change/what"},
-			pathed{"Affects", strings.Join(n.all("BeneficiaryGroup", strs(pm["groups"])), ", "), at + "/groups"},
-		)
+		d.raw(d.problemSentence(n, pm, fmt.Sprintf("/spec/summary/problems/%d", i)))
 	}
 	d.addRow("/spec/summary/problems", "Problem")
 }
@@ -421,4 +396,72 @@ func budgetWithComponents(ctx context.Context, e *engine.Engine, n names, g engi
 		return all + " across its components"
 	}
 	return all + " with its components (" + ownTotal + " its own)"
+}
+
+// problemSentence writes one problem as a sentence: "Delivering members
+// and retail partners learn of a failed delivery a season late, because
+// checks happen after dispatch. The project will change this so that
+// every delivery is checked at intake." Each part keeps its own words,
+// lower-cased where the sentence runs on (an acronym keeps its capitals).
+// In an editable charter the groups are mentions and every part is
+// marked by its field (data-part), with what belongs there (data-hint)
+// where nothing is said yet.
+func (d *doc) problemSentence(n names, pm map[string]any, at string) string {
+	problem, change := obj(pm["problem"]), obj(pm["change"])
+	groups := n.all("BeneficiaryGroup", strs(pm["groups"]))
+	part := func(value, path, hint string) string {
+		value = strings.TrimSuffix(strings.TrimSpace(value), ".")
+		if !d.editable {
+			return esc(value)
+		}
+		empty := ""
+		if value == "" {
+			empty = ` data-empty=""`
+		}
+		return `<span data-field="` + esc(path) + `" data-part="" data-hint="` + esc(hint) + `"` + empty + `>` + esc(value) + `</span>`
+	}
+	var b strings.Builder
+	b.WriteString(`<p class="problem-statement">`)
+	situation := lowerFirst(str(problem["situation"]))
+	switch {
+	case d.editable:
+		empty := ""
+		if len(groups) == 0 {
+			empty = ` data-empty=""`
+		}
+		b.WriteString(`<span data-field="` + esc(at+"/groups") + `" data-part="" data-hint="who it affects"` + empty + `>`)
+		for _, g := range groups {
+			b.WriteString(`<span class="mention">` + esc(g) + `</span>`)
+		}
+		b.WriteString(`</span> `)
+	case len(groups) > 0:
+		b.WriteString(esc(andList(groups)) + " ")
+	default:
+		situation = capital(situation)
+	}
+	b.WriteString(part(situation, at+"/problem/situation", "what goes wrong for them"))
+	if cause := lowerFirst(str(problem["cause"])); cause != "" || d.editable {
+		b.WriteString(", because " + part(cause, at+"/problem/cause", "why it happens"))
+	}
+	b.WriteString(".")
+	if what := lowerFirst(str(change["what"])); what != "" || d.editable {
+		b.WriteString(" The project will change this so that " + part(what, at+"/change/what", "what will be true instead"))
+		if gain := lowerFirst(str(change["gain"])); gain != "" {
+			b.WriteString(", and they gain " + part(gain, at+"/change/gain", "what they gain"))
+		}
+		b.WriteString(".")
+	}
+	b.WriteString("</p>\n")
+	return b.String()
+}
+
+// andList joins names as a sentence does: "a", "a and b", "a, b and c".
+func andList(items []string) string {
+	switch len(items) {
+	case 0:
+		return ""
+	case 1:
+		return items[0]
+	}
+	return strings.Join(items[:len(items)-1], ", ") + " and " + items[len(items)-1]
 }

@@ -450,13 +450,8 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	// A compliance line is satisfied rather than measured, so it is
 	// never asked for a standard, a source or a cycle.
 	// A requirement met or not is a success criterion of compliance
-	// (TAXONOMY.md D25); a separate list of them, as projects kept before
-	// 2.6.0, is a second place for the same thing.
-	if lines, _ := spec["compliance"].([]any); len(lines) > 0 {
-		c.addFix("compliance-as-criteria", "success", phaseInitiation, checkWarn,
-			fmt.Sprintf("%d compliance line%s kept apart from the success criteria: record each as a criterion of compliance.", len(lines), plural(len(lines))),
-			phaseInitiation, "success")
-	}
+	// (TAXONOMY.md D25); the separate list projects kept before 2.6.0 is
+	// folded into the criteria as it is read (internal/legacy).
 	if len(criteria) == 0 && isComponent {
 		// A component is judged by its parent's criteria (TAXONOMY.md D15);
 		// it states its own only where it has them.

@@ -3361,6 +3361,9 @@ type ServerInterface interface {
 	// ReopenChangeSet Take a proposed change set back to work, to ask for changes or to withdraw it.
 	// (POST /changesets/{set}/reopen)
 	ReopenChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// GetCharterPartsStyle The styling of what a charter's sections hold
+	// (GET /charter/parts.css)
+	GetCharterPartsStyle(w http.ResponseWriter, r *http.Request)
 	// GetComponents Every project and programme, what each depends on, and what follows
 	// (GET /components)
 	GetComponents(w http.ResponseWriter, r *http.Request, params GetComponentsParams)
@@ -4327,6 +4330,20 @@ func (siw *ServerInterfaceWrapper) ReopenChangeSet(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReopenChangeSet(w, r, set)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCharterPartsStyle operation middleware
+func (siw *ServerInterfaceWrapper) GetCharterPartsStyle(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCharterPartsStyle(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7106,6 +7123,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.GetProjectState)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.TransitionProjectState)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/charter.html", wrapper.GetProjectCharterHtml)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/charter/parts.css", wrapper.GetCharterPartsStyle)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/charter/parts", wrapper.GetProjectCharterParts)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/charter.pdf", wrapper.GetCharterPdf)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Programme/{id}/charter.html", wrapper.GetProgrammeCharterHtml)
@@ -8873,6 +8891,61 @@ func (response ReopenChangeSet409JSONResponse) VisitReopenChangeSetResponse(w ht
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCharterPartsStyleRequestObject struct {
+}
+
+type GetCharterPartsStyleResponseObject interface {
+	VisitGetCharterPartsStyleResponse(w http.ResponseWriter) error
+}
+
+type GetCharterPartsStyle200TextcssResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response GetCharterPartsStyle200TextcssResponse) VisitGetCharterPartsStyleResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "text/css")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetCharterPartsStyle401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetCharterPartsStyle401JSONResponse) VisitGetCharterPartsStyleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCharterPartsStyle403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetCharterPartsStyle403JSONResponse) VisitGetCharterPartsStyleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -13871,6 +13944,9 @@ type StrictServerInterface interface {
 	// ReopenChangeSet Take a proposed change set back to work, to ask for changes or to withdraw it.
 	// (POST /changesets/{set}/reopen)
 	ReopenChangeSet(ctx context.Context, request ReopenChangeSetRequestObject) (ReopenChangeSetResponseObject, error)
+	// GetCharterPartsStyle The styling of what a charter's sections hold
+	// (GET /charter/parts.css)
+	GetCharterPartsStyle(ctx context.Context, request GetCharterPartsStyleRequestObject) (GetCharterPartsStyleResponseObject, error)
 	// GetComponents Every project and programme, what each depends on, and what follows
 	// (GET /components)
 	GetComponents(ctx context.Context, request GetComponentsRequestObject) (GetComponentsResponseObject, error)
@@ -14859,6 +14935,30 @@ func (sh *strictHandler) ReopenChangeSet(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ReopenChangeSetResponseObject); ok {
 		if err := validResponse.VisitReopenChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCharterPartsStyle operation middleware
+func (sh *strictHandler) GetCharterPartsStyle(w http.ResponseWriter, r *http.Request) {
+	var request GetCharterPartsStyleRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCharterPartsStyle(ctx, request.(GetCharterPartsStyleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCharterPartsStyle")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCharterPartsStyleResponseObject); ok {
+		if err := validResponse.VisitGetCharterPartsStyleResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -738,6 +738,13 @@ func (s *Server) GetProjectCharterHtml(ctx context.Context, req apigen.GetProjec
 	}, nil
 }
 
+// GetCharterPartsStyle is the styling of what a charter's sections hold,
+// for an interface drawing the charter as parts (#77).
+func (s *Server) GetCharterPartsStyle(_ context.Context, _ apigen.GetCharterPartsStyleRequestObject) (apigen.GetCharterPartsStyleResponseObject, error) {
+	css := render.PartsCSS()
+	return apigen.GetCharterPartsStyle200TextcssResponse{Body: strings.NewReader(css), ContentLength: int64(len(css))}, nil
+}
+
 // GetProgrammeCharterHtml renders a programme as a document.
 func (s *Server) GetProgrammeCharterHtml(
 	ctx context.Context,
