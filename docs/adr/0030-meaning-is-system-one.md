@@ -62,10 +62,13 @@ declares, which the engine implements with the decider. The domain
 stays free of the port.
 
 **Without a model, a check that needs meaning is off, and says so.**
-There is no heuristic behind it. The check is not asked, the engine
-reports which checks are off (`decision_model`, the checks' own
-report), and the MCP server's instructions tell an agent that it must
-judge those things itself. A port read without a model leans on the
+There is no heuristic behind it. The check is not asked: it is still
+reported, as passed, marked `notJudged`, its message saying it was not
+judged and why (the model is off, or did not answer), so it holds
+nothing up and nobody reads a pass as a judgement (amended 2026-10-11:
+it was left out, which hid it). The engine also lists which checks are
+off (`decision_model`), and the MCP server's instructions tell an agent
+that it must judge those things itself. A port read without a model leans on the
 agent more, and varies with it more; that is the cost of turning the
 model off.
 

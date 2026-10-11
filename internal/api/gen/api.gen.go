@@ -1477,10 +1477,13 @@ type GoalAligned struct {
 
 // GoalCheck defines model for GoalCheck.
 type GoalCheck struct {
-	Fix     *GoalCheckFix  `json:"fix,omitempty"`
-	Id      string         `json:"id"`
-	Message string         `json:"message"`
-	State   GoalCheckState `json:"state"`
+	Fix     *GoalCheckFix `json:"fix,omitempty"`
+	Id      string        `json:"id"`
+	Message string        `json:"message"`
+
+	// NotJudged True when this is a judgement of meaning the decision model did not make (it is off, or did not answer): the check passes, so it holds nothing up, and its message says why it was not judged.
+	NotJudged *bool          `json:"notJudged,omitempty"`
+	State     GoalCheckState `json:"state"`
 }
 
 // GoalCheckState defines model for GoalCheck.State.
@@ -1875,6 +1878,9 @@ type ManifestCheck struct {
 	Id      string `json:"id"`
 	Message string `json:"message"`
 
+	// NotJudged True when this is a judgement of meaning the decision model did not make (it is off, or did not answer): the check passes, so it holds nothing up, and its message says why it was not judged.
+	NotJudged *bool `json:"notJudged,omitempty"`
+
 	// Path The field it is about, as a JSON pointer, where it is one field: what the record must have before it can be merged.
 	Path *string `json:"path,omitempty"`
 
@@ -2042,6 +2048,9 @@ type ProgrammeCheck struct {
 	Id      string `json:"id"`
 	Message string `json:"message"`
 
+	// NotJudged True when this is a judgement of meaning the decision model did not make (it is off, or did not answer): the check passes, so it holds nothing up, and its message says why it was not judged.
+	NotJudged *bool `json:"notJudged,omitempty"`
+
 	// Section The step of the programme walk this is about, so the panel can send the reader there.
 	Section string `json:"section"`
 
@@ -2063,12 +2072,18 @@ type ProjectCheckFixPhase string
 
 // ProjectCheckItem defines model for ProjectCheckItem.
 type ProjectCheckItem struct {
-	Fix     ProjectCheckFix       `json:"fix"`
-	Id      string                `json:"id"`
-	Message string                `json:"message"`
-	Phase   ProjectCheckItemPhase `json:"phase"`
-	Section string                `json:"section"`
-	State   ProjectCheckState     `json:"state"`
+	Fix     ProjectCheckFix `json:"fix"`
+	Id      string          `json:"id"`
+	Message string          `json:"message"`
+
+	// NotJudged True when this is a judgement of meaning the decision model did not make (it is off, or did not answer): the check passes, so it holds nothing up, and its message says why it was not judged.
+	NotJudged *bool                 `json:"notJudged,omitempty"`
+	Phase     ProjectCheckItemPhase `json:"phase"`
+	Section   string                `json:"section"`
+	State     ProjectCheckState     `json:"state"`
+
+	// Suggestion True when this is advice from the decision model, offered and never required: the check passes, so it holds nothing up. A project's objective that may not work toward an outcome it serves is one (goals-outcome-fit).
+	Suggestion *bool `json:"suggestion,omitempty"`
 }
 
 // ProjectCheckItemPhase defines model for ProjectCheckItem.Phase.

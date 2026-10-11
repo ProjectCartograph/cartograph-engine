@@ -221,16 +221,24 @@ func (e *Engine) goalSmart(ctx context.Context, read goalReader, spec map[string
 
 	statement, _ := spec["objective"].(string)
 	specificMsg := "Specific: say what will change."
+	specificOK := "Specific: says what will change, in words rather than a figure to reach."
+	unjudged := false
 	if strings.TrimSpace(statement) != "" {
 		s.Specific = true
 		// Whether it says a change, or a figure to reach, is the model's
-		// to judge (docs/adr/0030); without one, it is not asked.
-		if j, ok := e.judge(ctx, "objective-target", statement); ok && j.Holds {
+		// to judge (docs/adr/0030); without one, the line says so.
+		j, ok := e.judge(ctx, "objective-target", statement)
+		switch {
+		case !ok:
+			unjudged = true
+			specificOK = "Specific: says what will change. " + e.notJudged("Whether it reads as a target rather than a change in words")
+		case j.Holds:
 			s.Specific = false
 			specificMsg = "Specific: this " + sureWords(j.Sure) + " reads as a target. Say the change in words; put the figure in a key result."
 		}
 	}
-	add("smart-specific", s.Specific, "objective", "Specific: says what will change.", specificMsg)
+	add("smart-specific", s.Specific, "objective", specificOK, specificMsg)
+	checks[len(checks)-1].NotJudged = unjudged
 
 	var ms []measure
 	krs, _ := spec["keyResults"].([]any)

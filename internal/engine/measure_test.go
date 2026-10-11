@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -63,7 +64,46 @@ func TestMeasureJudgements(t *testing.T) {
 			t.Errorf("%s scores %d of %d, below the %d it was kept at", name, right, of, j.Measured.Right)
 		}
 	}
+	measureOutcomeFit(ctx, t, e)
 	holdToRecorded(t)
+}
+
+// measureOutcomeFit holds the rule addOutcomeFit suggests on to what it
+// was kept at, on the same pairs: misaligned pairs flagged, at least as
+// many; aligned pairs flagged, no more.
+func measureOutcomeFit(ctx context.Context, t *testing.T, e *Engine) {
+	const keptFlagged, keptWrong = 20, 2
+	f, err := os.Open(filepath.Join("testdata", "decide", "objective-serves-outcome.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	flagged, wrong := 0, 0
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		var ex struct{ Text, Answer string }
+		if err := json.Unmarshal(sc.Bytes(), &ex); err != nil {
+			t.Fatal(err)
+		}
+		objective, outcome, _ := strings.Cut(strings.TrimPrefix(ex.Text, "Objective: "), "\nOutcome: ")
+		pair, ok := e.judge(ctx, "objective-serves-outcome", ex.Text)
+		base, ok2 := e.judge(ctx, "objective-serves-outcome", pairText(objective, outcomeBaseline))
+		if !ok || !ok2 {
+			t.Fatal("outcome fit: the model did not answer")
+		}
+		if badlyMisaligned(pair, base) {
+			if ex.Answer == "no" {
+				flagged++
+			} else {
+				wrong++
+				t.Logf("outcome fit: flagged an aligned pair: %s -> %s", objective, outcome)
+			}
+		}
+	}
+	t.Logf("outcome fit: flags %d misaligned, %d aligned (kept at %d, %d)", flagged, wrong, keptFlagged, keptWrong)
+	if flagged < keptFlagged || wrong > keptWrong {
+		t.Errorf("outcome fit flags %d misaligned and %d aligned, worse than the %d and %d it was kept at", flagged, wrong, keptFlagged, keptWrong)
+	}
 }
 
 // answered is every probability measureExamples was given, by question

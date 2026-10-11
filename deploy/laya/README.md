@@ -8,8 +8,10 @@ the ONNX runtime, which Cartograph's static binary does not carry, so it
 runs beside Cartograph, and Cartograph reaches it over HTTP.
 
 Cartograph asks it by default (docs/adr/0030); `CARTOGRAPH_DECIDE=off`
-turns it off. Without it, the checks that judge meaning are left out,
-`GET /decision-model` lists them, and nothing else changes.
+turns it off, a valid setup but not the standard one. Without it, each
+check that judges meaning passes marked `notJudged`, its message saying
+why it was not judged; `GET /decision-model` lists them, and nothing else
+changes. `just stack` runs Cartograph with it, in containers.
 
 ## Run it
 

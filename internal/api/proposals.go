@@ -169,7 +169,7 @@ func (s *Server) GetProposal(ctx context.Context, req apigen.GetProposalRequestO
 func toChecks(cs []engine.Check) []apigen.ManifestCheck {
 	out := make([]apigen.ManifestCheck, len(cs))
 	for i, c := range cs {
-		out[i] = apigen.ManifestCheck{Id: c.ID, State: apigen.ManifestCheckState(c.State), Message: c.Message}
+		out[i] = apigen.ManifestCheck{Id: c.ID, State: apigen.ManifestCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged)}
 		if c.Section != "" {
 			section := c.Section
 			out[i].Section = &section

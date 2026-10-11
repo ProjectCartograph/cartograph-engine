@@ -4170,6 +4170,12 @@ components:
           description: >-
             The field it is about, as a JSON pointer, where it is one field:
             what the record must have before it can be merged.
+        notJudged:
+          type: boolean
+          description: >-
+            True when this is a judgement of meaning the decision model did
+            not make (it is off, or did not answer): the check passes, so it
+            holds nothing up, and its message says why it was not judged.
 
     ProposalReview:
       type: object
@@ -5462,6 +5468,12 @@ components:
             definition because a different file changed.
         message:
           type: string
+        notJudged:
+          type: boolean
+          description: >-
+            True when this is a judgement of meaning the decision model did
+            not make (it is off, or did not answer): the check passes, so it
+            holds nothing up, and its message says why it was not judged.
 
     GoalCheck:
       type: object
@@ -5476,6 +5488,12 @@ components:
           type: string
         fix:
           $ref: "#/components/schemas/GoalCheckFix"
+        notJudged:
+          type: boolean
+          description: >-
+            True when this is a judgement of meaning the decision model did
+            not make (it is off, or did not answer): the check passes, so it
+            holds nothing up, and its message says why it was not judged.
 
     ValidateRequest:
       type: object
@@ -5517,6 +5535,19 @@ components:
           type: string
         fix:
           $ref: "#/components/schemas/ProjectCheckFix"
+        suggestion:
+          type: boolean
+          description: >-
+            True when this is advice from the decision model, offered and
+            never required: the check passes, so it holds nothing up. A
+            project's objective that may not work toward an outcome it
+            serves is one (goals-outcome-fit).
+        notJudged:
+          type: boolean
+          description: >-
+            True when this is a judgement of meaning the decision model did
+            not make (it is off, or did not answer): the check passes, so it
+            holds nothing up, and its message says why it was not judged.
 
     ProjectChecks:
       type: object

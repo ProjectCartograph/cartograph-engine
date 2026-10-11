@@ -20,6 +20,9 @@ type Check struct {
 	// one field: what a record must have before it can be saved as a
 	// version.
 	Path string `json:"path,omitempty"`
+	// NotJudged marks a judgement of meaning the decision model did not
+	// make: the check passes, and its message says why.
+	NotJudged bool `json:"notJudged,omitempty"`
 }
 
 // Open reports whether a check is not yet met.

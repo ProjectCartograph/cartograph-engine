@@ -461,6 +461,9 @@ type GoalCheck struct {
 	State   string        `json:"state"` // ok, warn
 	Message string        `json:"message"`
 	Fix     *GoalCheckFix `json:"fix,omitempty"`
+	// NotJudged marks a judgement of meaning the decision model did not
+	// make: the check passes, and its message says why.
+	NotJudged bool `json:"notJudged,omitempty"`
 }
 
 const (

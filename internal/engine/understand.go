@@ -167,9 +167,11 @@ func (e *Engine) judgedChecks(ctx context.Context, kind string, doc map[string]a
 		}
 		failed, asked := 0, 0
 		first := 0
+		unjudged := false
 		for _, v := range values {
 			got, ok := e.contrast(ctx, id, j, v.text)
 			if !ok {
+				unjudged = true
 				continue
 			}
 			asked++
@@ -181,6 +183,12 @@ func (e *Engine) judgedChecks(ctx context.Context, kind string, doc map[string]a
 			}
 		}
 		if asked == 0 {
+			// A measured judgement the model did not make says so; one not
+			// measured yet is not asked at all.
+			if _, measured := contrasts[id]; measured && unjudged {
+				out = append(out, ProgrammeCheck{ID: id, State: programmeCheckOK, Section: e.stepOfField(kind, j.Path), NotJudged: true,
+					Message: e.notJudged("Whether it is " + j.Good.Label + " rather than " + j.Poor.Label)})
+			}
 			continue
 		}
 		if failed == 0 {
