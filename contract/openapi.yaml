@@ -5535,6 +5535,13 @@ components:
           type: string
         fix:
           $ref: "#/components/schemas/ProjectCheckFix"
+        suggestion:
+          type: boolean
+          description: >-
+            True when this is advice from the decision model, offered and
+            never required: the check passes, so it holds nothing up. A
+            project's objective that may not work toward an outcome it
+            serves is one (goals-outcome-fit).
         notJudged:
           type: boolean
           description: >-

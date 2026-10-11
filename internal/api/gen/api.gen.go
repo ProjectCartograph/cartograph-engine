@@ -2081,6 +2081,9 @@ type ProjectCheckItem struct {
 	Phase     ProjectCheckItemPhase `json:"phase"`
 	Section   string                `json:"section"`
 	State     ProjectCheckState     `json:"state"`
+
+	// Suggestion True when this is advice from the decision model, offered and never required: the check passes, so it holds nothing up. A project's objective that may not work toward an outcome it serves is one (goals-outcome-fit).
+	Suggestion *bool `json:"suggestion,omitempty"`
 }
 
 // ProjectCheckItemPhase defines model for ProjectCheckItem.Phase.

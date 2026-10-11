@@ -833,7 +833,7 @@ func toProjectCheckItem(i engine.ProjectCheckItem) apigen.ProjectCheckItem {
 	return apigen.ProjectCheckItem{
 		Id: i.ID, Section: i.Section, Phase: apigen.ProjectCheckItemPhase(i.Phase),
 		State: apigen.ProjectCheckState(i.State), Message: i.Message, Fix: toProjectCheckFix(i.Fix),
-		NotJudged: whenTrue(i.NotJudged),
+		NotJudged: whenTrue(i.NotJudged), Suggestion: whenTrue(i.Suggestion),
 	}
 }
 

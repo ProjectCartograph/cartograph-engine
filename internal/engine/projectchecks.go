@@ -41,6 +41,9 @@ type ProjectCheckItem struct {
 	State   string          `json:"state"`
 	Message string          `json:"message"`
 	Fix     ProjectCheckFix `json:"fix"`
+	// Suggestion marks advice from the decision model, offered and never
+	// required: the check passes, so it holds nothing up.
+	Suggestion bool `json:"suggestion,omitempty"`
 	// NotJudged marks a judgement of meaning the decision model did not
 	// make: the check passes, and its message says why.
 	NotJudged bool `json:"notJudged,omitempty"`
@@ -72,6 +75,15 @@ func (a checkAdder) unjudged(id, section, phase, message string) {
 	a.pc.Items = append(a.pc.Items, ProjectCheckItem{
 		ID: id, Section: section, Phase: phase, State: checkOK, Message: message,
 		Fix: ProjectCheckFix{Phase: phase, Section: section}, NotJudged: true,
+	})
+}
+
+// suggest offers the decision model's advice: passed, so it holds
+// nothing up, and marked as a suggestion.
+func (a checkAdder) suggest(id, section, phase, message string) {
+	a.pc.Items = append(a.pc.Items, ProjectCheckItem{
+		ID: id, Section: section, Phase: phase, State: checkOK, Message: message,
+		Fix: ProjectCheckFix{Phase: phase, Section: section}, Suggestion: true,
 	})
 }
 
@@ -168,6 +180,7 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 				"Aligned to a goal or an objective; align to an outcome instead.")
 		} else if hasFunctional {
 			c.add("goals-functional-level", "goals", phaseInitiation, checkOK, "Aligned to an outcome.")
+			e.addOutcomeFit(ctx, c, spec, goals)
 		} else {
 			c.add("goals-functional-level", "goals", phaseInitiation, checkBlock,
 				"All aligned goals are unresolved; align to an outcome.")
@@ -1624,4 +1637,70 @@ func servesMessage(names []string) string {
 		return "Serves 1 outcome: " + names[0] + "."
 	}
 	return fmt.Sprintf("Serves %d outcomes: %s.", len(names), strings.Join(names, "; "))
+}
+
+// outcomeBaseline is the neutral outcome an objective is also asked
+// against: a pair scoring below it, and below the judgement's threshold,
+// is badly misaligned. A fixed score alone missed most real mistakes; the
+// model scores some aligned pairs low, and the baseline tells them apart.
+const outcomeBaseline = "Something good happens for the organisation"
+
+// addOutcomeFit asks the decision model, of the objective and each
+// outcome the project serves, whether reaching one helps bring about the
+// other, and suggests looking again at a pair it finds badly misaligned.
+// One question per outcome the project names and one for the baseline,
+// each cached by its text, so checking a whole workspace asks once per
+// objective and outcome it names: linear in its objectives. Without a
+// model nothing is suggested.
+func (e *Engine) addOutcomeFit(ctx context.Context, c checkAdder, spec map[string]any, goals []any) {
+	objectives, _ := spec["objectives"].([]any)
+	if len(objectives) != 1 {
+		return
+	}
+	om, _ := objectives[0].(map[string]any)
+	objective, _ := om["objective"].(string)
+	if strings.TrimSpace(objective) == "" {
+		return
+	}
+	names, err := e.goalNames(ctx, goals)
+	if err != nil {
+		return
+	}
+	base, ok := e.judge(ctx, "objective-serves-outcome", pairText(objective, outcomeBaseline))
+	if !ok {
+		return
+	}
+	var off []string
+	for _, name := range names {
+		j, ok := e.judge(ctx, "objective-serves-outcome", pairText(objective, name))
+		if !ok {
+			return
+		}
+		if badlyMisaligned(j, base) {
+			off = append(off, name)
+		}
+	}
+	if len(off) > 0 {
+		c.suggest("goals-outcome-fit", "goals", phaseInitiation, fmt.Sprintf(
+			"The objective may not work toward %s. Look again at the outcome, or at the objective.", quoteJoin(off)))
+	}
+}
+
+func quoteJoin(names []string) string {
+	q := make([]string, len(names))
+	for i, n := range names {
+		q[i] = "\"" + n + "\""
+	}
+	return strings.Join(q, " or ")
+}
+
+// pairText is an objective and an outcome as the model is asked of them.
+func pairText(objective, outcome string) string {
+	return "Objective: " + strings.TrimSuffix(strings.TrimSpace(objective), ".") + ".\nOutcome: " + strings.TrimSuffix(strings.TrimSpace(outcome), ".") + "."
+}
+
+// badlyMisaligned is the rule addOutcomeFit suggests on: below the
+// judgement's threshold, and below the objective against the baseline.
+func badlyMisaligned(pair, base Judged) bool {
+	return !pair.Holds && pair.Sure < base.Sure
 }

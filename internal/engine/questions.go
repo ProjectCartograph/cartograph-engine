@@ -55,6 +55,21 @@ var judgements = map[string]judgement{
 		Threshold: 0.43,
 		Measured:  Measure{Right: 25, Of: 28},
 	},
+	// Whether reaching an objective helps bring about an outcome, asked of
+	// the two together. Used one way only, in addOutcomeFit: a pair below
+	// the threshold, and below the same objective against a neutral outcome
+	// (outcomeBaseline), is offered as a suggestion, never a fault. Nothing
+	// is said otherwise, since the model cannot tell which outcome an
+	// objective serves (measured: its own outcome came first among 14 in 9
+	// of 25). The rule, measured on 54 pairs of known answer, flags 20 of 28
+	// misaligned and 2 of 26 aligned (TestMeasureOutcomeFit;
+	// cartograph-engine#67).
+	"objective-serves-outcome": {
+		Name:      "objective-serves-outcome",
+		Wordings:  []string{"Achieving the objective helps bring about the outcome."},
+		Threshold: 0.05,
+		Measured:  Measure{Right: 42, Of: 54},
+	},
 	// A record names roles and bodies, never people (AGENTS.md). A title
 	// before a name is caught exactly, and refused; a name without one, or
 	// in another language, only a model can see (#4).
