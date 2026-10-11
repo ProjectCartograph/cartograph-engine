@@ -86,10 +86,9 @@ func (d *doc) readinessBrief(items []engine.ProjectCheckItem) {
 	d.table([]string{"Part of the definition", "Status", "Still open"}, rows)
 }
 
-// keyMilestones prints the milestones a sponsor decides on: those on the
-// chain that sets the end date, those still to be set by an event, any
-// late, and any an approval condition holds back. The chart above shows
-// them all.
+// keyMilestones prints every milestone, each with why it matters where
+// it does: on the chain that sets the end date, still to be set by an
+// event, late, or held back by an approval condition (#74).
 func (d *doc) keyMilestones(p plan, items []engine.ScheduleItem) {
 	gated := map[string]bool{}
 	for _, c := range list(p.spec["conditions"]) {
@@ -107,9 +106,6 @@ func (d *doc) keyMilestones(p plan, items []engine.ScheduleItem) {
 	for i, m := range ms {
 		id := str(m["id"])
 		it := placed[id]
-		if !it.Critical && !it.Pending && !it.Late && !gated[id] {
-			continue
-		}
 		var why []string
 		if it.Critical {
 			why = append(why, "Sets the end date")
@@ -130,11 +126,9 @@ func (d *doc) keyMilestones(p plan, items []engine.ScheduleItem) {
 	if len(rows) == 0 {
 		return
 	}
-	d.h3("Key milestones")
+	d.h3("Milestones")
 	d.table([]string{"No.", "Milestone", "When", "Owner", "Why it matters", "Status"}, rows)
-	if rest := len(ms) - len(rows); rest > 0 {
-		d.note(fmt.Sprintf("%d more milestone%s in the chart above and in Cartograph.", rest, plural(rest)))
-	}
+	d.addRow("/spec/milestones", "Milestone")
 }
 
 // deliverablesBrief prints each deliverable by name, with its owner, when
@@ -195,12 +189,12 @@ func (d *doc) costsBrief(p plan) {
 	}
 }
 
-// risksBrief prints the risks a sponsor must know: high impact, issues
-// already happening, and anything escalated. The rest are counted.
+// risksBrief prints every risk, issue, dependency and constraint, the
+// highest impact first: the charter is the document read, so nothing in
+// the register is left out of it (#74).
 func (d *doc) risksBrief(p plan, items []map[string]any) {
 	moves := movesOf(p.spec)
-	// Highest impact first, then likelihood; at most five, as a charter
-	// names the few risks that shape the decision.
+	// Highest impact first, then likelihood.
 	order := map[string]int{"high": 0, "medium": 1, "low": 2}
 	// Each keeps its place in the register, for its fields' pointers.
 	index := make([]int, len(items))
@@ -218,16 +212,6 @@ func (d *doc) risksBrief(p plan, items []map[string]any) {
 	for _, i := range index {
 		r := items[i]
 		at := fmt.Sprintf("/spec/risks/%d", i)
-		if len(rows) == 5 {
-			break
-		}
-		escalated := false
-		if e, ok := r["escalate"].(map[string]any); ok {
-			escalated, _ = e["flag"].(bool)
-		}
-		if str(r["impact"]) != "high" && str(r["type"]) != "issue" && !escalated {
-			continue
-		}
 		owner := p.who(r["owner"])
 		if owner == "" {
 			owner = label("role", "manager")
@@ -243,9 +227,6 @@ func (d *doc) risksBrief(p plan, items []map[string]any) {
 		d.table([]string{"Type", "Risk", "Impact", "Moves", "Owner", "Response"}, rows)
 	}
 	d.addRow("/spec/risks", "Risk")
-	if rest := len(items) - len(rows); rest > 0 {
-		d.note(fmt.Sprintf("%d more risk%s, dependencies and constraints of lower impact in Cartograph.", rest, plural(rest)))
-	}
 }
 
 // note is a quiet line under a table.
