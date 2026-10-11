@@ -165,9 +165,73 @@ func Rewrite(kind string, doc map[string]any) []string {
 		notes = append(notes, dropRoleTitles(spec)...)
 		notes = append(notes, liftStakeholderScores(spec)...)
 		notes = append(notes, dropFreeTextFunding(spec)...)
+		notes = append(notes, foldCompliance(spec)...)
 	}
 
 	return notes
+}
+
+// foldCompliance makes each compliance line kept before 2.6.0 a success
+// criterion of compliance (TAXONOMY.md D25), judged at closing and
+// confirmed by the project's sponsor where it names one, unless a
+// criterion already says it; the line's progress is the delivery tool's,
+// so its status goes. Nothing is left to ask the person (#75).
+func foldCompliance(spec map[string]any) []string {
+	lines, ok := spec["compliance"].([]any)
+	if !ok {
+		return nil
+	}
+	criteria, _ := spec["successCriteria"].([]any)
+	said := func(item string) bool {
+		for _, c := range criteria {
+			cm, _ := c.(map[string]any)
+			st, _ := cm["statement"].(string)
+			if item != "" && strings.Contains(strings.ToLower(st), strings.ToLower(item)) {
+				return true
+			}
+		}
+		return false
+	}
+	taken := map[string]bool{}
+	for _, c := range criteria {
+		cm, _ := c.(map[string]any)
+		id, _ := cm["id"].(string)
+		taken[id] = true
+	}
+	var sponsor map[string]any
+	for _, r := range anySlice(spec["resources"]) {
+		rm, _ := r.(map[string]any)
+		if role, _ := rm["role"].(string); role == "sponsor" {
+			if id, _ := rm["id"].(string); id != "" {
+				sponsor = map[string]any{"local": "resources", "id": id}
+				break
+			}
+		}
+	}
+	folded := 0
+	for _, l := range lines {
+		lm, _ := l.(map[string]any)
+		item, _ := lm["item"].(string)
+		if strings.TrimSpace(item) == "" || said(item) {
+			continue
+		}
+		id := ""
+		for n := 1; id == "" || taken[id]; n++ {
+			id = fmt.Sprintf("compliance-%d", n)
+		}
+		taken[id] = true
+		c := map[string]any{"id": id, "statement": item, "metric": "compliance", "when": "atClosing"}
+		if sponsor != nil {
+			c["confirmedBy"] = sponsor
+		}
+		criteria = append(criteria, c)
+		folded++
+	}
+	if len(criteria) > 0 {
+		spec["successCriteria"] = criteria
+	}
+	delete(spec, "compliance")
+	return []string{fmt.Sprintf("spec.compliance folded into spec.successCriteria: %d line%s as criteria of compliance", folded, map[bool]string{true: "", false: "s"}[folded == 1])}
 }
 
 // rewriteDeliverableAcceptance turns a deliverable's single acceptance
@@ -860,4 +924,9 @@ func Deprecated(kind string, doc map[string]any) []Field {
 type Field struct {
 	Path    string
 	Message string
+}
+
+func anySlice(v any) []any {
+	l, _ := v.([]any)
+	return l
 }

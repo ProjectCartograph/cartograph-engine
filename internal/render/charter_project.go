@@ -221,7 +221,7 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 			result := p.result(str(c["id"]))
 			results = results || result != ""
 			rows = append(rows, []string{
-				d.at(str(c["statement"]), at+"/statement"), d.at(str(c["standard"]), at+"/standard"), d.at(label("when", judged), at+"/when"),
+				d.at(str(c["statement"]), at+"/statement"), standardCell(&d, c, at), d.at(label("when", judged), at+"/when"),
 				d.at(p.who(c["confirmedBy"]), at+"/confirmedBy"), d.from(result, "/spec/events"),
 			})
 		}
@@ -341,4 +341,13 @@ func aliasOf(e *engine.Engine, vers engine.Version) string {
 		return ""
 	}
 	return str(obj(m["metadata"])["alias"])
+}
+
+// standardCell is a success criterion's target: a criterion of compliance
+// is met or not and has none, so there is no place to write one (#75).
+func standardCell(d *doc, c map[string]any, at string) string {
+	if str(c["metric"]) == "compliance" {
+		return str(c["standard"])
+	}
+	return d.at(str(c["standard"]), at+"/standard")
 }

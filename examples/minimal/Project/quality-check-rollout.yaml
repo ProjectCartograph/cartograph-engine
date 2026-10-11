@@ -254,9 +254,6 @@ spec:
       likelihood: low
       mitigation: Put the pilot's results to the board one month before rollout starts.
       owner: {local: resources, id: lead}
-  compliance:
-    - item: Data protection review of member delivery records
-      status: inProgress
   resources:
     - id: sponsor
       role: sponsor

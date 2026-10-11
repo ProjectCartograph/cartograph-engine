@@ -932,7 +932,7 @@
           }
         },
         "compliance": {
-          "description": "Deprecated: a requirement that is met or not is a success criterion with metric compliance (TAXONOMY.md D25), with the role that confirms it; its progress is the delivery tool's. Read from a manifest saved before 2.6.0; never written. The compliance-as-criteria check asks for each line to be recorded as one.",
+          "description": "Deprecated: a requirement that is met or not is a success criterion with metric compliance (TAXONOMY.md D25), with the role that confirms it; its progress is the delivery tool's. Read from a manifest saved before 2.6.0; never written. Each line is folded into a success criterion of compliance as it is read.",
           "type": "array",
           "items": {
             "type": "object",
