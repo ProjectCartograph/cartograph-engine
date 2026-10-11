@@ -531,17 +531,7 @@ dl.facts dt { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em
 dl.facts dd { font-weight: 600; }
 table.signoff td { height: 2.2rem; }
 table.signoff td:nth-child(2) { width: 38%; } table.signoff td:nth-child(3) { width: 30%; }
-.chip { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; border: 1px solid var(--line);
-  border-radius: 999px; padding: .08rem .55rem .08rem .45rem; font-size: .78rem; line-height: 1.5; background: var(--paper); }
-.chip svg { flex: none; }
-.chip-readiness.chip { font-weight: 600; }
-.chip-ready { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
-.chip-open { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
-.chip-blocking { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
-td.fit { width: 1%; white-space: nowrap; }
-p.note { color: var(--muted); font-size: .85rem; margin: .35rem 0 1.1rem; }
-p.ready-line { display: flex; align-items: center; gap: .6rem; margin: .5rem 0 1rem; }
-footer.doc { margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .78rem; }
+` + chipCSS + `footer.doc { margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .78rem; }
 table.control tr:nth-child(even) td { background: none; }
 nav.contents > p { margin-bottom: .6rem; }
 nav.contents ol { columns: 2; column-gap: 2.5rem; }
@@ -963,3 +953,25 @@ func chipHTML(group, value string) string {
 	}
 	return `<span class="chip chip-` + esc(group) + ` chip-` + esc(value) + `">` + icon + `<span>` + esc(text) + `</span></span>`
 }
+
+// chipCSS styles what a charter prints in its sections, beside the page
+// itself: chips, notes, the readiness line.
+const chipCSS = `.chip { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; border: 1px solid var(--line);
+  border-radius: 999px; padding: .08rem .55rem .08rem .45rem; font-size: .78rem; line-height: 1.5; background: var(--paper); }
+.chip svg { flex: none; }
+.chip-readiness.chip { font-weight: 600; }
+.chip-ready { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.chip-open { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.chip-blocking { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+td.fit { width: 1%; white-space: nowrap; }
+p.note { color: var(--muted); font-size: .85rem; margin: .35rem 0 1.1rem; }
+p.ready-line { display: flex; align-items: center; gap: .6rem; margin: .5rem 0 1rem; }
+`
+
+// PartsCSS is the styling of what a charter's sections hold (chips, the
+// components diagram, the schedule chart, the iron triangle), for an
+// interface drawing the charter as parts in a page of its own, where the
+// charter's page styles do not belong (#77). It reads the charter's
+// colour variables: --fg, --muted, --line, --soft, --paper, --accent,
+// --accent-soft, --ok, --warn, --bad and --sans.
+func PartsCSS() string { return chipCSS + diagramCSS + triangleCSS }

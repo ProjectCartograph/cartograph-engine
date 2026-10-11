@@ -735,6 +735,28 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /charter/parts.css:
+    get:
+      operationId: getCharterPartsStyle
+      summary: The styling of what a charter's sections hold
+      description: >-
+        Chips, the components diagram, the schedule chart and the iron
+        triangle as the charter styles them, for an interface drawing the
+        charter as parts in a page of its own. It reads the charter's colour
+        variables (--fg, --muted, --line, --soft, --paper, --accent,
+        --accent-soft, --ok, --warn, --bad, --sans), which the page sets.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            text/css:
+              schema:
+                type: string
+
   /manifests/Project/{id}/charter/parts:
     get:
       operationId: getProjectCharterParts

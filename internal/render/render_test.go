@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
+	"strings"
 	"testing"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
@@ -433,15 +434,18 @@ spec:
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The brief prints high-impact risks and issues, each with its owner
-	// or the project manager, and counts the rest.
-	for _, want := range []string{"<th>Owner</th>", "Delivery lead", "Project manager", "1 more risk"} {
+	// Every risk is printed, the highest impact first, each with its
+	// owner or the project manager: the charter is the document read (#74).
+	for _, want := range []string{"<th>Owner</th>", "Delivery lead", "Project manager", "Slides arrive late", "Scales fail calibration"} {
 		if !contains(string(html), want) {
 			t.Errorf("charter lacks %q", want)
 		}
 	}
-	if contains(string(html), "Slides arrive late") {
-		t.Error("the brief prints a low-impact risk")
+	if contains(string(html), "more risk") {
+		t.Error("the charter counts risks it does not print")
+	}
+	if i, j := strings.Index(string(html), "Depots skip training"), strings.Index(string(html), "Slides arrive late"); i > j {
+		t.Error("a low-impact risk is printed before a high one")
 	}
 }
 
@@ -578,5 +582,22 @@ spec:
 	}
 	if !contains(string(html), "Depots grade produce differently") || contains(string(html), "data-empty") || contains(string(html), "data-add") {
 		t.Error("the printed charter is not the charter as it was")
+	}
+}
+
+// What a charter's sections hold is styled on its own too, for a page
+// drawing the charter as parts: the components diagram and the triangle
+// among it, and nothing of the page around them (#77).
+func TestPartsCarryTheirStyles(t *testing.T) {
+	css := PartsCSS()
+	for _, want := range []string{".chip", diagramCSS, triangleCSS} {
+		if !contains(css, want) {
+			t.Errorf("the parts' styles lack %.40q", want)
+		}
+	}
+	for _, page := range []string{"@page", "body {", ":root"} {
+		if contains(css, page) {
+			t.Errorf("the parts' styles carry the page's %q", page)
+		}
 	}
 }
