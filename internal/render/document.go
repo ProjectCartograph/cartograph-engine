@@ -207,6 +207,8 @@ type doc struct {
 	parts  []Part
 	opened bool
 	openAt int
+	// editable marks every value with its field (editable.go).
+	editable bool
 }
 
 // brand reads the organisation's name and logo for the cover.
@@ -296,7 +298,7 @@ func (d *doc) h3(s string) {
 func (d *doc) h3named(s string) {
 	d.flush()
 	d.b.WriteString("<h3 class=\"named\">")
-	d.b.WriteString(esc(s))
+	d.b.WriteString(valueHTML(s))
 	d.b.WriteString("</h3>\n")
 }
 
@@ -344,43 +346,20 @@ func (d *doc) fields(fs ...field) {
 		d.b.WriteString("<dt>")
 		d.b.WriteString(esc(f.label))
 		d.b.WriteString("</dt><dd>")
-		d.b.WriteString(esc(f.value))
+		d.b.WriteString(valueHTML(f.value))
 		d.b.WriteString("</dd>\n")
 	}
 	d.b.WriteString("</dl>\n")
 }
 
-// fieldsAt is fields with each value's pointer on it.
+// fieldsAt is fields with each value's pointer on it, marked in an
+// editable document (editable.go).
 func (d *doc) fieldsAt(fs ...pathed) {
-	var kept []pathed
-	for _, f := range fs {
-		if strings.TrimSpace(f.value) != "" {
-			kept = append(kept, f)
-		}
+	out := make([]field, len(fs))
+	for i, f := range fs {
+		out[i] = field{f.label, d.at(f.value, f.path)}
 	}
-	if len(kept) == 0 {
-		return
-	}
-	d.flush()
-	d.b.WriteString("<dl>\n")
-	for _, f := range kept {
-		if f.path == "" {
-			d.b.WriteString("<dt>")
-			d.b.WriteString(esc(f.label))
-			d.b.WriteString("</dt><dd>")
-			d.b.WriteString(esc(f.value))
-			d.b.WriteString("</dd>\n")
-			continue
-		}
-		d.b.WriteString("<dt>")
-		d.b.WriteString(esc(f.label))
-		d.b.WriteString(`</dt><dd data-field="`)
-		d.b.WriteString(esc(f.path))
-		d.b.WriteString(`">`)
-		d.b.WriteString(esc(f.value))
-		d.b.WriteString("</dd>\n")
-	}
-	d.b.WriteString("</dl>\n")
+	d.fields(out...)
 }
 
 // list prints a heading and its items, or nothing when there are none.
@@ -403,7 +382,7 @@ func (d *doc) list(heading string, items []string) {
 	d.b.WriteString("<ul>\n")
 	for _, it := range kept {
 		d.b.WriteString("<li>")
-		d.b.WriteString(esc(it))
+		d.b.WriteString(valueHTML(it))
 		d.b.WriteString("</li>\n")
 	}
 	d.b.WriteString("</ul>\n")
@@ -457,7 +436,7 @@ func (d *doc) table(headers []string, rows [][]string) {
 				continue
 			}
 			d.b.WriteString("<td>")
-			d.b.WriteString(esc(c))
+			d.b.WriteString(valueHTML(c))
 			d.b.WriteString("</td>")
 		}
 		d.b.WriteString("</tr>\n")

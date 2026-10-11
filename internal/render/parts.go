@@ -55,7 +55,7 @@ func CharterParts(ctx context.Context, e *engine.Engine, projectID string) ([]Pa
 	if err != nil {
 		return nil, err
 	}
-	d, err := projectCharterDoc(ctx, e, projectID, vers)
+	d, err := projectCharterDoc(ctx, e, projectID, vers, true)
 	if err != nil {
 		return nil, err
 	}
