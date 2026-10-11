@@ -80,8 +80,46 @@
           "required": [
             "type"
           ],
-          "description": "How the number is computed from its sources, in the dbt semantic layer's terms (TAXONOMY.md D57), so an analytics engineer can build it as a dbt metric: simple (one measure), ratio (a numerator over a denominator), cumulative (one measure summed over a window) or derived (an expression over other KPIs' metrics).",
+          "description": "How the number is computed from its sources (TAXONOMY.md D64): one of a data source's metrics (of), or one out of another (outOf), over a window if cumulative. The dbt shapes below (measure, numerator, denominator; TAXONOMY.md D57) are still read, for agents and saved definitions. In the dbt semantic layer's terms, so an analytics engineer can build it as a dbt metric: simple (one measure), ratio (a numerator over a denominator), cumulative (one measure summed over a window) or derived (an expression over other KPIs' metrics).",
           "properties": {
+            "of": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "dataSource",
+                "metric"
+              ],
+              "description": "The data source metric the number is (TAXONOMY.md D64): for simple and cumulative, the number itself; for ratio, what is counted. Takes the place of measure and numerator.",
+              "properties": {
+                "dataSource": {
+                  "$ref": "common.schema.json#/$defs/Slug",
+                  "x-cartograph-ref": "DataSource"
+                },
+                "metric": {
+                  "$ref": "common.schema.json#/$defs/Slug",
+                  "description": "The id of one of that data source's metrics."
+                }
+              }
+            },
+            "outOf": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "dataSource",
+                "metric"
+              ],
+              "description": "For ratio: the data source metric it is out of (TAXONOMY.md D64). Takes the place of denominator.",
+              "properties": {
+                "dataSource": {
+                  "$ref": "common.schema.json#/$defs/Slug",
+                  "x-cartograph-ref": "DataSource"
+                },
+                "metric": {
+                  "$ref": "common.schema.json#/$defs/Slug",
+                  "description": "The id of one of that data source's metrics."
+                }
+              }
+            },
             "type": {
               "type": "string",
               "enum": [

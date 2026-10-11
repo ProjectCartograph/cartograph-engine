@@ -109,6 +109,7 @@ var rules = map[string][]string{
 	"internal/document":  leaf,
 	"internal/spc":       leaf,
 	"internal/units":     leaf,
+	"internal/aggregate": leaf,
 	// When things fall reads the document helpers only.
 	"internal/timing": join([]string{"internal/engine", "internal/kinds", "internal/store", "internal/codec", "internal/printer", "internal/auth",
 		"internal/contract", "internal/sentence", "internal/structure", "internal/legacy", "internal/units", "pkg", "cmd"}, outer, adapters, drivers),

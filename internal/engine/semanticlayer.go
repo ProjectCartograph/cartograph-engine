@@ -82,7 +82,9 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		m := semantic.Model{Name: dbtName(source), Source: source, Ref: dbtName(source), Entity: dbtName(source)}
 		sm, _ := specOf(doc)["semanticModel"].(map[string]any)
 		if sm == nil {
-			notes = append(notes, fmt.Sprintf("DataSource/%s has no semantic model: written on ref('%s'), with no time dimension, for the engineer to set.", source, m.Ref))
+			// Which warehouse model a source is is set outside Cartograph
+			// (TAXONOMY.md D64): named after the source, for the analyst.
+			notes = append(notes, fmt.Sprintf("DataSource/%s names no warehouse model: written on ref('%s'), with no time dimension, for the analyst to set.", source, m.Ref))
 		} else {
 			m.Ref, _ = sm["model"].(string)
 			m.Entity, _ = sm["entity"].(string)
@@ -115,6 +117,35 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		l.Models[i].Measures = append(l.Models[i].Measures, semantic.Measure{Name: name, Agg: agg, Expr: expr})
 		return name, true
 	}
+	// A data source metric (TAXONOMY.md D64) is one measure on its
+	// source's model, and one simple metric, whichever indicators use it.
+	sourceMetric := map[string]string{}
+	fromSource := func(kpi string, ref any, own []string) (string, bool) {
+		set := map[string]bool{}
+		for _, s := range own {
+			set[s] = true
+		}
+		r, problem, err := e.resolveSourceMetric(ctx, ref, set)
+		if err != nil || problem != "" {
+			notes = append(notes, fmt.Sprintf("KPI/%s: %s; the metric is left out.", kpi, problem))
+			return "", false
+		}
+		key := r.Source + "/" + r.Metric.ID
+		if name, ok := sourceMetric[key]; ok {
+			return name, true
+		}
+		i, ok := modelOf(r.Source)
+		if !ok {
+			return "", false
+		}
+		name := dbtName(r.Source) + "__" + dbtName(r.Metric.ID)
+		agg, expr := r.Aggregation.Measure()
+		l.Models[i].Measures = append(l.Models[i].Measures, semantic.Measure{Name: name, Agg: agg, Expr: expr})
+		desc := strings.TrimSpace(r.Metric.Description + " Aggregation: " + r.Metric.Aggregation + ".")
+		l.Metrics = append(l.Metrics, semantic.Metric{Name: name, Label: r.Metric.Name + " (" + r.SourceName + ")", Description: desc, Type: semantic.Simple, Measure: name})
+		sourceMetric[key] = name
+		return name, true
+	}
 	sort.Slice(kpis, func(i, j int) bool { return kpis[i].id < kpis[j].id })
 	for _, d := range kpis {
 		spec := specOf(d.doc)
@@ -128,6 +159,26 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		m := semantic.Metric{Name: name, KPI: d.id, Label: nameOf(d.doc, d.id), Description: withFormula(def, mt), Filter: filter}
 		m.Type, _ = mt["type"].(string)
 		ok := true
+		if _, named := mt["of"]; named {
+			own := stringsOf(spec["sources"])
+			var of string
+			if of, ok = fromSource(d.id, mt["of"], own); ok {
+				switch m.Type {
+				case semantic.Ratio:
+					m.Numerator = of
+					m.Denominator, ok = fromSource(d.id, mt["outOf"], own)
+				default:
+					// A simple or cumulative metric over the source metric's
+					// measure.
+					m.Measure = of
+					m.Window, _ = mt["window"].(string)
+				}
+			}
+			if ok {
+				l.Metrics = append(l.Metrics, m)
+			}
+			continue
+		}
 		switch m.Type {
 		case semantic.Simple, semantic.Cumulative:
 			m.Measure, ok = measure(d.id, name, mt["measure"])

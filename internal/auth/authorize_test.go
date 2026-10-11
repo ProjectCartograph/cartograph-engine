@@ -22,6 +22,7 @@ func TestActionForClassifiesMethodAndPath(t *testing.T) {
 		{"GET", "/goals/tree", "read", "", "", ""},
 		{"POST", "/vault/apply", "write", "", "", "vault"},
 		{"POST", "/validate/Goal", "read", "Goal", "", ""},
+		{"POST", "/aggregations/read", "read", "", "", ""},
 		{"GET", "/access/people", "read", "", "", "access"},
 		{"PUT", "/access/people/jo@example.org", "write", "", "", "access"},
 		{"GET", "/session", "read", "", "", "session"},

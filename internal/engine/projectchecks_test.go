@@ -1045,3 +1045,44 @@ func TestAnObjectiveFarFromItsOutcomeIsASuggestion(t *testing.T) {
 		}
 	}
 }
+
+// A data source's metrics are each read as an aggregation, said in words
+// when they read as one and why not when they do not; an indicator that
+// names one says what it is computed as, or why it cannot be
+// (TAXONOMY.md D64).
+func TestADataSourceGivesMetricsAnIndicatorUses(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	e := newTestEngine(t)
+	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	src := []byte("apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: intake-log\n  name: Intake log\nspec:\n  team: quality-team\n  category: formOrSurvey\n" +
+		"  metrics:\n    - {id: weighed, name: Weight delivered, aggregation: SUM(weight_kg)}\n    - {id: joined, name: Joined, aggregation: \"COUNT(*) FROM deliveries JOIN depots\"}\n")
+	checks, err := e.ChecksOf(ctx, "DataSource", "intake-log", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]engine.Check{}
+	for _, c := range checks {
+		got[c.ID] = c
+	}
+	if c := got["source-metric-weighed"]; c.Open() || c.Message != `"Weight delivered" reads as the sum of weight_kg.` {
+		t.Errorf("weighed: %+v", c)
+	}
+	if c := got["source-metric-joined"]; !c.Open() || !strings.Contains(c.Message, "FROM is not part of a metric") {
+		t.Errorf("joined: %+v", c)
+	}
+	// An indicator naming a metric its source does not give says so.
+	kpi := []byte("apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k1\n  name: K\nspec:\n  sources: [quality-check-tool]\n" +
+		"  metric:\n    type: ratio\n    of: {dataSource: quality-check-tool, metric: deliveries-passed}\n    outOf: {dataSource: quality-check-tool, metric: deliveries-graded}\n")
+	kc, err := e.ChecksOf(ctx, "KPI", "k1", kpi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range kc {
+		if c.ID == "kpi-metric" && (!c.Open() || !strings.Contains(c.Message, `gives no metric "deliveries-graded"`)) {
+			t.Errorf("kpi-metric: %+v", c)
+		}
+	}
+}

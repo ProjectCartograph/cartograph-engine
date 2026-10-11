@@ -1008,6 +1008,27 @@ type AgentTokenRequest struct {
 	Label string `json:"label"`
 }
 
+// AggregationReading What an aggregation reads as (reading, names, agg, expr), or why it does not (problem, at): one or the other.
+type AggregationReading struct {
+	// Agg The measure's aggregation, in the semantic layer's words.
+	Agg *string `json:"agg,omitempty"`
+
+	// At Where in the text the problem is, as a byte offset.
+	At *int `json:"at,omitempty"`
+
+	// Expr The expression it aggregates, its condition folded in as a CASE WHEN.
+	Expr *string `json:"expr,omitempty"`
+
+	// Names The fields it names, each once, in the order written.
+	Names []string `json:"names"`
+
+	// Problem Why it does not read as an aggregation, in words.
+	Problem *string `json:"problem,omitempty"`
+
+	// Reading What it says, in words.
+	Reading *string `json:"reading,omitempty"`
+}
+
 // ApplyRequest defines model for ApplyRequest.
 type ApplyRequest struct {
 	// Ref One reference to include (Kind/id).
@@ -2735,6 +2756,11 @@ type GetAgentFeedParams struct {
 	Person *string `form:"person,omitempty" json:"person,omitempty"`
 }
 
+// ReadAggregationJSONBody defines parameters for ReadAggregation.
+type ReadAggregationJSONBody struct {
+	Text string `json:"text"`
+}
+
 // ListChangeSetsParams defines parameters for ListChangeSets.
 type ListChangeSetsParams struct {
 	Status   *ListChangeSetsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
@@ -3109,6 +3135,9 @@ type GrantPersonJSONRequestBody = PersonGrant
 // CreateAgentTokenJSONRequestBody defines body for CreateAgentToken for application/json ContentType.
 type CreateAgentTokenJSONRequestBody = AgentTokenRequest
 
+// ReadAggregationJSONRequestBody defines body for ReadAggregation for application/json ContentType.
+type ReadAggregationJSONRequestBody ReadAggregationJSONBody
+
 // StartChangeSetJSONRequestBody defines body for StartChangeSet for application/json ContentType.
 type StartChangeSetJSONRequestBody = ChangeSetTitle
 
@@ -3281,6 +3310,9 @@ type ServerInterface interface {
 	// RevokeAgentGrant Disconnects an agent at once: the caller's own, or anyone's for an administrator.
 	// (DELETE /agents/{grant})
 	RevokeAgentGrant(w http.ResponseWriter, r *http.Request, grant GrantParam)
+	// ReadAggregation What a data source metric's aggregation reads as, or why it does not
+	// (POST /aggregations/read)
+	ReadAggregation(w http.ResponseWriter, r *http.Request)
 	// ListChangeSets Change sets (docs/adr/0022): the caller's own and their agents', newest first; everyone's for an administrator who asks.
 	// (GET /changesets)
 	ListChangeSets(w http.ResponseWriter, r *http.Request, params ListChangeSetsParams)
@@ -3731,6 +3763,20 @@ func (siw *ServerInterfaceWrapper) RevokeAgentGrant(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.RevokeAgentGrant(w, r, grant)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReadAggregation operation middleware
+func (siw *ServerInterfaceWrapper) ReadAggregation(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReadAggregation(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7078,6 +7124,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/from-idea", wrapper.FromIdea)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/decision-model", wrapper.GetDecisionModel)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/match", wrapper.MatchExisting)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/aggregations/read", wrapper.ReadAggregation)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/glossary", wrapper.GetGlossary)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/kinds", wrapper.ListKinds)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/flows", wrapper.ListFlows)
@@ -7628,6 +7675,56 @@ func (response RevokeAgentGrant404JSONResponse) VisitRevokeAgentGrantResponse(w 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReadAggregationRequestObject struct {
+	Body *ReadAggregationJSONRequestBody
+}
+
+type ReadAggregationResponseObject interface {
+	VisitReadAggregationResponse(w http.ResponseWriter) error
+}
+
+type ReadAggregation200JSONResponse AggregationReading
+
+func (response ReadAggregation200JSONResponse) VisitReadAggregationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReadAggregation401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ReadAggregation401JSONResponse) VisitReadAggregationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReadAggregation403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ReadAggregation403JSONResponse) VisitReadAggregationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -13723,6 +13820,9 @@ type StrictServerInterface interface {
 	// RevokeAgentGrant Disconnects an agent at once: the caller's own, or anyone's for an administrator.
 	// (DELETE /agents/{grant})
 	RevokeAgentGrant(ctx context.Context, request RevokeAgentGrantRequestObject) (RevokeAgentGrantResponseObject, error)
+	// ReadAggregation What a data source metric's aggregation reads as, or why it does not
+	// (POST /aggregations/read)
+	ReadAggregation(ctx context.Context, request ReadAggregationRequestObject) (ReadAggregationResponseObject, error)
 	// ListChangeSets Change sets (docs/adr/0022): the caller's own and their agents', newest first; everyone's for an administrator who asks.
 	// (GET /changesets)
 	ListChangeSets(ctx context.Context, request ListChangeSetsRequestObject) (ListChangeSetsResponseObject, error)
@@ -14225,6 +14325,37 @@ func (sh *strictHandler) RevokeAgentGrant(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(RevokeAgentGrantResponseObject); ok {
 		if err := validResponse.VisitRevokeAgentGrantResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReadAggregation operation middleware
+func (sh *strictHandler) ReadAggregation(w http.ResponseWriter, r *http.Request) {
+	var request ReadAggregationRequestObject
+
+	var body ReadAggregationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReadAggregation(ctx, request.(ReadAggregationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReadAggregation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReadAggregationResponseObject); ok {
+		if err := validResponse.VisitReadAggregationResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
