@@ -143,17 +143,10 @@
                 "hint": "What is going wrong for the affected groups now."
               },
               {
-                "path": "/problem/cause",
-                "control": "sentence",
-                "title": "Potential cause",
-                "hint": "What you think lies behind the problem."
-              },
-              {
                 "path": "/problem/causes",
                 "control": "list",
                 "title": "Causes found",
-                "hint": "What analysis found behind the problem, each with its evidence, and whether the evidence confirms it.",
-                "phase": "measure"
+                "hint": "Why it happens: each cause found behind the problem, with its evidence and whether the evidence confirms it. The first is the one the problem statement gives."
               },
               {
                 "path": "/change/what",

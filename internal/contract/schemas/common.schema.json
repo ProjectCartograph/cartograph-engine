@@ -555,7 +555,7 @@
         "causes": {
           "type": "array",
           "maxItems": 12,
-          "description": "The causes found behind the problem, each with the evidence for it and whether it was verified (a DMAIC analysis, TAXONOMY.md D58). cause above stays the one line a charter says; these are what analysis found.",
+          "description": "The causes found behind the problem, each with the evidence for it and whether it was verified (a DMAIC analysis, TAXONOMY.md D58). The first is the one the charter's problem statement gives.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -592,7 +592,7 @@
         "cause": {
           "type": "string",
           "maxLength": 600,
-          "description": "The potential cause: what the person believes lies behind it, to be tested rather than proved (TAXONOMY.md D45): \"checks happen after dispatch, when the produce has already left\". Optional."
+          "description": "Superseded by causes, which the interface asks for instead: kept for what was written before. A cause here reads as the first cause found until causes holds one (TAXONOMY.md D58, cartograph-engine#81). Optional."
         }
       }
     },

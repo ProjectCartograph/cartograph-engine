@@ -760,6 +760,18 @@ func strs(v any) []string {
 	return out
 }
 
+// allStrs is every string in v, empty ones included.
+func allStrs(v any) []string {
+	items, _ := v.([]any)
+	out := make([]string, 0, len(items))
+	for _, it := range items {
+		if s, ok := it.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func list(v any) []map[string]any {
 	items, _ := v.([]any)
 	out := make([]map[string]any, 0, len(items))

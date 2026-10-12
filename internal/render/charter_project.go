@@ -138,7 +138,13 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 	}
 
 	d.problemsBrief(n, list(summary["problems"]))
-	if in, out := strs(summary["scopeIn"]), strs(summary["scopeOut"]); len(in)+len(out) > 0 || d.editable {
+	// An editable charter keeps an empty line, as the place to type the
+	// line just added, and so each line keeps its index in the draft.
+	lines := strs
+	if d.editable {
+		lines = allStrs
+	}
+	if in, out := lines(summary["scopeIn"]), lines(summary["scopeOut"]); len(in)+len(out) > 0 || d.editable {
 		d.h2("Scope")
 		d.scopeColumns(in, out)
 	}
