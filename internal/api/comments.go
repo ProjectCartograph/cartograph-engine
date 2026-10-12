@@ -14,13 +14,21 @@ import (
 
 const mentionsShown = 50
 
-func toComment(c store.Comment) apigen.Comment {
+// toComment carries a comment out, each party and its author named as
+// names says where it can.
+func toComment(c store.Comment, names map[store.Mention]string) apigen.Comment {
 	out := apigen.Comment{
 		Id: c.ID, Kind: c.Kind, Manifest: c.Manifest, Anchor: c.Anchor, Body: c.Body,
 		Mentions: make([]apigen.Mention, len(c.Mentions)), Author: c.Author, At: c.At, Resolved: c.Resolved,
 	}
 	for i, m := range c.Mentions {
 		out.Mentions[i] = apigen.Mention{Kind: apigen.MentionKind(m.Kind), Id: m.ID}
+		if n := names[m]; n != "" {
+			out.Mentions[i].Name = &n
+		}
+	}
+	if n := names[store.Mention{Kind: store.MentionPerson, ID: c.Author}]; n != "" && c.Author != "" {
+		out.AuthorName = &n
 	}
 	if c.Reply != "" {
 		out.Reply = &c.Reply
@@ -33,10 +41,10 @@ func toComment(c store.Comment) apigen.Comment {
 	return out
 }
 
-func toComments(cs []store.Comment) []apigen.Comment {
+func toComments(cs []store.Comment, names map[store.Mention]string) []apigen.Comment {
 	out := make([]apigen.Comment, len(cs))
 	for i, c := range cs {
-		out[i] = toComment(c)
+		out[i] = toComment(c, names)
 	}
 	return out
 }
@@ -50,7 +58,7 @@ func (s *Server) ListComments(ctx context.Context, req apigen.ListCommentsReques
 	case err != nil:
 		return nil, err
 	}
-	return apigen.ListComments200JSONResponse(toComments(cs)), nil
+	return apigen.ListComments200JSONResponse(toComments(cs, s.Engine.Names(ctx, cs))), nil
 }
 
 func (s *Server) AddComment(ctx context.Context, req apigen.AddCommentRequestObject) (apigen.AddCommentResponseObject, error) {
@@ -70,7 +78,7 @@ func (s *Server) AddComment(ctx context.Context, req apigen.AddCommentRequestObj
 	case err != nil:
 		return nil, err
 	}
-	return apigen.AddComment201JSONResponse(toComment(c)), nil
+	return apigen.AddComment201JSONResponse(toComment(c, s.Engine.Names(ctx, []store.Comment{c}))), nil
 }
 
 func (s *Server) ResolveComment(ctx context.Context, req apigen.ResolveCommentRequestObject) (apigen.ResolveCommentResponseObject, error) {
@@ -84,7 +92,7 @@ func (s *Server) ResolveComment(ctx context.Context, req apigen.ResolveCommentRe
 	case err != nil:
 		return nil, err
 	}
-	return apigen.ResolveComment200JSONResponse(toComment(c)), nil
+	return apigen.ResolveComment200JSONResponse(toComment(c, s.Engine.Names(ctx, []store.Comment{c}))), nil
 }
 
 func (s *Server) ListMyMentions(ctx context.Context, _ apigen.ListMyMentionsRequestObject) (apigen.ListMyMentionsResponseObject, error) {
@@ -95,7 +103,7 @@ func (s *Server) ListMyMentions(ctx context.Context, _ apigen.ListMyMentionsRequ
 	case err != nil:
 		return nil, err
 	}
-	return apigen.ListMyMentions200JSONResponse(toComments(cs)), nil
+	return apigen.ListMyMentions200JSONResponse(toComments(cs, s.Engine.Names(ctx, cs))), nil
 }
 
 func (s *Server) ListMentionables(ctx context.Context, req apigen.ListMentionablesRequestObject) (apigen.ListMentionablesResponseObject, error) {

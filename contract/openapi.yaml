@@ -4903,6 +4903,9 @@ components:
         author:
           type: string
           description: Who wrote it, by their address; empty for an operator nobody signed in as.
+        authorName:
+          type: string
+          description: The author's name on the access list, where it has one.
         at:
           type: string
           format: date-time
@@ -4944,6 +4947,11 @@ components:
         id:
           type: string
           description: A person's address on the access list, or a team's id.
+        name:
+          type: string
+          description: >-
+            How the party is named now, in a comment read back: the person's
+            name on the access list or the team's name. Ignored when writing.
 
     Mentionable:
       type: object

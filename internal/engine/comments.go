@@ -273,6 +273,54 @@ func (e *Engine) MyMentions(ctx context.Context, limit int) ([]store.Comment, er
 	return cs.ListMentioning(ctx, parties, limit)
 }
 
+// Names says how each party and author in the comments is named now:
+// a person by their name on the access list, a team by its name. A party
+// with no name to give is left out, and is shown as its id.
+func (e *Engine) Names(ctx context.Context, cs []store.Comment) map[store.Mention]string {
+	out := map[store.Mention]string{}
+	var people, teams map[string]string
+	for _, c := range cs {
+		parties := slices.Clone(c.Mentions)
+		if c.Author != "" {
+			parties = append(parties, store.Mention{Kind: store.MentionPerson, ID: c.Author})
+		}
+		for _, m := range parties {
+			if _, done := out[m]; done {
+				continue
+			}
+			switch m.Kind {
+			case store.MentionPerson:
+				if people == nil {
+					people = map[string]string{}
+					if e.access != nil {
+						if list, err := e.access.ListPeople(ctx); err == nil {
+							for _, p := range list {
+								people[p.Email] = p.Name
+							}
+						}
+					}
+				}
+				if n := people[m.ID]; n != "" {
+					out[m] = n
+				}
+			case store.MentionTeam:
+				if teams == nil {
+					teams = map[string]string{}
+					if list, err := e.List(ctx, "Team", Filter{}, false); err == nil {
+						for _, t := range list {
+							teams[t.ID] = t.Name
+						}
+					}
+				}
+				if n := teams[m.ID]; n != "" {
+					out[m] = n
+				}
+			}
+		}
+	}
+	return out
+}
+
 func newCommentID() string {
 	b := make([]byte, 6)
 	_, _ = rand.Read(b)
