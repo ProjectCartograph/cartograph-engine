@@ -30,6 +30,15 @@ func TestACommentIsKeptAndResolved(t *testing.T) {
 	if len(list) != 2 || list[0].Anchor != "section:scope" || list[1].Reply == nil || *list[1].Reply != first.Id || !list[0].Resolved {
 		t.Fatalf("the record's comments: %+v", list)
 	}
+	// A party asked is named as it is now, with the comment.
+	put := doJSON(t, "PUT", url+"/manifests/Team/quality-team", map[string]any{"yaml": "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: quality-team\n  name: Quality Team\nspec:\n  name: Quality Team\n", "reason": "test"}, nil)
+	if put.StatusCode >= 300 {
+		t.Fatalf("a team: %d", put.StatusCode)
+	}
+	asked := decode[apigen.Comment](t, doJSON(t, "POST", url+"/manifests/Project/depot-checks/comments", map[string]any{"body": "@Quality Team, please read.", "mentions": []map[string]string{{"kind": "team", "id": "quality-team"}}}, nil))
+	if len(asked.Mentions) != 1 || asked.Mentions[0].Name == nil || *asked.Mentions[0].Name != "Quality Team" {
+		t.Fatalf("a party named: %+v", asked.Mentions)
+	}
 	resp = doJSON(t, "POST", url+"/manifests/Project/depot-checks/comments", map[string]any{"body": "Hi", "mentions": []map[string]string{{"kind": "team", "id": "no-team"}}}, nil)
 	if resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("asking a team that is not there: %d", resp.StatusCode)

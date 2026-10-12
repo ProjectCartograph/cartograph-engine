@@ -1265,9 +1265,12 @@ type Comment struct {
 
 	// Author Who wrote it, by their address; empty for an operator nobody signed in as.
 	Author string `json:"author"`
-	Body   string `json:"body"`
-	Id     string `json:"id"`
-	Kind   string `json:"kind"`
+
+	// AuthorName The author's name on the access list, where it has one.
+	AuthorName *string `json:"authorName,omitempty"`
+	Body       string  `json:"body"`
+	Id         string  `json:"id"`
+	Kind       string  `json:"kind"`
 
 	// Manifest The id of the record it is on.
 	Manifest string    `json:"manifest"`
@@ -2044,6 +2047,9 @@ type Mention struct {
 	// Id A person's address on the access list, or a team's id.
 	Id   string      `json:"id"`
 	Kind MentionKind `json:"kind"`
+
+	// Name How the party is named now, in a comment read back: the person's name on the access list or the team's name. Ignored when writing.
+	Name *string `json:"name,omitempty"`
 }
 
 // MentionKind defines model for Mention.Kind.
