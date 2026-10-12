@@ -1546,6 +1546,30 @@ func roleRefProblems(doc map[string]any, rules []refRule) []Problem {
 	return out
 }
 
+// missingProperties is the properties a schema problem says are missing,
+// "missing property 'a'" or "missing properties 'a', 'b'", in order.
+func missingProperties(message string) []string {
+	i := strings.Index(message, "missing propert")
+	if i < 0 {
+		return nil
+	}
+	var names []string
+	rest := message[i:]
+	for {
+		a := strings.Index(rest, "'")
+		if a < 0 {
+			break
+		}
+		b := strings.Index(rest[a+1:], "'")
+		if b < 0 {
+			break
+		}
+		names = append(names, rest[a+1:a+1+b])
+		rest = rest[a+1+b+1:]
+	}
+	return names
+}
+
 // requiredChecks turns what stops a record being saved as a version into
 // blocking checks, one per field, so a change set's review names them
 // before it is merged rather than refusing the merge.
@@ -1581,13 +1605,14 @@ func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte, o
 			_, how, _ := strings.Cut(p.Message, "is not written as asked: ")
 			message = capitalFirst(strings.TrimSuffix(how, ".")) + "."
 		}
-		if i := strings.Index(p.Message, "missing property '"); i >= 0 {
-			message = "Needed before this can be merged."
-			name := strings.TrimSuffix(p.Message[i+len("missing property '"):], "'")
-			if j := strings.Index(name, "'"); j >= 0 {
-				name = name[:j]
+		// Several missing at once are said as one problem; each is its
+		// own field to fill, named as the others are.
+		if names := missingProperties(p.Message); len(names) > 0 {
+			for _, name := range names {
+				at := strings.TrimSuffix(path, "/") + "/" + name
+				out = append(out, Check{ID: "required:" + at, State: checkBlock, Message: "Needed before this can be merged.", Path: at})
 			}
-			path = strings.TrimSuffix(path, "/") + "/" + name
+			continue
 		}
 		out = append(out, Check{ID: "required:" + path, State: checkBlock, Message: message, Path: path})
 	}
