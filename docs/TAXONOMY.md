@@ -1895,3 +1895,21 @@ a tolerance either side, maintain anywhere within both limits. A target
 for reach may lie above or below today's figure, so it is never read as
 moving against the direction.
 
+### D67. A warehouse holds many kinds of record; each metric says which it counts. *(resolved)*
+
+**The problem.** A data source said what one entry of it is (D64),
+which assumes one kind of record. A warehouse, a valid source, holds
+many: deliveries, payments, orders. No single sentence says what one of
+its entries is, so metrics over different records could not say what
+they count.
+
+**The discipline.** A semantic layer gives each kind of record its own
+semantic model with its own entity; measures sit on the model of the
+records they aggregate.
+
+**What Cartograph does.** A data source may be a `warehouse`. Each
+metric may say what one entry it counts over is (`over`, in words: each
+delivery graded); left out, it is the source's own entry (`records`).
+The export writes the metrics over one kind of record as one semantic
+model, named after the source and the record, for the analyst to map.
+

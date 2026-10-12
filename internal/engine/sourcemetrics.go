@@ -16,6 +16,10 @@ import (
 // sourceMetric is one metric a data source gives.
 type sourceMetric struct {
 	ID, Name, Description, Aggregation string
+	// Over is what one entry it counts is, where the source holds more
+	// than one kind of record (TAXONOMY.md D67); empty for the source's
+	// own entry.
+	Over string
 }
 
 func sourceMetricsOf(doc map[string]any) []sourceMetric {
@@ -26,6 +30,7 @@ func sourceMetricsOf(doc map[string]any) []sourceMetric {
 		sm.Name, _ = m["name"].(string)
 		sm.Description, _ = m["description"].(string)
 		sm.Aggregation, _ = m["aggregation"].(string)
+		sm.Over, _ = m["over"].(string)
 		out = append(out, sm)
 	}
 	return out
