@@ -139,3 +139,21 @@ func TestARisksSideIsNeverLeftOpen(t *testing.T) {
 		t.Error("a risk's side is the agent's to write from the document")
 	}
 }
+
+// A risk placed on a side with no impact of its own there bears on it as
+// much as the grid says: the triangle never reads it as nothing
+// (cartograph-engine#82).
+func TestASideWithoutItsOwnImpactBearsTheRisks(t *testing.T) {
+	t.Parallel()
+	spec := map[string]any{"risks": []any{
+		map[string]any{"id": "sparse", "type": "risk", "description": "sparse sales records", "likelihood": "medium", "impact": "medium",
+			"affects": []any{map[string]any{"constraint": "scope"}, map[string]any{"constraint": "schedule", "impact": "high"}}},
+	}}
+	got := map[string]Side{}
+	for _, s := range ConstraintsOf(spec).Sides {
+		got[s.Constraint] = s
+	}
+	if got["scope"].Exposure != 4 || got["schedule"].Exposure != 6 || got["scope"].Unweighed != 0 {
+		t.Fatalf("scope %+v, schedule %+v", got["scope"], got["schedule"])
+	}
+}
