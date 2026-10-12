@@ -72,7 +72,10 @@ func (w *shapeWalker) walk(node map[string]any, file, path string) {
 		}
 	}
 	if items, ok := node["items"].(map[string]any); ok {
-		resolved, itemFile := w.resolve(items, file, path+"/*")
+		// A look at what the items are, to find their key, must not mark
+		// the reference as walked: the walk below would then stop at it,
+		// and nothing inside items given by a $ref would be text or keyed.
+		resolved, itemFile := w.peek(items, file)
 		if key, _ := node["x-cartograph-list-key"].(string); key != "" {
 			w.keys[path] = key
 		} else if resolved != nil {
@@ -90,6 +93,12 @@ func (w *shapeWalker) walk(node map[string]any, file, path string) {
 			w.texts = append(w.texts, path)
 		}
 	}
+}
+
+// peek follows $refs as resolve does, without marking any as walked.
+func (w *shapeWalker) peek(node map[string]any, file string) (map[string]any, string) {
+	look := shapeWalker{all: w.all, seen: map[string]bool{}}
+	return look.resolve(node, file, "")
 }
 
 // resolve follows $refs (within a file and across files) and returns the
