@@ -160,7 +160,9 @@ func TestDataSourceSchema(t *testing.T) {
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "DataSource", yaml: "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d2\n  name: Data Source Two\nspec:\n  name: Data Source Two\n  category: spreadsheet\n  team: t1\n"},
 		{name: "missing category is allowed (provenance split)", kind: "DataSource", wantProblem: false, yaml: "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d2\n  name: Data Source Two\nspec:\n  name: Data Source Two\n  team: t1\n"},
-		{name: "bad enum category", kind: "DataSource", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d2\n  name: Data Source Two\nspec:\n  name: Data Source Two\n  category: filing shelf\n  team: t1\n"},
+		// The form is the workspace's own vocabulary (TAXONOMY.md D71): a
+		// form outside it is said by a check, not refused.
+		{name: "a form of the workspace's own", kind: "DataSource", wantProblem: false, yaml: "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d2\n  name: Data Source Two\nspec:\n  name: Data Source Two\n  category: filing shelf\n  team: t1\n"},
 		{name: "dangling team ref", kind: "DataSource", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d2\n  name: Data Source Two\nspec:\n  name: Data Source Two\n  category: spreadsheet\n  team: does-not-exist\n"},
 	})
 }

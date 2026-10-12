@@ -4717,6 +4717,32 @@ components:
               type: string
         changeControl:
           $ref: "#/components/schemas/ChangeControl"
+        vocabularies:
+          type: object
+          description: >-
+            The words this workspace uses for a field whose choices are its
+            own (TAXONOMY.md D71): a data source's classification, refresh
+            and form, the standard terms unless the workspace sets its own.
+            Keyed by the vocabulary a schema field names in
+            x-cartograph-vocabulary.
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/VocabularyTerm"
+
+    VocabularyTerm:
+      type: object
+      required: [value, label]
+      properties:
+        value:
+          type: string
+          description: What a record stores.
+        label:
+          type: string
+          description: What a person reads.
+        description:
+          type: string
+          description: What the choice means, shown under it where it is chosen.
 
     ChangeControl:
       type: object

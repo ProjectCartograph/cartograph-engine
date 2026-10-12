@@ -111,7 +111,26 @@ func (s *Server) GetSettings(ctx context.Context, _ apigen.GetSettingsRequestObj
 		Operator:         settings.Operator,
 		Examples:         examplesOrNil(settings.Examples),
 		Purpose:          purposeOf(settings.Purpose),
+		Vocabularies:     vocabulariesOf(settings.Vocabularies),
 	}, nil
+}
+
+// vocabulariesOf maps the workspace's words for fields whose choices are
+// its own (TAXONOMY.md D71).
+func vocabulariesOf(v map[string][]engine.VocabularyTerm) *map[string][]apigen.VocabularyTerm {
+	out := make(map[string][]apigen.VocabularyTerm, len(v))
+	for name, terms := range v {
+		list := make([]apigen.VocabularyTerm, len(terms))
+		for i, t := range terms {
+			list[i] = apigen.VocabularyTerm{Value: t.Value, Label: t.Label}
+			if t.Description != "" {
+				d := t.Description
+				list[i].Description = &d
+			}
+		}
+		out[name] = list
+	}
+	return &out
 }
 
 // purposeOf maps the vault's vision, mission and organisation's name,
