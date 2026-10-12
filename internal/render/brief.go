@@ -398,11 +398,11 @@ func budgetWithComponents(ctx context.Context, e *engine.Engine, n names, g engi
 	return all + " with its components (" + ownTotal + " its own)"
 }
 
-// problemSentence writes one problem as a sentence: "Failed deliveries
-// are learned of a season late, because checks happen after dispatch.
-// This affects delivering members and retail partners. The project will
-// change this so that every delivery is checked at intake." Each part
-// keeps its own words,
+// problemSentence writes one problem as a sentence: "Delivering members
+// and retail partners learn of a failed delivery a season late, because
+// checks happen after dispatch. The project will change this so that
+// every delivery is checked at intake." Why it happens is the first cause
+// found. Each part keeps its own words,
 // lower-cased where the sentence runs on (an acronym keeps its capitals).
 // In an editable charter the groups are mentions and every part is
 // marked by its field (data-part), with what belongs there (data-hint)
@@ -423,12 +423,26 @@ func (d *doc) problemSentence(n names, pm map[string]any, at string) string {
 	}
 	var b strings.Builder
 	b.WriteString(`<p class="problem-statement">`)
-	// The situation leads, as written: it often names its own subject
-	// ("members decide…"), so the groups follow it rather than being set
-	// before it, where they doubled the subject (cartograph-engine#81).
-	b.WriteString(part(capital(str(problem["situation"])), at+"/problem/situation", "what goes wrong"))
+	situation := lowerFirst(str(problem["situation"]))
+	switch {
+	case d.editable:
+		empty := ""
+		if len(groups) == 0 {
+			empty = ` data-empty=""`
+		}
+		b.WriteString(`<span data-field="` + esc(at+"/groups") + `" data-part="" data-hint="who it affects"` + empty + `>`)
+		for _, g := range groups {
+			b.WriteString(`<span class="mention">` + esc(g) + `</span>`)
+		}
+		b.WriteString(`</span> `)
+	case len(groups) > 0:
+		b.WriteString(esc(andList(groups)) + " ")
+	default:
+		situation = capital(situation)
+	}
+	b.WriteString(part(situation, at+"/problem/situation", "what goes wrong for them"))
 	// Why it happens is the first cause found; a cause written before
-	// the list existed reads as the first of it.
+	// the list existed reads as the first of it (#81).
 	cause, causeAt := "", at+"/problem/causes/0/cause"
 	if causes := list(problem["causes"]); len(causes) > 0 {
 		cause = str(causes[0]["cause"])
@@ -439,20 +453,6 @@ func (d *doc) problemSentence(n names, pm map[string]any, at string) string {
 		b.WriteString(", because " + part(cause, causeAt, "why it happens"))
 	}
 	b.WriteString(".")
-	switch {
-	case d.editable:
-		empty := ""
-		if len(groups) == 0 {
-			empty = ` data-empty=""`
-		}
-		b.WriteString(` This affects <span data-field="` + esc(at+"/groups") + `" data-part="" data-hint="who it affects"` + empty + `>`)
-		for _, g := range groups {
-			b.WriteString(`<span class="mention">` + esc(g) + `</span>`)
-		}
-		b.WriteString(`</span>.`)
-	case len(groups) > 0:
-		b.WriteString(" This affects " + esc(andList(groups)) + ".")
-	}
 	if what := lowerFirst(str(change["what"])); what != "" || d.editable {
 		b.WriteString(" The project will change this so that " + part(what, at+"/change/what", "what will be true instead"))
 		if gain := lowerFirst(str(change["gain"])); gain != "" {
