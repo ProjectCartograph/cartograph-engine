@@ -2009,3 +2009,28 @@ interface. A value outside the workspace's list is not refused: a check
 names it and the words the list has. Fields that drive the engine's own
 reasoning (how records get in, personal data) stay fixed.
 
+### D72. A comment is a conversation about a record, not the record. *(resolved)*
+
+**The problem.** Notes sat at the foot of a step, one per step, inside
+the record. What people need beside a definition is to ask and answer:
+about this deliverable, this line of scope, this section, and to ask a
+named person or team to look.
+
+**The discipline.** Review in document tools and pull requests keeps
+comments anchored to a passage, threaded, resolved when answered, and
+kept apart from the content they discuss; a mention addresses the
+party. A note (the project's notes, one per step) stays what it was: a
+caveat the record keeps.
+
+**What Cartograph does.** A comment is kept by the store
+(`store.CommentStore`), never in a manifest, a version or a change set,
+and no check reads it. It names its record, an anchor (a JSON pointer
+into the record or `section:<step>`), the thread it answers (one
+level), its words and whom it asks. A mention names a person on the
+access list or a team; who can be asked comes from the access list,
+which any directory fills through the deployment's mapping, and from
+the Team kind, so comments do not depend on how anyone signed in.
+Anyone who may read a record may comment on it; a thread is resolved
+from the comment that starts it. A person finds what asks them by their
+address or through their teams.
+

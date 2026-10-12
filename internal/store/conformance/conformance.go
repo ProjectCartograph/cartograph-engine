@@ -290,6 +290,54 @@ func RunManifestStore(t *testing.T, newStore func(t *testing.T) store.ManifestSt
 		}
 	})
 
+	t.Run("comments are kept by their record and found by whom they mention", func(t *testing.T) {
+		s := newStore(t)
+		cs, ok := s.(store.CommentStore)
+		if !ok {
+			t.Skip("the adapter keeps no comments")
+		}
+		at := time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
+		ada := store.Mention{Kind: store.MentionPerson, ID: "ada@example.org"}
+		quality := store.Mention{Kind: store.MentionTeam, ID: "quality-team"}
+		for i, c := range []store.Comment{
+			{ID: "c1", Kind: "Project", Manifest: "p1", Anchor: "section:scope", Body: "Is the pilot in scope?", Mentions: []store.Mention{ada}, Author: "ben@example.org"},
+			{ID: "c2", Kind: "Project", Manifest: "p1", Reply: "c1", Body: "Yes, the first depot.", Author: "ada@example.org"},
+			{ID: "c3", Kind: "Project", Manifest: "p2", Anchor: "/spec/deliverables/{pack}", Body: "Who signs this off?", Mentions: []store.Mention{quality}, Author: "ben@example.org"},
+		} {
+			c.At = at.Add(time.Duration(i) * time.Minute)
+			must(t, cs.PutComment(ctx, c))
+		}
+		list, err := cs.ListComments(ctx, "Project", "p1")
+		must(t, err)
+		if len(list) != 2 || list[0].ID != "c1" || list[1].Reply != "c1" || list[0].Anchor != "section:scope" {
+			t.Fatalf("a record's comments, oldest first: %+v", list)
+		}
+		if len(list[0].Mentions) != 1 || list[0].Mentions[0] != ada || !list[0].At.Equal(at) {
+			t.Fatalf("a comment kept whole: %+v", list[0])
+		}
+		got, err := cs.ListMentioning(ctx, []store.Mention{ada, quality}, 0)
+		must(t, err)
+		if len(got) != 2 || got[0].ID != "c3" || got[1].ID != "c1" {
+			t.Fatalf("mentioning either, newest first: %+v", got)
+		}
+		if got, _ := cs.ListMentioning(ctx, []store.Mention{quality}, 0); len(got) != 1 || got[0].ID != "c3" {
+			t.Fatalf("mentioning the team alone: %+v", got)
+		}
+		if got, _ := cs.ListMentioning(ctx, nil, 0); len(got) != 0 {
+			t.Fatalf("mentioning no one: %+v", got)
+		}
+		c1, err := cs.GetComment(ctx, "c1")
+		must(t, err)
+		c1.Resolved, c1.ResolvedBy, c1.ResolvedAt = true, "ada@example.org", at.Add(time.Hour)
+		must(t, cs.PutComment(ctx, c1))
+		if again, _ := cs.GetComment(ctx, "c1"); !again.Resolved || again.ResolvedBy != "ada@example.org" || !again.ResolvedAt.Equal(at.Add(time.Hour)) {
+			t.Fatalf("a thread resolved: %+v", again)
+		}
+		if _, err := cs.GetComment(ctx, "none"); !errors.Is(err, store.ErrNoComment) {
+			t.Fatalf("a comment that is not there: %v", err)
+		}
+	})
+
 	t.Run("a change set keeps its own drafts, and moves once", func(t *testing.T) {
 		s := newStore(t)
 		cs, ok := s.(store.ChangeSetStore)

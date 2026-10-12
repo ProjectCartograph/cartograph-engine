@@ -520,6 +520,42 @@ func (e MatchBy) Valid() bool {
 	}
 }
 
+// Defines values for MentionKind.
+const (
+	MentionKindPerson MentionKind = "person"
+	MentionKindTeam   MentionKind = "team"
+)
+
+// Valid indicates whether the value is a known member of the MentionKind enum.
+func (e MentionKind) Valid() bool {
+	switch e {
+	case MentionKindPerson:
+		return true
+	case MentionKindTeam:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MentionableKind.
+const (
+	MentionableKindPerson MentionableKind = "person"
+	MentionableKindTeam   MentionableKind = "team"
+)
+
+// Valid indicates whether the value is a known member of the MentionableKind enum.
+func (e MentionableKind) Valid() bool {
+	switch e {
+	case MentionableKindPerson:
+		return true
+	case MentionableKindTeam:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OrderStageState.
 const (
 	OrderStageStateDone    OrderStageState = "done"
@@ -1220,6 +1256,39 @@ type CharterPartDiffLinesOp string
 
 // CharterPartDiffState defines model for CharterPartDiff.State.
 type CharterPartDiffState string
+
+// Comment defines model for Comment.
+type Comment struct {
+	// Anchor What it is about: a JSON pointer into the record, a section of the walk as section:<step>, or empty for the record as a whole.
+	Anchor string    `json:"anchor"`
+	At     time.Time `json:"at"`
+
+	// Author Who wrote it, by their address; empty for an operator nobody signed in as.
+	Author string `json:"author"`
+	Body   string `json:"body"`
+	Id     string `json:"id"`
+	Kind   string `json:"kind"`
+
+	// Manifest The id of the record it is on.
+	Manifest string    `json:"manifest"`
+	Mentions []Mention `json:"mentions"`
+
+	// Reply The comment that starts the thread it answers.
+	Reply *string `json:"reply,omitempty"`
+
+	// Resolved Set on the comment that starts a thread, when it is resolved.
+	Resolved   bool       `json:"resolved"`
+	ResolvedAt *time.Time `json:"resolvedAt,omitempty"`
+	ResolvedBy *string    `json:"resolvedBy,omitempty"`
+}
+
+// CommentDraft defines model for CommentDraft.
+type CommentDraft struct {
+	Anchor   *string    `json:"anchor,omitempty"`
+	Body     string     `json:"body"`
+	Mentions *[]Mention `json:"mentions,omitempty"`
+	Reply    *string    `json:"reply,omitempty"`
+}
 
 // ComponentEdge defines model for ComponentEdge.
 type ComponentEdge struct {
@@ -1969,6 +2038,26 @@ type Match struct {
 
 // MatchBy Whether the decision model judged it, or the words the two share.
 type MatchBy string
+
+// Mention defines model for Mention.
+type Mention struct {
+	// Id A person's address on the access list, or a team's id.
+	Id   string      `json:"id"`
+	Kind MentionKind `json:"kind"`
+}
+
+// MentionKind defines model for Mention.Kind.
+type MentionKind string
+
+// Mentionable defines model for Mentionable.
+type Mentionable struct {
+	Id   string          `json:"id"`
+	Kind MentionableKind `json:"kind"`
+	Name string          `json:"name"`
+}
+
+// MentionableKind defines model for Mentionable.Kind.
+type MentionableKind string
 
 // Order defines model for Order.
 type Order struct {
@@ -2791,6 +2880,11 @@ type MoveInChangeSetJSONBody struct {
 	State string `json:"state"`
 }
 
+// ResolveCommentJSONBody defines parameters for ResolveComment.
+type ResolveCommentJSONBody struct {
+	Resolved bool `json:"resolved"`
+}
+
 // GetComponentsParams defines parameters for GetComponents.
 type GetComponentsParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -3065,6 +3159,11 @@ type MatchExistingJSONBody struct {
 	Text  string  `json:"text"`
 }
 
+// ListMentionablesParams defines parameters for ListMentionables.
+type ListMentionablesParams struct {
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+}
+
 // GetOrderParams defines parameters for GetOrder.
 type GetOrderParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -3180,6 +3279,9 @@ type ProposeChangeSetJSONRequestBody = ChangeSetProposal
 // ReopenChangeSetJSONRequestBody defines body for ReopenChangeSet for application/json ContentType.
 type ReopenChangeSetJSONRequestBody = ProposalDecision
 
+// ResolveCommentJSONRequestBody defines body for ResolveComment for application/json ContentType.
+type ResolveCommentJSONRequestBody ResolveCommentJSONBody
+
 // RecordEventsJSONRequestBody defines body for RecordEvents for application/json ContentType.
 type RecordEventsJSONRequestBody = EventBatch
 
@@ -3203,6 +3305,9 @@ type DeleteManifestJSONRequestBody = DeleteRequest
 
 // PutManifestJSONRequestBody defines body for PutManifest for application/json ContentType.
 type PutManifestJSONRequestBody = WriteRequest
+
+// AddCommentJSONRequestBody defines body for AddComment for application/json ContentType.
+type AddCommentJSONRequestBody = CommentDraft
 
 // AppendSeriesItemJSONRequestBody defines body for AppendSeriesItem for application/json ContentType.
 type AppendSeriesItemJSONRequestBody = SeriesAppend
@@ -3379,6 +3484,12 @@ type ServerInterface interface {
 	// GetCharterPartsStyle The styling of what a charter's sections hold
 	// (GET /charter/parts.css)
 	GetCharterPartsStyle(w http.ResponseWriter, r *http.Request)
+	// ListMyMentions The comments that ask the caller, newest first
+	// (GET /comments/mentions)
+	ListMyMentions(w http.ResponseWriter, r *http.Request)
+	// ResolveComment Resolve or reopen the thread a comment starts
+	// (PATCH /comments/{comment})
+	ResolveComment(w http.ResponseWriter, r *http.Request, comment string)
 	// GetComponents Every project and programme, what each depends on, and what follows
 	// (GET /components)
 	GetComponents(w http.ResponseWriter, r *http.Request, params GetComponentsParams)
@@ -3505,6 +3616,12 @@ type ServerInterface interface {
 	// GetCharterPdf The charter of a project, programme or operation as a PDF, printed from the same HTML the charter page shows. Needs a chromium: the vault's spec.chromium, the CHROMIUM environment variable, or one on the PATH.
 	// (GET /manifests/{kind}/{id}/charter.pdf)
 	GetCharterPdf(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam, params GetCharterPdfParams)
+	// ListComments A record's comments, oldest first
+	// (GET /manifests/{kind}/{id}/comments)
+	ListComments(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
+	// AddComment Comment on a record, beside a part of it
+	// (POST /manifests/{kind}/{id}/comments)
+	AddComment(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
 	// DiffManifest Structural diff between two versions
 	// (GET /manifests/{kind}/{id}/diff)
 	DiffManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam, params DiffManifestParams)
@@ -3538,6 +3655,9 @@ type ServerInterface interface {
 	// MatchExisting The existing records of a kind that say what a text says
 	// (POST /match)
 	MatchExisting(w http.ResponseWriter, r *http.Request)
+	// ListMentionables Who a comment can ask
+	// (GET /mentionables)
+	ListMentionables(w http.ResponseWriter, r *http.Request, params ListMentionablesParams)
 	// GetOrder The order of work, and how far the workspace has got along it
 	// (GET /order)
 	GetOrder(w http.ResponseWriter, r *http.Request, params GetOrderParams)
@@ -4359,6 +4479,46 @@ func (siw *ServerInterfaceWrapper) GetCharterPartsStyle(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetCharterPartsStyle(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMyMentions operation middleware
+func (siw *ServerInterfaceWrapper) ListMyMentions(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMyMentions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ResolveComment operation middleware
+func (siw *ServerInterfaceWrapper) ResolveComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "comment" -------------
+	var comment string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "comment", r.PathValue("comment"), &comment, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "comment", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResolveComment(w, r, comment)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6012,6 +6172,76 @@ func (siw *ServerInterfaceWrapper) GetCharterPdf(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// ListComments operation middleware
+func (siw *ServerInterfaceWrapper) ListComments(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListComments(w, r, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddComment operation middleware
+func (siw *ServerInterfaceWrapper) AddComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddComment(w, r, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // DiffManifest operation middleware
 func (siw *ServerInterfaceWrapper) DiffManifest(w http.ResponseWriter, r *http.Request) {
 
@@ -6414,6 +6644,39 @@ func (siw *ServerInterfaceWrapper) MatchExisting(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.MatchExisting(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMentionables operation middleware
+func (siw *ServerInterfaceWrapper) ListMentionables(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMentionablesParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMentionables(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7132,6 +7395,11 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/manifests/Goal/{id}", wrapper.DeleteGoal)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/checks", wrapper.GetProjectChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/dmaic", wrapper.GetProjectDMAIC)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/comments", wrapper.ListComments)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/{kind}/{id}/comments", wrapper.AddComment)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/comments/{comment}", wrapper.ResolveComment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/comments/mentions", wrapper.ListMyMentions)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/mentionables", wrapper.ListMentionables)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/constraints", wrapper.GetProjectConstraints)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/round", wrapper.GetProjectRound)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/KPI/{id}/control", wrapper.GetKPIControlChart)
@@ -8961,6 +9229,148 @@ func (response GetCharterPartsStyle403JSONResponse) VisitGetCharterPartsStyleRes
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyMentionsRequestObject struct {
+}
+
+type ListMyMentionsResponseObject interface {
+	VisitListMyMentionsResponse(w http.ResponseWriter) error
+}
+
+type ListMyMentions200JSONResponse []Comment
+
+func (response ListMyMentions200JSONResponse) VisitListMyMentionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyMentions401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListMyMentions401JSONResponse) VisitListMyMentionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyMentions403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListMyMentions403JSONResponse) VisitListMyMentionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyMentions404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListMyMentions404JSONResponse) VisitListMyMentionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveCommentRequestObject struct {
+	Comment string `json:"comment"`
+	Body    *ResolveCommentJSONRequestBody
+}
+
+type ResolveCommentResponseObject interface {
+	VisitResolveCommentResponse(w http.ResponseWriter) error
+}
+
+type ResolveComment200JSONResponse Comment
+
+func (response ResolveComment200JSONResponse) VisitResolveCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveComment401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ResolveComment401JSONResponse) VisitResolveCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveComment403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ResolveComment403JSONResponse) VisitResolveCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveComment404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ResolveComment404JSONResponse) VisitResolveCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveComment422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response ResolveComment422JSONResponse) VisitResolveCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -11698,6 +12108,151 @@ func (response GetCharterPdf422JSONResponse) VisitGetCharterPdfResponse(w http.R
 	return err
 }
 
+type ListCommentsRequestObject struct {
+	Kind KindParam `json:"kind"`
+	Id   IdParam   `json:"id"`
+}
+
+type ListCommentsResponseObject interface {
+	VisitListCommentsResponse(w http.ResponseWriter) error
+}
+
+type ListComments200JSONResponse []Comment
+
+func (response ListComments200JSONResponse) VisitListCommentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListComments401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListComments401JSONResponse) VisitListCommentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListComments403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListComments403JSONResponse) VisitListCommentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListComments404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListComments404JSONResponse) VisitListCommentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddCommentRequestObject struct {
+	Kind KindParam `json:"kind"`
+	Id   IdParam   `json:"id"`
+	Body *AddCommentJSONRequestBody
+}
+
+type AddCommentResponseObject interface {
+	VisitAddCommentResponse(w http.ResponseWriter) error
+}
+
+type AddComment201JSONResponse Comment
+
+func (response AddComment201JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddComment401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response AddComment401JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddComment403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response AddComment403JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddComment404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AddComment404JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddComment422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response AddComment422JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DiffManifestRequestObject struct {
 	Kind   KindParam `json:"kind"`
 	Id     IdParam   `json:"id"`
@@ -12493,6 +13048,56 @@ func (response MatchExisting401JSONResponse) VisitMatchExistingResponse(w http.R
 type MatchExisting403JSONResponse struct{ ForbiddenJSONResponse }
 
 func (response MatchExisting403JSONResponse) VisitMatchExistingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMentionablesRequestObject struct {
+	Params ListMentionablesParams
+}
+
+type ListMentionablesResponseObject interface {
+	VisitListMentionablesResponse(w http.ResponseWriter) error
+}
+
+type ListMentionables200JSONResponse []Mentionable
+
+func (response ListMentionables200JSONResponse) VisitListMentionablesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMentionables401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListMentionables401JSONResponse) VisitListMentionablesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMentionables403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListMentionables403JSONResponse) VisitListMentionablesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -13962,6 +14567,12 @@ type StrictServerInterface interface {
 	// GetCharterPartsStyle The styling of what a charter's sections hold
 	// (GET /charter/parts.css)
 	GetCharterPartsStyle(ctx context.Context, request GetCharterPartsStyleRequestObject) (GetCharterPartsStyleResponseObject, error)
+	// ListMyMentions The comments that ask the caller, newest first
+	// (GET /comments/mentions)
+	ListMyMentions(ctx context.Context, request ListMyMentionsRequestObject) (ListMyMentionsResponseObject, error)
+	// ResolveComment Resolve or reopen the thread a comment starts
+	// (PATCH /comments/{comment})
+	ResolveComment(ctx context.Context, request ResolveCommentRequestObject) (ResolveCommentResponseObject, error)
 	// GetComponents Every project and programme, what each depends on, and what follows
 	// (GET /components)
 	GetComponents(ctx context.Context, request GetComponentsRequestObject) (GetComponentsResponseObject, error)
@@ -14088,6 +14699,12 @@ type StrictServerInterface interface {
 	// GetCharterPdf The charter of a project, programme or operation as a PDF, printed from the same HTML the charter page shows. Needs a chromium: the vault's spec.chromium, the CHROMIUM environment variable, or one on the PATH.
 	// (GET /manifests/{kind}/{id}/charter.pdf)
 	GetCharterPdf(ctx context.Context, request GetCharterPdfRequestObject) (GetCharterPdfResponseObject, error)
+	// ListComments A record's comments, oldest first
+	// (GET /manifests/{kind}/{id}/comments)
+	ListComments(ctx context.Context, request ListCommentsRequestObject) (ListCommentsResponseObject, error)
+	// AddComment Comment on a record, beside a part of it
+	// (POST /manifests/{kind}/{id}/comments)
+	AddComment(ctx context.Context, request AddCommentRequestObject) (AddCommentResponseObject, error)
 	// DiffManifest Structural diff between two versions
 	// (GET /manifests/{kind}/{id}/diff)
 	DiffManifest(ctx context.Context, request DiffManifestRequestObject) (DiffManifestResponseObject, error)
@@ -14121,6 +14738,9 @@ type StrictServerInterface interface {
 	// MatchExisting The existing records of a kind that say what a text says
 	// (POST /match)
 	MatchExisting(ctx context.Context, request MatchExistingRequestObject) (MatchExistingResponseObject, error)
+	// ListMentionables Who a comment can ask
+	// (GET /mentionables)
+	ListMentionables(ctx context.Context, request ListMentionablesRequestObject) (ListMentionablesResponseObject, error)
 	// GetOrder The order of work, and how far the workspace has got along it
 	// (GET /order)
 	GetOrder(ctx context.Context, request GetOrderRequestObject) (GetOrderResponseObject, error)
@@ -14974,6 +15594,63 @@ func (sh *strictHandler) GetCharterPartsStyle(w http.ResponseWriter, r *http.Req
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetCharterPartsStyleResponseObject); ok {
 		if err := validResponse.VisitGetCharterPartsStyleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMyMentions operation middleware
+func (sh *strictHandler) ListMyMentions(w http.ResponseWriter, r *http.Request) {
+	var request ListMyMentionsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMyMentions(ctx, request.(ListMyMentionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMyMentions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMyMentionsResponseObject); ok {
+		if err := validResponse.VisitListMyMentionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ResolveComment operation middleware
+func (sh *strictHandler) ResolveComment(w http.ResponseWriter, r *http.Request, comment string) {
+	var request ResolveCommentRequestObject
+
+	request.Comment = comment
+
+	var body ResolveCommentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResolveComment(ctx, request.(ResolveCommentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResolveComment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResolveCommentResponseObject); ok {
+		if err := validResponse.VisitResolveCommentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -16145,6 +16822,67 @@ func (sh *strictHandler) GetCharterPdf(w http.ResponseWriter, r *http.Request, k
 	}
 }
 
+// ListComments operation middleware
+func (sh *strictHandler) ListComments(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam) {
+	var request ListCommentsRequestObject
+
+	request.Kind = kind
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListComments(ctx, request.(ListCommentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListComments")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCommentsResponseObject); ok {
+		if err := validResponse.VisitListCommentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddComment operation middleware
+func (sh *strictHandler) AddComment(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam) {
+	var request AddCommentRequestObject
+
+	request.Kind = kind
+	request.Id = id
+
+	var body AddCommentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddComment(ctx, request.(AddCommentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddComment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddCommentResponseObject); ok {
+		if err := validResponse.VisitAddCommentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // DiffManifest operation middleware
 func (sh *strictHandler) DiffManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam, params DiffManifestParams) {
 	var request DiffManifestRequestObject
@@ -16463,6 +17201,32 @@ func (sh *strictHandler) MatchExisting(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(MatchExistingResponseObject); ok {
 		if err := validResponse.VisitMatchExistingResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMentionables operation middleware
+func (sh *strictHandler) ListMentionables(w http.ResponseWriter, r *http.Request, params ListMentionablesParams) {
+	var request ListMentionablesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMentionables(ctx, request.(ListMentionablesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMentionables")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMentionablesResponseObject); ok {
+		if err := validResponse.VisitListMentionablesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

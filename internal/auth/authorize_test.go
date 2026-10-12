@@ -29,6 +29,10 @@ func TestActionForClassifiesMethodAndPath(t *testing.T) {
 		{"POST", "/proposals/p1/accept", "read", "", "", ""},
 		{"POST", "/mcp", "read", "", "", "agent"},
 		{"DELETE", "/agents/g1", "read", "", "", ""},
+		// Commenting is reading the record and talking about it.
+		{"POST", "/manifests/Project/p1/comments", "read", "Project", "p1", ""},
+		{"PATCH", "/comments/c1", "read", "", "", ""},
+		{"GET", "/mentionables", "read", "", "", ""},
 	}
 	for _, c := range cases {
 		a := auth.ActionFor(httptest.NewRequest(c.method, c.path, nil))

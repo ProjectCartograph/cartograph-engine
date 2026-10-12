@@ -571,6 +571,151 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /manifests/{kind}/{id}/comments:
+    get:
+      operationId: listComments
+      summary: A record's comments, oldest first
+      description: >-
+        The conversation about a record, beside the parts it is about
+        (TAXONOMY.md D72): each comment's anchor, the thread it answers,
+        its words, whom it asks, and whether its thread is resolved.
+        Comments are not the record: no version, no change set, no check.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: addComment
+      summary: Comment on a record, beside a part of it
+      description: >-
+        Anyone who may read the record may comment on it. A reply joins
+        the thread it answers; a mention asks a person on the access list
+        or a team, and is refused for anyone not there.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentDraft"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "201":
+          description: Kept
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  /comments/{comment}:
+    patch:
+      operationId: resolveComment
+      summary: Resolve or reopen the thread a comment starts
+      parameters:
+        - name: comment
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resolved]
+              properties:
+                resolved:
+                  type: boolean
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  /comments/mentions:
+    get:
+      operationId: listMyMentions
+      summary: The comments that ask the caller, newest first
+      description: >-
+        By the caller's address, or through a team they are on. Empty for
+        an operator nobody signed in as.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+
+  /mentionables:
+    get:
+      operationId: listMentionables
+      summary: Who a comment can ask
+      description: >-
+        The people on the access list, then the teams, whose name, address
+        or id holds q. Without an access list, the teams alone.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Mentionable"
+
   /manifests/Project/{id}/constraints:
     get:
       operationId: getProjectConstraints
@@ -4729,6 +4874,88 @@ components:
             type: array
             items:
               $ref: "#/components/schemas/VocabularyTerm"
+
+    Comment:
+      type: object
+      required: [id, kind, manifest, anchor, body, mentions, author, at, resolved]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        manifest:
+          type: string
+          description: The id of the record it is on.
+        anchor:
+          type: string
+          description: >-
+            What it is about: a JSON pointer into the record, a section of
+            the walk as section:<step>, or empty for the record as a whole.
+        reply:
+          type: string
+          description: The comment that starts the thread it answers.
+        body:
+          type: string
+        mentions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Mention"
+        author:
+          type: string
+          description: Who wrote it, by their address; empty for an operator nobody signed in as.
+        at:
+          type: string
+          format: date-time
+        resolved:
+          type: boolean
+          description: Set on the comment that starts a thread, when it is resolved.
+        resolvedBy:
+          type: string
+        resolvedAt:
+          type: string
+          format: date-time
+
+    CommentDraft:
+      type: object
+      required: [body]
+      properties:
+        anchor:
+          type: string
+          maxLength: 300
+        reply:
+          type: string
+        body:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        mentions:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/Mention"
+
+    Mention:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [person, team]
+        id:
+          type: string
+          description: A person's address on the access list, or a team's id.
+
+    Mentionable:
+      type: object
+      required: [kind, id, name]
+      properties:
+        kind:
+          type: string
+          enum: [person, team]
+        id:
+          type: string
+        name:
+          type: string
 
     VocabularyTerm:
       type: object
