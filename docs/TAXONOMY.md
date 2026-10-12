@@ -1875,3 +1875,23 @@ and `onEvent` (said "When something happens") beside the rhythms and
 `irregular`. Irregular stays for a source that changes with no rhythm
 and no event that can be named. A number from a source still cannot
 change more often than its source does.
+
+### D66. An indicator may be best at a value, not only higher or lower. *(resolved)*
+
+**The problem.** An indicator's direction was increase, decrease or
+maintain. A ratio meant to sit at a level, such as 1.0 for supply to
+demand, was neither: higher and lower are both worse.
+
+**The discipline.** Quality engineering names three cases of what is
+good in a measure: larger is better, smaller is better, and nominal is
+best (closest to a target). Specification limits add a floor, a ceiling
+or a tolerance either side.
+
+**What Cartograph does.** An indicator's direction takes `reach`, as a
+key result's already does: the target value is best, and a reading is
+better the closer it is. With specLimits the four directions say every
+combination: increase with a floor, decrease with a ceiling, reach with
+a tolerance either side, maintain anywhere within both limits. A target
+for reach may lie above or below today's figure, so it is never read as
+moving against the direction.
+
