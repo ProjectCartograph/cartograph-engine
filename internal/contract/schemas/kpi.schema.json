@@ -224,9 +224,11 @@
         },
         "direction": {
           "type": "string",
+          "description": "Which readings are better: higher (increase), lower (decrease), closest to the target value (reach, nominal is best), or anywhere within the specification limits (maintain). With specLimits as a floor, a ceiling or a tolerance either side, these say every combination (TAXONOMY.md D66).",
           "enum": [
             "increase",
             "decrease",
+            "reach",
             "maintain"
           ]
         },

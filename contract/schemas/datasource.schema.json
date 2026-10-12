@@ -30,7 +30,7 @@
         "records": {
           "type": "string",
           "maxLength": 240,
-          "description": "What one entry of this source is, in words: one delivery weighed and graded at a depot (TAXONOMY.md D64)."
+          "description": "What one entry of this source is, in words: one delivery weighed and graded at a depot (TAXONOMY.md D64). For a source that holds one kind of record; a source holding several, such as a warehouse, says it for each metric instead (over, D67)."
         },
         "metrics": {
           "type": "array",
@@ -56,6 +56,11 @@
                 "type": "string",
                 "maxLength": 400,
                 "description": "What the number is, in words, for whoever maps it to the warehouse."
+              },
+              "over": {
+                "type": "string",
+                "maxLength": 240,
+                "description": "What one entry this metric counts over is, in words, where the source holds more than one kind of record (a warehouse): each delivery graded, each payment made. Left out, it is the source's own entry (records). The export writes the metrics over one kind of record as one semantic model (TAXONOMY.md D67)."
               },
               "aggregation": {
                 "type": "string",
@@ -155,7 +160,8 @@
             "formOrSurvey",
             "operationalSystem",
             "apiOrFeed",
-            "documentStore"
+            "documentStore",
+            "warehouse"
           ],
           "description": "What form the source takes. Who runs it is provenance, a separate question (DCAT keeps the dataset, its distribution and its publisher apart)."
         },
@@ -181,6 +187,8 @@
         "refresh": {
           "$ref": "common.schema.json#/$defs/Refresh",
           "x-cartograph-enum": [
+            "continuous",
+            "onEvent",
             "daily",
             "weekly",
             "monthly",

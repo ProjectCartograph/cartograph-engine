@@ -1,0 +1,76 @@
+{
+  "$id": "allocation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Allocation",
+  "description": "What a funding source has allocated to one project, as the budget's holder decides it: an amount, whether it is approved, still requested or refused, and when it was decided. A record of its own, after the project in the order of work, because the holder decides it and not the project: the project's cost lines on that source take their status from it and may not come to more (TAXONOMY.md D69). Not a cost line, which says what the project will spend the money on.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "cartograph/v1"
+    },
+    "kind": {
+      "const": "Allocation"
+    },
+    "metadata": {
+      "$ref": "common.schema.json#/$defs/Metadata"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "project",
+        "amount",
+        "currency",
+        "status"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "FundingSource",
+          "description": "The budget allocated from."
+        },
+        "project": {
+          "$ref": "common.schema.json#/$defs/Slug",
+          "x-cartograph-ref": "Project",
+          "description": "The project allocated to."
+        },
+        "amount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "How much is allocated."
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "The ISO 4217 code of the amount."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "approved",
+            "requested",
+            "unfunded"
+          ],
+          "description": "Whether the allocation is approved, requested and not yet decided, or refused."
+        },
+        "decided": {
+          "$ref": "common.schema.json#/$defs/Day",
+          "description": "When it was decided."
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "Anything about the decision the fields above cannot hold, such as a condition on the money."
+        }
+      }
+    }
+  }
+}

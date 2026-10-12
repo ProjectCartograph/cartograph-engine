@@ -150,8 +150,10 @@ var labels = map[string]map[string]string{
 		"documentsOrFiles": "Documents or files", "extractOrReport": "Extract or report",
 	},
 	"refresh": {
+		"continuous": "Real time", "onEvent": "When something happens",
 		"daily": "Daily", "weekly": "Weekly", "monthly": "Monthly",
-		"quarterly": "Quarterly", "annual": "Annual", "adHoc": "Ad hoc",
+		"quarterly": "Quarterly", "termly": "Each term", "annual": "Annual",
+		"irregular": "Irregular",
 	},
 	"personal":  {"none": "None", "personal": "Personal", "sensitive": "Sensitive"},
 	"readiness": {"ready": "Ready", "open": "Open points", "blocking": "Blocking"},
@@ -754,6 +756,18 @@ func strs(v any) []string {
 	out := make([]string, 0, len(items))
 	for _, it := range items {
 		if s := str(it); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// allStrs is every string in v, empty ones included.
+func allStrs(v any) []string {
+	items, _ := v.([]any)
+	out := make([]string, 0, len(items))
+	for _, it := range items {
+		if s, ok := it.(string); ok {
 			out = append(out, s)
 		}
 	}

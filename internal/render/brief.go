@@ -152,9 +152,10 @@ func (d *doc) deliverablesBrief(p plan) {
 
 // costsBrief prints the cost lines; a funding source every line shares is
 // said once.
-func (d *doc) costsBrief(p plan) {
+func (d *doc) costsBrief(p plan, total string) {
 	cs := list(p.spec["costs"])
 	if len(cs) == 0 {
+		d.addRow("/spec/costs", "Cost line")
 		return
 	}
 	sources := map[string]bool{}
@@ -178,6 +179,13 @@ func (d *doc) costsBrief(p plan) {
 	headers := []string{"Cost line", "Amount", "Status"}
 	if !shared {
 		headers = append(headers, "Funding source")
+	}
+	if len(rows) > 1 {
+		row := []string{"Total", d.from(total, "/spec/costs"), ""}
+		if !shared {
+			row = append(row, "")
+		}
+		rows = append(rows, row)
 	}
 	d.h3("Cost plan")
 	d.table(headers, rows)
@@ -382,7 +390,7 @@ func budgetWithComponents(ctx context.Context, e *engine.Engine, n names, g engi
 			}
 			seen[ed.To] = true
 			if ed.To.Kind == "Project" {
-				funding = append(funding, list(specs[ed.To.ID]["funding"])...)
+				funding = append(funding, list(specs[ed.To.ID]["costs"])...)
 			}
 			walk(ed.To)
 		}
@@ -401,7 +409,8 @@ func budgetWithComponents(ctx context.Context, e *engine.Engine, n names, g engi
 // problemSentence writes one problem as a sentence: "Delivering members
 // and retail partners learn of a failed delivery a season late, because
 // checks happen after dispatch. The project will change this so that
-// every delivery is checked at intake." Each part keeps its own words,
+// every delivery is checked at intake." Why it happens is the first cause
+// found. Each part keeps its own words,
 // lower-cased where the sentence runs on (an acronym keeps its capitals).
 // In an editable charter the groups are mentions and every part is
 // marked by its field (data-part), with what belongs there (data-hint)
@@ -440,8 +449,16 @@ func (d *doc) problemSentence(n names, pm map[string]any, at string) string {
 		situation = capital(situation)
 	}
 	b.WriteString(part(situation, at+"/problem/situation", "what goes wrong for them"))
-	if cause := lowerFirst(str(problem["cause"])); cause != "" || d.editable {
-		b.WriteString(", because " + part(cause, at+"/problem/cause", "why it happens"))
+	// Why it happens is the first cause found; a cause written before
+	// the list existed reads as the first of it (#81).
+	cause, causeAt := "", at+"/problem/causes/0/cause"
+	if causes := list(problem["causes"]); len(causes) > 0 {
+		cause = str(causes[0]["cause"])
+	} else if c := str(problem["cause"]); c != "" {
+		cause, causeAt = c, at+"/problem/cause"
+	}
+	if cause = lowerFirst(cause); cause != "" || d.editable {
+		b.WriteString(", because " + part(cause, causeAt, "why it happens"))
 	}
 	b.WriteString(".")
 	if what := lowerFirst(str(change["what"])); what != "" || d.editable {

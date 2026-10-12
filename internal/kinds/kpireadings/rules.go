@@ -49,7 +49,7 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 		if cycle != nil && !reportingcycle.Ends(cycle, period) {
 			problems = append(problems, kit.Problem{
 				Path:    fmt.Sprintf("/spec/readings/%d/period", i),
-				Message: fmt.Sprintf("%s is not the end of one of the cycle's periods; file a reading by the month its period ends", period),
+				Message: fmt.Sprintf("%s is not the end of one of the cycle's periods; file a reading by the %s its period ends", period, endWord(cycle)),
 			})
 		}
 	}
@@ -78,4 +78,13 @@ func cycleOf(spec map[string]any, lookup kit.Lookup) map[string]any {
 	}
 	cspec, _ := cycles[id]["spec"].(map[string]any)
 	return cspec
+}
+
+// endWord is what a cycle's periods end on: a day for a cycle of days
+// (TAXONOMY.md D68), else a month.
+func endWord(cycle map[string]any) string {
+	if _, ok := cycle["periodDays"]; ok {
+		return "day"
+	}
+	return "month"
 }

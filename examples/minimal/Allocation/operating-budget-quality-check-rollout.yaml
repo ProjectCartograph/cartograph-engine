@@ -1,0 +1,15 @@
+apiVersion: cartograph/v1
+kind: Allocation
+metadata:
+  id: operating-budget-quality-check-rollout
+  name: Operating budget for the Quality Check Rollout
+# What the operating budget gives the rollout, as the depot network, its
+# holder, decided it (TAXONOMY.md D69). The rollout's cost lines on this
+# budget take their status from it.
+spec:
+  source: operating-budget
+  project: quality-check-rollout
+  amount: 42000
+  currency: USD
+  status: approved
+  decided: "2025-08-20"

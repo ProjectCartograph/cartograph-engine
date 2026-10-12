@@ -90,3 +90,32 @@ func TestARangeIsBounded(t *testing.T) {
 		t.Fatal("month 13 was accepted")
 	}
 }
+
+// A fortnightly cycle from a Monday ends its periods on every other
+// Sunday, each filed by that day, and a daily one ends every day
+// (TAXONOMY.md D68).
+func TestACycleOfDaysEndsOnDays(t *testing.T) {
+	spec := map[string]any{"periodDays": 14, "startDate": "2026-01-05", "dueOffsetDays": 2}
+	got, err := Between(spec, "2026-02", "2026-02")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Every period that overlaps February, the first ending on its 1st.
+	want := []string{"2026-02-01 2026-01-19 ", "2026-02-15 2026-02-02 ", "2026-03-01 2026-02-16 "}
+	if !reflect.DeepEqual(ends(got), want) {
+		t.Fatalf("got %q, want %q", ends(got), want)
+	}
+	if got[1].Due != "2026-02-17" {
+		t.Fatalf("due %s", got[0].Due)
+	}
+	if !Ends(spec, "2026-02-15") || Ends(spec, "2026-02-14") || Ends(spec, "2026-02") {
+		t.Fatal("a fortnight's end is a day it ends on, and only that")
+	}
+	daily, _ := Between(map[string]any{"periodDays": 1, "startDate": "2026-01-01"}, "2026-02", "2026-02")
+	if len(daily) != 28 || daily[0].End != "2026-02-01" {
+		t.Fatalf("daily: %d periods from %v", len(daily), daily[0])
+	}
+	if Ends(map[string]any{"periodMonths": 1, "startMonth": 1}, "2026-02-15") {
+		t.Fatal("a cycle of months took a day")
+	}
+}

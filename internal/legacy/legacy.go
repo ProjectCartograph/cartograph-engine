@@ -165,6 +165,9 @@ func Rewrite(kind string, doc map[string]any) []string {
 		notes = append(notes, dropRoleTitles(spec)...)
 		notes = append(notes, liftStakeholderScores(spec)...)
 		notes = append(notes, dropFreeTextFunding(spec)...)
+		// After the free text is gone: the lines it leaves are folded
+		// into the cost plan as they stand.
+		notes = append(notes, foldFundingIntoCosts(spec)...)
 		notes = append(notes, foldCompliance(spec)...)
 	}
 
@@ -737,6 +740,50 @@ func dropFreeTextFunding(spec map[string]any) []string {
 	return notes
 }
 
+// foldFundingIntoCosts makes each funding line a line of the cost plan
+// (TAXONOMY.md D69). A project's money was said twice, as funding lines
+// and as cost lines with the same amount, source and status; the cost plan
+// is the one place now. A funding line becomes a cost line called Funding,
+// with its amount, currency, source and status, after any the plan
+// already has.
+func foldFundingIntoCosts(spec map[string]any) []string {
+	lines, ok := spec["funding"].([]any)
+	if !ok {
+		return nil
+	}
+	delete(spec, "funding")
+	costs, _ := spec["costs"].([]any)
+	taken := map[string]bool{}
+	for _, c := range costs {
+		if cm, ok := c.(map[string]any); ok {
+			if id, _ := cm["id"].(string); id != "" {
+				taken[id] = true
+			}
+		}
+	}
+	n := 0
+	for _, l := range lines {
+		lm, ok := l.(map[string]any)
+		if !ok {
+			continue
+		}
+		line := map[string]any{"id": uniqueSlug("funding", "funding", taken), "category": "Funding"}
+		for _, k := range []string{"amount", "currency", "source", "status"} {
+			if v, ok := lm[k]; ok {
+				line[k] = v
+			}
+		}
+		taken[line["id"].(string)] = true
+		costs = append(costs, line)
+		n++
+	}
+	if n == 0 {
+		return []string{"spec.funding dropped: it held no lines"}
+	}
+	spec["costs"] = costs
+	return []string{fmt.Sprintf("spec.funding folded into spec.costs: %d line%s called Funding", n, map[bool]string{true: "", false: "s"}[n == 1])}
+}
+
 // rewriteGapCitations turns a bare list of gap ids into citations.
 //
 // A problem used to cite gaps as ["a", "b"], which can say that a gap is
@@ -910,6 +957,11 @@ func Deprecated(kind string, doc map[string]any) []Field {
 		if _, ok := spec["measuredBy"]; ok {
 			problems = append(problems, Field{Path: "/spec/measuredBy",
 				Message: "measuredBy is no longer written: name the KPI whose baseline and target are this gap's two states in measure, and the data sources it is watched in under dataSources"})
+		}
+	case "Project":
+		if _, ok := spec["funding"]; ok {
+			problems = append(problems, Field{Path: "/spec/funding",
+				Message: "funding is no longer written: write the project's money as cost lines under costs, each naming the funding source it draws on"})
 		}
 	case "KPI":
 		if _, ok := spec["source"]; ok {

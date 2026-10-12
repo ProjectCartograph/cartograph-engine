@@ -89,8 +89,9 @@
       ]
     },
     "/spec/refresh": {
-      "guide": "How often the contents change: daily, weekly, monthly, termly, quarterly, annual, or irregular when there is no set rhythm. A number from this source cannot change more often than this.",
+      "guide": "How often the contents change: continuous when each record lands as it is made (an operational system, a live feed), on an event when something sets it off rather than the calendar, daily, weekly, monthly, termly, quarterly or annual on a rhythm, or irregular when there is no rhythm at all. A number from this source cannot change more often than this.",
       "good": [
+        "continuous",
         "weekly",
         "annual"
       ],
@@ -115,7 +116,7 @@
       ]
     },
     "/spec/classification": {
-      "guide": "How sensitive the contents are: public, internal, confidential or restricted. Leave it empty if you are not sure.",
+      "guide": "How sensitive the contents are, as the highest level anything in the source reaches. Public: anyone may see it, and its release harms no one. Internal: anyone in the organisation may see it; released outside, it would cause minor harm. Confidential: only the roles that need it may see it; released, it would cause serious harm to people or to the organisation. Restricted: only named roles may see it, under the strictest controls; released, it would cause severe harm or break the law, as health, payment or other special category personal records would. Leave it empty if you are not sure.",
       "good": [
         "internal",
         "restricted"

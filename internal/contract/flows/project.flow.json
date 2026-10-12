@@ -143,17 +143,10 @@
                 "hint": "What is going wrong for the affected groups now."
               },
               {
-                "path": "/problem/cause",
-                "control": "sentence",
-                "title": "Potential cause",
-                "hint": "What you think lies behind the problem."
-              },
-              {
                 "path": "/problem/causes",
                 "control": "list",
                 "title": "Causes found",
-                "hint": "What analysis found behind the problem, each with its evidence, and whether the evidence confirms it.",
-                "phase": "measure"
+                "hint": "Why it happens: each cause found behind the problem, with its evidence and whether the evidence confirms it. The first is the one the problem statement gives."
               },
               {
                 "path": "/change/what",
@@ -292,7 +285,7 @@
       {
         "key": "resources",
         "title": "Resources",
-        "guide": "The roles the project needs, the money it draws on, and the mandate it works under.",
+        "guide": "The roles the project needs, the mandate it works under, and the route a decision escalates by.",
         "fields": [
           {
             "path": "/spec/resources",
@@ -322,36 +315,6 @@
               {
                 "path": "/note",
                 "control": "text"
-              }
-            ]
-          },
-          {
-            "path": "/spec/funding",
-            "control": "list",
-            "key": "currency",
-            "title": "Approved funding",
-            "hint": "An amount for each currency.",
-            "checks": [
-              "resources-funding",
-              "components-one-sponsor"
-            ],
-            "fields": [
-              {
-                "path": "/amount",
-                "control": "number"
-              },
-              {
-                "path": "/currency",
-                "control": "choice"
-              },
-              {
-                "path": "/source",
-                "control": "reference",
-                "title": "Budget"
-              },
-              {
-                "path": "/status",
-                "control": "choice"
               }
             ]
           },
@@ -399,142 +362,6 @@
             "control": "references",
             "title": "Escalation route",
             "hint": "Who decides when it cannot be decided here, closest first."
-          },
-          {
-            "path": "/spec/responsibilities",
-            "control": "list",
-            "key": "id",
-            "hint": "Who does it, the one accountable, who is consulted and who is told.",
-            "fields": [
-              {
-                "path": "/id",
-                "control": "readonly"
-              },
-              {
-                "path": "/item",
-                "control": "sentence",
-                "title": "Decision or deliverable"
-              },
-              {
-                "path": "/decision",
-                "control": "toggle",
-                "title": "A decision"
-              },
-              {
-                "path": "/deliverable",
-                "control": "choice",
-                "title": "Deliverable"
-              },
-              {
-                "path": "/responsible",
-                "control": "references",
-                "title": "Responsible"
-              },
-              {
-                "path": "/accountable",
-                "control": "reference",
-                "title": "Accountable"
-              },
-              {
-                "path": "/consulted",
-                "control": "references",
-                "title": "Consulted"
-              },
-              {
-                "path": "/informed",
-                "control": "references",
-                "title": "Informed"
-              }
-            ]
-          },
-          {
-            "path": "/spec/costs",
-            "control": "list",
-            "key": "id",
-            "checks": [
-              "costs-funded"
-            ],
-            "fields": [
-              {
-                "path": "/id",
-                "control": "readonly"
-              },
-              {
-                "path": "/category",
-                "control": "text"
-              },
-              {
-                "path": "/basis",
-                "control": "sentence"
-              },
-              {
-                "path": "/amount",
-                "control": "number"
-              },
-              {
-                "path": "/currency",
-                "control": "text"
-              },
-              {
-                "path": "/period",
-                "control": "text"
-              },
-              {
-                "path": "/source",
-                "control": "reference"
-              },
-              {
-                "path": "/status",
-                "control": "choice"
-              },
-              {
-                "path": "/recurrent",
-                "control": "sentence"
-              }
-            ]
-          },
-          {
-            "path": "/spec/procurement",
-            "control": "list",
-            "key": "id",
-            "fields": [
-              {
-                "path": "/id",
-                "control": "readonly"
-              },
-              {
-                "path": "/requirement",
-                "control": "sentence"
-              },
-              {
-                "path": "/value",
-                "control": "number"
-              },
-              {
-                "path": "/currency",
-                "control": "text"
-              },
-              {
-                "path": "/valueNote",
-                "control": "text"
-              },
-              {
-                "path": "/method",
-                "control": "text"
-              },
-              {
-                "path": "/leadTime",
-                "control": "text"
-              },
-              {
-                "path": "/requiredBy",
-                "control": "timing"
-              },
-              {
-                "path": "/owner",
-                "control": "reference"
-              }
-            ]
           }
         ]
       },
@@ -691,6 +518,53 @@
                 ]
               }
             ]
+          },
+          {
+            "path": "/spec/responsibilities",
+            "control": "list",
+            "key": "id",
+            "hint": "Who does it, the one accountable, who is consulted and who is told.",
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/item",
+                "control": "sentence",
+                "title": "Decision or deliverable"
+              },
+              {
+                "path": "/decision",
+                "control": "toggle",
+                "title": "A decision"
+              },
+              {
+                "path": "/deliverable",
+                "control": "choice",
+                "title": "Deliverable"
+              },
+              {
+                "path": "/responsible",
+                "control": "references",
+                "title": "Responsible"
+              },
+              {
+                "path": "/accountable",
+                "control": "reference",
+                "title": "Accountable"
+              },
+              {
+                "path": "/consulted",
+                "control": "references",
+                "title": "Consulted"
+              },
+              {
+                "path": "/informed",
+                "control": "references",
+                "title": "Informed"
+              }
+            ]
           }
         ]
       },
@@ -773,6 +647,98 @@
                 "path": "/months",
                 "control": "number",
                 "title": "Months"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "costs",
+        "title": "Costs and procurement",
+        "guide": "What the project costs, line by line against the budgets it draws on, and what it buys, by when and with what risks.",
+        "fields": [
+          {
+            "path": "/spec/costs",
+            "control": "list",
+            "key": "id",
+            "checks": [
+              "costs-funded"
+            ],
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/category",
+                "control": "text"
+              },
+              {
+                "path": "/basis",
+                "control": "sentence"
+              },
+              {
+                "path": "/amount",
+                "control": "number"
+              },
+              {
+                "path": "/currency",
+                "control": "text"
+              },
+              {
+                "path": "/source",
+                "control": "reference"
+              },
+              {
+                "path": "/status",
+                "control": "choice"
+              },
+              {
+                "path": "/recurrent",
+                "control": "sentence"
+              }
+            ]
+          },
+          {
+            "path": "/spec/procurement",
+            "control": "list",
+            "key": "id",
+            "fields": [
+              {
+                "path": "/id",
+                "control": "readonly"
+              },
+              {
+                "path": "/requirement",
+                "control": "sentence"
+              },
+              {
+                "path": "/value",
+                "control": "number"
+              },
+              {
+                "path": "/currency",
+                "control": "text"
+              },
+              {
+                "path": "/valueNote",
+                "control": "text"
+              },
+              {
+                "path": "/method",
+                "control": "text"
+              },
+              {
+                "path": "/leadTime",
+                "control": "text"
+              },
+              {
+                "path": "/requiredBy",
+                "control": "timing"
+              },
+              {
+                "path": "/owner",
+                "control": "reference"
               }
             ]
           }
@@ -1288,7 +1254,7 @@
       {
         "key": "governance",
         "title": "Governance",
-        "guide": "Who decides, who pays, on whose authority, and who has influence over it.",
+        "guide": "Who decides, on whose authority, and who has influence over it.",
         "steps": [
           "resources",
           "stakeholders"
@@ -1306,9 +1272,10 @@
       {
         "key": "plan",
         "title": "Plan",
-        "guide": "When it runs, the data it reads and makes, and what could go wrong.",
+        "guide": "When it runs, what it costs and buys, the data it reads and makes, and what could go wrong.",
         "steps": [
           "timeline",
+          "costs",
           "data",
           "risks"
         ]

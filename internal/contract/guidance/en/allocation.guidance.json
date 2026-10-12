@@ -1,0 +1,42 @@
+{
+  "locale": "en",
+  "kind": "Allocation",
+  "summary": "What a budget gives one project, as the budget's holder decides it.",
+  "example": "The cooperative operating budget allocates USD 42,000 to the Quality Check Rollout, approved on 20 August 2025.",
+  "knownAs": [
+    "allocation",
+    "budget allocation",
+    "commitment",
+    "award"
+  ],
+  "definition": "How much a budget gives one project, whether that is approved, still requested or refused, and when it was decided. The budget's holder decides it, not the project: the project's cost lines on that budget take their status from it and may not add up to more. It is not a cost line, which says what the project spends the money on, and not the budget itself.",
+  "steps": {},
+  "fields": {
+    "/metadata/name": {
+      "guide": "A name for the decision, such as the budget and the project: Operating budget for the Quality Check Rollout."
+    },
+    "/spec/source": {
+      "guide": "The budget the money comes from."
+    },
+    "/spec/project": {
+      "guide": "The project the money goes to."
+    },
+    "/spec/amount": {
+      "guide": "How much the budget gives the project, in the currency below."
+    },
+    "/spec/currency": {
+      "guide": "The three-letter code of the currency, such as USD."
+    },
+    "/spec/status": {
+      "guide": "Approved once the holder has agreed it, requested while it waits on a decision, unfunded if it was refused."
+    },
+    "/spec/decided": {
+      "guide": "The day it was decided."
+    },
+    "/spec/note": {
+      "guide": "Anything about the decision the other fields cannot hold, such as a condition on the money."
+    }
+  },
+  "links": {},
+  "checks": {}
+}

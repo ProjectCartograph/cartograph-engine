@@ -400,6 +400,9 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	addKPIChecks(c, spec, isComponent)
 
 	addResourceChecks(c, spec, isComponent)
+	if err := e.addAllocationChecks(ctx, c, id, spec); err != nil {
+		return ProjectChecks{}, err
+	}
 
 	// data
 	addDataChecks(c, spec)
@@ -833,16 +836,15 @@ func addKPIChecks(c checkAdder, spec map[string]any, isComponent bool) {
 func addResourceChecks(c checkAdder, spec map[string]any, isComponent bool) {
 	resources, _ := spec["resources"].([]any)
 
-	// The approved envelope sits with what the project needs to run, not
-	// with where it stops: the charter template puts money and resources
-	// in one section, and scope is the boundary, not the budget.
-	funding, _ := spec["funding"].([]any)
-	if len(funding) > 0 {
-		c.add("resources-funding", "resources", phaseInitiation, checkOK, "Funding is named.")
+	// The project's money is its cost plan, each line on a funding source
+	// (TAXONOMY.md D69), planned once the work is scoped and scheduled.
+	costs, _ := spec["costs"].([]any)
+	if len(costs) > 0 {
+		c.add("resources-funding", "costs", phaseInitiation, checkOK, "The cost plan is named.")
 	} else if isComponent {
-		c.add("resources-funding", "resources", phaseInitiation, checkOK, "Funded through the project it is part of.")
+		c.add("resources-funding", "costs", phaseInitiation, checkOK, "Funded through the project it is part of.")
 	} else {
-		c.add("resources-funding", "resources", phaseInitiation, checkWarn, "No funding line yet.")
+		c.add("resources-funding", "costs", phaseInitiation, checkWarn, "No cost line yet.")
 	}
 
 	hasSponsor := len(resourcesWithRole(spec, "sponsor")) > 0

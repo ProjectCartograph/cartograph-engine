@@ -51,6 +51,25 @@ func (e *Engine) ExportSemantic(ctx context.Context, format string) ([]semantic.
 // dbtName is a record's id as a warehouse name: hyphens as underscores.
 func dbtName(id string) string { return strings.ReplaceAll(id, "-", "_") }
 
+// slugName is words as a model name: "Each delivery graded" is
+// each_delivery_graded.
+func slugName(words string) string {
+	var b strings.Builder
+	gap := false
+	for _, r := range strings.ToLower(strings.TrimSpace(words)) {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			if gap && b.Len() > 0 {
+				b.WriteByte('_')
+			}
+			b.WriteRune(r)
+			gap = false
+		} else {
+			gap = true
+		}
+	}
+	return b.String()
+}
+
 // SemanticLayer is the record as a semantic layer: each data source a KPI
 // measures from as a semantic model, each KPI with a metric as a metric,
 // in the semantic layer's own terms, read as ctx reads the workspace. The
@@ -71,15 +90,23 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		docs[d.id] = d.doc
 	}
 	models := map[string]int{}
-	modelOf := func(source string) (int, bool) {
-		if i, ok := models[source]; ok {
+	// One model per kind of record: a source's own entries, or, for a
+	// source holding several (a warehouse), each kind its metrics count
+	// over (TAXONOMY.md D67).
+	modelOf := func(source, over string) (int, bool) {
+		key := source + "/" + over
+		if i, ok := models[key]; ok {
 			return i, true
 		}
 		doc, ok := docs[source]
 		if !ok {
 			return 0, false
 		}
-		m := semantic.Model{Name: dbtName(source), Source: source, Ref: dbtName(source), Entity: dbtName(source)}
+		name := dbtName(source)
+		if over != "" {
+			name += "__" + slugName(over)
+		}
+		m := semantic.Model{Name: name, Source: source, Ref: name, Entity: name}
 		sm, _ := specOf(doc)["semanticModel"].(map[string]any)
 		if sm == nil {
 			// Which warehouse model a source is is set outside Cartograph
@@ -100,14 +127,17 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 			}
 		}
 		m.Description = nameOf(doc, source)
-		models[source] = len(l.Models)
+		if over != "" {
+			m.Description += ": " + over
+		}
+		models[key] = len(l.Models)
 		l.Models = append(l.Models, m)
-		return models[source], true
+		return models[key], true
 	}
 	measure := func(kpi, name string, v any) (string, bool) {
 		ms, _ := v.(map[string]any)
 		source, _ := ms["source"].(string)
-		i, ok := modelOf(source)
+		i, ok := modelOf(source, "")
 		if !ok {
 			notes = append(notes, fmt.Sprintf("KPI/%s: its measure is over %q, which is not a data source; the metric is left out.", kpi, source))
 			return "", false
@@ -134,7 +164,7 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		if name, ok := sourceMetric[key]; ok {
 			return name, true
 		}
-		i, ok := modelOf(r.Source)
+		i, ok := modelOf(r.Source, r.Metric.Over)
 		if !ok {
 			return "", false
 		}

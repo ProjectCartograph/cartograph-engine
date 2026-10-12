@@ -175,8 +175,8 @@ func roleResources(spec map[string]any, role string) []string {
 
 func fundingSources(spec map[string]any) []string {
 	var out []string
-	funding, _ := spec["funding"].([]any)
-	for _, f := range funding {
+	costs, _ := spec["costs"].([]any)
+	for _, f := range costs {
 		fm, _ := f.(map[string]any)
 		if s, _ := fm["source"].(string); s != "" {
 			out = append(out, s)

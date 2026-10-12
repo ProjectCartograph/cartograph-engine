@@ -1855,3 +1855,111 @@ that write them work as before; the interface no longer writes them.
 (D63's): it described one condition well and an aggregation poorly, and
 could not carry a source's metrics for several indicators to share.
 Joins, which belong to the warehouse model, not to a metric.
+
+### D65. A source may change continuously, or when something happens. *(resolved)*
+
+**The problem.** A data source's refresh offered only a calendar
+rhythm (daily to annual) or irregular. An operational system holds the
+records themselves, changing as each is made, and some sources change
+when an event sets them off (a harvest closed, a contract signed), not
+on a calendar. Neither fitted, so a real-time source was called daily
+and an event-driven one irregular.
+
+**The discipline.** The Dublin Core collection frequency vocabulary,
+which irregular already comes from, has `continuous`: updated without
+delay as the content changes. It has no term for a change set off by an
+event.
+
+**What Cartograph does.** Refresh takes `continuous` (said "Real time")
+and `onEvent` (said "When something happens") beside the rhythms and
+`irregular`. Irregular stays for a source that changes with no rhythm
+and no event that can be named. A number from a source still cannot
+change more often than its source does.
+
+### D66. An indicator may be best at a value, not only higher or lower. *(resolved)*
+
+**The problem.** An indicator's direction was increase, decrease or
+maintain. A ratio meant to sit at a level, such as 1.0 for supply to
+demand, was neither: higher and lower are both worse.
+
+**The discipline.** Quality engineering names three cases of what is
+good in a measure: larger is better, smaller is better, and nominal is
+best (closest to a target). Specification limits add a floor, a ceiling
+or a tolerance either side.
+
+**What Cartograph does.** An indicator's direction takes `reach`, as a
+key result's already does: the target value is best, and a reading is
+better the closer it is. With specLimits the four directions say every
+combination: increase with a floor, decrease with a ceiling, reach with
+a tolerance either side, maintain anywhere within both limits. A target
+for reach may lie above or below today's figure, so it is never read as
+moving against the direction.
+
+### D67. A warehouse holds many kinds of record; each metric says which it counts. *(resolved)*
+
+**The problem.** A data source said what one entry of it is (D64),
+which assumes one kind of record. A warehouse, a valid source, holds
+many: deliveries, payments, orders. No single sentence says what one of
+its entries is, so metrics over different records could not say what
+they count.
+
+**The discipline.** A semantic layer gives each kind of record its own
+semantic model with its own entity; measures sit on the model of the
+records they aggregate.
+
+**What Cartograph does.** A data source may be a `warehouse`. Each
+metric may say what one entry it counts over is (`over`, in words: each
+delivery graded); left out, it is the source's own entry (`records`).
+The export writes the metrics over one kind of record as one semantic
+model, named after the source and the record, for the analyst to map.
+
+### D68. An indicator may be read daily, weekly or every two weeks. *(resolved)*
+
+**The problem.** A reporting cycle's periods were months (D8) or named
+periods ending in a month (D40), and a reading was filed by the month
+its period ends. An indicator read every day, or every two weeks, could
+not be said.
+
+**The discipline.** Statistical process control charts a reading per
+subgroup at whatever interval the process runs; daily and weekly
+subgroups are ordinary.
+
+**What Cartograph does.** A cycle may have periods of days
+(`periodDays`: 1, 7 or 14) from a first day (`startDate`), beside
+periods of months and named periods, one of the three. Its periods end
+on days, and a reading on it is filed by the day its period ends
+(YYYY-MM-DD); a reading on a cycle of months is still filed by the
+month. A reading's period is a month or a day (`PeriodEnd`), so readings
+already filed stay valid.
+
+### D69. A project's money is its cost plan, each line on an allocation. *(resolved)*
+
+**The problem.** A project said its money twice: funding lines (an
+amount, a source, a status) and a cost plan (category, basis, amount,
+period, source, status). The two agreed or they did not, and nothing
+said which held. A cost line's period repeated its source's, and its
+status was whatever the project typed, though only the budget's holder
+decides it.
+
+**The discipline.** A charter's resource plan breaks the budget into cost
+lines, each drawing on a budget (D51); the budget holder, not the
+project, decides an allocation (PMI's cost management, a ledger's
+commitments).
+
+**What Cartograph does.** The cost plan is the project's money. Each
+line says what it pays for, how much, how the amount is worked out
+(basis: two analysts for six months, a supplier's quote) and the funding
+source it draws on. What a source gives a project is an **Allocation**,
+a record of its own that the budget's holder keeps: the source, the
+project, the amount, approved, requested or refused, and when it was
+decided. It comes after the project in the order of work (D28), since a
+source, which comes before, may not name a project. A line on a source
+takes its status from the allocation, and the lines on one source may
+not come to more than it allocated (a check). A line's period is its source's, not asked again. `funding` on a
+project is read from older manifests and folded into the cost plan, one
+line called Funding each, and is no longer written. The cost plan and
+the procurement plan are plans: they are walked in Plan, after the
+schedule, so a purchase can be required by a milestone and a risk can
+bear on a procurement item. Responsibilities follow the deliverables
+they assign.
+

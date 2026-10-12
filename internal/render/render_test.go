@@ -540,6 +540,7 @@ spec:
       - id: pr-1
         problem: {situation: depots grade produce differently}
         change: {what: one grading standard in every depot}
+    scopeIn: [grading at every depot, "", the grading guide]
 `
 	if err := e.PutWorking(ctx, "Project", "test-project", []byte(projectYAML)); err != nil {
 		t.Fatal(err)
@@ -572,7 +573,10 @@ spec:
 	for _, p := range parts {
 		all += p.HTML
 	}
-	for _, want := range []string{`<span data-field="/spec/summary/about" data-empty="">`, `data-field="/spec/objectives/0/objective" data-empty=""`, `data-add="/spec/summary/problems"`} {
+	for _, want := range []string{`<span data-field="/spec/summary/about" data-empty="">`, `data-field="/spec/objectives/0/objective" data-empty=""`, `data-add="/spec/summary/problems"`,
+		// A line just added shows empty, to type in, and the lines after it
+		// keep their own index.
+		`<span data-field="/spec/summary/scopeIn/1" data-empty="">`, `data-field="/spec/summary/scopeIn/2">the grading guide`} {
 		if !contains(all, want) {
 			t.Errorf("a bare charter as parts lacks %s", want)
 		}
@@ -614,7 +618,8 @@ func hasField(fields []string, want string) bool {
 }
 
 // A problem reads as one sentence in the printed charter too: its groups
-// named, the parts lower-cased where it runs on, nothing marked (#79).
+// named, why from the first cause found, the parts lower-cased where it
+// runs on, nothing marked (#79, #81).
 func TestAProblemReadsAsASentence(t *testing.T) {
 	ctx := context.Background()
 	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
@@ -631,7 +636,7 @@ func TestAProblemReadsAsASentence(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	y := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p\n  name: P\nspec:\n  team: t\n  summary:\n    problems:\n      - groups: [members, buyers]\n        problem: {situation: Learn of a failed delivery a season late, cause: Checks happen after dispatch.}\n        change: {what: Every delivery is checked at intake}\n"
+	y := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p\n  name: P\nspec:\n  team: t\n  summary:\n    problems:\n      - groups: [members, buyers]\n        problem: {situation: Learn of a failed delivery a season late, cause: An earlier cause, causes: [{cause: Checks happen after dispatch.}]}\n        change: {what: Every delivery is checked at intake}\n"
 	if err := e.PutWorking(ctx, "Project", "p", []byte(y)); err != nil {
 		t.Fatal(err)
 	}

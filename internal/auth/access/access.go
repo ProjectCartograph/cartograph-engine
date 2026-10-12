@@ -35,7 +35,7 @@ var teamKinds = []string{"Project", "Portfolio", "PortfolioDecisions", "Programm
 
 // registers are the shared registers every contributor keeps.
 var registers = []string{
-	"Assumption", "BeneficiaryGroup", "FundingSource", "Gap", "KPI", "KPIReadings",
+	"Allocation", "Assumption", "BeneficiaryGroup", "FundingSource", "Gap", "KPI", "KPIReadings",
 	"ReportingCycle", "Resource", "Segment", "StakeholderMap", "Unit",
 }
 

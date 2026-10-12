@@ -357,3 +357,76 @@ func TestTheExampleThroughDMAIC(t *testing.T) {
 		t.Errorf("sigma level %v against Cpk %v", *cc.SigmaLevel, *cc.Cpk)
 	}
 }
+
+// A warehouse holds more than one kind of record: each metric says what
+// it counts over, and the export writes the metrics over one kind as one
+// semantic model (TAXONOMY.md D67).
+func TestAWarehouseIsAModelPerKindOfRecord(t *testing.T) {
+	t.Parallel()
+	e := newTestEngine(t)
+	ctx := context.Background()
+	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	src := "apiVersion: cartograph/v1\nkind: DataSource\nmetadata: {id: cooperative-warehouse, name: Cooperative Warehouse}\nspec:\n  team: quality-team\n  category: warehouse\n  metrics:\n    - {id: deliveries, name: Deliveries, over: Each delivery graded, aggregation: 'COUNT(*)'}\n    - {id: orders, name: Orders, over: Each order a buyer placed, aggregation: 'COUNT(*)'}\n"
+	if err := e.PutWorking(ctx, "DataSource", "cooperative-warehouse", []byte(src)); err != nil {
+		t.Fatal(err)
+	}
+	kpi := "apiVersion: cartograph/v1\nkind: KPI\nmetadata: {id: supply-to-demand, name: Supply to demand}\nspec:\n  definition: Deliveries per order placed.\n  unit: ratio\n  direction: reach\n  sources: [cooperative-warehouse]\n  metric:\n    type: ratio\n    of: {dataSource: cooperative-warehouse, metric: deliveries}\n    outOf: {dataSource: cooperative-warehouse, metric: orders}\n"
+	if err := e.PutWorking(ctx, "KPI", "supply-to-demand", []byte(kpi)); err != nil {
+		t.Fatal(err)
+	}
+	l, _, err := e.SemanticLayer(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := map[string]bool{}
+	for _, m := range l.Models {
+		if m.Source == "cooperative-warehouse" {
+			models[m.Name] = len(m.Measures) == 1
+		}
+	}
+	if !models["cooperative_warehouse__each_delivery_graded"] || !models["cooperative_warehouse__each_order_a_buyer_placed"] || len(models) != 2 {
+		t.Fatalf("models: %v", models)
+	}
+}
+
+// A project's cost lines on a budget are held to what the budget's
+// holder allocated it (TAXONOMY.md D69): the example's lines come to the
+// allocation, and a line raised past it is said.
+func TestCostLinesAreHeldToTheirAllocation(t *testing.T) {
+	t.Parallel()
+	e := newTestEngine(t)
+	ctx := context.Background()
+	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	check := func() engine.Check {
+		v, err := e.Get(ctx, "Project", "quality-check-rollout")
+		if err != nil {
+			t.Fatal(err)
+		}
+		checks, err := e.ChecksOf(ctx, "Project", "quality-check-rollout", v.YAML)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range checks {
+			if c.ID == "costs-allocation" {
+				return c
+			}
+		}
+		t.Fatal("no allocation check")
+		return engine.Check{}
+	}
+	if c := check(); c.Open() {
+		t.Fatalf("the example's lines: %+v", c)
+	}
+	v, _ := e.Get(ctx, "Project", "quality-check-rollout")
+	raised := strings.Replace(string(v.YAML), "amount: 24000", "amount: 30000", 1)
+	if err := e.PutWorking(ctx, "Project", "quality-check-rollout", []byte(raised)); err != nil {
+		t.Fatal(err)
+	}
+	if c := check(); c.State != "warn" || !strings.Contains(c.Message, "USD 48,000 planned, USD 42,000 allocated") {
+		t.Fatalf("a line past the allocation: %+v", c)
+	}
+}

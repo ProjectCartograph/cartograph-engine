@@ -1,7 +1,9 @@
 package engine
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
@@ -145,7 +147,37 @@ func (e *Engine) SchemaJSON(kind string) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrUnknownKind, kind)
 	}
-	return b, nil
+	return e.bundled(kind, b)
+}
+
+// commonRef is how a kind's schema points into the shared definitions.
+const commonRef = "common.schema.json#/$defs/"
+
+// bundled is a kind's schema as its author wrote it, its properties in
+// their order, with the shared definitions it uses carried along under
+// $defs and its references pointed at them: whoever reads it, an
+// interface or a terminal, resolves every field in the one document
+// rather than guessing what a reference names (a Day is a date).
+func (e *Engine) bundled(kind string, raw []byte) ([]byte, error) {
+	defs, err := e.SchemaDefs(kind)
+	if err != nil || len(defs) == 0 {
+		return raw, err
+	}
+	enc, err := json.Marshal(defs)
+	if err != nil {
+		return nil, err
+	}
+	local := []byte("#/$defs/")
+	body := bytes.ReplaceAll(bytes.TrimSpace(raw), []byte(commonRef), local)
+	enc = bytes.ReplaceAll(enc, []byte(commonRef), local)
+	end := bytes.LastIndexByte(body, '}')
+	if end < 0 {
+		return raw, nil
+	}
+	out := append([]byte{}, body[:end]...)
+	out = append(bytes.TrimRight(out, " \n\t"), []byte(",\n  \"$defs\": ")...)
+	out = append(out, enc...)
+	return append(out, []byte("\n}\n")...), nil
 }
 
 func (e *Engine) Schema(kind string) (map[string]any, error) {
