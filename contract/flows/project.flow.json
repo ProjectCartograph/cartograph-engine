@@ -322,7 +322,7 @@
             "path": "/spec/funding",
             "control": "list",
             "key": "currency",
-            "title": "Approved funding",
+            "title": "Funding",
             "hint": "An amount for each currency.",
             "checks": [
               "resources-funding",
