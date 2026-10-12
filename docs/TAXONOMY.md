@@ -1984,3 +1984,28 @@ search, a picker and a mention match a label's key and value as they
 match the name. `alias` is kept for what was written before and is no
 longer filled in.
 
+### D71. Where a field's choices are an organisation's own, they are its vocabulary. *(resolved)*
+
+**The problem.** A data source's classification, how often it changes
+and the form it takes were fixed lists in the contract. An organisation
+classifies by its own scheme, and a frequency or a form outside the
+list could not be said at all, or was dropped when read.
+
+**The discipline.** ISO/IEC 27002 (5.12) leaves the classification
+scheme to the organisation: its levels, their criteria, how each is
+handled; a four-level scheme is its example. DCAT-AP says how often a
+dataset changes by the EU Publications Office frequency list
+(accrualPeriodicity), a long and growing list, and a dataset's form by
+its distributions' formats, not by a short list.
+
+**What Cartograph does.** Such a field names a vocabulary
+(`x-cartograph-vocabulary`): `classification`, `refresh`,
+`dataSourceCategory`. The workspace starts from the standard terms (the
+ISO example levels; the EU frequency terms with Dublin Core's continuous
+and irregular and onEvent from D65; the forms Cartograph offered) and may
+set its own list for any of them in settings, each term a value, a
+label and what it means. The settings serve the merged lists to every
+interface. A value outside the workspace's list is not refused: a check
+names it and the words the list has. Fields that drive the engine's own
+reasoning (how records get in, personal data) stay fixed.
+

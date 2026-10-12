@@ -267,18 +267,9 @@
     },
     "Refresh": {
       "type": "string",
-      "description": "How often the contents change: continuous as each record is made (an operational system, a live feed), onEvent when something sets it off rather than the calendar (TAXONOMY.md D65), a rhythm from daily to annual, or irregular with no rhythm at all. Terms from the Dublin Core collection frequency vocabulary where it has one.",
-      "enum": [
-        "continuous",
-        "onEvent",
-        "daily",
-        "weekly",
-        "monthly",
-        "quarterly",
-        "termly",
-        "annual",
-        "irregular"
-      ]
+      "minLength": 1,
+      "x-cartograph-vocabulary": "refresh",
+      "description": "How often the contents change, from the workspace's refresh vocabulary: the EU Publications Office frequency terms DCAT-AP uses for accrualPeriodicity (continuous, daily, weekly, every two weeks, monthly, quarterly, twice a year, annual, irregular, unknown) and onEvent, unless the workspace sets its own (TAXONOMY.md D65, D71)."
     },
     "Handoff": {
       "type": "string",

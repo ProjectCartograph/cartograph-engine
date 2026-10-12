@@ -153,16 +153,8 @@
         },
         "category": {
           "type": "string",
-          "enum": [
-            "database",
-            "spreadsheet",
-            "paperRecord",
-            "formOrSurvey",
-            "operationalSystem",
-            "apiOrFeed",
-            "documentStore",
-            "warehouse"
-          ],
+          "minLength": 1,
+          "x-cartograph-vocabulary": "dataSourceCategory",
           "description": "What form the source takes. Who runs it is provenance, a separate question (DCAT keeps the dataset, its distribution and its publisher apart)."
         },
         "provenance": {
@@ -186,17 +178,7 @@
         },
         "refresh": {
           "$ref": "common.schema.json#/$defs/Refresh",
-          "x-cartograph-enum": [
-            "continuous",
-            "onEvent",
-            "daily",
-            "weekly",
-            "monthly",
-            "quarterly",
-            "termly",
-            "annual",
-            "irregular"
-          ]
+          "x-cartograph-vocabulary": "refresh"
         },
         "capture": {
           "type": "string",
@@ -205,13 +187,9 @@
         },
         "classification": {
           "type": "string",
-          "enum": [
-            "public",
-            "internal",
-            "confidential",
-            "restricted"
-          ],
-          "description": "Information classification from a fixed scheme (ISO/IEC 27002:2022, 5.12 and 5.13: classify by a labelled scheme). Older free-text values that match a level are rewritten on read; any other value is dropped with a note, since guessing a classification is worse than leaving it unset."
+          "minLength": 1,
+          "x-cartograph-vocabulary": "classification",
+          "description": "Information classification, from the workspace's own scheme (ISO/IEC 27002:2022, 5.12: each organisation defines its levels and their criteria). The standard four levels unless the workspace sets its own in settings (vocabularies.classification); a value outside the scheme is said by a check, not refused (TAXONOMY.md D71)."
         },
         "qualityIssues": {
           "type": "string"

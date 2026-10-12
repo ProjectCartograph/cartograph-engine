@@ -62,7 +62,25 @@
             "maxItems": 5
           }
         },
-        "chromium": {
+        "vocabularies": {
+      "type": "object",
+      "description": "The words this workspace uses where a field's choices are its own (TAXONOMY.md D71), keyed by the vocabulary a field names (x-cartograph-vocabulary): classification, refresh, dataSourceCategory. A list here replaces the standard one; each term is the value a record stores, what a person reads, and what it means.",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "label"],
+          "properties": {
+            "value": { "type": "string", "minLength": 1, "maxLength": 60 },
+            "label": { "type": "string", "minLength": 1, "maxLength": 60 },
+            "description": { "type": "string", "maxLength": 300 }
+          }
+        }
+      }
+    },
+    "chromium": {
           "type": "string",
           "minLength": 1,
           "description": "Path to the chromium or chromium-like executable for PDF rendering. Omit it and the renderer takes the CHROMIUM environment variable, or the first chromium on PATH."

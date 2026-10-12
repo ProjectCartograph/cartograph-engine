@@ -73,8 +73,14 @@ func capital(s string) string {
 // dataSourceChecksOf checks each metric a data source gives reads as an
 // aggregation, saying what it reads when it does and why not when it
 // does not, on the metric's own field.
-func (e *Engine) dataSourceChecksOf(_ context.Context, _ string, doc map[string]any) ([]ProgrammeCheck, error) {
-	var out []ProgrammeCheck
+func (e *Engine) dataSourceChecksOf(ctx context.Context, _ string, doc map[string]any) ([]ProgrammeCheck, error) {
+	// Its classification, refresh and form, held to the workspace's own
+	// words (TAXONOMY.md D71).
+	settings, err := e.settingsOnly(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := vocabularyChecks(settings.Vocabularies, specOf(doc))
 	for _, m := range sourceMetricsOf(doc) {
 		label := m.Name
 		if label == "" {

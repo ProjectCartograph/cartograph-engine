@@ -134,10 +134,10 @@ func renameEnums(kind string, spec map[string]any) []string {
 					spec["classification"] = lc
 					notes = append(notes, fmt.Sprintf("classification %q renamed to %q", c, lc))
 				}
-			default:
-				delete(spec, "classification")
-				notes = append(notes, fmt.Sprintf("classification %q is not in the scheme and was dropped", c))
 			}
+			// Any other value is the workspace's own level, kept: the
+			// scheme is the organisation's (TAXONOMY.md D71), and a check
+			// says when its list does not have it.
 		}
 		if r, ok := spec["refresh"].(map[string]any); ok {
 			set(r, "cadence", "refresh")

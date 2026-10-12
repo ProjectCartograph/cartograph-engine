@@ -46,7 +46,30 @@ func loadNames(ctx context.Context, e *engine.Engine) names {
 		}
 		n[kind] = byID
 	}
+	// The workspace's own words for fields whose choices are its own
+	// (TAXONOMY.md D71), read as a register is.
+	if s, err := e.GetSettings(ctx); err == nil {
+		for name, terms := range s.Vocabularies {
+			byValue := map[string]string{}
+			for _, t := range terms {
+				byValue[t.Value] = t.Label
+			}
+			n[vocabKey+name] = byValue
+		}
+	}
 	return n
+}
+
+// vocabKey marks a vocabulary's words among the registers' names.
+const vocabKey = "vocabulary:"
+
+// word is what a person reads for a stored choice: the workspace's word
+// where its vocabulary has one, else the fixed label, else the value.
+func (n names) word(vocabulary, value string) string {
+	if w := n[vocabKey+vocabulary][value]; w != "" {
+		return w
+	}
+	return label(vocabulary, value)
 }
 
 // of returns the name of a kind's item, or the id when the register does
@@ -730,7 +753,7 @@ func (d *doc) data(n names, data map[string]any) {
 	for _, p := range produces {
 		made = append(made, []string{
 			label("output", str(p["output"])), n.of("DataSource", str(p["sink"])), str(p["purpose"]),
-			label("refresh", str(p["refresh"])), chip("personal", personal(str(p["personalData"]))),
+			n.word("refresh", str(p["refresh"])), chip("personal", personal(str(p["personalData"]))),
 		})
 	}
 	if len(made) > 0 {

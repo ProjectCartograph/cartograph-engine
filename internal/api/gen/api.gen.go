@@ -2424,6 +2424,9 @@ type Settings struct {
 		Source       *string `json:"source,omitempty"`
 		Vision       *string `json:"vision,omitempty"`
 	} `json:"purpose,omitempty"`
+
+	// Vocabularies The words this workspace uses for a field whose choices are its own (TAXONOMY.md D71): a data source's classification, refresh and form, the standard terms unless the workspace sets its own. Keyed by the vocabulary a schema field names in x-cartograph-vocabulary.
+	Vocabularies *map[string][]VocabularyTerm `json:"vocabularies,omitempty"`
 }
 
 // SharedDocument defines model for SharedDocument.
@@ -2615,6 +2618,18 @@ type Version struct {
 	Number int       `json:"number"`
 	On     time.Time `json:"on"`
 	Reason string    `json:"reason"`
+}
+
+// VocabularyTerm defines model for VocabularyTerm.
+type VocabularyTerm struct {
+	// Description What the choice means, shown under it where it is chosen.
+	Description *string `json:"description,omitempty"`
+
+	// Label What a person reads.
+	Label string `json:"label"`
+
+	// Value What a record stores.
+	Value string `json:"value"`
 }
 
 // Waits defines model for Waits.
