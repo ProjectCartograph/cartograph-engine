@@ -1963,3 +1963,24 @@ schedule, so a purchase can be required by a milestone and a risk can
 bear on a procurement item. Responsibilities follow the deliverables
 they assign.
 
+### D70. What people call a record besides its name is a label. *(resolved)*
+
+**The problem.** A record's id was made from its name in the
+interface, though ids are generated, and a project's name was suggested
+from the first words of its description. People also refer to a record
+by names Cartograph did not give it: an internal code, a working name,
+an old name. One alias, made from the name, could hold only one of
+them.
+
+**The discipline.** Kubernetes keeps an object's identity (a generated
+uid), its name, and its labels apart: labels are free key and value
+pairs anyone can add and select by.
+
+**What Cartograph does.** An id is generated, the kind and eight random
+hexadecimal digits, wherever a record is made. A name is what the person
+writes. Every other name for it is a label, written Kubernetes' way: a
+key alone (an internal code) or a key and a value (`code=CA-2026`). A
+search, a picker and a mention match a label's key and value as they
+match the name. `alias` is kept for what was written before and is no
+longer filled in.
+

@@ -160,7 +160,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "Free-form key and value pairs for grouping and filtering, the same shape and the same purpose Kubernetes gives them. Deliberately unvalidated: a label is for the cuts somebody wants to make later and nobody anticipated: which region, which office, which reporting pack. A fact that belongs to what the thing *is* is a property with a name and a check, not a label; putting an anticipated fact here loses the check that would have caught it missing. The cost is that a typo makes a new group, which is the right way round for a cut nobody planned. See TAXONOMY.md D11."
+      "description": "Free-form key and value pairs for grouping and filtering, the same shape and the same purpose Kubernetes gives them. Deliberately unvalidated: a label is for the cuts somebody wants to make later and nobody anticipated: which region, which office, which reporting pack. A fact that belongs to what the thing *is* is a property with a name and a check, not a label; putting an anticipated fact here loses the check that would have caught it missing. The cost is that a typo makes a new group, which is the right way round for a cut nobody planned. A label is also how people refer to a record besides its name: an internal code or a working name, written as a key alone (an empty value) or a key and a value. Searches and pickers match a label's key and value as they match the name. See TAXONOMY.md D11, D70."
     },
     "Metadata": {
       "type": "object",
@@ -181,7 +181,7 @@
           "type": "string",
           "maxLength": 80,
           "pattern": "^[^\\n]*$",
-          "description": "A short reference people quote this by among themselves: a project code, a working name, the thing somebody types into a search box. Filled in from the name as dashed lower-case words and editable from there, and it follows the name until somebody changes it, after which it is theirs. Deliberately not an identifier Cartograph uses: `id` is what references resolve against and is fixed once chosen, which is exactly why a name people actually say needs somewhere else to live. Nothing validates it beyond a length and a single line, for the same reason nothing validates a label."
+          "description": "Superseded by labels, which hold every name people use for a record (TAXONOMY.md D70): kept for what was written before, and still the reference a charter gives. A short reference people quote this by among themselves: a project code, a working name, the thing somebody types into a search box. Filled in from the name as dashed lower-case words and editable from there, and it follows the name until somebody changes it, after which it is theirs. Deliberately not an identifier Cartograph uses: `id` is what references resolve against and is fixed once chosen, which is exactly why a name people actually say needs somewhere else to live. Nothing validates it beyond a length and a single line, for the same reason nothing validates a label."
         },
         "labels": {
           "$ref": "#/$defs/Labels"

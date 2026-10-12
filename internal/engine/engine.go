@@ -565,18 +565,37 @@ func (e *Engine) List(ctx context.Context, kind string, f Filter, includeDrafts 
 	for i, r := range f.Refs {
 		filters[i] = store.RefFilter{Kind: r.Kind, ID: r.ID}
 	}
-	out, err := e.manifests.ListSummaries(ctx, kind, f.Q, filters)
+	// A search matches a record's labels as well as its name and id: the
+	// names people use for it besides (an internal code, a short name) are
+	// its labels (TAXONOMY.md D70). The store is asked for the kind, and
+	// the words are matched here, once, whichever store holds it.
+	out, err := e.manifests.ListSummaries(ctx, kind, "", filters)
 	if err != nil {
 		return nil, err
 	}
+	q := strings.ToLower(strings.TrimSpace(f.Q))
 	// A record the change set removes is not listed.
 	kept := out[:0]
 	for _, s := range out {
-		if !removedInPlay(ctx, kind, s.ID) {
+		if !removedInPlay(ctx, kind, s.ID) && (q == "" || matchesQuery(q, s.ID, s.Name, s.Labels)) {
 			kept = append(kept, s)
 		}
 	}
 	return e.withProposedSummaries(ctx, kind, f, kept), nil
+}
+
+// matchesQuery reports whether a lower-cased search is in a record's id,
+// its name, or any of its labels' keys and values.
+func matchesQuery(q, id, name string, labels map[string]string) bool {
+	if strings.Contains(strings.ToLower(id), q) || strings.Contains(strings.ToLower(name), q) {
+		return true
+	}
+	for k, v := range labels {
+		if strings.Contains(strings.ToLower(k), q) || strings.Contains(strings.ToLower(v), q) {
+			return true
+		}
+	}
+	return false
 }
 
 // withProposedSummaries lays a change set's drafts of a kind over a list,
@@ -612,7 +631,16 @@ func (e *Engine) withProposedSummaries(ctx context.Context, kind string, f Filte
 			list[i].Name, list[i].Proposed = name, "changed"
 			continue
 		}
-		if q != "" && !strings.Contains(strings.ToLower(name), q) && !strings.Contains(r.ID, q) {
+		var labels map[string]string
+		if md, ok := doc["metadata"].(map[string]any); ok {
+			if l, ok := md["labels"].(map[string]any); ok {
+				labels = map[string]string{}
+				for k, v := range l {
+					labels[k], _ = v.(string)
+				}
+			}
+		}
+		if q != "" && !matchesQuery(q, r.ID, name, labels) {
 			continue
 		}
 		if !namesAll(extractRefs(doc, e.refRules[kind]), f.Refs) {
