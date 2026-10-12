@@ -127,12 +127,21 @@ func (e *Engine) LineageOf(ctx context.Context, id, name string, uses, produces 
 	return out, nil
 }
 
-// dataOf is the data sources a project's spec uses and produces into.
+// dataOf is the data sources a project's spec uses and produces into. A
+// source a key result is measured from is one the project reads, whether
+// or not its data list repeats it.
 func dataOf(spec map[string]any) (uses, produces []string) {
 	data, _ := spec["data"].(map[string]any)
 	for _, c := range listOf(data["consumes"]) {
 		if s, _ := c["source"].(string); s != "" {
 			uses = append(uses, s)
+		}
+	}
+	for _, o := range listOf(spec["objectives"]) {
+		for _, kr := range listOf(o["keyResults"]) {
+			if s, _ := kr["source"].(string); s != "" {
+				uses = append(uses, s)
+			}
 		}
 	}
 	for _, p := range listOf(data["produces"]) {
