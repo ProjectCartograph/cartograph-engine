@@ -150,8 +150,10 @@ var labels = map[string]map[string]string{
 		"documentsOrFiles": "Documents or files", "extractOrReport": "Extract or report",
 	},
 	"refresh": {
+		"continuous": "Real time", "onEvent": "When something happens",
 		"daily": "Daily", "weekly": "Weekly", "monthly": "Monthly",
-		"quarterly": "Quarterly", "annual": "Annual", "adHoc": "Ad hoc",
+		"quarterly": "Quarterly", "termly": "Each term", "annual": "Annual",
+		"irregular": "Irregular",
 	},
 	"personal":  {"none": "None", "personal": "Personal", "sensitive": "Sensitive"},
 	"readiness": {"ready": "Ready", "open": "Open points", "blocking": "Blocking"},

@@ -256,7 +256,10 @@
     },
     "Refresh": {
       "type": "string",
+      "description": "How often the contents change: continuous as each record is made (an operational system, a live feed), onEvent when something sets it off rather than the calendar (TAXONOMY.md D65), a rhythm from daily to annual, or irregular with no rhythm at all. Terms from the Dublin Core collection frequency vocabulary where it has one.",
       "enum": [
+        "continuous",
+        "onEvent",
         "daily",
         "weekly",
         "monthly",

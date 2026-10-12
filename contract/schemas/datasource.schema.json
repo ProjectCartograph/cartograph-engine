@@ -181,6 +181,8 @@
         "refresh": {
           "$ref": "common.schema.json#/$defs/Refresh",
           "x-cartograph-enum": [
+            "continuous",
+            "onEvent",
             "daily",
             "weekly",
             "monthly",

@@ -1855,3 +1855,23 @@ that write them work as before; the interface no longer writes them.
 (D63's): it described one condition well and an aggregation poorly, and
 could not carry a source's metrics for several indicators to share.
 Joins, which belong to the warehouse model, not to a metric.
+
+### D65. A source may change continuously, or when something happens. *(resolved)*
+
+**The problem.** A data source's refresh offered only a calendar
+rhythm (daily to annual) or irregular. An operational system holds the
+records themselves, changing as each is made, and some sources change
+when an event sets them off (a harvest closed, a contract signed), not
+on a calendar. Neither fitted, so a real-time source was called daily
+and an event-driven one irregular.
+
+**The discipline.** The Dublin Core collection frequency vocabulary,
+which irregular already comes from, has `continuous`: updated without
+delay as the content changes. It has no term for a change set off by an
+event.
+
+**What Cartograph does.** Refresh takes `continuous` (said "Real time")
+and `onEvent` (said "When something happens") beside the rhythms and
+`irregular`. Irregular stays for a source that changes with no rhythm
+and no event that can be named. A number from a source still cannot
+change more often than its source does.
