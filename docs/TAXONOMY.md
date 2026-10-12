@@ -1932,3 +1932,34 @@ on days, and a reading on it is filed by the day its period ends
 month. A reading's period is a month or a day (`PeriodEnd`), so readings
 already filed stay valid.
 
+### D69. A project's money is its cost plan, each line on an allocation. *(resolved)*
+
+**The problem.** A project said its money twice: funding lines (an
+amount, a source, a status) and a cost plan (category, basis, amount,
+period, source, status). The two agreed or they did not, and nothing
+said which held. A cost line's period repeated its source's, and its
+status was whatever the project typed, though only the budget's holder
+decides it.
+
+**The discipline.** A charter's resource plan breaks the budget into cost
+lines, each drawing on a budget (D51); the budget holder, not the
+project, decides an allocation (PMI's cost management, a ledger's
+commitments).
+
+**What Cartograph does.** The cost plan is the project's money. Each
+line says what it pays for, how much, how the amount is worked out
+(basis: two analysts for six months, a supplier's quote) and the funding
+source it draws on. What a source gives a project is an **Allocation**,
+a record of its own that the budget's holder keeps: the source, the
+project, the amount, approved, requested or refused, and when it was
+decided. It comes after the project in the order of work (D28), since a
+source, which comes before, may not name a project. A line on a source
+takes its status from the allocation, and the lines on one source may
+not come to more than it allocated (a check). A line's period is its source's, not asked again. `funding` on a
+project is read from older manifests and folded into the cost plan, one
+line called Funding each, and is no longer written. The cost plan and
+the procurement plan are plans: they are walked in Plan, after the
+schedule, so a purchase can be required by a milestone and a risk can
+bear on a procurement item. Responsibilities follow the deliverables
+they assign.
+

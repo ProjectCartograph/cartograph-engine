@@ -390,3 +390,43 @@ func TestAWarehouseIsAModelPerKindOfRecord(t *testing.T) {
 		t.Fatalf("models: %v", models)
 	}
 }
+
+// A project's cost lines on a budget are held to what the budget's
+// holder allocated it (TAXONOMY.md D69): the example's lines come to the
+// allocation, and a line raised past it is said.
+func TestCostLinesAreHeldToTheirAllocation(t *testing.T) {
+	t.Parallel()
+	e := newTestEngine(t)
+	ctx := context.Background()
+	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	check := func() engine.Check {
+		v, err := e.Get(ctx, "Project", "quality-check-rollout")
+		if err != nil {
+			t.Fatal(err)
+		}
+		checks, err := e.ChecksOf(ctx, "Project", "quality-check-rollout", v.YAML)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range checks {
+			if c.ID == "costs-allocation" {
+				return c
+			}
+		}
+		t.Fatal("no allocation check")
+		return engine.Check{}
+	}
+	if c := check(); c.Open() {
+		t.Fatalf("the example's lines: %+v", c)
+	}
+	v, _ := e.Get(ctx, "Project", "quality-check-rollout")
+	raised := strings.Replace(string(v.YAML), "amount: 24000", "amount: 30000", 1)
+	if err := e.PutWorking(ctx, "Project", "quality-check-rollout", []byte(raised)); err != nil {
+		t.Fatal(err)
+	}
+	if c := check(); c.State != "warn" || !strings.Contains(c.Message, "USD 48,000 planned, USD 42,000 allocated") {
+		t.Fatalf("a line past the allocation: %+v", c)
+	}
+}

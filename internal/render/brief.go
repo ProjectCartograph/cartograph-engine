@@ -152,9 +152,10 @@ func (d *doc) deliverablesBrief(p plan) {
 
 // costsBrief prints the cost lines; a funding source every line shares is
 // said once.
-func (d *doc) costsBrief(p plan) {
+func (d *doc) costsBrief(p plan, total string) {
 	cs := list(p.spec["costs"])
 	if len(cs) == 0 {
+		d.addRow("/spec/costs", "Cost line")
 		return
 	}
 	sources := map[string]bool{}
@@ -178,6 +179,13 @@ func (d *doc) costsBrief(p plan) {
 	headers := []string{"Cost line", "Amount", "Status"}
 	if !shared {
 		headers = append(headers, "Funding source")
+	}
+	if len(rows) > 1 {
+		row := []string{"Total", d.from(total, "/spec/costs"), ""}
+		if !shared {
+			row = append(row, "")
+		}
+		rows = append(rows, row)
 	}
 	d.h3("Cost plan")
 	d.table(headers, rows)
@@ -382,7 +390,7 @@ func budgetWithComponents(ctx context.Context, e *engine.Engine, n names, g engi
 			}
 			seen[ed.To] = true
 			if ed.To.Kind == "Project" {
-				funding = append(funding, list(specs[ed.To.ID]["funding"])...)
+				funding = append(funding, list(specs[ed.To.ID]["costs"])...)
 			}
 			walk(ed.To)
 		}

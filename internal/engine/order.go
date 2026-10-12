@@ -66,9 +66,10 @@ var stages = []Stage{
 }
 
 // afterStages are kinds that hold a record's data rather than a step of
-// the work: a KPI's readings come after the KPI, and a portfolio's
-// decisions after everything they decide on.
-var afterStages = []string{"KPIReadings", "PortfolioDecisions"}
+// the work: a KPI's readings come after the KPI, a portfolio's decisions
+// after everything they decide on, and a budget's allocation after the
+// project it funds.
+var afterStages = []string{"KPIReadings", "PortfolioDecisions", "Allocation"}
 
 // goalLevels are a Goal's levels, in order.
 var goalLevels = []string{"goal", "objective", "outcome"}

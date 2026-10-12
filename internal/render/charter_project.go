@@ -42,7 +42,7 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 	if first, last := scheduleSpan(spec); first != "" {
 		start, finish = when(first), when(last)
 	}
-	fundingRows, total := budget(n, list(spec["funding"]))
+	_, total := budget(n, list(spec["costs"]))
 
 	kindLine := "Project charter"
 	parent := str(alignment["partOf"])
@@ -98,7 +98,7 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 		field{"Programme", d.at(strings.Join(programmes, "; "), "/spec/alignment/programmes")},
 		field{"Start", d.from(start, dates)},
 		field{"End", d.from(finish, dates)},
-		field{"Budget", d.from(budgetWithComponents(ctx, e, n, graph, self, list(spec["funding"]), total), "/spec/funding")},
+		field{"Budget", d.from(budgetWithComponents(ctx, e, n, graph, self, list(spec["costs"]), total), "/spec/costs")},
 		field{"Handover to", d.at(operation, "/spec/operation")},
 	)
 	d.fields(
@@ -189,24 +189,11 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 	d.addRow("/spec/resources", "Role")
 	d.fields(field{"Escalation route", d.from(escalation(p, spec), "/spec/escalationRoute")})
 
-	if len(fundingRows)+len(list(spec["costs"])) > 0 {
+	// The budget is the cost plan: each line on the funding source it
+	// draws on (TAXONOMY.md D69).
+	if len(list(spec["costs"])) > 0 || d.editable {
 		d.h2("Budget")
-		if len(fundingRows) > 0 {
-			if d.editable {
-				for i := range fundingRows {
-					at := fmt.Sprintf("/spec/funding/%d", i)
-					if len(fundingRows[i]) == 3 {
-						fundingRows[i] = []string{d.at(fundingRows[i][0], at+"/amount"), d.at(fundingRows[i][1], at+"/source"), d.at(fundingRows[i][2], at+"/status")}
-					}
-				}
-			}
-			if strings.Contains(total, ";") || len(fundingRows) > 1 {
-				fundingRows = append(fundingRows, []string{d.from(total, "/spec/funding"), "Total", ""})
-			}
-			d.table([]string{"Amount", "Funding source", "Status"}, fundingRows)
-			d.addRow("/spec/funding", "Funding")
-		}
-		d.costsBrief(p)
+		d.costsBrief(p, total)
 	}
 
 	d.constraintsBrief(spec)
