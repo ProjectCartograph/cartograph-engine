@@ -29,6 +29,7 @@ type ManifestStore struct {
 	events     []store.Event                   // append-only; Seq is the index plus one
 	props      proposals
 	sets       changeSets
+	comments   comments
 }
 
 func NewManifestStore() *ManifestStore {
