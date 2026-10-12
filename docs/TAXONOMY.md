@@ -1913,3 +1913,22 @@ delivery graded); left out, it is the source's own entry (`records`).
 The export writes the metrics over one kind of record as one semantic
 model, named after the source and the record, for the analyst to map.
 
+### D68. An indicator may be read daily, weekly or every two weeks. *(resolved)*
+
+**The problem.** A reporting cycle's periods were months (D8) or named
+periods ending in a month (D40), and a reading was filed by the month
+its period ends. An indicator read every day, or every two weeks, could
+not be said.
+
+**The discipline.** Statistical process control charts a reading per
+subgroup at whatever interval the process runs; daily and weekly
+subgroups are ordinary.
+
+**What Cartograph does.** A cycle may have periods of days
+(`periodDays`: 1, 7 or 14) from a first day (`startDate`), beside
+periods of months and named periods, one of the three. Its periods end
+on days, and a reading on it is filed by the day its period ends
+(YYYY-MM-DD); a reading on a cycle of months is still filed by the
+month. A reading's period is a month or a day (`PeriodEnd`), so readings
+already filed stay valid.
+

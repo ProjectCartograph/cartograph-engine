@@ -23,12 +23,22 @@ func Rules(doc map[string]any, _ kit.RuleContext) []kit.Problem {
 	add := func(path, format string, args ...any) {
 		problems = append(problems, kit.Problem{Path: path, Message: fmt.Sprintf(format, args...)})
 	}
+	// A cycle of days (TAXONOMY.md D68) is the third form.
+	if _, ofDays := spec["periodDays"]; ofDays {
+		if regular || len(periods) > 0 {
+			add("/spec/periodDays", "a cycle has periods of days (periodDays), of months (periodMonths) or named periods: one of the three")
+		}
+		if _, err := dayOf(str(spec["startDate"])); err != nil {
+			add("/spec/startDate", "a cycle of days needs the first day of one of its periods (YYYY-MM-DD)")
+		}
+		return problems
+	}
 	switch {
 	case len(periods) > 0 && regular:
 		add("/spec/periods", "a cycle has equal periods (periodMonths) or named periods, not both")
 		return problems
 	case len(periods) == 0 && !regular:
-		add("/spec", "a cycle needs periodMonths for equal periods, or a list of named periods")
+		add("/spec", "a cycle needs periodMonths or periodDays for equal periods, or a list of named periods")
 		return problems
 	case regular:
 		if _, ok := spec["startMonth"]; !ok {

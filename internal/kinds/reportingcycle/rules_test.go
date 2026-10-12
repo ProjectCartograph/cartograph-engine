@@ -22,6 +22,9 @@ func TestACycleHasOneForm(t *testing.T) {
 		{"a name twice", map[string]any{"periods": []any{term("I", 6), term("I", 12)}}, true},
 		{"a mix", map[string]any{"periods": []any{term("I", 6), map[string]any{"name": "W", "end": "2026-12"}}}, true},
 		{"waves", map[string]any{"periods": []any{map[string]any{"name": "B", "end": "2026-12"}, map[string]any{"name": "F", "end": "2027-12"}}}, false},
+		{"every two weeks", map[string]any{"periodDays": 14, "startDate": "2026-01-05"}, false},
+		{"days without a start", map[string]any{"periodDays": 7}, true},
+		{"days and months", map[string]any{"periodDays": 7, "startDate": "2026-01-05", "periodMonths": 1, "startMonth": 1}, true},
 		{"two waves one month", map[string]any{"periods": []any{map[string]any{"name": "B", "end": "2026-12"}, map[string]any{"name": "F", "end": "2026-12"}}}, true},
 	} {
 		got := Rules(map[string]any{"spec": tc.spec}, kit.RuleContext{})
