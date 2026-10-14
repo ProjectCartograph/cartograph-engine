@@ -27,6 +27,12 @@
             "path": "/spec/projectLevelName",
             "control": "text",
             "title": "Project"
+          },
+          {
+            "path": "/spec/vocabularies",
+            "control": "list",
+            "title": "Vocabularies",
+            "hint": "The words this workspace uses where a field's choices are its own, such as its classification levels. A list set here replaces the standard one."
           }
         ]
       },

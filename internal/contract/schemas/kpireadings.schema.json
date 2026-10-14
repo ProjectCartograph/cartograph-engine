@@ -45,8 +45,8 @@
             ],
             "properties": {
               "period": {
-                "$ref": "common.schema.json#/$defs/YearMonth",
-                "description": "The period this reading is for, as the month it ends. One reading per period (a kind rule): two numbers for the same period is a disagreement, not data."
+                "$ref": "common.schema.json#/$defs/PeriodEnd",
+                "description": "The period this reading is for, as the month it ends, or the day it ends on a cycle of days (TAXONOMY.md D68). One reading per period (a kind rule): two numbers for the same period is a disagreement, not data."
               },
               "value": {
                 "type": "number",

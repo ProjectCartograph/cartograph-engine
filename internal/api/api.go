@@ -111,7 +111,26 @@ func (s *Server) GetSettings(ctx context.Context, _ apigen.GetSettingsRequestObj
 		Operator:         settings.Operator,
 		Examples:         examplesOrNil(settings.Examples),
 		Purpose:          purposeOf(settings.Purpose),
+		Vocabularies:     vocabulariesOf(settings.Vocabularies),
 	}, nil
+}
+
+// vocabulariesOf maps the workspace's words for fields whose choices are
+// its own (TAXONOMY.md D71).
+func vocabulariesOf(v map[string][]engine.VocabularyTerm) *map[string][]apigen.VocabularyTerm {
+	out := make(map[string][]apigen.VocabularyTerm, len(v))
+	for name, terms := range v {
+		list := make([]apigen.VocabularyTerm, len(terms))
+		for i, t := range terms {
+			list[i] = apigen.VocabularyTerm{Value: t.Value, Label: t.Label}
+			if t.Description != "" {
+				d := t.Description
+				list[i].Description = &d
+			}
+		}
+		out[name] = list
+	}
+	return &out
 }
 
 // purposeOf maps the vault's vision, mission and organisation's name,
@@ -316,7 +335,7 @@ func toGoalTree(t engine.GoalTree) apigen.GoalTree {
 }
 
 func toGoalCheck(c engine.GoalCheck) apigen.GoalCheck {
-	out := apigen.GoalCheck{Id: c.ID, State: apigen.GoalCheckState(c.State), Message: c.Message}
+	out := apigen.GoalCheck{Id: c.ID, State: apigen.GoalCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged)}
 	if c.Fix != nil {
 		out.Fix = &apigen.GoalCheckFix{Section: c.Fix.Section}
 		if c.Fix.Goal != "" {
@@ -345,7 +364,7 @@ func (s *Server) GetGapChecks(ctx context.Context, req apigen.GetGapChecksReques
 	for i, c := range checks {
 		out[i] = apigen.ProgrammeCheck{
 			Id: c.ID, Section: c.Section,
-			State: apigen.ProgrammeCheckState(c.State), Message: c.Message,
+			State: apigen.ProgrammeCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged),
 		}
 	}
 	return out, nil
@@ -429,7 +448,7 @@ func (s *Server) GetOperationChecks(ctx context.Context, req apigen.GetOperation
 	for i, c := range checks {
 		out[i] = apigen.ProgrammeCheck{
 			Id: c.ID, Section: c.Section,
-			State: apigen.ProgrammeCheckState(c.State), Message: c.Message,
+			State: apigen.ProgrammeCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged),
 		}
 	}
 	return out, nil
@@ -451,7 +470,7 @@ func (s *Server) GetProgrammeChecks(ctx context.Context, req apigen.GetProgramme
 	for i, c := range checks {
 		out[i] = apigen.ProgrammeCheck{
 			Id: c.ID, Section: c.Section,
-			State: apigen.ProgrammeCheckState(c.State), Message: c.Message,
+			State: apigen.ProgrammeCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged),
 		}
 	}
 	return out, nil
@@ -475,7 +494,7 @@ func (s *Server) GetPortfolioChecks(ctx context.Context, req apigen.GetPortfolio
 	for i, c := range checks {
 		out[i] = apigen.ProgrammeCheck{
 			Id: c.ID, Section: c.Section,
-			State: apigen.ProgrammeCheckState(c.State), Message: c.Message,
+			State: apigen.ProgrammeCheckState(c.State), Message: c.Message, NotJudged: whenTrue(c.NotJudged),
 		}
 	}
 	return out, nil
@@ -738,6 +757,13 @@ func (s *Server) GetProjectCharterHtml(ctx context.Context, req apigen.GetProjec
 	}, nil
 }
 
+// GetCharterPartsStyle is the styling of what a charter's sections hold,
+// for an interface drawing the charter as parts (#77).
+func (s *Server) GetCharterPartsStyle(_ context.Context, _ apigen.GetCharterPartsStyleRequestObject) (apigen.GetCharterPartsStyleResponseObject, error) {
+	css := render.PartsCSS()
+	return apigen.GetCharterPartsStyle200TextcssResponse{Body: strings.NewReader(css), ContentLength: int64(len(css))}, nil
+}
+
 // GetProgrammeCharterHtml renders a programme as a document.
 func (s *Server) GetProgrammeCharterHtml(
 	ctx context.Context,
@@ -833,6 +859,7 @@ func toProjectCheckItem(i engine.ProjectCheckItem) apigen.ProjectCheckItem {
 	return apigen.ProjectCheckItem{
 		Id: i.ID, Section: i.Section, Phase: apigen.ProjectCheckItemPhase(i.Phase),
 		State: apigen.ProjectCheckState(i.State), Message: i.Message, Fix: toProjectCheckFix(i.Fix),
+		NotJudged: whenTrue(i.NotJudged), Suggestion: whenTrue(i.Suggestion),
 	}
 }
 
@@ -1791,6 +1818,16 @@ func (s *Server) MatchExisting(ctx context.Context, req apigen.MatchExistingRequ
 	return apigen.MatchExisting200JSONResponse(out), nil
 }
 
+// ReadAggregation says what a data source metric's aggregation reads as,
+// or why it does not (TAXONOMY.md D64). Nothing is saved.
+func (s *Server) ReadAggregation(_ context.Context, req apigen.ReadAggregationRequestObject) (apigen.ReadAggregationResponseObject, error) {
+	var out apigen.AggregationReading
+	if err := convertJSON(engine.ReadAggregation(req.Body.Text), &out); err != nil {
+		return nil, err
+	}
+	return apigen.ReadAggregation200JSONResponse(out), nil
+}
+
 // convertJSON copies an engine value into its generated wire type, field
 // for field, by their shared JSON names.
 func convertJSON(from, to any) error {
@@ -1903,4 +1940,12 @@ func (s *Server) GetProjectCharterParts(ctx context.Context, req apigen.GetProje
 		out[i] = o
 	}
 	return out, nil
+}
+
+// whenTrue is a flag the contract leaves out when false.
+func whenTrue(b bool) *bool {
+	if !b {
+		return nil
+	}
+	return &b
 }

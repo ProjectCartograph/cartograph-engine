@@ -403,7 +403,7 @@
               }
             }
           },
-          "description": "At most one line per currency (a kind rule). No other money field anywhere in the contract, and no free text on a line: what a budget is called and how it is coded lives on the FundingSource it references."
+          "description": "Deprecated: a project's money is its cost lines (costs), each naming the funding source it draws on, whose allocation for this project sets its status (TAXONOMY.md D69). Read from older manifests and folded into costs; never written."
         },
         "alignment": {
           "type": "object",
@@ -888,6 +888,11 @@
                   "cost"
                 ],
                 "description": "The side of the triangle the response draws on: a mitigation that costs money spends cost, one that adds work spends scope or schedule."
+              },
+              "scopeLine": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "The line of the scope, in or out, this risk would move, word for word: how scope could creep across it (TAXONOMY.md D62)."
               }
             }
           }
@@ -927,7 +932,7 @@
           }
         },
         "compliance": {
-          "description": "Deprecated: a requirement that is met or not is a success criterion with metric compliance (TAXONOMY.md D25), with the role that confirms it; its progress is the delivery tool's. Read from a manifest saved before 2.6.0; never written. The compliance-as-criteria check asks for each line to be recorded as one.",
+          "description": "Deprecated: a requirement that is met or not is a success criterion with metric compliance (TAXONOMY.md D25), with the role that confirms it; its progress is the delivery tool's. Read from a manifest saved before 2.6.0; never written. Each line is folded into a success criterion of compliance as it is read.",
           "type": "array",
           "items": {
             "type": "object",
@@ -1073,7 +1078,7 @@
         },
         "costs": {
           "type": "array",
-          "description": "The budget as cost lines (TAXONOMY.md D51).",
+          "description": "The cost plan: the project's money as lines, each what it pays for, how much, how the amount is worked out and the funding source it draws on (TAXONOMY.md D51, D69).",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -1093,7 +1098,7 @@
               "basis": {
                 "type": "string",
                 "maxLength": 160,
-                "description": "Quantity or basis of the estimate."
+                "description": "How the amount is worked out, such as 2 analysts for 6 months, or a supplier's quote: the estimate's basis, not the amount again."
               },
               "amount": {
                 "type": "number",
@@ -1105,11 +1110,13 @@
               },
               "period": {
                 "type": "string",
-                "maxLength": 40
+                "maxLength": 40,
+                "description": "Deprecated: the period a line covers is its funding source's (period), not asked again (TAXONOMY.md D69). Read from older manifests; never written."
               },
               "source": {
                 "$ref": "common.schema.json#/$defs/Slug",
-                "x-cartograph-ref": "FundingSource"
+                "x-cartograph-ref": "FundingSource",
+                "description": "The funding source this line draws on. Its allocation for this project (allocations) sets the line's status, and the lines on one source may not come to more than it allocated (a check; TAXONOMY.md D69)."
               },
               "status": {
                 "type": "string",

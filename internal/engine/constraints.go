@@ -44,8 +44,8 @@ type Side struct {
 	// Share is this side's part of the exposure of all three.
 	Share float64    `json:"share"`
 	Risks []SideRisk `json:"risks"`
-	// Unweighed are its risks with no likelihood or no impact on it,
-	// counted apart rather than guessed.
+	// Unweighed are its risks with no likelihood or no impact on it (its
+	// own, else the risk's), counted apart rather than guessed.
 	Unweighed int `json:"unweighed"`
 	// Unanswered are its risks with neither a response nor a mitigation.
 	Unanswered int `json:"unanswered"`
@@ -119,9 +119,16 @@ func ConstraintsOf(spec map[string]any) Constraints {
 			total += sr.Weight
 			s.Risks = append(s.Risks, sr)
 		}
+		own, _ := r["impact"].(string)
 		for _, a := range listOf(r["affects"]) {
 			side, _ := a["constraint"].(string)
 			impact, _ := a["impact"].(string)
+			// A side given no impact of its own bears the risk's: what the
+			// person placed it at on the grid, not a guess
+			// (cartograph-engine#82).
+			if impact == "" {
+				impact = own
+			}
 			on, _ := a["on"].(string)
 			place(side, impact, on, false)
 		}

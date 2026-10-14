@@ -9,7 +9,7 @@
     "review cycle",
     "quarterly reporting"
   ],
-  "definition": "How often numbers are reported, and when each report is due. A cycle is either equal periods, such as every three months from September, or named periods, such as terms or survey rounds, each named by the month it ends. It also says how many days after a period ends the report is due. Each KPI names one cycle. It is not how often a data source changes, not the time span of a goal, and not a single report.",
+  "definition": "How often numbers are reported, and when each report is due. A cycle is equal periods of months, such as every three months from September, equal periods of days, such as every two weeks from a Monday, or named periods, such as terms or survey rounds, each named by the month it ends. It also says how many days after a period ends the report is due. Each KPI names one cycle. It is not how often a data source changes, not the time span of a goal, and not a single report.",
   "fields": {
     "/spec/periodMonths": {
       "guide": "How many months each period lasts: 1, 3, 6 or 12. Choose one your data sources can keep up with.",
@@ -32,6 +32,30 @@
         {
           "text": "1, for a seasonal cycle when the season year opens in September",
           "why": "Periods would end in March, June, September and December, cutting across the seasons the readings describe."
+        }
+      ]
+    },
+    "/spec/periodDays": {
+      "guide": "How many days each period lasts: 1, 7 or 14, for a number read daily, weekly or every two weeks. Choose one your data sources can keep up with; a reading is then filed by the day its period ends.",
+      "good": [
+        "7, for orders a buyer places each week"
+      ],
+      "poor": [
+        {
+          "text": "1, for a number read from a source refreshed each month",
+          "why": "The source has a new number once a month, so most days would have nothing to report."
+        }
+      ]
+    },
+    "/spec/startDate": {
+      "guide": "The first day of one of its periods, as YYYY-MM-DD. The other periods line up with it.",
+      "good": [
+        "2026-01-05, a Monday, for weeks that run Monday to Sunday"
+      ],
+      "poor": [
+        {
+          "text": "2026-01-07, a Wednesday, when the depots report Monday to Sunday",
+          "why": "Every period would cut across the week the readings describe."
         }
       ]
     },

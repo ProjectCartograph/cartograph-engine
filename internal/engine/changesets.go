@@ -1546,6 +1546,34 @@ func roleRefProblems(doc map[string]any, rules []refRule) []Problem {
 	return out
 }
 
+// slugPattern is the form of an id or a reference (common Slug), as the
+// validator quotes it.
+const slugPattern = "^[a-z0-9][a-z0-9-]{1,63}$"
+
+// missingProperties is the properties a schema problem says are missing,
+// "missing property 'a'" or "missing properties 'a', 'b'", in order.
+func missingProperties(message string) []string {
+	i := strings.Index(message, "missing propert")
+	if i < 0 {
+		return nil
+	}
+	var names []string
+	rest := message[i:]
+	for {
+		a := strings.Index(rest, "'")
+		if a < 0 {
+			break
+		}
+		b := strings.Index(rest[a+1:], "'")
+		if b < 0 {
+			break
+		}
+		names = append(names, rest[a+1:a+1+b])
+		rest = rest[a+1+b+1:]
+	}
+	return names
+}
+
 // requiredChecks turns what stops a record being saved as a version into
 // blocking checks, one per field, so a change set's review names them
 // before it is merged rather than refusing the merge.
@@ -1559,37 +1587,52 @@ func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte, o
 	out := make([]Check, 0, len(problems))
 	for _, p := range problems {
 		path := p.Path
-		message := p.Message
-		// A missing property is reported on the object that lacks it;
-		// the field is the property.
-		// A value outside a list is said without the list, which for a
-		// currency is every code there is.
-		switch {
-		case strings.HasPrefix(p.Message, "value must be one of"):
-			message = "Choose one of the values offered."
-		case strings.HasPrefix(p.Message, "minItems:"):
-			message = "Add at least one."
-		case strings.HasPrefix(p.Message, "maxItems:"):
-			message = "There are more than this allows; remove some."
-		case strings.HasPrefix(p.Message, "maxLength:"):
-			message = "This is longer than allowed; shorten it."
-		case strings.HasPrefix(p.Message, "minLength:"):
-			message = "Needed before this can be merged."
-		case strings.Contains(p.Message, "is not written as asked: "):
-			// The value is quoted first, which says nothing when it is
-			// blank; what to write is the part a person needs.
-			_, how, _ := strings.Cut(p.Message, "is not written as asked: ")
-			message = capitalFirst(strings.TrimSuffix(how, ".")) + "."
-		}
-		if i := strings.Index(p.Message, "missing property '"); i >= 0 {
-			message = "Needed before this can be merged."
-			name := strings.TrimSuffix(p.Message[i+len("missing property '"):], "'")
-			if j := strings.Index(name, "'"); j >= 0 {
-				name = name[:j]
+		message := plainProblem(p.Message)
+		// Several missing at once are said as one problem; each is its
+		// own field to fill, named as the others are.
+		if names := missingProperties(p.Message); len(names) > 0 {
+			for _, name := range names {
+				at := strings.TrimSuffix(path, "/") + "/" + name
+				out = append(out, Check{ID: "required:" + at, State: checkBlock, Message: "Needed before this can be merged.", Path: at})
 			}
-			path = strings.TrimSuffix(path, "/") + "/" + name
+			continue
 		}
 		out = append(out, Check{ID: "required:" + path, State: checkBlock, Message: message, Path: path})
 	}
 	return out
+}
+
+// plainProblem says a schema problem in words a person acts on: a value
+// outside a list is said without the list, which for a currency is every
+// code there is, and a pattern without its expression.
+func plainProblem(message string) string {
+	switch {
+	case strings.HasPrefix(message, "value must be one of"):
+		return "Choose one of the values offered."
+	case strings.HasPrefix(message, "minItems:"):
+		return "Add at least one."
+	case strings.HasPrefix(message, "maxItems:"):
+		return "There are more than this allows; remove some."
+	case strings.HasPrefix(message, "maxLength:"):
+		return "This is longer than allowed; shorten it."
+	case strings.HasPrefix(message, "minLength:"):
+		return "Needed before this can be merged."
+	case strings.Contains(message, "does not match pattern"):
+		// The validator's expression means nothing to a person: an
+		// empty value is one still to fill, an id is said in words.
+		switch {
+		case strings.Contains(message, "'' does not match"):
+			return "Needed before this can be merged."
+		case strings.Contains(message, slugPattern):
+			return "Lower-case letters, digits and hyphens, starting with a letter or digit."
+		default:
+			return "This is not in the form asked; check how it is written."
+		}
+	case strings.Contains(message, "is not written as asked: "):
+		// The value is quoted first, which says nothing when it is
+		// blank; what to write is the part a person needs.
+		_, how, _ := strings.Cut(message, "is not written as asked: ")
+		return capitalFirst(strings.TrimSuffix(how, ".")) + "."
+	}
+	return message
 }

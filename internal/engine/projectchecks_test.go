@@ -170,6 +170,10 @@ func TestProjectChecksGoalsSection(t *testing.T) {
 	if byID["goals-aligned"].State != "ok" || byID["aim-mandate"].State != "ok" {
 		t.Fatalf("expected both ok, got %+v", checks.Items)
 	}
+	// It says why it passes: what the project serves, by name.
+	if msg := byID["goals-aligned"].Message; !strings.HasPrefix(msg, "Serves 1 outcome: ") {
+		t.Errorf("goals-aligned names no outcome: %q", msg)
+	}
 }
 
 // TestProjectChecksGoalsStrategicLevel covers card §2's own rule directly:
@@ -917,7 +921,7 @@ func TestAProjectObjectiveIsJudgedByTheModel(t *testing.T) {
 	}{
 		{"read as a target", byText(true), "warn"},
 		{"read as a change", byText(false), "ok"},
-		{"no model", nil, ""},
+		{"no model", nil, "ok"},
 	} {
 		opts := []engine.Option{engine.WithCodec(codecyaml.New())}
 		if c.model != nil {
@@ -943,6 +947,10 @@ func TestAProjectObjectiveIsJudgedByTheModel(t *testing.T) {
 		}
 		if c.want == "warn" && !strings.Contains(got.Message, "likely reads as a target") {
 			t.Errorf("%s: the message says how sure: %q", c.name, got.Message)
+		}
+		// Without a model it passes, holding nothing up, and says why.
+		if c.model == nil && (!got.NotJudged || !strings.Contains(got.Message, "Not judged")) {
+			t.Errorf("%s: not marked as unjudged, or not saying why: %+v", c.name, got)
 		}
 	}
 }
@@ -972,5 +980,109 @@ func TestASuccessCriterionWaitsForItsConfirmerOnItsOwn(t *testing.T) {
 	}
 	if got := state("      confirmedBy: {external: Board}\n"); got != "ok" {
 		t.Fatalf("a criterion with its confirmer: %q", got)
+	}
+}
+
+// An objective the model finds badly misaligned with an outcome it serves
+// (below the threshold and below a neutral outcome) is a suggestion,
+// passed so it holds nothing up; otherwise, and without a model, nothing
+// is said. One question per outcome served, and one for the baseline.
+func TestAnObjectiveFarFromItsOutcomeIsASuggestion(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	// Aligned to an outcome the example holds, so the pair can be asked.
+	y := strings.Replace(fullProjectYAML("fit"), "goals: [g1-f]", "goals: [members-know-prices-before-they-commit]", 1)
+	for _, c := range []struct {
+		name    string
+		p, base float64
+		model   bool
+		suggest bool
+	}{
+		{"badly misaligned", 0.01, 0.2, true, true},
+		{"low, but above the neutral outcome", 0.03, 0.02, true, false},
+		{"not low", 0.3, 0.2, true, false},
+		{"no model", 0, 0, false, false},
+	} {
+		model := fake.New()
+		asked := 0
+		model.On("objective-serves-outcome-0", func(state string, _ decide.Question) decide.Answer {
+			asked++
+			if !strings.HasPrefix(state, "Objective: ") || !strings.Contains(state, "\nOutcome: ") {
+				t.Errorf("%s: asked of %q, want the objective and the outcome together", c.name, state)
+			}
+			if strings.Contains(state, "Something good happens for the organisation") {
+				return fake.Yes(c.base)
+			}
+			return fake.Yes(c.p)
+		})
+		opts := []engine.Option{engine.WithCodec(codecyaml.New())}
+		if c.model {
+			opts = append(opts, engine.WithDecider(model))
+		}
+		e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), opts...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+			t.Fatal(err)
+		}
+		if err := e.PutWorking(ctx, "Project", "fit", []byte(y)); err != nil {
+			t.Fatal(err)
+		}
+		checks, err := e.ProjectChecks(ctx, "fit", true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, found := checksByID(checks.Items)["goals-outcome-fit"]
+		switch {
+		case found != c.suggest:
+			t.Errorf("%s: suggested %v, want %v (%+v)", c.name, found, c.suggest, got)
+		case found && (!got.Suggestion || got.State != "ok" || !strings.Contains(got.Message, "may not work toward")):
+			t.Errorf("%s: not a passed suggestion that says why: %+v", c.name, got)
+		}
+		if c.model && asked == 0 {
+			t.Errorf("%s: the model was not asked", c.name)
+		}
+	}
+}
+
+// A data source's metrics are each read as an aggregation, said in words
+// when they read as one and why not when they do not; an indicator that
+// names one says what it is computed as, or why it cannot be
+// (TAXONOMY.md D64).
+func TestADataSourceGivesMetricsAnIndicatorUses(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	e := newTestEngine(t)
+	if _, err := e.ImportDir(ctx, exampleDir(t), "alice-nkemah", "seed"); err != nil {
+		t.Fatal(err)
+	}
+	src := []byte("apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: intake-log\n  name: Intake log\nspec:\n  team: quality-team\n  category: formOrSurvey\n" +
+		"  metrics:\n    - {id: weighed, name: Weight delivered, aggregation: SUM(weight_kg)}\n    - {id: joined, name: Joined, aggregation: \"COUNT(*) FROM deliveries JOIN depots\"}\n")
+	checks, err := e.ChecksOf(ctx, "DataSource", "intake-log", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]engine.Check{}
+	for _, c := range checks {
+		got[c.ID] = c
+	}
+	if c := got["source-metric-weighed"]; c.Open() || c.Message != `"Weight delivered" reads as the sum of weight_kg.` {
+		t.Errorf("weighed: %+v", c)
+	}
+	if c := got["source-metric-joined"]; !c.Open() || !strings.Contains(c.Message, "FROM is not part of a metric") {
+		t.Errorf("joined: %+v", c)
+	}
+	// An indicator naming a metric its source does not give says so.
+	kpi := []byte("apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k1\n  name: K\nspec:\n  sources: [quality-check-tool]\n" +
+		"  metric:\n    type: ratio\n    of: {dataSource: quality-check-tool, metric: deliveries-passed}\n    outOf: {dataSource: quality-check-tool, metric: deliveries-graded}\n")
+	kc, err := e.ChecksOf(ctx, "KPI", "k1", kpi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range kc {
+		if c.ID == "kpi-metric" && (!c.Open() || !strings.Contains(c.Message, `gives no metric "deliveries-graded"`)) {
+			t.Errorf("kpi-metric: %+v", c)
+		}
 	}
 }

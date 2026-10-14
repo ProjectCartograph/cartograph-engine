@@ -520,6 +520,42 @@ func (e MatchBy) Valid() bool {
 	}
 }
 
+// Defines values for MentionKind.
+const (
+	MentionKindPerson MentionKind = "person"
+	MentionKindTeam   MentionKind = "team"
+)
+
+// Valid indicates whether the value is a known member of the MentionKind enum.
+func (e MentionKind) Valid() bool {
+	switch e {
+	case MentionKindPerson:
+		return true
+	case MentionKindTeam:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MentionableKind.
+const (
+	MentionableKindPerson MentionableKind = "person"
+	MentionableKindTeam   MentionableKind = "team"
+)
+
+// Valid indicates whether the value is a known member of the MentionableKind enum.
+func (e MentionableKind) Valid() bool {
+	switch e {
+	case MentionableKindPerson:
+		return true
+	case MentionableKindTeam:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OrderStageState.
 const (
 	OrderStageStateDone    OrderStageState = "done"
@@ -1008,6 +1044,27 @@ type AgentTokenRequest struct {
 	Label string `json:"label"`
 }
 
+// AggregationReading What an aggregation reads as (reading, names, agg, expr), or why it does not (problem, at): one or the other.
+type AggregationReading struct {
+	// Agg The measure's aggregation, in the semantic layer's words.
+	Agg *string `json:"agg,omitempty"`
+
+	// At Where in the text the problem is, as a byte offset.
+	At *int `json:"at,omitempty"`
+
+	// Expr The expression it aggregates, its condition folded in as a CASE WHEN.
+	Expr *string `json:"expr,omitempty"`
+
+	// Names The fields it names, each once, in the order written.
+	Names []string `json:"names"`
+
+	// Problem Why it does not read as an aggregation, in words.
+	Problem *string `json:"problem,omitempty"`
+
+	// Reading What it says, in words.
+	Reading *string `json:"reading,omitempty"`
+}
+
 // ApplyRequest defines model for ApplyRequest.
 type ApplyRequest struct {
 	// Ref One reference to include (Kind/id).
@@ -1199,6 +1256,42 @@ type CharterPartDiffLinesOp string
 
 // CharterPartDiffState defines model for CharterPartDiff.State.
 type CharterPartDiffState string
+
+// Comment defines model for Comment.
+type Comment struct {
+	// Anchor What it is about: a JSON pointer into the record, a section of the walk as section:<step>, or empty for the record as a whole.
+	Anchor string    `json:"anchor"`
+	At     time.Time `json:"at"`
+
+	// Author Who wrote it, by their address; empty for an operator nobody signed in as.
+	Author string `json:"author"`
+
+	// AuthorName The author's name on the access list, where it has one.
+	AuthorName *string `json:"authorName,omitempty"`
+	Body       string  `json:"body"`
+	Id         string  `json:"id"`
+	Kind       string  `json:"kind"`
+
+	// Manifest The id of the record it is on.
+	Manifest string    `json:"manifest"`
+	Mentions []Mention `json:"mentions"`
+
+	// Reply The comment that starts the thread it answers.
+	Reply *string `json:"reply,omitempty"`
+
+	// Resolved Set on the comment that starts a thread, when it is resolved.
+	Resolved   bool       `json:"resolved"`
+	ResolvedAt *time.Time `json:"resolvedAt,omitempty"`
+	ResolvedBy *string    `json:"resolvedBy,omitempty"`
+}
+
+// CommentDraft defines model for CommentDraft.
+type CommentDraft struct {
+	Anchor   *string    `json:"anchor,omitempty"`
+	Body     string     `json:"body"`
+	Mentions *[]Mention `json:"mentions,omitempty"`
+	Reply    *string    `json:"reply,omitempty"`
+}
 
 // ComponentEdge defines model for ComponentEdge.
 type ComponentEdge struct {
@@ -1477,10 +1570,13 @@ type GoalAligned struct {
 
 // GoalCheck defines model for GoalCheck.
 type GoalCheck struct {
-	Fix     *GoalCheckFix  `json:"fix,omitempty"`
-	Id      string         `json:"id"`
-	Message string         `json:"message"`
-	State   GoalCheckState `json:"state"`
+	Fix     *GoalCheckFix `json:"fix,omitempty"`
+	Id      string        `json:"id"`
+	Message string        `json:"message"`
+
+	// NotJudged True when this is a judgement of meaning the decision model did not make (it is off, or did not answer): the check passes, so it holds nothing up, and its message says why it was not judged.
+	NotJudged *bool          `json:"notJudged,omitempty"`
+	State     GoalCheckState `json:"state"`
 }
 
 // GoalCheckState defines model for GoalCheck.State.
@@ -1875,6 +1971,9 @@ type ManifestCheck struct {
 	Id      string `json:"id"`
 	Message string `json:"message"`
 
+	// NotJudged True when this is a judgement of meaning the decision model did not make (it is off, or did not answer): the check passes, so it holds nothing up, and its message says why it was not judged.
+	NotJudged *bool `json:"notJudged,omitempty"`
+
 	// Path The field it is about, as a JSON pointer, where it is one field: what the record must have before it can be merged.
 	Path *string `json:"path,omitempty"`
 
@@ -1942,6 +2041,29 @@ type Match struct {
 
 // MatchBy Whether the decision model judged it, or the words the two share.
 type MatchBy string
+
+// Mention defines model for Mention.
+type Mention struct {
+	// Id A person's address on the access list, or a team's id.
+	Id   string      `json:"id"`
+	Kind MentionKind `json:"kind"`
+
+	// Name How the party is named now, in a comment read back: the person's name on the access list or the team's name. Ignored when writing.
+	Name *string `json:"name,omitempty"`
+}
+
+// MentionKind defines model for Mention.Kind.
+type MentionKind string
+
+// Mentionable defines model for Mentionable.
+type Mentionable struct {
+	Id   string          `json:"id"`
+	Kind MentionableKind `json:"kind"`
+	Name string          `json:"name"`
+}
+
+// MentionableKind defines model for Mentionable.Kind.
+type MentionableKind string
 
 // Order defines model for Order.
 type Order struct {
@@ -2042,6 +2164,9 @@ type ProgrammeCheck struct {
 	Id      string `json:"id"`
 	Message string `json:"message"`
 
+	// NotJudged True when this is a judgement of meaning the decision model did not make (it is off, or did not answer): the check passes, so it holds nothing up, and its message says why it was not judged.
+	NotJudged *bool `json:"notJudged,omitempty"`
+
 	// Section The step of the programme walk this is about, so the panel can send the reader there.
 	Section string `json:"section"`
 
@@ -2063,12 +2188,18 @@ type ProjectCheckFixPhase string
 
 // ProjectCheckItem defines model for ProjectCheckItem.
 type ProjectCheckItem struct {
-	Fix     ProjectCheckFix       `json:"fix"`
-	Id      string                `json:"id"`
-	Message string                `json:"message"`
-	Phase   ProjectCheckItemPhase `json:"phase"`
-	Section string                `json:"section"`
-	State   ProjectCheckState     `json:"state"`
+	Fix     ProjectCheckFix `json:"fix"`
+	Id      string          `json:"id"`
+	Message string          `json:"message"`
+
+	// NotJudged True when this is a judgement of meaning the decision model did not make (it is off, or did not answer): the check passes, so it holds nothing up, and its message says why it was not judged.
+	NotJudged *bool                 `json:"notJudged,omitempty"`
+	Phase     ProjectCheckItemPhase `json:"phase"`
+	Section   string                `json:"section"`
+	State     ProjectCheckState     `json:"state"`
+
+	// Suggestion True when this is advice from the decision model, offered and never required: the check passes, so it holds nothing up. A project's objective that may not work toward an outcome it serves is one (goals-outcome-fit).
+	Suggestion *bool `json:"suggestion,omitempty"`
 }
 
 // ProjectCheckItemPhase defines model for ProjectCheckItem.Phase.
@@ -2084,6 +2215,21 @@ type ProjectChecks struct {
 	// DerivedEnd The end month derived from timeline.start plus every phase's months.
 	DerivedEnd *string            `json:"derivedEnd,omitempty"`
 	Items      []ProjectCheckItem `json:"items"`
+}
+
+// ProjectRound defines model for ProjectRound.
+type ProjectRound struct {
+	// Ask The person's decisions, every one answerable now.
+	Ask []RoundTask `json:"ask"`
+
+	// Settle What the documents themselves state.
+	Settle []RoundTask `json:"settle"`
+
+	// Waiting Open checks behind this round, asked once its answers are given.
+	Waiting int `json:"waiting"`
+
+	// Write Records to write next, each settling a link.
+	Write []RoundTask `json:"write"`
 }
 
 // ProjectState defines model for ProjectState.
@@ -2230,6 +2376,28 @@ type Report struct {
 // Role A role on the access list (TAXONOMY.md D27). A reader sees everything and changes nothing; a contributor changes the work of their teams and the teams beneath them and keeps the shared registers; a strategy editor shapes the goals and the vision and mission; an administrator does everything, for every team, and manages access.
 type Role string
 
+// RoundTask defines model for RoundTask.
+type RoundTask struct {
+	Check string `json:"check"`
+
+	// Do What the guidance says to do about it.
+	Do *string `json:"do,omitempty"`
+
+	// Field The field that settles it, as a JSON pointer, where one field does.
+	Field   *string `json:"field,omitempty"`
+	Id      string  `json:"id"`
+	Kind    string  `json:"kind"`
+	Message string  `json:"message"`
+	Name    *string `json:"name,omitempty"`
+
+	// Question The id a round gives it, which an answer left with it names.
+	Question *string `json:"question,omitempty"`
+	State    string  `json:"state"`
+
+	// Step The step of the walk that settles it.
+	Step *string `json:"step,omitempty"`
+}
+
 // Route defines model for Route.
 type Route struct {
 	// Key The stage of the order of work (GET /order).
@@ -2351,6 +2519,9 @@ type Settings struct {
 		Source       *string `json:"source,omitempty"`
 		Vision       *string `json:"vision,omitempty"`
 	} `json:"purpose,omitempty"`
+
+	// Vocabularies The words this workspace uses for a field whose choices are its own (TAXONOMY.md D71): a data source's classification, refresh and form, the standard terms unless the workspace sets its own. Keyed by the vocabulary a schema field names in x-cartograph-vocabulary.
+	Vocabularies *map[string][]VocabularyTerm `json:"vocabularies,omitempty"`
 }
 
 // SharedDocument defines model for SharedDocument.
@@ -2429,7 +2600,12 @@ type StructurePiece struct {
 // StructureQuestion defines model for StructureQuestion.
 type StructureQuestion struct {
 	// Field The answer this question sets on a StructurePiece; empty for the last, which applies when none does.
-	Field    string `json:"field"`
+	Field string `json:"field"`
+
+	// Person The question as a person is asked it, in plain words. An interface shows this, never question.
+	Person *string `json:"person,omitempty"`
+
+	// Question The question as an agent is asked it, with what to send.
 	Question string `json:"question"`
 	Then     string `json:"then"`
 }
@@ -2537,6 +2713,18 @@ type Version struct {
 	Number int       `json:"number"`
 	On     time.Time `json:"on"`
 	Reason string    `json:"reason"`
+}
+
+// VocabularyTerm defines model for VocabularyTerm.
+type VocabularyTerm struct {
+	// Description What the choice means, shown under it where it is chosen.
+	Description *string `json:"description,omitempty"`
+
+	// Label What a person reads.
+	Label string `json:"label"`
+
+	// Value What a record stores.
+	Value string `json:"value"`
 }
 
 // Waits defines model for Waits.
@@ -2678,6 +2866,11 @@ type GetAgentFeedParams struct {
 	Person *string `form:"person,omitempty" json:"person,omitempty"`
 }
 
+// ReadAggregationJSONBody defines parameters for ReadAggregation.
+type ReadAggregationJSONBody struct {
+	Text string `json:"text"`
+}
+
 // ListChangeSetsParams defines parameters for ListChangeSets.
 type ListChangeSetsParams struct {
 	Status   *ListChangeSetsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
@@ -2691,6 +2884,11 @@ type ListChangeSetsParamsStatus string
 type MoveInChangeSetJSONBody struct {
 	// State The state to move to, as ProjectState names them.
 	State string `json:"state"`
+}
+
+// ResolveCommentJSONBody defines parameters for ResolveComment.
+type ResolveCommentJSONBody struct {
+	Resolved bool `json:"resolved"`
 }
 
 // GetComponentsParams defines parameters for GetComponents.
@@ -2868,6 +3066,12 @@ type MatchWhatHappenedParams struct {
 	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
 }
 
+// GetProjectRoundParams defines parameters for GetProjectRound.
+type GetProjectRoundParams struct {
+	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
+	ChangeSet *PreviewParam `form:"changeSet,omitempty" json:"changeSet,omitempty"`
+}
+
 // GetProjectScheduleParams defines parameters for GetProjectSchedule.
 type GetProjectScheduleParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -2961,6 +3165,11 @@ type MatchExistingJSONBody struct {
 	Text  string  `json:"text"`
 }
 
+// ListMentionablesParams defines parameters for ListMentionables.
+type ListMentionablesParams struct {
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+}
+
 // GetOrderParams defines parameters for GetOrder.
 type GetOrderParams struct {
 	// ChangeSet Read as if this change set were accepted (docs/adr/0024): its drafts stand in for the records they change, and the records it creates are there too, each marked proposed. For reviewing a change set in the ordinary screens.
@@ -3046,6 +3255,9 @@ type GrantPersonJSONRequestBody = PersonGrant
 // CreateAgentTokenJSONRequestBody defines body for CreateAgentToken for application/json ContentType.
 type CreateAgentTokenJSONRequestBody = AgentTokenRequest
 
+// ReadAggregationJSONRequestBody defines body for ReadAggregation for application/json ContentType.
+type ReadAggregationJSONRequestBody ReadAggregationJSONBody
+
 // StartChangeSetJSONRequestBody defines body for StartChangeSet for application/json ContentType.
 type StartChangeSetJSONRequestBody = ChangeSetTitle
 
@@ -3073,6 +3285,9 @@ type ProposeChangeSetJSONRequestBody = ChangeSetProposal
 // ReopenChangeSetJSONRequestBody defines body for ReopenChangeSet for application/json ContentType.
 type ReopenChangeSetJSONRequestBody = ProposalDecision
 
+// ResolveCommentJSONRequestBody defines body for ResolveComment for application/json ContentType.
+type ResolveCommentJSONRequestBody ResolveCommentJSONBody
+
 // RecordEventsJSONRequestBody defines body for RecordEvents for application/json ContentType.
 type RecordEventsJSONRequestBody = EventBatch
 
@@ -3096,6 +3311,9 @@ type DeleteManifestJSONRequestBody = DeleteRequest
 
 // PutManifestJSONRequestBody defines body for PutManifest for application/json ContentType.
 type PutManifestJSONRequestBody = WriteRequest
+
+// AddCommentJSONRequestBody defines body for AddComment for application/json ContentType.
+type AddCommentJSONRequestBody = CommentDraft
 
 // AppendSeriesItemJSONRequestBody defines body for AppendSeriesItem for application/json ContentType.
 type AppendSeriesItemJSONRequestBody = SeriesAppend
@@ -3218,6 +3436,9 @@ type ServerInterface interface {
 	// RevokeAgentGrant Disconnects an agent at once: the caller's own, or anyone's for an administrator.
 	// (DELETE /agents/{grant})
 	RevokeAgentGrant(w http.ResponseWriter, r *http.Request, grant GrantParam)
+	// ReadAggregation What a data source metric's aggregation reads as, or why it does not
+	// (POST /aggregations/read)
+	ReadAggregation(w http.ResponseWriter, r *http.Request)
 	// ListChangeSets Change sets (docs/adr/0022): the caller's own and their agents', newest first; everyone's for an administrator who asks.
 	// (GET /changesets)
 	ListChangeSets(w http.ResponseWriter, r *http.Request, params ListChangeSetsParams)
@@ -3266,6 +3487,15 @@ type ServerInterface interface {
 	// ReopenChangeSet Take a proposed change set back to work, to ask for changes or to withdraw it.
 	// (POST /changesets/{set}/reopen)
 	ReopenChangeSet(w http.ResponseWriter, r *http.Request, set ChangeSetParam)
+	// GetCharterPartsStyle The styling of what a charter's sections hold
+	// (GET /charter/parts.css)
+	GetCharterPartsStyle(w http.ResponseWriter, r *http.Request)
+	// ListMyMentions The comments that ask the caller, newest first
+	// (GET /comments/mentions)
+	ListMyMentions(w http.ResponseWriter, r *http.Request)
+	// ResolveComment Resolve or reopen the thread a comment starts
+	// (PATCH /comments/{comment})
+	ResolveComment(w http.ResponseWriter, r *http.Request, comment string)
 	// GetComponents Every project and programme, what each depends on, and what follows
 	// (GET /components)
 	GetComponents(w http.ResponseWriter, r *http.Request, params GetComponentsParams)
@@ -3359,6 +3589,9 @@ type ServerInterface interface {
 	// MatchWhatHappened The items of a project what a person says happened is about
 	// (POST /manifests/Project/{id}/happened)
 	MatchWhatHappened(w http.ResponseWriter, r *http.Request, id IdParam, params MatchWhatHappenedParams)
+	// GetProjectRound The decisions a project's walk can settle now, in the order agents are asked them
+	// (GET /manifests/Project/{id}/round)
+	GetProjectRound(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectRoundParams)
 	// GetProjectSchedule A project's milestones placed on time
 	// (GET /manifests/Project/{id}/schedule)
 	GetProjectSchedule(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectScheduleParams)
@@ -3389,6 +3622,12 @@ type ServerInterface interface {
 	// GetCharterPdf The charter of a project, programme or operation as a PDF, printed from the same HTML the charter page shows. Needs a chromium: the vault's spec.chromium, the CHROMIUM environment variable, or one on the PATH.
 	// (GET /manifests/{kind}/{id}/charter.pdf)
 	GetCharterPdf(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam, params GetCharterPdfParams)
+	// ListComments A record's comments, oldest first
+	// (GET /manifests/{kind}/{id}/comments)
+	ListComments(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
+	// AddComment Comment on a record, beside a part of it
+	// (POST /manifests/{kind}/{id}/comments)
+	AddComment(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam)
 	// DiffManifest Structural diff between two versions
 	// (GET /manifests/{kind}/{id}/diff)
 	DiffManifest(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam, params DiffManifestParams)
@@ -3422,6 +3661,9 @@ type ServerInterface interface {
 	// MatchExisting The existing records of a kind that say what a text says
 	// (POST /match)
 	MatchExisting(w http.ResponseWriter, r *http.Request)
+	// ListMentionables Who a comment can ask
+	// (GET /mentionables)
+	ListMentionables(w http.ResponseWriter, r *http.Request, params ListMentionablesParams)
 	// GetOrder The order of work, and how far the workspace has got along it
 	// (GET /order)
 	GetOrder(w http.ResponseWriter, r *http.Request, params GetOrderParams)
@@ -3665,6 +3907,20 @@ func (siw *ServerInterfaceWrapper) RevokeAgentGrant(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.RevokeAgentGrant(w, r, grant)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReadAggregation operation middleware
+func (siw *ServerInterfaceWrapper) ReadAggregation(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReadAggregation(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4215,6 +4471,60 @@ func (siw *ServerInterfaceWrapper) ReopenChangeSet(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReopenChangeSet(w, r, set)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCharterPartsStyle operation middleware
+func (siw *ServerInterfaceWrapper) GetCharterPartsStyle(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCharterPartsStyle(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMyMentions operation middleware
+func (siw *ServerInterfaceWrapper) ListMyMentions(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMyMentions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ResolveComment operation middleware
+func (siw *ServerInterfaceWrapper) ResolveComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "comment" -------------
+	var comment string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "comment", r.PathValue("comment"), &comment, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "comment", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResolveComment(w, r, comment)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5343,6 +5653,48 @@ func (siw *ServerInterfaceWrapper) MatchWhatHappened(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// GetProjectRound operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectRound(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProjectRoundParams
+
+	// ------------- Optional query parameter "changeSet" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "changeSet", r.URL.Query(), &params.ChangeSet, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "changeSet"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "changeSet", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProjectRound(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetProjectSchedule operation middleware
 func (siw *ServerInterfaceWrapper) GetProjectSchedule(w http.ResponseWriter, r *http.Request) {
 
@@ -5826,6 +6178,76 @@ func (siw *ServerInterfaceWrapper) GetCharterPdf(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// ListComments operation middleware
+func (siw *ServerInterfaceWrapper) ListComments(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListComments(w, r, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddComment operation middleware
+func (siw *ServerInterfaceWrapper) AddComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "kind" -------------
+	var kind KindParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id IdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddComment(w, r, kind, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // DiffManifest operation middleware
 func (siw *ServerInterfaceWrapper) DiffManifest(w http.ResponseWriter, r *http.Request) {
 
@@ -6228,6 +6650,39 @@ func (siw *ServerInterfaceWrapper) MatchExisting(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.MatchExisting(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMentionables operation middleware
+func (siw *ServerInterfaceWrapper) ListMentionables(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMentionablesParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMentionables(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6946,11 +7401,18 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/manifests/Goal/{id}", wrapper.DeleteGoal)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/checks", wrapper.GetProjectChecks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/dmaic", wrapper.GetProjectDMAIC)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/comments", wrapper.ListComments)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/{kind}/{id}/comments", wrapper.AddComment)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/comments/{comment}", wrapper.ResolveComment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/comments/mentions", wrapper.ListMyMentions)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/mentionables", wrapper.ListMentionables)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/constraints", wrapper.GetProjectConstraints)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/round", wrapper.GetProjectRound)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/KPI/{id}/control", wrapper.GetKPIControlChart)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.GetProjectState)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/manifests/Project/{id}/state", wrapper.TransitionProjectState)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/charter.html", wrapper.GetProjectCharterHtml)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/charter/parts.css", wrapper.GetCharterPartsStyle)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Project/{id}/charter/parts", wrapper.GetProjectCharterParts)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/{kind}/{id}/charter.pdf", wrapper.GetCharterPdf)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/manifests/Programme/{id}/charter.html", wrapper.GetProgrammeCharterHtml)
@@ -6969,6 +7431,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/from-idea", wrapper.FromIdea)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/decision-model", wrapper.GetDecisionModel)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/match", wrapper.MatchExisting)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/aggregations/read", wrapper.ReadAggregation)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/glossary", wrapper.GetGlossary)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/kinds", wrapper.ListKinds)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/flows", wrapper.ListFlows)
@@ -7519,6 +7982,56 @@ func (response RevokeAgentGrant404JSONResponse) VisitRevokeAgentGrantResponse(w 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReadAggregationRequestObject struct {
+	Body *ReadAggregationJSONRequestBody
+}
+
+type ReadAggregationResponseObject interface {
+	VisitReadAggregationResponse(w http.ResponseWriter) error
+}
+
+type ReadAggregation200JSONResponse AggregationReading
+
+func (response ReadAggregation200JSONResponse) VisitReadAggregationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReadAggregation401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ReadAggregation401JSONResponse) VisitReadAggregationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReadAggregation403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ReadAggregation403JSONResponse) VisitReadAggregationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8667,6 +9180,203 @@ func (response ReopenChangeSet409JSONResponse) VisitReopenChangeSetResponse(w ht
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCharterPartsStyleRequestObject struct {
+}
+
+type GetCharterPartsStyleResponseObject interface {
+	VisitGetCharterPartsStyleResponse(w http.ResponseWriter) error
+}
+
+type GetCharterPartsStyle200TextcssResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response GetCharterPartsStyle200TextcssResponse) VisitGetCharterPartsStyleResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "text/css")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetCharterPartsStyle401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetCharterPartsStyle401JSONResponse) VisitGetCharterPartsStyleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCharterPartsStyle403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetCharterPartsStyle403JSONResponse) VisitGetCharterPartsStyleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyMentionsRequestObject struct {
+}
+
+type ListMyMentionsResponseObject interface {
+	VisitListMyMentionsResponse(w http.ResponseWriter) error
+}
+
+type ListMyMentions200JSONResponse []Comment
+
+func (response ListMyMentions200JSONResponse) VisitListMyMentionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyMentions401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListMyMentions401JSONResponse) VisitListMyMentionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyMentions403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListMyMentions403JSONResponse) VisitListMyMentionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyMentions404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListMyMentions404JSONResponse) VisitListMyMentionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveCommentRequestObject struct {
+	Comment string `json:"comment"`
+	Body    *ResolveCommentJSONRequestBody
+}
+
+type ResolveCommentResponseObject interface {
+	VisitResolveCommentResponse(w http.ResponseWriter) error
+}
+
+type ResolveComment200JSONResponse Comment
+
+func (response ResolveComment200JSONResponse) VisitResolveCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveComment401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ResolveComment401JSONResponse) VisitResolveCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveComment403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ResolveComment403JSONResponse) VisitResolveCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveComment404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ResolveComment404JSONResponse) VisitResolveCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveComment422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response ResolveComment422JSONResponse) VisitResolveCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -10560,6 +11270,71 @@ func (response MatchWhatHappened404JSONResponse) VisitMatchWhatHappenedResponse(
 	return err
 }
 
+type GetProjectRoundRequestObject struct {
+	Id     IdParam `json:"id"`
+	Params GetProjectRoundParams
+}
+
+type GetProjectRoundResponseObject interface {
+	VisitGetProjectRoundResponse(w http.ResponseWriter) error
+}
+
+type GetProjectRound200JSONResponse ProjectRound
+
+func (response GetProjectRound200JSONResponse) VisitGetProjectRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectRound401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetProjectRound401JSONResponse) VisitGetProjectRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectRound403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProjectRound403JSONResponse) VisitGetProjectRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProjectRound404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProjectRound404JSONResponse) VisitGetProjectRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetProjectScheduleRequestObject struct {
 	Id     IdParam `json:"id"`
 	Params GetProjectScheduleParams
@@ -11328,6 +12103,151 @@ func (response GetCharterPdf404JSONResponse) VisitGetCharterPdfResponse(w http.R
 type GetCharterPdf422JSONResponse struct{ UnprocessableJSONResponse }
 
 func (response GetCharterPdf422JSONResponse) VisitGetCharterPdfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommentsRequestObject struct {
+	Kind KindParam `json:"kind"`
+	Id   IdParam   `json:"id"`
+}
+
+type ListCommentsResponseObject interface {
+	VisitListCommentsResponse(w http.ResponseWriter) error
+}
+
+type ListComments200JSONResponse []Comment
+
+func (response ListComments200JSONResponse) VisitListCommentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListComments401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListComments401JSONResponse) VisitListCommentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListComments403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListComments403JSONResponse) VisitListCommentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListComments404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListComments404JSONResponse) VisitListCommentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddCommentRequestObject struct {
+	Kind KindParam `json:"kind"`
+	Id   IdParam   `json:"id"`
+	Body *AddCommentJSONRequestBody
+}
+
+type AddCommentResponseObject interface {
+	VisitAddCommentResponse(w http.ResponseWriter) error
+}
+
+type AddComment201JSONResponse Comment
+
+func (response AddComment201JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddComment401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response AddComment401JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddComment403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response AddComment403JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddComment404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AddComment404JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddComment422JSONResponse struct{ UnprocessableJSONResponse }
+
+func (response AddComment422JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -12134,6 +13054,56 @@ func (response MatchExisting401JSONResponse) VisitMatchExistingResponse(w http.R
 type MatchExisting403JSONResponse struct{ ForbiddenJSONResponse }
 
 func (response MatchExisting403JSONResponse) VisitMatchExistingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMentionablesRequestObject struct {
+	Params ListMentionablesParams
+}
+
+type ListMentionablesResponseObject interface {
+	VisitListMentionablesResponse(w http.ResponseWriter) error
+}
+
+type ListMentionables200JSONResponse []Mentionable
+
+func (response ListMentionables200JSONResponse) VisitListMentionablesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMentionables401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListMentionables401JSONResponse) VisitListMentionablesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMentionables403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListMentionables403JSONResponse) VisitListMentionablesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -13549,6 +14519,9 @@ type StrictServerInterface interface {
 	// RevokeAgentGrant Disconnects an agent at once: the caller's own, or anyone's for an administrator.
 	// (DELETE /agents/{grant})
 	RevokeAgentGrant(ctx context.Context, request RevokeAgentGrantRequestObject) (RevokeAgentGrantResponseObject, error)
+	// ReadAggregation What a data source metric's aggregation reads as, or why it does not
+	// (POST /aggregations/read)
+	ReadAggregation(ctx context.Context, request ReadAggregationRequestObject) (ReadAggregationResponseObject, error)
 	// ListChangeSets Change sets (docs/adr/0022): the caller's own and their agents', newest first; everyone's for an administrator who asks.
 	// (GET /changesets)
 	ListChangeSets(ctx context.Context, request ListChangeSetsRequestObject) (ListChangeSetsResponseObject, error)
@@ -13597,6 +14570,15 @@ type StrictServerInterface interface {
 	// ReopenChangeSet Take a proposed change set back to work, to ask for changes or to withdraw it.
 	// (POST /changesets/{set}/reopen)
 	ReopenChangeSet(ctx context.Context, request ReopenChangeSetRequestObject) (ReopenChangeSetResponseObject, error)
+	// GetCharterPartsStyle The styling of what a charter's sections hold
+	// (GET /charter/parts.css)
+	GetCharterPartsStyle(ctx context.Context, request GetCharterPartsStyleRequestObject) (GetCharterPartsStyleResponseObject, error)
+	// ListMyMentions The comments that ask the caller, newest first
+	// (GET /comments/mentions)
+	ListMyMentions(ctx context.Context, request ListMyMentionsRequestObject) (ListMyMentionsResponseObject, error)
+	// ResolveComment Resolve or reopen the thread a comment starts
+	// (PATCH /comments/{comment})
+	ResolveComment(ctx context.Context, request ResolveCommentRequestObject) (ResolveCommentResponseObject, error)
 	// GetComponents Every project and programme, what each depends on, and what follows
 	// (GET /components)
 	GetComponents(ctx context.Context, request GetComponentsRequestObject) (GetComponentsResponseObject, error)
@@ -13690,6 +14672,9 @@ type StrictServerInterface interface {
 	// MatchWhatHappened The items of a project what a person says happened is about
 	// (POST /manifests/Project/{id}/happened)
 	MatchWhatHappened(ctx context.Context, request MatchWhatHappenedRequestObject) (MatchWhatHappenedResponseObject, error)
+	// GetProjectRound The decisions a project's walk can settle now, in the order agents are asked them
+	// (GET /manifests/Project/{id}/round)
+	GetProjectRound(ctx context.Context, request GetProjectRoundRequestObject) (GetProjectRoundResponseObject, error)
 	// GetProjectSchedule A project's milestones placed on time
 	// (GET /manifests/Project/{id}/schedule)
 	GetProjectSchedule(ctx context.Context, request GetProjectScheduleRequestObject) (GetProjectScheduleResponseObject, error)
@@ -13720,6 +14705,12 @@ type StrictServerInterface interface {
 	// GetCharterPdf The charter of a project, programme or operation as a PDF, printed from the same HTML the charter page shows. Needs a chromium: the vault's spec.chromium, the CHROMIUM environment variable, or one on the PATH.
 	// (GET /manifests/{kind}/{id}/charter.pdf)
 	GetCharterPdf(ctx context.Context, request GetCharterPdfRequestObject) (GetCharterPdfResponseObject, error)
+	// ListComments A record's comments, oldest first
+	// (GET /manifests/{kind}/{id}/comments)
+	ListComments(ctx context.Context, request ListCommentsRequestObject) (ListCommentsResponseObject, error)
+	// AddComment Comment on a record, beside a part of it
+	// (POST /manifests/{kind}/{id}/comments)
+	AddComment(ctx context.Context, request AddCommentRequestObject) (AddCommentResponseObject, error)
 	// DiffManifest Structural diff between two versions
 	// (GET /manifests/{kind}/{id}/diff)
 	DiffManifest(ctx context.Context, request DiffManifestRequestObject) (DiffManifestResponseObject, error)
@@ -13753,6 +14744,9 @@ type StrictServerInterface interface {
 	// MatchExisting The existing records of a kind that say what a text says
 	// (POST /match)
 	MatchExisting(ctx context.Context, request MatchExistingRequestObject) (MatchExistingResponseObject, error)
+	// ListMentionables Who a comment can ask
+	// (GET /mentionables)
+	ListMentionables(ctx context.Context, request ListMentionablesRequestObject) (ListMentionablesResponseObject, error)
 	// GetOrder The order of work, and how far the workspace has got along it
 	// (GET /order)
 	GetOrder(ctx context.Context, request GetOrderRequestObject) (GetOrderResponseObject, error)
@@ -14048,6 +15042,37 @@ func (sh *strictHandler) RevokeAgentGrant(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(RevokeAgentGrantResponseObject); ok {
 		if err := validResponse.VisitRevokeAgentGrantResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReadAggregation operation middleware
+func (sh *strictHandler) ReadAggregation(w http.ResponseWriter, r *http.Request) {
+	var request ReadAggregationRequestObject
+
+	var body ReadAggregationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReadAggregation(ctx, request.(ReadAggregationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReadAggregation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReadAggregationResponseObject); ok {
+		if err := validResponse.VisitReadAggregationResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -14551,6 +15576,87 @@ func (sh *strictHandler) ReopenChangeSet(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ReopenChangeSetResponseObject); ok {
 		if err := validResponse.VisitReopenChangeSetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCharterPartsStyle operation middleware
+func (sh *strictHandler) GetCharterPartsStyle(w http.ResponseWriter, r *http.Request) {
+	var request GetCharterPartsStyleRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCharterPartsStyle(ctx, request.(GetCharterPartsStyleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCharterPartsStyle")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCharterPartsStyleResponseObject); ok {
+		if err := validResponse.VisitGetCharterPartsStyleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMyMentions operation middleware
+func (sh *strictHandler) ListMyMentions(w http.ResponseWriter, r *http.Request) {
+	var request ListMyMentionsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMyMentions(ctx, request.(ListMyMentionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMyMentions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMyMentionsResponseObject); ok {
+		if err := validResponse.VisitListMyMentionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ResolveComment operation middleware
+func (sh *strictHandler) ResolveComment(w http.ResponseWriter, r *http.Request, comment string) {
+	var request ResolveCommentRequestObject
+
+	request.Comment = comment
+
+	var body ResolveCommentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResolveComment(ctx, request.(ResolveCommentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResolveComment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResolveCommentResponseObject); ok {
+		if err := validResponse.VisitResolveCommentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -15404,6 +16510,33 @@ func (sh *strictHandler) MatchWhatHappened(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// GetProjectRound operation middleware
+func (sh *strictHandler) GetProjectRound(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectRoundParams) {
+	var request GetProjectRoundRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProjectRound(ctx, request.(GetProjectRoundRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProjectRound")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProjectRoundResponseObject); ok {
+		if err := validResponse.VisitGetProjectRoundResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetProjectSchedule operation middleware
 func (sh *strictHandler) GetProjectSchedule(w http.ResponseWriter, r *http.Request, id IdParam, params GetProjectScheduleParams) {
 	var request GetProjectScheduleRequestObject
@@ -15688,6 +16821,67 @@ func (sh *strictHandler) GetCharterPdf(w http.ResponseWriter, r *http.Request, k
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetCharterPdfResponseObject); ok {
 		if err := validResponse.VisitGetCharterPdfResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListComments operation middleware
+func (sh *strictHandler) ListComments(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam) {
+	var request ListCommentsRequestObject
+
+	request.Kind = kind
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListComments(ctx, request.(ListCommentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListComments")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCommentsResponseObject); ok {
+		if err := validResponse.VisitListCommentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddComment operation middleware
+func (sh *strictHandler) AddComment(w http.ResponseWriter, r *http.Request, kind KindParam, id IdParam) {
+	var request AddCommentRequestObject
+
+	request.Kind = kind
+	request.Id = id
+
+	var body AddCommentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddComment(ctx, request.(AddCommentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddComment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddCommentResponseObject); ok {
+		if err := validResponse.VisitAddCommentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -16013,6 +17207,32 @@ func (sh *strictHandler) MatchExisting(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(MatchExistingResponseObject); ok {
 		if err := validResponse.VisitMatchExistingResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMentionables operation middleware
+func (sh *strictHandler) ListMentionables(w http.ResponseWriter, r *http.Request, params ListMentionablesParams) {
+	var request ListMentionablesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMentionables(ctx, request.(ListMentionablesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMentionables")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMentionablesResponseObject); ok {
+		if err := validResponse.VisitListMentionablesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

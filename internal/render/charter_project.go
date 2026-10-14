@@ -15,7 +15,7 @@ import (
 // will achieve and produce, when, who decides and pays, what could go
 // wrong, how anyone will know it worked, and who approves it.
 func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engine.Version) ([]byte, error) {
-	d, err := projectCharterDoc(ctx, e, id, vers)
+	d, err := projectCharterDoc(ctx, e, id, vers, false)
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +23,9 @@ func projectCharter(ctx context.Context, e *engine.Engine, id string, vers engin
 }
 
 // projectCharterDoc writes a project's charter, all but its end.
-func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers engine.Version) (*doc, error) {
+// editable marks every value with the field it comes from, for a charter
+// edited where it is read (editable.go).
+func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers engine.Version, editable bool) (*doc, error) {
 	name, spec, err := manifestOf(e, vers, id)
 	if err != nil {
 		return nil, err
@@ -40,7 +42,7 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 	if first, last := scheduleSpan(spec); first != "" {
 		start, finish = when(first), when(last)
 	}
-	fundingRows, total := budget(n, list(spec["funding"]))
+	_, total := budget(n, list(spec["costs"]))
 
 	kindLine := "Project charter"
 	parent := str(alignment["partOf"])
@@ -60,7 +62,7 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 		}
 	}
 
-	var d doc
+	d := doc{editable: editable}
 	d.brand(ctx, e)
 	d.head(name, kindLine, vers)
 	checks, _ := e.ProjectChecks(ctx, id, false)
@@ -76,55 +78,73 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 	// sponsor approves, in the order they ask it. Every register prints
 	// the rows a decision turns on; the rest stay in Cartograph.
 	d.h2("At a glance")
-	if about := str(summary["about"]); about != "" {
-		d.lead(capital(about))
+	if about := str(summary["about"]); about != "" || d.editable {
+		d.lead(d.at(capital(about), "/spec/summary/about"))
 	}
 	var authority []string
 	for _, m := range list(spec["mandate"]) {
 		authority = append(authority, str(m["title"]))
 	}
+	// The dates come from the milestones when there are any, else the
+	// phases.
+	dates := "/spec/timeline"
+	if len(list(spec["milestones"])) > 0 {
+		dates = "/spec/milestones"
+	}
 	d.facts(
-		field{"Sponsor", strings.Join(roleNames(n, resources, "sponsor"), ", ")},
-		field{"Project manager", strings.Join(roleNames(n, resources, "manager"), ", ")},
-		field{"Lead team", n.of("Team", str(spec["team"]))},
-		field{"Programme", strings.Join(programmes, "; ")},
-		field{"Start", start},
-		field{"End", finish},
-		field{"Budget", budgetWithComponents(ctx, e, n, graph, self, list(spec["funding"]), total)},
-		field{"Handover to", operation},
+		field{"Sponsor", d.from(strings.Join(roleNames(n, resources, "sponsor"), ", "), "/spec/resources")},
+		field{"Project manager", d.from(strings.Join(roleNames(n, resources, "manager"), ", "), "/spec/resources")},
+		field{"Lead team", d.at(n.of("Team", str(spec["team"])), "/spec/team")},
+		field{"Programme", d.at(strings.Join(programmes, "; "), "/spec/alignment/programmes")},
+		field{"Start", d.from(start, dates)},
+		field{"End", d.from(finish, dates)},
+		field{"Budget", d.from(budgetWithComponents(ctx, e, n, graph, self, list(spec["costs"]), total), "/spec/costs")},
+		field{"Handover to", d.at(operation, "/spec/operation")},
 	)
 	d.fields(
-		field{"Outcomes served", strings.Join(n.all("Goal", strs(alignment["goals"])), "; ")},
-		field{"Authority", strings.Join(authority, "; ")},
+		field{"Outcomes served", d.at(strings.Join(n.all("Goal", strs(alignment["goals"])), "; "), "/spec/alignment/goals")},
+		field{"Authority", d.from(strings.Join(authority, "; "), "/spec/mandate")},
 	)
 	d.readinessBrief(checks.Items)
 
 	// The one objective (TAXONOMY.md D54) and how it is measured.
 	objectives := list(spec["objectives"])
+	if len(objectives) == 0 && d.editable {
+		objectives = []map[string]any{{}}
+	}
 	if len(objectives) > 0 {
 		d.h2("Objective and key results")
 		for i, o := range objectives {
-			title := capital(str(o["objective"]))
+			at := fmt.Sprintf("/spec/objectives/%d", i)
+			title := d.at(capital(str(o["objective"])), at+"/objective")
 			if len(objectives) > 1 {
 				title = fmt.Sprintf("Objective %d. %s", i+1, title)
 			}
 			d.h3named(title)
 			var rows [][]string
-			for _, kr := range list(o["keyResults"]) {
+			for j, kr := range list(o["keyResults"]) {
+				kat := fmt.Sprintf("%s/keyResults/%d", at, j)
 				unit := func(v string) string { return withUnit(kr, v) }
 				rows = append(rows, []string{
-					capital(str(kr["metric"])),
-					baselineWords(p, kr, obj(kr["baseline"])),
-					p.target(kr["target"], unit),
-					n.of("DataSource", str(kr["source"])),
+					d.at(capital(str(kr["metric"])), kat+"/metric"),
+					d.from(baselineWords(p, kr, obj(kr["baseline"])), kat+"/baseline"),
+					d.from(p.target(kr["target"], unit), kat+"/target"),
+					d.at(n.of("DataSource", str(kr["source"])), kat+"/source"),
 				})
 			}
 			d.table([]string{"Key result", "Baseline", "Target", "Data source"}, rows)
+			d.addRow(at+"/keyResults", "Key result")
 		}
 	}
 
 	d.problemsBrief(n, list(summary["problems"]))
-	if in, out := strs(summary["scopeIn"]), strs(summary["scopeOut"]); len(in)+len(out) > 0 {
+	// An editable charter keeps an empty line, as the place to type the
+	// line just added, and so each line keeps its index in the draft.
+	lines := strs
+	if d.editable {
+		lines = allStrs
+	}
+	if in, out := lines(summary["scopeIn"]), lines(summary["scopeOut"]); len(in)+len(out) > 0 || d.editable {
 		d.h2("Scope")
 		d.scopeColumns(in, out)
 	}
@@ -159,23 +179,21 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 
 	d.h2("Governance")
 	var roles [][]string
-	for _, r := range resources {
+	for i, r := range resources {
 		if uniqueRoles[str(r["role"])] {
-			roles = append(roles, []string{label("role", str(r["role"])), n.of("Resource", str(r["resource"]))})
+			at := fmt.Sprintf("/spec/resources/%d", i)
+			roles = append(roles, []string{d.at(label("role", str(r["role"])), at+"/role"), d.at(n.of("Resource", str(r["resource"])), at+"/resource")})
 		}
 	}
 	d.table([]string{"Role", "Post"}, roles)
-	d.fields(field{"Escalation route", escalation(p, spec)})
+	d.addRow("/spec/resources", "Role")
+	d.fields(field{"Escalation route", d.from(escalation(p, spec), "/spec/escalationRoute")})
 
-	if len(fundingRows)+len(list(spec["costs"])) > 0 {
+	// The budget is the cost plan: each line on the funding source it
+	// draws on (TAXONOMY.md D69).
+	if len(list(spec["costs"])) > 0 || d.editable {
 		d.h2("Budget")
-		if len(fundingRows) > 0 {
-			if strings.Contains(total, ";") || len(fundingRows) > 1 {
-				fundingRows = append(fundingRows, []string{total, "Total", ""})
-			}
-			d.table([]string{"Amount", "Funding source", "Status"}, fundingRows)
-		}
-		d.costsBrief(p)
+		d.costsBrief(p, total)
 	}
 
 	d.constraintsBrief(spec)
@@ -183,11 +201,12 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 
 	// How anyone will know it worked, and who runs it afterwards.
 	criteria := list(spec["successCriteria"])
-	if len(criteria) > 0 {
+	if len(criteria) > 0 || d.editable {
 		d.h2("Success criteria and handover")
 		var rows [][]string
 		results := false
-		for _, c := range criteria {
+		for i, c := range criteria {
+			at := fmt.Sprintf("/spec/successCriteria/%d", i)
 			judged := str(c["when"])
 			if judged == "" {
 				judged = "atClosing"
@@ -195,7 +214,8 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 			result := p.result(str(c["id"]))
 			results = results || result != ""
 			rows = append(rows, []string{
-				str(c["statement"]), str(c["standard"]), label("when", judged), p.who(c["confirmedBy"]), result,
+				d.at(str(c["statement"]), at+"/statement"), standardCell(&d, c, at), d.at(label("when", judged), at+"/when"),
+				d.at(p.who(c["confirmedBy"]), at+"/confirmedBy"), d.from(result, "/spec/events"),
 			})
 		}
 		heads := []string{"Criterion", "Target", "Judged", "Signed off by", "Result"}
@@ -207,14 +227,15 @@ func projectCharterDoc(ctx context.Context, e *engine.Engine, id string, vers en
 			}
 		}
 		d.table(heads, rows)
+		d.addRow("/spec/successCriteria", "Success criterion")
 	}
 	var kpiNames []string
 	for _, k := range list(spec["kpis"]) {
 		kpiNames = append(kpiNames, n.of("KPI", str(k["kpi"])))
 	}
 	d.fields(
-		field{"Performance indicators", strings.Join(kpiNames, "; ")},
-		field{"Handover to", operation},
+		field{"Performance indicators", d.from(strings.Join(kpiNames, "; "), "/spec/kpis")},
+		field{"Handover to", d.at(operation, "/spec/operation")},
 	)
 
 	// Approval: the conditions and sign-off lines the definition names,
@@ -313,4 +334,13 @@ func aliasOf(e *engine.Engine, vers engine.Version) string {
 		return ""
 	}
 	return str(obj(m["metadata"])["alias"])
+}
+
+// standardCell is a success criterion's target: a criterion of compliance
+// is met or not and has none, so there is no place to write one (#75).
+func standardCell(d *doc, c map[string]any, at string) string {
+	if str(c["metric"]) == "compliance" {
+		return str(c["standard"])
+	}
+	return d.at(str(c["standard"]), at+"/standard")
 }

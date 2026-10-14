@@ -28,6 +28,16 @@
             "hint": "The month of the year the first period opens, from 1 to 12."
           },
           {
+            "path": "/spec/periodDays",
+            "control": "choice",
+            "hint": "How many days one period covers, for an indicator read daily, weekly or every two weeks. Leave it empty for periods of months or named periods."
+          },
+          {
+            "path": "/spec/startDate",
+            "control": "date",
+            "hint": "The first day of one of its periods, so the rest line up with it: a weekly cycle from a Monday."
+          },
+          {
             "path": "/spec/periods",
             "control": "list",
             "key": "name",

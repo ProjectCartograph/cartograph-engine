@@ -46,7 +46,30 @@ func loadNames(ctx context.Context, e *engine.Engine) names {
 		}
 		n[kind] = byID
 	}
+	// The workspace's own words for fields whose choices are its own
+	// (TAXONOMY.md D71), read as a register is.
+	if s, err := e.GetSettings(ctx); err == nil {
+		for name, terms := range s.Vocabularies {
+			byValue := map[string]string{}
+			for _, t := range terms {
+				byValue[t.Value] = t.Label
+			}
+			n[vocabKey+name] = byValue
+		}
+	}
 	return n
+}
+
+// vocabKey marks a vocabulary's words among the registers' names.
+const vocabKey = "vocabulary:"
+
+// word is what a person reads for a stored choice: the workspace's word
+// where its vocabulary has one, else the fixed label, else the value.
+func (n names) word(vocabulary, value string) string {
+	if w := n[vocabKey+vocabulary][value]; w != "" {
+		return w
+	}
+	return label(vocabulary, value)
 }
 
 // of returns the name of a kind's item, or the id when the register does
@@ -150,8 +173,10 @@ var labels = map[string]map[string]string{
 		"documentsOrFiles": "Documents or files", "extractOrReport": "Extract or report",
 	},
 	"refresh": {
+		"continuous": "Real time", "onEvent": "When something happens",
 		"daily": "Daily", "weekly": "Weekly", "monthly": "Monthly",
-		"quarterly": "Quarterly", "annual": "Annual", "adHoc": "Ad hoc",
+		"quarterly": "Quarterly", "termly": "Each term", "annual": "Annual",
+		"irregular": "Irregular",
 	},
 	"personal":  {"none": "None", "personal": "Personal", "sensitive": "Sensitive"},
 	"readiness": {"ready": "Ready", "open": "Open points", "blocking": "Blocking"},
@@ -207,6 +232,8 @@ type doc struct {
 	parts  []Part
 	opened bool
 	openAt int
+	// editable marks every value with its field (editable.go).
+	editable bool
 }
 
 // brand reads the organisation's name and logo for the cover.
@@ -296,7 +323,7 @@ func (d *doc) h3(s string) {
 func (d *doc) h3named(s string) {
 	d.flush()
 	d.b.WriteString("<h3 class=\"named\">")
-	d.b.WriteString(esc(s))
+	d.b.WriteString(valueHTML(s))
 	d.b.WriteString("</h3>\n")
 }
 
@@ -344,43 +371,20 @@ func (d *doc) fields(fs ...field) {
 		d.b.WriteString("<dt>")
 		d.b.WriteString(esc(f.label))
 		d.b.WriteString("</dt><dd>")
-		d.b.WriteString(esc(f.value))
+		d.b.WriteString(valueHTML(f.value))
 		d.b.WriteString("</dd>\n")
 	}
 	d.b.WriteString("</dl>\n")
 }
 
-// fieldsAt is fields with each value's pointer on it.
+// fieldsAt is fields with each value's pointer on it, marked in an
+// editable document (editable.go).
 func (d *doc) fieldsAt(fs ...pathed) {
-	var kept []pathed
-	for _, f := range fs {
-		if strings.TrimSpace(f.value) != "" {
-			kept = append(kept, f)
-		}
+	out := make([]field, len(fs))
+	for i, f := range fs {
+		out[i] = field{f.label, d.at(f.value, f.path)}
 	}
-	if len(kept) == 0 {
-		return
-	}
-	d.flush()
-	d.b.WriteString("<dl>\n")
-	for _, f := range kept {
-		if f.path == "" {
-			d.b.WriteString("<dt>")
-			d.b.WriteString(esc(f.label))
-			d.b.WriteString("</dt><dd>")
-			d.b.WriteString(esc(f.value))
-			d.b.WriteString("</dd>\n")
-			continue
-		}
-		d.b.WriteString("<dt>")
-		d.b.WriteString(esc(f.label))
-		d.b.WriteString(`</dt><dd data-field="`)
-		d.b.WriteString(esc(f.path))
-		d.b.WriteString(`">`)
-		d.b.WriteString(esc(f.value))
-		d.b.WriteString("</dd>\n")
-	}
-	d.b.WriteString("</dl>\n")
+	d.fields(out...)
 }
 
 // list prints a heading and its items, or nothing when there are none.
@@ -403,7 +407,7 @@ func (d *doc) list(heading string, items []string) {
 	d.b.WriteString("<ul>\n")
 	for _, it := range kept {
 		d.b.WriteString("<li>")
-		d.b.WriteString(esc(it))
+		d.b.WriteString(valueHTML(it))
 		d.b.WriteString("</li>\n")
 	}
 	d.b.WriteString("</ul>\n")
@@ -457,7 +461,7 @@ func (d *doc) table(headers []string, rows [][]string) {
 				continue
 			}
 			d.b.WriteString("<td>")
-			d.b.WriteString(esc(c))
+			d.b.WriteString(valueHTML(c))
 			d.b.WriteString("</td>")
 		}
 		d.b.WriteString("</tr>\n")
@@ -552,17 +556,7 @@ dl.facts dt { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em
 dl.facts dd { font-weight: 600; }
 table.signoff td { height: 2.2rem; }
 table.signoff td:nth-child(2) { width: 38%; } table.signoff td:nth-child(3) { width: 30%; }
-.chip { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; border: 1px solid var(--line);
-  border-radius: 999px; padding: .08rem .55rem .08rem .45rem; font-size: .78rem; line-height: 1.5; background: var(--paper); }
-.chip svg { flex: none; }
-.chip-readiness.chip { font-weight: 600; }
-.chip-ready { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
-.chip-open { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
-.chip-blocking { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
-td.fit { width: 1%; white-space: nowrap; }
-p.note { color: var(--muted); font-size: .85rem; margin: .35rem 0 1.1rem; }
-p.ready-line { display: flex; align-items: center; gap: .6rem; margin: .5rem 0 1rem; }
-footer.doc { margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .78rem; }
+` + chipCSS + `footer.doc { margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .78rem; }
 table.control tr:nth-child(even) td { background: none; }
 nav.contents > p { margin-bottom: .6rem; }
 nav.contents ol { columns: 2; column-gap: 2.5rem; }
@@ -759,7 +753,7 @@ func (d *doc) data(n names, data map[string]any) {
 	for _, p := range produces {
 		made = append(made, []string{
 			label("output", str(p["output"])), n.of("DataSource", str(p["sink"])), str(p["purpose"]),
-			label("refresh", str(p["refresh"])), chip("personal", personal(str(p["personalData"]))),
+			n.word("refresh", str(p["refresh"])), chip("personal", personal(str(p["personalData"]))),
 		})
 	}
 	if len(made) > 0 {
@@ -785,6 +779,18 @@ func strs(v any) []string {
 	out := make([]string, 0, len(items))
 	for _, it := range items {
 		if s := str(it); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// allStrs is every string in v, empty ones included.
+func allStrs(v any) []string {
+	items, _ := v.([]any)
+	out := make([]string, 0, len(items))
+	for _, it := range items {
+		if s, ok := it.(string); ok {
 			out = append(out, s)
 		}
 	}
@@ -984,3 +990,25 @@ func chipHTML(group, value string) string {
 	}
 	return `<span class="chip chip-` + esc(group) + ` chip-` + esc(value) + `">` + icon + `<span>` + esc(text) + `</span></span>`
 }
+
+// chipCSS styles what a charter prints in its sections, beside the page
+// itself: chips, notes, the readiness line.
+const chipCSS = `.chip { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; border: 1px solid var(--line);
+  border-radius: 999px; padding: .08rem .55rem .08rem .45rem; font-size: .78rem; line-height: 1.5; background: var(--paper); }
+.chip svg { flex: none; }
+.chip-readiness.chip { font-weight: 600; }
+.chip-ready { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.chip-open { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.chip-blocking { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+td.fit { width: 1%; white-space: nowrap; }
+p.note { color: var(--muted); font-size: .85rem; margin: .35rem 0 1.1rem; }
+p.ready-line { display: flex; align-items: center; gap: .6rem; margin: .5rem 0 1rem; }
+`
+
+// PartsCSS is the styling of what a charter's sections hold (chips, the
+// components diagram, the schedule chart, the iron triangle), for an
+// interface drawing the charter as parts in a page of its own, where the
+// charter's page styles do not belong (#77). It reads the charter's
+// colour variables: --fg, --muted, --line, --soft, --paper, --accent,
+// --accent-soft, --ok, --warn, --bad and --sans.
+func PartsCSS() string { return chipCSS + diagramCSS + triangleCSS }

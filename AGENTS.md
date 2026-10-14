@@ -26,7 +26,8 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 | Everything CI runs, in CI's order | `just ci` |
 | Regenerate from the contract | `just generate` |
 | Format, lint, dependency rule | `just fmt`, `just lint`, `just arch` |
-| Serve a copy of the example | `just serve` (`just serve laya` with the decision model) |
+| Run the whole stack, Laya included, in containers on a fresh copy of the example (the canonical local run) | `just stack`, `just stack-down` |
+| Serve a copy of the example without containers | `just serve laya` (`just serve` without the decision model, a non-standard setup) |
 | Release binaries for every platform, cross-compiled here | `just release` |
 | The container image, from the flake | `just image` |
 | How agents used the MCP server: defects, sigma, waste, variance | `cartograph traces [-agent name] <trace file>` |
@@ -44,7 +45,7 @@ required (`docs/SETUP.md`: Linux, macOS, Windows through WSL2).
 - **Stateless by design.** Nothing in the engine survives a request except through a port. A change that keeps state in the process (a cache is fine; a fact is not) is wrong; `docs/SERVERLESS.md` says what holds state today and which adapter replaces it.
 - **Style is Google's, enforced.** `STYLE.md`: the Go style guide, gofmt, vet, staticcheck; commit messages in Google's Angular format (`<type>(<scope>): <summary>`, blank line, a body that says what and why, sign-off; `CONTRIBUTING.md` has the types and scopes), checked by `just commit-check`.
 - **Upstream is the product and nothing else.** No hand-off notes, session logs, task cards, plans, transcripts, screenshots, scratch files or editor and agent state are ever committed (`just clean-tree` fails the build on them). What you did and what you ran goes in the pull request description.
-- **Meaning in text is a System-1 question, never a pattern** (`docs/adr/0030`). Whether a text is an aim or a target, names a person, or says which part of a charter it is, is a named question to the decision model through `internal/decide`, its wording kept only as it measures against examples whose answer is known (`internal/engine/testdata/decide`, `just decide-measure`). Its answer advises; only an exact rule (a titled name, a code, a date in digits) refuses. Without a model the question is not asked: its check is left out, and the decision model's status lists it as off. The gate tests the engine's use of answers with `internal/decide/fake`.
+- **Meaning in text is a System-1 question, never a pattern** (`docs/adr/0030`). Whether a text is an aim or a target, names a person, or says which part of a charter it is, is a named question to the decision model through `internal/decide`, its wording kept only as it measures against examples whose answer is known (`internal/engine/testdata/decide`, `just decide-measure`). Its answer advises; only an exact rule (a titled name, a code, a date in digits) refuses. Laya is a standard dependency; running without it is valid but not standard. Without a model the question is not asked: its check passes, marked `notJudged`, its message saying why it was not judged, and the decision model's status lists it as off. The gate tests the engine's use of answers with `internal/decide/fake`.
 - **No person appears in Cartograph.** Definitions name roles. There is no Person kind; do not add one.
 - **Ids are generated, never derived from names.** Names are unique under their parent, not globally.
 - **A check never blocks a save.** Only a version save validates; a handoff refuses while a blocking check stands.

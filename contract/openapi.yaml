@@ -571,6 +571,151 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /manifests/{kind}/{id}/comments:
+    get:
+      operationId: listComments
+      summary: A record's comments, oldest first
+      description: >-
+        The conversation about a record, beside the parts it is about
+        (TAXONOMY.md D72): each comment's anchor, the thread it answers,
+        its words, whom it asks, and whether its thread is resolved.
+        Comments are not the record: no version, no change set, no check.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: addComment
+      summary: Comment on a record, beside a part of it
+      description: >-
+        Anyone who may read the record may comment on it. A reply joins
+        the thread it answers; a mention asks a person on the access list
+        or a team, and is refused for anyone not there.
+      parameters:
+        - $ref: "#/components/parameters/KindParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentDraft"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "201":
+          description: Kept
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  /comments/{comment}:
+    patch:
+      operationId: resolveComment
+      summary: Resolve or reopen the thread a comment starts
+      parameters:
+        - name: comment
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resolved]
+              properties:
+                resolved:
+                  type: boolean
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  /comments/mentions:
+    get:
+      operationId: listMyMentions
+      summary: The comments that ask the caller, newest first
+      description: >-
+        By the caller's address, or through a team they are on. Empty for
+        an operator nobody signed in as.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+
+  /mentionables:
+    get:
+      operationId: listMentionables
+      summary: Who a comment can ask
+      description: >-
+        The people on the access list, then the teams, whose name, address
+        or id holds q. Without an access list, the teams alone.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Mentionable"
+
   /manifests/Project/{id}/constraints:
     get:
       operationId: getProjectConstraints
@@ -596,6 +741,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TripleConstraint"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /manifests/Project/{id}/round:
+    get:
+      operationId: getProjectRound
+      summary: The decisions a project's walk can settle now, in the order agents are asked them
+      description: >-
+        The frontier of the project's open checks (docs/adr/0032): what
+        the documents state (settle), what is the person's to decide (ask),
+        and the records to write next (write), each with the step and the
+        field that answer it and the id of its question; and how many wait
+        behind them. The same tree the MCP server hands an agent, so a
+        person and an agent walk a definition alike (#60).
+      parameters:
+        - $ref: "#/components/parameters/PreviewParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectRound"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -706,6 +879,28 @@ paths:
                 type: string
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /charter/parts.css:
+    get:
+      operationId: getCharterPartsStyle
+      summary: The styling of what a charter's sections hold
+      description: >-
+        Chips, the components diagram, the schedule chart and the iron
+        triangle as the charter styles them, for an interface drawing the
+        charter as parts in a page of its own. It reads the charter's colour
+        variables (--fg, --muted, --line, --soft, --paper, --accent,
+        --accent-soft, --ok, --warn, --bad, --sans), which the page sets.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            text/css:
+              schema:
+                type: string
 
   /manifests/Project/{id}/charter/parts:
     get:
@@ -1271,6 +1466,40 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Match"
+
+  /aggregations/read:
+    post:
+      operationId: readAggregation
+      summary: What a data source metric's aggregation reads as, or why it does not
+      description: >-
+        A metric's aggregation is pseudocode SQL (TAXONOMY.md D64): one
+        aggregate function over a field or every entry, with an optional
+        WHERE on the source's own fields. The answer says it in words, with
+        the fields it names and the measure a semantic layer builds from it;
+        or the problem and where it is, such as a FROM or a JOIN, which
+        belong to the warehouse model. Read only: nothing is saved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 400
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AggregationReading"
 
   /glossary:
     get:
@@ -4120,6 +4349,34 @@ components:
           type: string
           description: Why it decided without asking.
 
+    AggregationReading:
+      type: object
+      required: [names]
+      description: >-
+        What an aggregation reads as (reading, names, agg, expr), or why it
+        does not (problem, at): one or the other.
+      properties:
+        reading:
+          type: string
+          description: What it says, in words.
+        names:
+          type: array
+          items:
+            type: string
+          description: The fields it names, each once, in the order written.
+        agg:
+          type: string
+          description: The measure's aggregation, in the semantic layer's words.
+        expr:
+          type: string
+          description: The expression it aggregates, its condition folded in as a CASE WHEN.
+        problem:
+          type: string
+          description: Why it does not read as an aggregation, in words.
+        at:
+          type: integer
+          description: Where in the text the problem is, as a byte offset.
+
     ManifestCheck:
       type: object
       description: >-
@@ -4142,6 +4399,12 @@ components:
           description: >-
             The field it is about, as a JSON pointer, where it is one field:
             what the record must have before it can be merged.
+        notJudged:
+          type: boolean
+          description: >-
+            True when this is a judgement of meaning the decision model did
+            not make (it is off, or did not answer): the check passes, so it
+            holds nothing up, and its message says why it was not judged.
 
     ProposalReview:
       type: object
@@ -4599,6 +4862,122 @@ components:
               type: string
         changeControl:
           $ref: "#/components/schemas/ChangeControl"
+        vocabularies:
+          type: object
+          description: >-
+            The words this workspace uses for a field whose choices are its
+            own (TAXONOMY.md D71): a data source's classification, refresh
+            and form, the standard terms unless the workspace sets its own.
+            Keyed by the vocabulary a schema field names in
+            x-cartograph-vocabulary.
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/VocabularyTerm"
+
+    Comment:
+      type: object
+      required: [id, kind, manifest, anchor, body, mentions, author, at, resolved]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        manifest:
+          type: string
+          description: The id of the record it is on.
+        anchor:
+          type: string
+          description: >-
+            What it is about: a JSON pointer into the record, a section of
+            the walk as section:<step>, or empty for the record as a whole.
+        reply:
+          type: string
+          description: The comment that starts the thread it answers.
+        body:
+          type: string
+        mentions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Mention"
+        author:
+          type: string
+          description: Who wrote it, by their address; empty for an operator nobody signed in as.
+        authorName:
+          type: string
+          description: The author's name on the access list, where it has one.
+        at:
+          type: string
+          format: date-time
+        resolved:
+          type: boolean
+          description: Set on the comment that starts a thread, when it is resolved.
+        resolvedBy:
+          type: string
+        resolvedAt:
+          type: string
+          format: date-time
+
+    CommentDraft:
+      type: object
+      required: [body]
+      properties:
+        anchor:
+          type: string
+          maxLength: 300
+        reply:
+          type: string
+        body:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        mentions:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/Mention"
+
+    Mention:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [person, team]
+        id:
+          type: string
+          description: A person's address on the access list, or a team's id.
+        name:
+          type: string
+          description: >-
+            How the party is named now, in a comment read back: the person's
+            name on the access list or the team's name. Ignored when writing.
+
+    Mentionable:
+      type: object
+      required: [kind, id, name]
+      properties:
+        kind:
+          type: string
+          enum: [person, team]
+        id:
+          type: string
+        name:
+          type: string
+
+    VocabularyTerm:
+      type: object
+      required: [value, label]
+      properties:
+        value:
+          type: string
+          description: What a record stores.
+        label:
+          type: string
+          description: What a person reads.
+        description:
+          type: string
+          description: What the choice means, shown under it where it is chosen.
 
     ChangeControl:
       type: object
@@ -4964,6 +5343,56 @@ components:
           enum: [Project, Programme]
         id:
           type: string
+    RoundTask:
+      type: object
+      required: [kind, id, check, state, message]
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        check:
+          type: string
+        state:
+          type: string
+        message:
+          type: string
+        step:
+          type: string
+          description: The step of the walk that settles it.
+        do:
+          type: string
+          description: What the guidance says to do about it.
+        field:
+          type: string
+          description: The field that settles it, as a JSON pointer, where one field does.
+        question:
+          type: string
+          description: The id a round gives it, which an answer left with it names.
+    ProjectRound:
+      type: object
+      required: [settle, ask, write, waiting]
+      properties:
+        settle:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoundTask"
+          description: What the documents themselves state.
+        ask:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoundTask"
+          description: The person's decisions, every one answerable now.
+        write:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoundTask"
+          description: Records to write next, each settling a link.
+        waiting:
+          type: integer
+          description: Open checks behind this round, asked once its answers are given.
     StructureQuestion:
       type: object
       required: [field, question, then]
@@ -4973,8 +5402,12 @@ components:
           description: The answer this question sets on a StructurePiece; empty for the last, which applies when none does.
         question:
           type: string
+          description: The question as an agent is asked it, with what to send.
         then:
           type: string
+        person:
+          type: string
+          description: The question as a person is asked it, in plain words. An interface shows this, never question.
     StructurePiece:
       type: object
       required: [name]
@@ -5380,6 +5813,12 @@ components:
             definition because a different file changed.
         message:
           type: string
+        notJudged:
+          type: boolean
+          description: >-
+            True when this is a judgement of meaning the decision model did
+            not make (it is off, or did not answer): the check passes, so it
+            holds nothing up, and its message says why it was not judged.
 
     GoalCheck:
       type: object
@@ -5394,6 +5833,12 @@ components:
           type: string
         fix:
           $ref: "#/components/schemas/GoalCheckFix"
+        notJudged:
+          type: boolean
+          description: >-
+            True when this is a judgement of meaning the decision model did
+            not make (it is off, or did not answer): the check passes, so it
+            holds nothing up, and its message says why it was not judged.
 
     ValidateRequest:
       type: object
@@ -5435,6 +5880,19 @@ components:
           type: string
         fix:
           $ref: "#/components/schemas/ProjectCheckFix"
+        suggestion:
+          type: boolean
+          description: >-
+            True when this is advice from the decision model, offered and
+            never required: the check passes, so it holds nothing up. A
+            project's objective that may not work toward an outcome it
+            serves is one (goals-outcome-fit).
+        notJudged:
+          type: boolean
+          description: >-
+            True when this is a judgement of meaning the decision model did
+            not make (it is off, or did not answer): the check passes, so it
+            holds nothing up, and its message says why it was not judged.
 
     ProjectChecks:
       type: object

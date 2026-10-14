@@ -41,6 +41,12 @@ type ProjectCheckItem struct {
 	State   string          `json:"state"`
 	Message string          `json:"message"`
 	Fix     ProjectCheckFix `json:"fix"`
+	// Suggestion marks advice from the decision model, offered and never
+	// required: the check passes, so it holds nothing up.
+	Suggestion bool `json:"suggestion,omitempty"`
+	// NotJudged marks a judgement of meaning the decision model did not
+	// make: the check passes, and its message says why.
+	NotJudged bool `json:"notJudged,omitempty"`
 }
 
 // ProjectChecks is the full result: the derived end month (empty when the
@@ -61,6 +67,24 @@ type checkAdder struct {
 
 func (a checkAdder) add(id, section, phase, state, message string) {
 	a.addFix(id, section, phase, state, message, phase, section)
+}
+
+// unjudged reports a judgement the decision model did not make: passed,
+// so it holds nothing up, with why it was not judged.
+func (a checkAdder) unjudged(id, section, phase, message string) {
+	a.pc.Items = append(a.pc.Items, ProjectCheckItem{
+		ID: id, Section: section, Phase: phase, State: checkOK, Message: message,
+		Fix: ProjectCheckFix{Phase: phase, Section: section}, NotJudged: true,
+	})
+}
+
+// suggest offers the decision model's advice: passed, so it holds
+// nothing up, and marked as a suggestion.
+func (a checkAdder) suggest(id, section, phase, message string) {
+	a.pc.Items = append(a.pc.Items, ProjectCheckItem{
+		ID: id, Section: section, Phase: phase, State: checkOK, Message: message,
+		Fix: ProjectCheckFix{Phase: phase, Section: section}, Suggestion: true,
+	})
 }
 
 func (a checkAdder) addFix(id, section, phase, state, message, fixPhase, fixSection string) {
@@ -107,14 +131,22 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	goals, _ := alignment["goals"].([]any)
 	isComponent := componentParent(spec) != ""
 	if len(goals) > 0 {
-		c.add("goals-aligned", "goals", phaseInitiation, checkOK, "Aligned to at least one goal.")
+		// What it serves, by name: the reason it passes, not a count. A
+		// link, not a judgement of meaning: a model could not tell which
+		// outcome an objective serves well enough to say (measured,
+		// cartograph-engine#67).
+		names, err := e.goalNames(ctx, goals)
+		if err != nil {
+			return ProjectChecks{}, err
+		}
+		c.add("goals-aligned", "goals", phaseInitiation, checkOK, servesMessage(names))
 	} else if isComponent {
 		// A component serves its parent's objective, and through it the
 		// parent's goals (TAXONOMY.md D15): naming them again would be a
 		// second place to change them.
 		c.add("goals-aligned", "goals", phaseInitiation, checkOK, "Serves the goals of the project it is part of.")
 	} else {
-		c.add("goals-aligned", "goals", phaseInitiation, checkBlock, "Not linked to an outcome yet.")
+		c.add("goals-aligned", "goals", phaseInitiation, checkBlock, "Serves no outcome yet: choose the outcomes it helps reach.")
 	}
 	// A mandate counts once it names something: a row with no title is a
 	// row nobody filled in.
@@ -148,6 +180,7 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 				"Aligned to a goal or an objective; align to an outcome instead.")
 		} else if hasFunctional {
 			c.add("goals-functional-level", "goals", phaseInitiation, checkOK, "Aligned to an outcome.")
+			e.addOutcomeFit(ctx, c, spec, goals)
 		} else {
 			c.add("goals-functional-level", "goals", phaseInitiation, checkBlock,
 				"All aligned goals are unresolved; align to an outcome.")
@@ -367,6 +400,9 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	addKPIChecks(c, spec, isComponent)
 
 	addResourceChecks(c, spec, isComponent)
+	if err := e.addAllocationChecks(ctx, c, id, spec); err != nil {
+		return ProjectChecks{}, err
+	}
 
 	// data
 	addDataChecks(c, spec)
@@ -417,13 +453,8 @@ func (e *Engine) projectChecksOf(ctx context.Context, id string, doc map[string]
 	// A compliance line is satisfied rather than measured, so it is
 	// never asked for a standard, a source or a cycle.
 	// A requirement met or not is a success criterion of compliance
-	// (TAXONOMY.md D25); a separate list of them, as projects kept before
-	// 2.6.0, is a second place for the same thing.
-	if lines, _ := spec["compliance"].([]any); len(lines) > 0 {
-		c.addFix("compliance-as-criteria", "success", phaseInitiation, checkWarn,
-			fmt.Sprintf("%d compliance line%s kept apart from the success criteria: record each as a criterion of compliance.", len(lines), plural(len(lines))),
-			phaseInitiation, "success")
-	}
+	// (TAXONOMY.md D25); the separate list projects kept before 2.6.0 is
+	// folded into the criteria as it is read (internal/legacy).
 	if len(criteria) == 0 && isComponent {
 		// A component is judged by its parent's criteria (TAXONOMY.md D15);
 		// it states its own only where it has them.
@@ -638,7 +669,7 @@ func (e *Engine) alignedToOutcome(ctx context.Context, goals []any) (hasFunction
 // reads as a target rather than a change said in words (docs/adr/0030):
 // an advisory check, met when none does. A number that names a group
 // ("2-year-olds") is the model's to tell from a figure to reach. Without
-// a model the check is not asked: it is off.
+// a model it says it was not judged, and why.
 func (e *Engine) addObjectiveJudgement(ctx context.Context, c checkAdder, spec map[string]any) {
 	objectives, _ := spec["objectives"].([]any)
 	asked, target, first, sure := false, false, 0, 0.0
@@ -650,6 +681,7 @@ func (e *Engine) addObjectiveJudgement(ctx context.Context, c checkAdder, spec m
 		}
 		j, ok := e.judge(ctx, "objective-target", text)
 		if !ok {
+			c.unjudged("goals-objective-aim", "measures", phaseInitiation, e.notJudged("Whether the objective reads as a target rather than a change in words"))
 			return
 		}
 		asked = true
@@ -663,7 +695,7 @@ func (e *Engine) addObjectiveJudgement(ctx context.Context, c checkAdder, spec m
 		c.add("goals-objective-aim", "measures", phaseInitiation, checkWarn, fmt.Sprintf(
 			"Objective %d %s reads as a target. Say the change the work makes in words, and put the figure in a key result.", first, sureWords(sure)))
 	default:
-		c.add("goals-objective-aim", "measures", phaseInitiation, checkOK, "Each objective says a change in words.")
+		c.add("goals-objective-aim", "measures", phaseInitiation, checkOK, "Each objective says a change in words, not a figure to reach.")
 	}
 }
 
@@ -804,16 +836,15 @@ func addKPIChecks(c checkAdder, spec map[string]any, isComponent bool) {
 func addResourceChecks(c checkAdder, spec map[string]any, isComponent bool) {
 	resources, _ := spec["resources"].([]any)
 
-	// The approved envelope sits with what the project needs to run, not
-	// with where it stops: the charter template puts money and resources
-	// in one section, and scope is the boundary, not the budget.
-	funding, _ := spec["funding"].([]any)
-	if len(funding) > 0 {
-		c.add("resources-funding", "resources", phaseInitiation, checkOK, "Funding is named.")
+	// The project's money is its cost plan, each line on a funding source
+	// (TAXONOMY.md D69), planned once the work is scoped and scheduled.
+	costs, _ := spec["costs"].([]any)
+	if len(costs) > 0 {
+		c.add("resources-funding", "costs", phaseInitiation, checkOK, "The cost plan is named.")
 	} else if isComponent {
-		c.add("resources-funding", "resources", phaseInitiation, checkOK, "Funded through the project it is part of.")
+		c.add("resources-funding", "costs", phaseInitiation, checkOK, "Funded through the project it is part of.")
 	} else {
-		c.add("resources-funding", "resources", phaseInitiation, checkWarn, "No funding line yet.")
+		c.add("resources-funding", "costs", phaseInitiation, checkWarn, "No cost line yet.")
 	}
 
 	hasSponsor := len(resourcesWithRole(spec, "sponsor")) > 0
@@ -1569,4 +1600,104 @@ func (e *Engine) nameOrID(ctx context.Context, kind, id string) string {
 		return id
 	}
 	return nameOf(doc, id)
+}
+
+// goalNames are the names of the goals ids name, in order; an id with no
+// record is given as it is.
+func (e *Engine) goalNames(ctx context.Context, ids []any) ([]string, error) {
+	var out []string
+	for _, g := range ids {
+		id, _ := g.(string)
+		if id == "" {
+			continue
+		}
+		doc, found, err := e.currentDoc(ctx, "Goal", id)
+		if err != nil {
+			return nil, err
+		}
+		name := id
+		if found {
+			if m, ok := doc["metadata"].(map[string]any); ok {
+				if n, _ := m["name"].(string); strings.TrimSpace(n) != "" {
+					name = n
+				}
+			}
+		}
+		out = append(out, name)
+	}
+	return out, nil
+}
+
+// servesMessage says what a project serves, by name.
+func servesMessage(names []string) string {
+	if len(names) == 1 {
+		return "Serves 1 outcome: " + names[0] + "."
+	}
+	return fmt.Sprintf("Serves %d outcomes: %s.", len(names), strings.Join(names, "; "))
+}
+
+// outcomeBaseline is the neutral outcome an objective is also asked
+// against: a pair scoring below it, and below the judgement's threshold,
+// is badly misaligned. A fixed score alone missed most real mistakes; the
+// model scores some aligned pairs low, and the baseline tells them apart.
+const outcomeBaseline = "Something good happens for the organisation"
+
+// addOutcomeFit asks the decision model, of the objective and each
+// outcome the project serves, whether reaching one helps bring about the
+// other, and suggests looking again at a pair it finds badly misaligned.
+// One question per outcome the project names and one for the baseline,
+// each cached by its text, so checking a whole workspace asks once per
+// objective and outcome it names: linear in its objectives. Without a
+// model nothing is suggested.
+func (e *Engine) addOutcomeFit(ctx context.Context, c checkAdder, spec map[string]any, goals []any) {
+	objectives, _ := spec["objectives"].([]any)
+	if len(objectives) != 1 {
+		return
+	}
+	om, _ := objectives[0].(map[string]any)
+	objective, _ := om["objective"].(string)
+	if strings.TrimSpace(objective) == "" {
+		return
+	}
+	names, err := e.goalNames(ctx, goals)
+	if err != nil {
+		return
+	}
+	base, ok := e.judge(ctx, "objective-serves-outcome", pairText(objective, outcomeBaseline))
+	if !ok {
+		return
+	}
+	var off []string
+	for _, name := range names {
+		j, ok := e.judge(ctx, "objective-serves-outcome", pairText(objective, name))
+		if !ok {
+			return
+		}
+		if badlyMisaligned(j, base) {
+			off = append(off, name)
+		}
+	}
+	if len(off) > 0 {
+		c.suggest("goals-outcome-fit", "goals", phaseInitiation, fmt.Sprintf(
+			"The objective may not work toward %s. Look again at the outcome, or at the objective.", quoteJoin(off)))
+	}
+}
+
+func quoteJoin(names []string) string {
+	q := make([]string, len(names))
+	for i, n := range names {
+		q[i] = "\"" + n + "\""
+	}
+	return strings.Join(q, " or ")
+}
+
+// pairText is an objective and an outcome as the model is asked of them.
+func pairText(objective, outcome string) string {
+	return "Objective: " + strings.TrimSuffix(strings.TrimSpace(objective), ".") + ".\nOutcome: " + strings.TrimSuffix(strings.TrimSpace(outcome), ".") + "."
+}
+
+// badlyMisaligned is the rule addOutcomeFit suggests on: below the
+// judgement's threshold, and below the objective against the baseline.
+func badlyMisaligned(pair, base Judged) bool {
+	return !pair.Holds && pair.Sure < base.Sure
 }

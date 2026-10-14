@@ -27,3 +27,44 @@ func TestAffectsNamesEachSideOnceOnThisProject(t *testing.T) {
 		t.Fatalf("problems %+v", ps)
 	}
 }
+
+// A project has one sponsor and one project manager (TAXONOMY.md D61).
+func TestAProjectHasOneSponsorAndOneManager(t *testing.T) {
+	t.Parallel()
+	doc := map[string]any{"spec": map[string]any{"resources": []any{
+		map[string]any{"role": "sponsor", "id": "a"},
+		map[string]any{"role": "manager", "id": "b"},
+		map[string]any{"role": "teamMember", "id": "c"},
+		map[string]any{"role": "teamMember", "id": "d"},
+		map[string]any{"role": "sponsor", "id": "e"},
+		map[string]any{"role": "manager", "id": "f"},
+	}}}
+	var paths []string
+	for _, p := range singleRoleProblems(doc["spec"].(map[string]any)) {
+		paths = append(paths, p.Path)
+	}
+	if strings.Join(paths, " ") != "/spec/resources/4/role /spec/resources/5/role" {
+		t.Fatalf("problems at %v", paths)
+	}
+}
+
+// A risk names the scope line it would move, word for word, in or out
+// (TAXONOMY.md D62).
+func TestARiskNamesAScopeLineAsWritten(t *testing.T) {
+	t.Parallel()
+	spec := map[string]any{
+		"summary": map[string]any{"scopeIn": []any{"Checking every delivery at intake"}, "scopeOut": []any{"Fruit grading"}},
+		"risks": []any{
+			map[string]any{"id": "r1", "scopeLine": "Checking every delivery at intake"},
+			map[string]any{"id": "r2", "scopeLine": "Fruit grading"},
+			map[string]any{"id": "r3", "scopeLine": "Grading at the farm gate"},
+		},
+	}
+	var paths []string
+	for _, p := range affectsProblems(spec) {
+		paths = append(paths, p.Path)
+	}
+	if strings.Join(paths, " ") != "/spec/risks/2/scopeLine" {
+		t.Fatalf("problems at %v", paths)
+	}
+}

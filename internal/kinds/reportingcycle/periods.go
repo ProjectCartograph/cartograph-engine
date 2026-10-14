@@ -55,6 +55,9 @@ func Between(spec map[string]any, from, to string) ([]Period, error) {
 		return nil, fmt.Errorf("a range of at most %d months", maxPeriods)
 	}
 	due := intOf(spec["dueOffsetDays"])
+	if n := intOf(spec["periodDays"]); n > 0 {
+		return days(n, str(spec["startDate"]), f, t, due)
+	}
 	var out []Period
 	switch periods, _ := spec["periods"].([]any); {
 	case len(periods) > 0 && isDated(periods):
@@ -74,6 +77,20 @@ func Between(spec map[string]any, from, to string) ([]Period, error) {
 // named periods. A regular cycle answers true for every month: its
 // readings have never been held to its periods, and are not now.
 func Ends(spec map[string]any, month string) bool {
+	// A cycle of days ends its periods on days; one of months on months
+	// (TAXONOMY.md D68).
+	if n := intOf(spec["periodDays"]); n > 0 {
+		d, err := dayOf(month)
+		s, err2 := dayOf(str(spec["startDate"]))
+		if err != nil || err2 != nil {
+			return false
+		}
+		k := int(d.Sub(s).Hours()/24) + 1
+		return k >= n && k%n == 0
+	}
+	if _, err := dayOf(month); err == nil {
+		return false
+	}
 	periods, _ := spec["periods"].([]any)
 	if len(periods) == 0 {
 		return true
@@ -191,6 +208,46 @@ func dueOn(end string, offset int) string {
 	}
 	last := time.Date(i/12, time.Month(i%12+2), 0, 0, 0, 0, 0, time.UTC)
 	return last.AddDate(0, 0, offset).Format("2006-01-02")
+}
+
+// maxDays bounds one derivation of a cycle of days: ten years, daily.
+const maxDays = 3660
+
+// days lays a cycle of n-day periods over the months f to t, lined up
+// with start, each period ending on a day (TAXONOMY.md D68).
+func days(n int, start string, f, t, due int) ([]Period, error) {
+	s, err := dayOf(start)
+	if err != nil {
+		return nil, fmt.Errorf("startDate: %w", err)
+	}
+	from := time.Date(f/12, time.Month(f%12+1), 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(t/12, time.Month(t%12+2), 0, 0, 0, 0, 0, time.UTC)
+	if int(to.Sub(from).Hours()/24)/n > maxDays {
+		return nil, fmt.Errorf("a range of at most %d periods", maxDays)
+	}
+	// The first period that ends on or after from, counted from start.
+	k := int(from.Sub(s).Hours() / 24)
+	first := s.AddDate(0, 0, (k/n)*n)
+	if k < 0 {
+		first = s.AddDate(0, 0, -((-k+n-1)/n)*n)
+	}
+	var out []Period
+	for p := first; !p.After(to); p = p.AddDate(0, 0, n) {
+		end := p.AddDate(0, 0, n-1)
+		if end.Before(from) {
+			continue
+		}
+		out = append(out, Period{Start: p.Format("2006-01-02"), End: end.Format("2006-01-02"), Due: end.AddDate(0, 0, due).Format("2006-01-02")})
+	}
+	return out, nil
+}
+
+func dayOf(s string) (time.Time, error) {
+	d, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%q is not a day (YYYY-MM-DD)", s)
+	}
+	return d, nil
 }
 
 func monthIndex(s string) (int, error) {

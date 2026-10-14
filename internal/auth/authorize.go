@@ -27,9 +27,21 @@ func ActionFor(r *http.Request) Action {
 		a.Verb = VerbRead // validation changes nothing
 		a.Kind = parts[1]
 	}
+	if parts[0] == "aggregations" {
+		a.Verb = VerbRead // reading an aggregation changes nothing
+	}
+	if len(parts) >= 4 && parts[0] == "manifests" && parts[3] == "comments" {
+		// A comment is a conversation about the record, not a change to
+		// it: whoever may read the record may comment on it, and the
+		// engine records who did (TAXONOMY.md D72).
+		a.Verb = VerbRead
+	}
 	switch parts[0] {
 	case ResourceAccess, ResourceVault, ResourceSession:
 		a.Resource = parts[0]
+	case "comments", "mentionables":
+		// Resolving a thread and finding whom to ask change no record.
+		a.Verb = VerbRead
 	case "proposals", "agents", "changesets":
 		// Proposals, agent grants and change sets: the engine decides who
 		// may (the person they are theirs, who works in a change set, or

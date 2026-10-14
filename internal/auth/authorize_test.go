@@ -22,12 +22,17 @@ func TestActionForClassifiesMethodAndPath(t *testing.T) {
 		{"GET", "/goals/tree", "read", "", "", ""},
 		{"POST", "/vault/apply", "write", "", "", "vault"},
 		{"POST", "/validate/Goal", "read", "Goal", "", ""},
+		{"POST", "/aggregations/read", "read", "", "", ""},
 		{"GET", "/access/people", "read", "", "", "access"},
 		{"PUT", "/access/people/jo@example.org", "write", "", "", "access"},
 		{"GET", "/session", "read", "", "", "session"},
 		{"POST", "/proposals/p1/accept", "read", "", "", ""},
 		{"POST", "/mcp", "read", "", "", "agent"},
 		{"DELETE", "/agents/g1", "read", "", "", ""},
+		// Commenting is reading the record and talking about it.
+		{"POST", "/manifests/Project/p1/comments", "read", "Project", "p1", ""},
+		{"PATCH", "/comments/c1", "read", "", "", ""},
+		{"GET", "/mentionables", "read", "", "", ""},
 	}
 	for _, c := range cases {
 		a := auth.ActionFor(httptest.NewRequest(c.method, c.path, nil))

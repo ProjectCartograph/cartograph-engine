@@ -196,6 +196,33 @@ func (e *Engine) agentOrderProblems(ctx context.Context, set map[string]bool, ki
 // stepOfField is the flow step that asks for a field, by JSON pointer, a
 // list item's index read as the flow's "-": where a person goes to make
 // the reference a placeholder stands in for.
+// stepTitleOfField is the title of the step a field is written in, as
+// the walk shows it, or "".
+func (e *Engine) stepTitleOfField(kind, path string) string {
+	key := e.stepOfField(kind, path)
+	raw, found, err := e.FlowJSON(kind)
+	if key == "" || err != nil || !found {
+		return ""
+	}
+	var flow struct {
+		Spec struct {
+			Steps []struct {
+				Key   string `json:"key"`
+				Title string `json:"title"`
+			} `json:"steps"`
+		} `json:"spec"`
+	}
+	if json.Unmarshal(raw, &flow) != nil {
+		return ""
+	}
+	for _, st := range flow.Spec.Steps {
+		if st.Key == key {
+			return st.Title
+		}
+	}
+	return ""
+}
+
 func (e *Engine) stepOfField(kind, path string) string {
 	raw, found, err := e.FlowJSON(kind)
 	if err != nil || !found {

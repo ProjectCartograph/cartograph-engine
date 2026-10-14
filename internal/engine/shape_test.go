@@ -40,6 +40,15 @@ func TestShapeFollowsTheSchema(t *testing.T) {
 	if !slices.Contains(project.Texts, "/spec/deliverables/*/description") {
 		t.Error("a deliverable's description is not a text")
 	}
+	// Prose inside list items given by a $ref is text too: looking at the
+	// items for their key once stopped the walk into them, so a mandate's
+	// title or a data use's purpose merged as a scalar and carried no
+	// one's caret.
+	for _, p := range []string{"/spec/mandate/*/title", "/spec/data/consumes/*/purpose", "/spec/objectives/*/keyResults/*/metric"} {
+		if !slices.Contains(project.Texts, p) {
+			t.Errorf("Project %s is not a text", p)
+		}
+	}
 
 	if s := e.Shape("NoSuchKind"); len(s.Texts) != 0 || len(s.ListKeys) != 0 {
 		t.Errorf("an unknown kind has a shape: %+v", s)

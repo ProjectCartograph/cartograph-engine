@@ -16,8 +16,21 @@ spec:
       title: Produce quality standard
       reference: POL-QUALITY-02
       date: "2024-11"
-  funding:
-    - amount: 42000
+  # The money as a cost plan, each line on the budget it draws on, whose
+  # allocation to this project says whether it is approved (TAXONOMY.md
+  # D69).
+  costs:
+    - id: grader-training
+      category: Grader training
+      basis: Six trainers for two weeks across the six depots
+      amount: 18000
+      currency: USD
+      source: operating-budget
+      status: approved
+    - id: check-tool
+      category: Check tool and forms
+      basis: The supplier's quote for the tool and a season of forms
+      amount: 24000
       currency: USD
       source: operating-budget
       status: approved
@@ -254,9 +267,6 @@ spec:
       likelihood: low
       mitigation: Put the pilot's results to the board one month before rollout starts.
       owner: {local: resources, id: lead}
-  compliance:
-    - item: Data protection review of member delivery records
-      status: inProgress
   resources:
     - id: sponsor
       role: sponsor

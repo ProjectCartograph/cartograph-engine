@@ -10,12 +10,15 @@ spec:
   access: Paper forms transcribed into a shared spreadsheet each season.
   refresh: quarterly
   qualityIssues: Some forms arrive late and are transcribed after the season closes.
-  # Where its rows sit once loaded to the warehouse (TAXONOMY.md D57).
-  semanticModel:
-    model: stg_quality_checks
-    entity: delivery_check
-    key: check_id
-    time: {column: checked_on, grain: day}
-    dimensions:
-      - {name: region, column: depot_region, segment: region}
-      - {name: product_line, segment: product-line}
+  # What one entry is, and the numbers it gives (TAXONOMY.md D64). Which
+  # warehouse model holds it is the analyst's to say, outside Cartograph.
+  records: One delivery checked against the quality standard at a depot's intake.
+  metrics:
+    - id: deliveries-checked
+      name: Deliveries checked
+      description: Every delivery checked at intake, passed or not.
+      aggregation: COUNT(*)
+    - id: deliveries-passed
+      name: Deliveries passed
+      description: Deliveries that met the standard when checked at intake.
+      aggregation: COUNT(*) WHERE passed = true

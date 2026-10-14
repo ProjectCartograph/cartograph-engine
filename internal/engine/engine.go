@@ -1,7 +1,9 @@
 package engine
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/activity"
@@ -145,7 +147,37 @@ func (e *Engine) SchemaJSON(kind string) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrUnknownKind, kind)
 	}
-	return b, nil
+	return e.bundled(kind, b)
+}
+
+// commonRef is how a kind's schema points into the shared definitions.
+const commonRef = "common.schema.json#/$defs/"
+
+// bundled is a kind's schema as its author wrote it, its properties in
+// their order, with the shared definitions it uses carried along under
+// $defs and its references pointed at them: whoever reads it, an
+// interface or a terminal, resolves every field in the one document
+// rather than guessing what a reference names (a Day is a date).
+func (e *Engine) bundled(kind string, raw []byte) ([]byte, error) {
+	defs, err := e.SchemaDefs(kind)
+	if err != nil || len(defs) == 0 {
+		return raw, err
+	}
+	enc, err := json.Marshal(defs)
+	if err != nil {
+		return nil, err
+	}
+	local := []byte("#/$defs/")
+	body := bytes.ReplaceAll(bytes.TrimSpace(raw), []byte(commonRef), local)
+	enc = bytes.ReplaceAll(enc, []byte(commonRef), local)
+	end := bytes.LastIndexByte(body, '}')
+	if end < 0 {
+		return raw, nil
+	}
+	out := append([]byte{}, body[:end]...)
+	out = append(bytes.TrimRight(out, " \n\t"), []byte(",\n  \"$defs\": ")...)
+	out = append(out, enc...)
+	return append(out, []byte("\n}\n")...), nil
 }
 
 func (e *Engine) Schema(kind string) (map[string]any, error) {
@@ -533,18 +565,37 @@ func (e *Engine) List(ctx context.Context, kind string, f Filter, includeDrafts 
 	for i, r := range f.Refs {
 		filters[i] = store.RefFilter{Kind: r.Kind, ID: r.ID}
 	}
-	out, err := e.manifests.ListSummaries(ctx, kind, f.Q, filters)
+	// A search matches a record's labels as well as its name and id: the
+	// names people use for it besides (an internal code, a short name) are
+	// its labels (TAXONOMY.md D70). The store is asked for the kind, and
+	// the words are matched here, once, whichever store holds it.
+	out, err := e.manifests.ListSummaries(ctx, kind, "", filters)
 	if err != nil {
 		return nil, err
 	}
+	q := strings.ToLower(strings.TrimSpace(f.Q))
 	// A record the change set removes is not listed.
 	kept := out[:0]
 	for _, s := range out {
-		if !removedInPlay(ctx, kind, s.ID) {
+		if !removedInPlay(ctx, kind, s.ID) && (q == "" || matchesQuery(q, s.ID, s.Name, s.Labels)) {
 			kept = append(kept, s)
 		}
 	}
 	return e.withProposedSummaries(ctx, kind, f, kept), nil
+}
+
+// matchesQuery reports whether a lower-cased search is in a record's id,
+// its name, or any of its labels' keys and values.
+func matchesQuery(q, id, name string, labels map[string]string) bool {
+	if strings.Contains(strings.ToLower(id), q) || strings.Contains(strings.ToLower(name), q) {
+		return true
+	}
+	for k, v := range labels {
+		if strings.Contains(strings.ToLower(k), q) || strings.Contains(strings.ToLower(v), q) {
+			return true
+		}
+	}
+	return false
 }
 
 // withProposedSummaries lays a change set's drafts of a kind over a list,
@@ -580,7 +631,16 @@ func (e *Engine) withProposedSummaries(ctx context.Context, kind string, f Filte
 			list[i].Name, list[i].Proposed = name, "changed"
 			continue
 		}
-		if q != "" && !strings.Contains(strings.ToLower(name), q) && !strings.Contains(r.ID, q) {
+		var labels map[string]string
+		if md, ok := doc["metadata"].(map[string]any); ok {
+			if l, ok := md["labels"].(map[string]any); ok {
+				labels = map[string]string{}
+				for k, v := range l {
+					labels[k], _ = v.(string)
+				}
+			}
+		}
+		if q != "" && !matchesQuery(q, r.ID, name, labels) {
 			continue
 		}
 		if !namesAll(extractRefs(doc, e.refRules[kind]), f.Refs) {

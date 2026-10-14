@@ -1,6 +1,7 @@
 package engine_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -70,41 +71,25 @@ func TestProgrammeAndOperationMandate(t *testing.T) {
 	})
 }
 
-func TestProjectFunding(t *testing.T) {
+// A project saved with funding lines reads as a cost plan: each line a
+// cost line called Funding, with its amount, currency, source and status,
+// and no funding left to say it twice (TAXONOMY.md D69).
+func TestFundingIsReadAsTheCostPlan(t *testing.T) {
 	t.Parallel()
 	e := seededEngine(t)
-	base := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-funding\n  name: Project Funding\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"
-
-	runSchemaCases(t, e, []schemaCase{
-		{
-			name: "valid, one line", kind: "Project",
-			yaml: base + "  funding:\n    - amount: 1000\n      currency: USD\n      status: approved\n",
-		},
-		{
-			name: "valid, three distinct currencies", kind: "Project",
-			yaml: base + "  funding:\n    - amount: 1000\n      currency: USD\n      status: approved\n    - amount: 500\n      currency: EUR\n      status: requested\n    - amount: 200\n      currency: TTD\n      status: unfunded\n",
-		},
-		{
-			name: "missing status", kind: "Project", wantProblem: true,
-			yaml: base + "  funding:\n    - amount: 1000\n      currency: USD\n",
-		},
-		{
-			name: "bad currency pattern", kind: "Project", wantProblem: true,
-			yaml: base + "  funding:\n    - amount: 1000\n      currency: us\n      status: approved\n",
-		},
-		{
-			name: "negative amount", kind: "Project", wantProblem: true,
-			yaml: base + "  funding:\n    - amount: -1\n      currency: USD\n      status: approved\n",
-		},
-		{
-			name: "more than three funding lines violates maxItems", kind: "Project", wantProblem: true,
-			yaml: base + "  funding:\n    - amount: 1\n      currency: USD\n      status: approved\n    - amount: 1\n      currency: EUR\n      status: approved\n    - amount: 1\n      currency: TTD\n      status: approved\n    - amount: 1\n      currency: GBP\n      status: approved\n",
-		},
-		{
-			name: "duplicate currency rejected", kind: "Project", wantProblem: true, wantSubstr: "currency",
-			yaml: base + "  funding:\n    - amount: 1000\n      currency: USD\n      status: approved\n    - amount: 500\n      currency: USD\n      status: requested\n",
-		},
-	})
+	ctx := context.Background()
+	old := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj-funding\n  name: Project Funding\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n  funding:\n    - amount: 1000\n      currency: USD\n      status: approved\n    - amount: 500\n      currency: USD\n      status: requested\n"
+	if _, err := e.Commit(ctx, "Project", "proj-funding", []byte(old), "alice", "an older client"); err != nil {
+		t.Fatalf("a project with funding lines no longer saves: %v", err)
+	}
+	v, err := e.Get(ctx, "Project", "proj-funding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(v.YAML)
+	if strings.Contains(got, "funding:") || strings.Count(got, "category: Funding") != 2 || !strings.Contains(got, "amount: 500") {
+		t.Fatalf("funding does not read as the cost plan:\n%s", got)
+	}
 }
 
 func TestProjectRiskTypeAndEscalate(t *testing.T) {

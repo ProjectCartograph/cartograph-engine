@@ -186,3 +186,27 @@ func TestReferences(t *testing.T) {
 		t.Fatalf("expected KPI k1 as an incoming reference to Goal g1-f, got %+v", incoming.Incoming)
 	}
 }
+
+// A record is found by what people call it besides its name: its labels,
+// a key alone or a key and a value (TAXONOMY.md D70).
+func TestListFindsARecordByItsLabels(t *testing.T) {
+	t.Parallel()
+	e := newTestEngine(t)
+	ctx := context.Background()
+	y := "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: team-1a2b3c4d\n  name: Quality team\n  labels:\n    QT-07: \"\"\n    office: northern depots\nspec:\n  name: Quality team\n"
+	if _, err := e.Commit(ctx, "Team", "team-1a2b3c4d", []byte(y), "p1", "create"); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{"qt-07", "northern", "quality"} {
+		got, err := e.List(ctx, "Team", engine.Filter{Q: q}, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != 1 || got[0].ID != "team-1a2b3c4d" {
+			t.Errorf("searching %q: %+v", q, got)
+		}
+	}
+	if got, _ := e.List(ctx, "Team", engine.Filter{Q: "southern"}, false); len(got) != 0 {
+		t.Errorf("a search matching nothing found %+v", got)
+	}
+}

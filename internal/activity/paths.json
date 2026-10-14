@@ -1,7 +1,8 @@
 {
+  "define/Allocation": 8,
   "define/Assumption": 8,
   "define/BeneficiaryGroup": 3,
-  "define/DataSource": 10,
+  "define/DataSource": 6,
   "define/FundingSource": 5,
   "define/Gap": 5,
   "define/Goal": 8,
@@ -11,7 +12,7 @@
   "define/Portfolio": 8,
   "define/PortfolioDecisions": 5,
   "define/Programme": 11,
-  "define/Project": 24,
+  "define/Project": 25,
   "define/Purpose": 3,
   "define/ReportingCycle": 3,
   "define/Resource": 4,

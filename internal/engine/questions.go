@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide"
 )
@@ -55,6 +57,21 @@ var judgements = map[string]judgement{
 		Threshold: 0.43,
 		Measured:  Measure{Right: 25, Of: 28},
 	},
+	// Whether reaching an objective helps bring about an outcome, asked of
+	// the two together. Used one way only, in addOutcomeFit: a pair below
+	// the threshold, and below the same objective against a neutral outcome
+	// (outcomeBaseline), is offered as a suggestion, never a fault. Nothing
+	// is said otherwise, since the model cannot tell which outcome an
+	// objective serves (measured: its own outcome came first among 14 in 9
+	// of 25). The rule, measured on 54 pairs of known answer, flags 20 of 28
+	// misaligned and 2 of 26 aligned (TestMeasureOutcomeFit;
+	// cartograph-engine#67).
+	"objective-serves-outcome": {
+		Name:      "objective-serves-outcome",
+		Wordings:  []string{"Achieving the objective helps bring about the outcome."},
+		Threshold: 0.05,
+		Measured:  Measure{Right: 42, Of: 54},
+	},
 	// A record names roles and bodies, never people (AGENTS.md). A title
 	// before a name is caught exactly, and refused; a name without one, or
 	// in another language, only a model can see (#4).
@@ -94,6 +111,25 @@ func (e *Engine) contrast(ctx context.Context, id string, j GuideJudgement, text
 	}
 	p := a[id].Probabilities[j.Good.Key]
 	return Judged{Holds: p >= m.Threshold, Sure: p}, true
+}
+
+// notJudged says why a judgement of meaning was not made, for the check
+// that needs it to say so rather than pass or vanish: the decision model
+// is standard, and running without it is valid but leaves these unjudged.
+// what is the judgement, as a sentence's subject ("Whether an objective
+// reads as a target").
+func (e *Engine) notJudged(what string) string {
+	if e.decider == nil {
+		return "Not judged: " + lowerFirst(what) + " is the decision model's to judge, and it is off (CARTOGRAPH_DECIDE=off)."
+	}
+	return "Not judged: " + lowerFirst(what) + " is the decision model's to judge, and it did not answer. Check that the Laya sidecar is running."
+}
+
+func lowerFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToLower(s[:1]) + s[1:]
 }
 
 // Judged is a judgement's answer about one text: whether it holds, and
@@ -152,8 +188,8 @@ func sureWords(p float64) string {
 
 // personCheck asks whether any text the record holds names a person
 // (names-person): an advisory check, the exact rule having refused a
-// name with a title already (docs/adr/0029, 0030). asked is false
-// without a model: the check is off.
+// name with a title already (docs/adr/0029, 0030). Without a model it
+// says it was not judged, and why; asked is false only with nothing to ask.
 func (e *Engine) personCheck(ctx context.Context, kind string, doc map[string]any) (Check, bool) {
 	type text struct{ path, s string }
 	var texts []text
@@ -190,16 +226,58 @@ func (e *Engine) personCheck(ctx context.Context, kind string, doc map[string]an
 	for _, t := range texts {
 		one, ok := e.judge(ctx, "names-person", t.s)
 		if !ok {
-			return Check{}, false
+			return Check{ID: "names-person", State: checkOK, Message: e.notJudged("Whether a text names a person"), NotJudged: true}, true
 		}
 		asked = true
 		if one.Holds {
-			return Check{ID: "names-person", State: checkWarn, Section: e.stepOfField(kind, t.path),
-				Message: fmt.Sprintf("%s %s names a person. Cartograph names roles and bodies: name the role, such as the lead analyst, or the body.", t.path, sureWords(one.Sure))}, true
+			// Said in words a person reads: the field and the step it is
+			// written in, and what it says. The pointer is the check's
+			// path, for an agent (#76).
+			verb := map[string]string{"very likely": "very likely names", "likely": "likely names", "possibly": "may name"}[sureWords(one.Sure)]
+			field := fieldWords(t.path)
+			if step := e.stepTitleOfField(kind, t.path); step != "" {
+				field += ", under " + step + ","
+			}
+			return Check{ID: "names-person", State: checkWarn, Section: e.stepOfField(kind, t.path), Path: t.path,
+				Message: fmt.Sprintf("%s %s a person: %q. Name the role instead, such as the lead analyst, or the body.", field, verb, clip(t.s, 80))}, true
 		}
 	}
 	if !asked {
 		return Check{}, false
 	}
 	return Check{ID: "names-person", State: checkOK, Message: "No text names a person."}, true
+}
+
+// fieldWords names a field in words: its last key, as a heading reads it,
+// in quotes. "/spec/data/consumes/0/purpose" is "Purpose".
+func fieldWords(path string) string {
+	keys := strings.Split(strings.Trim(path, "/"), "/")
+	key := ""
+	for i := len(keys) - 1; i >= 0 && key == ""; i-- {
+		if _, err := strconv.Atoi(keys[i]); err != nil {
+			key = keys[i]
+		}
+	}
+	var b strings.Builder
+	for i, r := range key {
+		if i > 0 && unicode.IsUpper(r) {
+			b.WriteRune(' ')
+			r = unicode.ToLower(r)
+		}
+		b.WriteRune(r)
+	}
+	w := b.String()
+	if w == "" {
+		return "A text"
+	}
+	return "\u201c" + strings.ToUpper(w[:1]) + w[1:] + "\u201d"
+}
+
+// clip shortens a text to n runes, marking what was cut.
+func clip(s string, n int) string {
+	r := []rune(strings.TrimSpace(s))
+	if len(r) <= n {
+		return string(r)
+	}
+	return strings.TrimSpace(string(r[:n])) + "\u2026"
 }

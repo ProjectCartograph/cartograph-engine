@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
+	"strings"
 	"testing"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
@@ -174,8 +175,8 @@ spec:
 }
 
 // TestCharterSaysWhereEachPartIsDefined: a section names the step of the
-// walk that defines it, and a value written as one field names that field,
-// so an interface beside the walk can open or edit it in place.
+// walk that defines it. A value names its field in the charter as parts,
+// edited where it is read, and nowhere in the charter printed.
 func TestCharterSaysWhereEachPartIsDefined(t *testing.T) {
 	ctx := context.Background()
 	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
@@ -190,9 +191,23 @@ func TestCharterSaysWhereEachPartIsDefined(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`data-step="aim">Problem statement</h2>`, `data-field="/spec/summary/problems/0/problem/situation"`, `data-field="/spec/summary/problems/0/change/what"`} {
-		if !contains(string(html), want) {
-			t.Errorf("the charter lacks %s", want)
+	if !contains(string(html), `data-step="aim">Problem statement</h2>`) {
+		t.Error("the charter does not say the step a section is defined in")
+	}
+	if contains(string(html), "data-field") {
+		t.Error("the printed charter marks its values")
+	}
+	parts, err := CharterParts(ctx, e, "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var all string
+	for _, p := range parts {
+		all += p.HTML
+	}
+	for _, want := range []string{`data-field="/spec/summary/problems/0/problem/situation"`, `data-field="/spec/summary/problems/0/change/what"`, `data-field="/spec/team"`} {
+		if !contains(all, want) {
+			t.Errorf("the charter as parts lacks %s", want)
 		}
 	}
 }
@@ -419,15 +434,18 @@ spec:
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The brief prints high-impact risks and issues, each with its owner
-	// or the project manager, and counts the rest.
-	for _, want := range []string{"<th>Owner</th>", "Delivery lead", "Project manager", "1 more risk"} {
+	// Every risk is printed, the highest impact first, each with its
+	// owner or the project manager: the charter is the document read (#74).
+	for _, want := range []string{"<th>Owner</th>", "Delivery lead", "Project manager", "Slides arrive late", "Scales fail calibration"} {
 		if !contains(string(html), want) {
 			t.Errorf("charter lacks %q", want)
 		}
 	}
-	if contains(string(html), "Slides arrive late") {
-		t.Error("the brief prints a low-impact risk")
+	if contains(string(html), "more risk") {
+		t.Error("the charter counts risks it does not print")
+	}
+	if i, j := strings.Index(string(html), "Depots skip training"), strings.Index(string(html), "Slides arrive late"); i > j {
+		t.Error("a low-impact risk is printed before a high one")
 	}
 }
 
@@ -522,6 +540,7 @@ spec:
       - id: pr-1
         problem: {situation: depots grade produce differently}
         change: {what: one grading standard in every depot}
+    scopeIn: [grading at every depot, "", the grading guide]
 `
 	if err := e.PutWorking(ctx, "Project", "test-project", []byte(projectYAML)); err != nil {
 		t.Fatal(err)
@@ -543,17 +562,90 @@ spec:
 	if problem == nil {
 		t.Fatalf("no problem statement part: %+v", parts)
 	}
-	if !contains(problem.HTML, "Depots grade produce differently") || len(problem.Fields) == 0 || problem.Fields[0] != "/spec/summary/problems/0/problem/situation" {
+	// One sentence (#79): who, what goes wrong, what changes, each a part.
+	if !contains(problem.HTML, `class="problem-statement"`) || !contains(problem.HTML, "depots grade produce differently") ||
+		!contains(problem.HTML, "The project will change this so that") || !hasField(problem.Fields, "/spec/summary/problems/0/problem/situation") {
 		t.Errorf("the problem part: %+v", problem)
 	}
-	if empty == 0 {
-		t.Errorf("a charter this bare has sections still to say: %+v", parts)
+	// What a bare charter still has to say is a place to type it, where
+	// it will be read: the lead, the objective, a table's next row.
+	var all string
+	for _, p := range parts {
+		all += p.HTML
 	}
+	for _, want := range []string{`<span data-field="/spec/summary/about" data-empty="">`, `data-field="/spec/objectives/0/objective" data-empty=""`, `data-add="/spec/summary/problems"`,
+		// A line just added shows empty, to type in, and the lines after it
+		// keep their own index.
+		`<span data-field="/spec/summary/scopeIn/1" data-empty="">`, `data-field="/spec/summary/scopeIn/2">the grading guide`} {
+		if !contains(all, want) {
+			t.Errorf("a bare charter as parts lacks %s", want)
+		}
+	}
+	_ = empty
 	html, _, err := Charter(ctx, e, "test-project", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !contains(string(html), problem.HTML) {
-		t.Error("the part is not what the charter prints")
+	if !contains(string(html), "Depots grade produce differently") || contains(string(html), "data-empty") || contains(string(html), "data-add") {
+		t.Error("the printed charter is not the charter as it was")
+	}
+}
+
+// What a charter's sections hold is styled on its own too, for a page
+// drawing the charter as parts: the components diagram and the triangle
+// among it, and nothing of the page around them (#77).
+func TestPartsCarryTheirStyles(t *testing.T) {
+	css := PartsCSS()
+	for _, want := range []string{".chip", diagramCSS, triangleCSS} {
+		if !contains(css, want) {
+			t.Errorf("the parts' styles lack %.40q", want)
+		}
+	}
+	for _, page := range []string{"@page", "body {", ":root"} {
+		if contains(css, page) {
+			t.Errorf("the parts' styles carry the page's %q", page)
+		}
+	}
+}
+
+func hasField(fields []string, want string) bool {
+	for _, f := range fields {
+		if f == want {
+			return true
+		}
+	}
+	return false
+}
+
+// A problem reads as one sentence in the printed charter too: its groups
+// named, why from the first cause found, the parts lower-cased where it
+// runs on, nothing marked (#79, #81).
+func TestAProblemReadsAsASentence(t *testing.T) {
+	ctx := context.Background()
+	e, err := engine.New(memory.NewManifestStore(), memory.NewOperationalStore(), engine.WithCodec(codecyaml.New()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, y := range []string{
+		"apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata: {id: members, name: Delivering members}\nspec: {description: x}\n",
+		"apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata: {id: buyers, name: Retail partners}\nspec: {description: x}\n",
+	} {
+		m, _ := e.Codec().Decode([]byte(y))
+		md := m["metadata"].(map[string]any)
+		if err := e.PutWorking(ctx, "BeneficiaryGroup", md["id"].(string), []byte(y)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	y := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p\n  name: P\nspec:\n  team: t\n  summary:\n    problems:\n      - groups: [members, buyers]\n        problem: {situation: Learn of a failed delivery a season late, cause: An earlier cause, causes: [{cause: Checks happen after dispatch.}]}\n        change: {what: Every delivery is checked at intake}\n"
+	if err := e.PutWorking(ctx, "Project", "p", []byte(y)); err != nil {
+		t.Fatal(err)
+	}
+	html, _, err := Charter(ctx, e, "p", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Delivering members and Retail partners learn of a failed delivery a season late, because checks happen after dispatch. The project will change this so that every delivery is checked at intake."
+	if !contains(string(html), want) {
+		t.Errorf("the problem does not read as %q", want)
 	}
 }

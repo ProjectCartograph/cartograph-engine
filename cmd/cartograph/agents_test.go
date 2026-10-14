@@ -25,6 +25,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/proxy"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/oauth"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/spa"
 )
 
 // asPerson sends the headers the proxy would, for one person.
@@ -61,7 +62,7 @@ func TestAgentsThroughTheServeStack(t *testing.T) {
 	var ready atomic.Bool
 	ready.Store(true)
 	mux, _ := routes(comp.Engine, comp.Fanout, proxy.New("X-Forwarded-User"), comp.Authz, printer.None{}, comp.Reports,
-		agentsConfig{On: true, Issuer: "https://sso.example.org/dex"}, &ready)
+		agentsConfig{On: true, Issuer: "https://sso.example.org/dex"}, &ready, spa.Handler())
 	srv := httptest.NewServer(requestLog(slog.New(slog.NewTextHandler(io.Discard, nil)), nil, mux))
 	defer srv.Close()
 
@@ -141,7 +142,7 @@ func TestCartographAuthorizesAgents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mux, _ := routes(comp.Engine, comp.Fanout, authn, comp.Authz, printer.None{}, comp.Reports, agentsConfig{On: true, Issuer: srv.URL, OAuth: as}, &ready)
+	mux, _ := routes(comp.Engine, comp.Fanout, authn, comp.Authz, printer.None{}, comp.Reports, agentsConfig{On: true, Issuer: srv.URL, OAuth: as}, &ready, spa.Handler())
 	handler = mux
 
 	// A proxy's headers, with no token, are not an agent's identity.

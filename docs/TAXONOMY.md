@@ -1760,3 +1760,277 @@ which side is most constrained; checks advise when a risk sits on no
 side, when a held side's risk is only accepted, and when a response
 spends a held side. A risk is declared once, in the register, and shown
 beside everything it bears on; the register reads as the overview.
+
+### D61. A project has one sponsor and one project manager. *(resolved)*
+
+**The problem.** A project could name several sponsors and several
+project managers, and the interface offered the role again once it was
+taken (#58). Two people accountable for the same project is the
+ambiguity a sponsor exists to remove.
+
+**The discipline.** GovS 002 gives a project one senior responsible
+owner; PRINCE2's Executive is a single person who owns the business
+case, and its project manager runs the project day to day for them.
+
+**What Cartograph does.** A project's resources name at most one
+sponsor and one project manager; a second is refused on the role, saying
+which entry already holds it. Every other role may be held by several.
+An interface offers the two roles only while they are free.
+
+### D62. A risk may bear on a line of the scope. *(resolved)*
+
+**The problem.** Risks are cross-cutting (D60), and the scope step is
+where scope creep is foreseen: for each line of what is in and what is
+out, how the work could grow across it and what is assumed to keep it
+from doing so (#59). A risk could bear on a deliverable, a milestone or
+a cost line by id, but the scope's lines have no ids: they are
+sentences.
+
+**The discipline.** Scope creep is the scope growing without the
+schedule and cost growing with it (PMBOK); a scope statement's
+inclusions and exclusions are where it is foreseen and controlled.
+
+**What Cartograph does.** A risk may name **scopeLine**: a line of the
+scope, in or out, word for word, as the line is its own identity. A
+name that matches no line is refused. The interface raises such risks
+beside the line they name, as it raises a missed milestone's beside the
+milestone, a deliverable's beside the deliverable and a cost's beside
+the cost line, so a risk is met where its consequence is decided.
+
+### D63. An indicator is formulated from named parts, not written in dbt. *(resolved)*
+
+**The problem.** The metric step asked people for a SQL expression and a
+dbt filter in free text (#55). Most people who define an indicator know
+the metric, not the shape of their data; what they typed varied without
+limit, and could not be checked.
+
+**The discipline.** Cartograph is not the source of truth for metrics:
+the warehouse and its semantic layer are. What a definition owes them is
+the formula, unambiguous: what is counted or added up, which rows count,
+what a share is out of, over what window.
+
+**What Cartograph does.** A measure carries **counts**, what is counted
+in the definer's words, beside the optional column (expr). A metric
+carries **where**, conditions built from named parts: an input named in
+the definer's words, a comparison from a fixed list and a value. The
+interface builds both by choice, leaving the column and the dbt filter
+to an analyst or an agent, under their own heading. The export carries
+the words into each metric's description, so the analyst maps them.
+Agents may write the dbt shape directly, as before.
+
+### D64. A data source gives metrics, written as aggregations, and names no dbt model. *(resolved)*
+
+**The problem.** A data source carried a dbt semantic model (D57): the
+dbt model by its ref() name, its key and time columns, its dimensions.
+Those are the warehouse's names, which most people who keep a source do
+not know, and which Cartograph does not hold the truth of. And each
+indicator described its own formula (D63), so two indicators read from
+one source described the same count twice, in two ways.
+
+**The discipline.** A semantic layer separates what a source records
+(its rows), the aggregations over it (measures), and the numbers built
+from them (metrics). The warehouse model behind a source is the
+analyst's to name, in the warehouse.
+
+**What Cartograph does.** A data source says what one entry of it is, in
+words (`records`), and lists the metrics it gives (`metrics`): each a
+name, a description in words, and an aggregation written as pseudocode
+SQL, one aggregate function over one field or every row, with an
+optional condition on the source's own fields: `COUNT(*) WHERE graded_at
+= 'intake'`, `SUM(weight_kg)`. It names no table, no join and no other
+source; the engine reads it, says in words what it reads, and refuses
+what is not an aggregation (a FROM, a JOIN, a SELECT, a subquery, a name
+with a dot). An indicator's metric is one of a source's metrics (`of`),
+or one out of another for a share (`outOf`), over a window if
+cumulative. Which dbt model a source is, and which columns its names
+are, is set outside Cartograph; the export writes each source as a
+semantic model named after it, each metric as a measure whose condition
+becomes a CASE WHEN, and leaves the ref to the analyst.
+
+`semanticModel` on a data source, and an indicator's metric written as
+dbt measures (D57, D63), are still read, so saved definitions and agents
+that write them work as before; the interface no longer writes them.
+
+**Not adopted.** A builder of fields and conditions picked from lists
+(D63's): it described one condition well and an aggregation poorly, and
+could not carry a source's metrics for several indicators to share.
+Joins, which belong to the warehouse model, not to a metric.
+
+### D65. A source may change continuously, or when something happens. *(resolved)*
+
+**The problem.** A data source's refresh offered only a calendar
+rhythm (daily to annual) or irregular. An operational system holds the
+records themselves, changing as each is made, and some sources change
+when an event sets them off (a harvest closed, a contract signed), not
+on a calendar. Neither fitted, so a real-time source was called daily
+and an event-driven one irregular.
+
+**The discipline.** The Dublin Core collection frequency vocabulary,
+which irregular already comes from, has `continuous`: updated without
+delay as the content changes. It has no term for a change set off by an
+event.
+
+**What Cartograph does.** Refresh takes `continuous` (said "Real time")
+and `onEvent` (said "When something happens") beside the rhythms and
+`irregular`. Irregular stays for a source that changes with no rhythm
+and no event that can be named. A number from a source still cannot
+change more often than its source does.
+
+### D66. An indicator may be best at a value, not only higher or lower. *(resolved)*
+
+**The problem.** An indicator's direction was increase, decrease or
+maintain. A ratio meant to sit at a level, such as 1.0 for supply to
+demand, was neither: higher and lower are both worse.
+
+**The discipline.** Quality engineering names three cases of what is
+good in a measure: larger is better, smaller is better, and nominal is
+best (closest to a target). Specification limits add a floor, a ceiling
+or a tolerance either side.
+
+**What Cartograph does.** An indicator's direction takes `reach`, as a
+key result's already does: the target value is best, and a reading is
+better the closer it is. With specLimits the four directions say every
+combination: increase with a floor, decrease with a ceiling, reach with
+a tolerance either side, maintain anywhere within both limits. A target
+for reach may lie above or below today's figure, so it is never read as
+moving against the direction.
+
+### D67. A warehouse holds many kinds of record; each metric says which it counts. *(resolved)*
+
+**The problem.** A data source said what one entry of it is (D64),
+which assumes one kind of record. A warehouse, a valid source, holds
+many: deliveries, payments, orders. No single sentence says what one of
+its entries is, so metrics over different records could not say what
+they count.
+
+**The discipline.** A semantic layer gives each kind of record its own
+semantic model with its own entity; measures sit on the model of the
+records they aggregate.
+
+**What Cartograph does.** A data source may be a `warehouse`. Each
+metric may say what one entry it counts over is (`over`, in words: each
+delivery graded); left out, it is the source's own entry (`records`).
+The export writes the metrics over one kind of record as one semantic
+model, named after the source and the record, for the analyst to map.
+
+### D68. An indicator may be read daily, weekly or every two weeks. *(resolved)*
+
+**The problem.** A reporting cycle's periods were months (D8) or named
+periods ending in a month (D40), and a reading was filed by the month
+its period ends. An indicator read every day, or every two weeks, could
+not be said.
+
+**The discipline.** Statistical process control charts a reading per
+subgroup at whatever interval the process runs; daily and weekly
+subgroups are ordinary.
+
+**What Cartograph does.** A cycle may have periods of days
+(`periodDays`: 1, 7 or 14) from a first day (`startDate`), beside
+periods of months and named periods, one of the three. Its periods end
+on days, and a reading on it is filed by the day its period ends
+(YYYY-MM-DD); a reading on a cycle of months is still filed by the
+month. A reading's period is a month or a day (`PeriodEnd`), so readings
+already filed stay valid.
+
+### D69. A project's money is its cost plan, each line on an allocation. *(resolved)*
+
+**The problem.** A project said its money twice: funding lines (an
+amount, a source, a status) and a cost plan (category, basis, amount,
+period, source, status). The two agreed or they did not, and nothing
+said which held. A cost line's period repeated its source's, and its
+status was whatever the project typed, though only the budget's holder
+decides it.
+
+**The discipline.** A charter's resource plan breaks the budget into cost
+lines, each drawing on a budget (D51); the budget holder, not the
+project, decides an allocation (PMI's cost management, a ledger's
+commitments).
+
+**What Cartograph does.** The cost plan is the project's money. Each
+line says what it pays for, how much, how the amount is worked out
+(basis: two analysts for six months, a supplier's quote) and the funding
+source it draws on. What a source gives a project is an **Allocation**,
+a record of its own that the budget's holder keeps: the source, the
+project, the amount, approved, requested or refused, and when it was
+decided. It comes after the project in the order of work (D28), since a
+source, which comes before, may not name a project. A line on a source
+takes its status from the allocation, and the lines on one source may
+not come to more than it allocated (a check). A line's period is its source's, not asked again. `funding` on a
+project is read from older manifests and folded into the cost plan, one
+line called Funding each, and is no longer written. The cost plan and
+the procurement plan are plans: they are walked in Plan, after the
+schedule, so a purchase can be required by a milestone and a risk can
+bear on a procurement item. Responsibilities follow the deliverables
+they assign.
+
+### D70. What people call a record besides its name is a label. *(resolved)*
+
+**The problem.** A record's id was made from its name in the
+interface, though ids are generated, and a project's name was suggested
+from the first words of its description. People also refer to a record
+by names Cartograph did not give it: an internal code, a working name,
+an old name. One alias, made from the name, could hold only one of
+them.
+
+**The discipline.** Kubernetes keeps an object's identity (a generated
+uid), its name, and its labels apart: labels are free key and value
+pairs anyone can add and select by.
+
+**What Cartograph does.** An id is generated, the kind and eight random
+hexadecimal digits, wherever a record is made. A name is what the person
+writes. Every other name for it is a label, written Kubernetes' way: a
+key alone (an internal code) or a key and a value (`code=CA-2026`). A
+search, a picker and a mention match a label's key and value as they
+match the name. `alias` is kept for what was written before and is no
+longer filled in.
+
+### D71. Where a field's choices are an organisation's own, they are its vocabulary. *(resolved)*
+
+**The problem.** A data source's classification, how often it changes
+and the form it takes were fixed lists in the contract. An organisation
+classifies by its own scheme, and a frequency or a form outside the
+list could not be said at all, or was dropped when read.
+
+**The discipline.** ISO/IEC 27002 (5.12) leaves the classification
+scheme to the organisation: its levels, their criteria, how each is
+handled; a four-level scheme is its example. DCAT-AP says how often a
+dataset changes by the EU Publications Office frequency list
+(accrualPeriodicity), a long and growing list, and a dataset's form by
+its distributions' formats, not by a short list.
+
+**What Cartograph does.** Such a field names a vocabulary
+(`x-cartograph-vocabulary`): `classification`, `refresh`,
+`dataSourceCategory`. The workspace starts from the standard terms (the
+ISO example levels; the EU frequency terms with Dublin Core's continuous
+and irregular and onEvent from D65; the forms Cartograph offered) and may
+set its own list for any of them in settings, each term a value, a
+label and what it means. The settings serve the merged lists to every
+interface. A value outside the workspace's list is not refused: a check
+names it and the words the list has. Fields that drive the engine's own
+reasoning (how records get in, personal data) stay fixed.
+
+### D72. A comment is a conversation about a record, not the record. *(resolved)*
+
+**The problem.** Notes sat at the foot of a step, one per step, inside
+the record. What people need beside a definition is to ask and answer:
+about this deliverable, this line of scope, this section, and to ask a
+named person or team to look.
+
+**The discipline.** Review in document tools and pull requests keeps
+comments anchored to a passage, threaded, resolved when answered, and
+kept apart from the content they discuss; a mention addresses the
+party. A note (the project's notes, one per step) stays what it was: a
+caveat the record keeps.
+
+**What Cartograph does.** A comment is kept by the store
+(`store.CommentStore`), never in a manifest, a version or a change set,
+and no check reads it. It names its record, an anchor (a JSON pointer
+into the record or `section:<step>`), the thread it answers (one
+level), its words and whom it asks. A mention names a person on the
+access list or a team; who can be asked comes from the access list,
+which any directory fills through the deployment's mapping, and from
+the Team kind, so comments do not depend on how anyone signed in.
+Anyone who may read a record may comment on it; a thread is resolved
+from the comment that starts it. A person finds what asks them by their
+address or through their teams.
+

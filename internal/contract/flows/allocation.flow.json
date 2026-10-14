@@ -1,0 +1,53 @@
+{
+  "apiVersion": "cartograph/v1",
+  "kind": "Flow",
+  "metadata": {
+    "id": "allocation",
+    "name": "Allocation"
+  },
+  "spec": {
+    "for": "Allocation",
+    "steps": [
+      {
+        "key": "decision",
+        "title": "Allocation",
+        "guide": "What a budget gives one project: how much, whether it is approved, and when it was decided.",
+        "fields": [
+          {
+            "path": "/metadata/name",
+            "control": "text"
+          },
+          {
+            "path": "/spec/source",
+            "control": "reference"
+          },
+          {
+            "path": "/spec/project",
+            "control": "reference"
+          },
+          {
+            "path": "/spec/amount",
+            "control": "number"
+          },
+          {
+            "path": "/spec/currency",
+            "control": "text"
+          },
+          {
+            "path": "/spec/status",
+            "control": "choice"
+          },
+          {
+            "path": "/spec/decided",
+            "control": "date"
+          },
+          {
+            "path": "/spec/note",
+            "control": "sentence"
+          }
+        ]
+      }
+    ],
+    "review": true
+  }
+}

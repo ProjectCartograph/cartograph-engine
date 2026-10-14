@@ -116,44 +116,42 @@ func Rules(doc map[string]any, ctx kit.RuleContext) []kit.Problem {
 		}
 	}
 
-	problems = append(problems, fundingCurrencyProblems(spec)...)
 	problems = append(problems, referenceProblems(spec)...)
 	problems = append(problems, kit.MandateProblems(spec)...)
 	// A project schedules, so a dependency may land by one of its phases.
 	problems = append(problems, kit.RiskProblems(spec, true)...)
 	problems = append(problems, affectsProblems(spec)...)
+	problems = append(problems, singleRoleProblems(spec)...)
 
 	return problems
 }
 
-// fundingCurrencyProblems enforces at most one funding line per currency.
-func fundingCurrencyProblems(spec map[string]any) []kit.Problem {
-	var problems []kit.Problem
-	funding, ok := spec["funding"].([]any)
-	if !ok {
-		return problems
-	}
-	seen := map[string]int{}
-	for i, f := range funding {
-		fm, ok := f.(map[string]any)
-		if !ok {
+// singleRoles are the roles a project holds once (TAXONOMY.md D61): one
+// sponsor answers for it, one project manager runs it.
+var singleRoles = map[string]string{"sponsor": "sponsor", "manager": "project manager"}
+
+// singleRoleProblems refuses a second sponsor or project manager.
+func singleRoleProblems(spec map[string]any) []kit.Problem {
+	var out []kit.Problem
+	resources, _ := spec["resources"].([]any)
+	first := map[string]int{}
+	for i, r := range resources {
+		m, _ := r.(map[string]any)
+		role, _ := m["role"].(string)
+		name, single := singleRoles[role]
+		if !single {
 			continue
 		}
-		currency, _ := fm["currency"].(string)
-		if currency == "" {
-			continue
-		}
-		if first, dup := seen[currency]; dup {
-			problems = append(problems, kit.Problem{
-				Path: fmt.Sprintf("/spec/funding/%d/currency", i),
-				Message: fmt.Sprintf(
-					"funding currency %q duplicates the line at index %d; at most one funding line per currency", currency, first),
+		if at, dup := first[role]; dup {
+			out = append(out, kit.Problem{
+				Path:    fmt.Sprintf("/spec/resources/%d/role", i),
+				Message: fmt.Sprintf("a project has one %s, named at resources %d: give this one another role, or replace that one", name, at),
 			})
-		} else {
-			seen[currency] = i
+			continue
 		}
+		first[role] = i
 	}
-	return problems
+	return out
 }
 
 // referenceProblems checks every field that carries a reference: the role
@@ -230,15 +228,29 @@ func referenceProblems(spec map[string]any) []kit.Problem {
 
 // affectsProblems holds a risk's place on the triple constraint
 // (TAXONOMY.md D60) to the project: each side named once, and what it
-// bears on a deliverable, milestone or cost line this project has.
+// bears on a deliverable, milestone, cost line or procurement item this
+// project has.
 func affectsProblems(spec map[string]any) []kit.Problem {
 	items := map[string]bool{}
-	for _, list := range []string{"deliverables", "milestones", "costs"} {
+	for _, list := range []string{"deliverables", "milestones", "costs", "procurement"} {
 		entries, _ := spec[list].([]any)
 		for _, e := range entries {
 			if em, ok := e.(map[string]any); ok {
 				if id, _ := em["id"].(string); id != "" {
 					items[id] = true
+				}
+			}
+		}
+	}
+	// The scope's lines, in and out, as written: a risk names one word for
+	// word (TAXONOMY.md D62).
+	lines := map[string]bool{}
+	if summary, ok := spec["summary"].(map[string]any); ok {
+		for _, list := range []string{"scopeIn", "scopeOut"} {
+			entries, _ := summary[list].([]any)
+			for _, e := range entries {
+				if t, ok := e.(string); ok {
+					lines[t] = true
 				}
 			}
 		}
@@ -249,6 +261,10 @@ func affectsProblems(spec map[string]any) []kit.Problem {
 		rm, ok := r.(map[string]any)
 		if !ok {
 			continue
+		}
+		if line, _ := rm["scopeLine"].(string); line != "" && !lines[line] {
+			problems = append(problems, kit.Problem{Path: fmt.Sprintf("/spec/risks/%d/scopeLine", i),
+				Message: fmt.Sprintf("names the scope line %q, which this project's scope does not have, in or out: name one as it is written", line)})
 		}
 		affects, _ := rm["affects"].([]any)
 		seen := map[string]bool{}
@@ -264,7 +280,7 @@ func affectsProblems(spec map[string]any) []kit.Problem {
 			}
 			seen[side] = true
 			if on, _ := am["on"].(string); on != "" && !items[on] {
-				problems = append(problems, kit.Problem{Path: path + "/on", Message: fmt.Sprintf("bears on %q, which is not a deliverable, milestone or cost line of this project", on)})
+				problems = append(problems, kit.Problem{Path: path + "/on", Message: fmt.Sprintf("bears on %q, which is not a deliverable, milestone, cost line or procurement item of this project", on)})
 			}
 		}
 	}

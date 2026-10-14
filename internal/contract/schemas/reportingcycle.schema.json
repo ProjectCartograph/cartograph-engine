@@ -11,11 +11,13 @@
     "metadata": { "$ref": "common.schema.json#/$defs/Metadata" },
     "spec": {
       "type": "object",
-      "description": "How often the indicators on it are read: either equal periods (periodMonths from startMonth) or named periods listed by the month each ends (periods), one or the other (a kind rule; TAXONOMY.md D40). The periods themselves are derived, never stored, and a reading is filed by the month its period ends either way.",
+      "description": "How often the indicators on it are read: equal periods of months (periodMonths from startMonth), equal periods of days (periodDays from startDate), or named periods listed by the month each ends (periods), one of the three (a kind rule; TAXONOMY.md D40, D68). The periods themselves are derived, never stored, and a reading is filed by the month its period ends, or the day on a cycle of days.",
       "additionalProperties": false,
       "properties": {
         "name": { "description": "Deprecated: the name is metadata.name, as Kubernetes keeps it. Read from a manifest saved before 2.6.0 and folded into metadata.name; never written.", "type": "string", "minLength": 1 },
         "periodMonths": { "type": "integer", "enum": [1, 3, 6, 12], "description": "How long one period is, in months: monthly, quarterly, half-yearly or yearly. A KPI read on this cycle has one reading per period (TAXONOMY.md D8)." },
+        "periodDays": { "type": "integer", "enum": [1, 7, 14], "description": "How long one period is, in days: daily, weekly or every two weeks, for an indicator read more often than monthly. An alternative to periodMonths and named periods; a reading on it is filed by the day its period ends (TAXONOMY.md D68)." },
+        "startDate": { "$ref": "common.schema.json#/$defs/Day", "description": "The first day of one of the cycle's periods, so the rest line up with it: a weekly cycle from a Monday. Required with periodDays (a kind rule)." },
         "startMonth": { "type": "integer", "minimum": 1, "maximum": 12, "description": "The month the cycle's year starts in, 1 to 12, so periods line up with it (a financial year from April is 4). A period is named by the month it ends. Required with periodMonths (a kind rule)." },
         "periods": {
           "type": "array",

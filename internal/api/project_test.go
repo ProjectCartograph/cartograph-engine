@@ -257,3 +257,35 @@ func TestProjectHandoffEndpoint(t *testing.T) {
 		t.Fatalf("expected 'already handed off at snapshot 1', got %+v", pl.Problems)
 	}
 }
+
+// A project's round is served to a person as it is handed to an agent:
+// what can be decided now, each with its step, field and question id
+// (docs/adr/0032, #60).
+func TestAProjectsRoundIsServed(t *testing.T) {
+	t.Parallel()
+	_, base := newTestServer(t)
+	seedProjectFixtures(t, base)
+	y := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: P\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: A gap}\n        change: {what: No more gap}\n"
+	if resp := doJSON(t, http.MethodPut, base+"/manifests/Project/proj1", apigen.WriteRequest{Yaml: &y, Reason: "seed"}, map[string]string{}); resp.StatusCode != 200 {
+		t.Fatalf("seed: %d", resp.StatusCode)
+	}
+	resp, err := http.Get(base + "/manifests/Project/proj1/round")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		t.Fatalf("round: %d", resp.StatusCode)
+	}
+	r := decode[apigen.ProjectRound](t, resp)
+	if len(r.Ask) == 0 {
+		t.Fatalf("nothing to ask on an empty project: %+v", r)
+	}
+	for _, q := range r.Ask {
+		if q.Question == nil || !strings.HasPrefix(*q.Question, "q-") {
+			t.Fatalf("a question with no id: %+v", q)
+		}
+	}
+	if resp, _ := http.Get(base + "/manifests/Project/nope/round"); resp.StatusCode != 404 {
+		t.Fatalf("an unknown project: %d", resp.StatusCode)
+	}
+}

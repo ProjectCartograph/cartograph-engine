@@ -39,7 +39,12 @@
           "expr": {
             "type": "string",
             "maxLength": 500,
-            "description": "The column or SQL expression aggregated; the measure counts rows when it is left out and agg is count."
+            "description": "For an analyst: the column or SQL expression aggregated; the measure counts rows when it is left out and agg is count."
+          },
+          "counts": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "What is counted or added up, in the words of the person who defines it, such as crates graded twice (TAXONOMY.md D63). An analyst or an agent maps it to a column in expr later; neither is needed for the other."
           }
         }
       },
@@ -155,7 +160,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "Free-form key and value pairs for grouping and filtering, the same shape and the same purpose Kubernetes gives them. Deliberately unvalidated: a label is for the cuts somebody wants to make later and nobody anticipated: which region, which office, which reporting pack. A fact that belongs to what the thing *is* is a property with a name and a check, not a label; putting an anticipated fact here loses the check that would have caught it missing. The cost is that a typo makes a new group, which is the right way round for a cut nobody planned. See TAXONOMY.md D11."
+      "description": "Free-form key and value pairs for grouping and filtering, the same shape and the same purpose Kubernetes gives them. Deliberately unvalidated: a label is for the cuts somebody wants to make later and nobody anticipated: which region, which office, which reporting pack. A fact that belongs to what the thing *is* is a property with a name and a check, not a label; putting an anticipated fact here loses the check that would have caught it missing. The cost is that a typo makes a new group, which is the right way round for a cut nobody planned. A label is also how people refer to a record besides its name: an internal code or a working name, written as a key alone (an empty value) or a key and a value. Searches and pickers match a label's key and value as they match the name. See TAXONOMY.md D11, D70."
     },
     "Metadata": {
       "type": "object",
@@ -176,7 +181,7 @@
           "type": "string",
           "maxLength": 80,
           "pattern": "^[^\\n]*$",
-          "description": "A short reference people quote this by among themselves: a project code, a working name, the thing somebody types into a search box. Filled in from the name as dashed lower-case words and editable from there, and it follows the name until somebody changes it, after which it is theirs. Deliberately not an identifier Cartograph uses: `id` is what references resolve against and is fixed once chosen, which is exactly why a name people actually say needs somewhere else to live. Nothing validates it beyond a length and a single line, for the same reason nothing validates a label."
+          "description": "Superseded by labels, which hold every name people use for a record (TAXONOMY.md D70): kept for what was written before, and still the reference a charter gives. A short reference people quote this by among themselves: a project code, a working name, the thing somebody types into a search box. Filled in from the name as dashed lower-case words and editable from there, and it follows the name until somebody changes it, after which it is theirs. Deliberately not an identifier Cartograph uses: `id` is what references resolve against and is fixed once chosen, which is exactly why a name people actually say needs somewhere else to live. Nothing validates it beyond a length and a single line, for the same reason nothing validates a label."
         },
         "labels": {
           "$ref": "#/$defs/Labels"
@@ -222,6 +227,17 @@
       "type": "string",
       "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
     },
+    "Day": {
+      "type": "string",
+      "format": "date",
+      "description": "A calendar day, as YYYY-MM-DD.",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+    },
+    "PeriodEnd": {
+      "type": "string",
+      "description": "When a period ends: the month (YYYY-MM) for a cycle of months or named periods, the day (YYYY-MM-DD) for a cycle of days (TAXONOMY.md D68).",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$"
+    },
     "Horizon": {
       "description": "The period an aim covers, as a year (2025) or a year and month (2025-09) at each end. A year is enough when the source gives only years; Cartograph reads a start year as its January and an end year as its December.",
       "type": "object",
@@ -251,15 +267,9 @@
     },
     "Refresh": {
       "type": "string",
-      "enum": [
-        "daily",
-        "weekly",
-        "monthly",
-        "quarterly",
-        "termly",
-        "annual",
-        "irregular"
-      ]
+      "minLength": 1,
+      "x-cartograph-vocabulary": "refresh",
+      "description": "How often the contents change, from the workspace's refresh vocabulary: the EU Publications Office frequency terms DCAT-AP uses for accrualPeriodicity (continuous, daily, weekly, every two weeks, monthly, quarterly, twice a year, annual, irregular, unknown) and onEvent, unless the workspace sets its own (TAXONOMY.md D65, D71)."
     },
     "Handoff": {
       "type": "string",
@@ -550,7 +560,7 @@
         "causes": {
           "type": "array",
           "maxItems": 12,
-          "description": "The causes found behind the problem, each with the evidence for it and whether it was verified (a DMAIC analysis, TAXONOMY.md D58). cause above stays the one line a charter says; these are what analysis found.",
+          "description": "The causes found behind the problem, each with the evidence for it and whether it was verified (a DMAIC analysis, TAXONOMY.md D58). The first is the one the charter's problem statement gives.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -587,7 +597,7 @@
         "cause": {
           "type": "string",
           "maxLength": 600,
-          "description": "The potential cause: what the person believes lies behind it, to be tested rather than proved (TAXONOMY.md D45): \"checks happen after dispatch, when the produce has already left\". Optional."
+          "description": "Superseded by causes, which the interface asks for instead: kept for what was written before. A cause here reads as the first cause found until causes holds one (TAXONOMY.md D58, cartograph-engine#81). Optional."
         }
       }
     },

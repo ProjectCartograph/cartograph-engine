@@ -33,7 +33,7 @@ func (d *doc) facts(fs ...field) {
 		d.b.WriteString("<div><dt>")
 		d.b.WriteString(esc(f.label))
 		d.b.WriteString("</dt><dd>")
-		d.b.WriteString(esc(f.value))
+		d.b.WriteString(valueHTML(f.value))
 		d.b.WriteString("</dd></div>\n")
 	}
 	d.b.WriteString("</dl>\n")

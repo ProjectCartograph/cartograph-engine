@@ -55,6 +55,8 @@ var All = []Spec{
 	{Name: "Project", SchemaFile: "project.schema.json", Rules: project.Rules},
 	{Name: "StakeholderMap", SchemaFile: "stakeholdermap.schema.json", Rules: stakeholdermap.Rules},
 	{Name: "PortfolioDecisions", SchemaFile: "portfoliodecisions.schema.json", Rules: portfoliodecisions.Rules},
+	// What a budget gives a project, as its holder decides (TAXONOMY.md D69).
+	{Name: "Allocation", SchemaFile: "allocation.schema.json"},
 	{Name: "Settings", SchemaFile: "settings.schema.json", Rules: settings.Rules},
 }
 

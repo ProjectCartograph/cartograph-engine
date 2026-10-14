@@ -51,6 +51,25 @@ func (e *Engine) ExportSemantic(ctx context.Context, format string) ([]semantic.
 // dbtName is a record's id as a warehouse name: hyphens as underscores.
 func dbtName(id string) string { return strings.ReplaceAll(id, "-", "_") }
 
+// slugName is words as a model name: "Each delivery graded" is
+// each_delivery_graded.
+func slugName(words string) string {
+	var b strings.Builder
+	gap := false
+	for _, r := range strings.ToLower(strings.TrimSpace(words)) {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			if gap && b.Len() > 0 {
+				b.WriteByte('_')
+			}
+			b.WriteRune(r)
+			gap = false
+		} else {
+			gap = true
+		}
+	}
+	return b.String()
+}
+
 // SemanticLayer is the record as a semantic layer: each data source a KPI
 // measures from as a semantic model, each KPI with a metric as a metric,
 // in the semantic layer's own terms, read as ctx reads the workspace. The
@@ -71,18 +90,28 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		docs[d.id] = d.doc
 	}
 	models := map[string]int{}
-	modelOf := func(source string) (int, bool) {
-		if i, ok := models[source]; ok {
+	// One model per kind of record: a source's own entries, or, for a
+	// source holding several (a warehouse), each kind its metrics count
+	// over (TAXONOMY.md D67).
+	modelOf := func(source, over string) (int, bool) {
+		key := source + "/" + over
+		if i, ok := models[key]; ok {
 			return i, true
 		}
 		doc, ok := docs[source]
 		if !ok {
 			return 0, false
 		}
-		m := semantic.Model{Name: dbtName(source), Source: source, Ref: dbtName(source), Entity: dbtName(source)}
+		name := dbtName(source)
+		if over != "" {
+			name += "__" + slugName(over)
+		}
+		m := semantic.Model{Name: name, Source: source, Ref: name, Entity: name}
 		sm, _ := specOf(doc)["semanticModel"].(map[string]any)
 		if sm == nil {
-			notes = append(notes, fmt.Sprintf("DataSource/%s has no semantic model: written on ref('%s'), with no time dimension, for the engineer to set.", source, m.Ref))
+			// Which warehouse model a source is is set outside Cartograph
+			// (TAXONOMY.md D64): named after the source, for the analyst.
+			notes = append(notes, fmt.Sprintf("DataSource/%s names no warehouse model: written on ref('%s'), with no time dimension, for the analyst to set.", source, m.Ref))
 		} else {
 			m.Ref, _ = sm["model"].(string)
 			m.Entity, _ = sm["entity"].(string)
@@ -98,14 +127,17 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 			}
 		}
 		m.Description = nameOf(doc, source)
-		models[source] = len(l.Models)
+		if over != "" {
+			m.Description += ": " + over
+		}
+		models[key] = len(l.Models)
 		l.Models = append(l.Models, m)
-		return models[source], true
+		return models[key], true
 	}
 	measure := func(kpi, name string, v any) (string, bool) {
 		ms, _ := v.(map[string]any)
 		source, _ := ms["source"].(string)
-		i, ok := modelOf(source)
+		i, ok := modelOf(source, "")
 		if !ok {
 			notes = append(notes, fmt.Sprintf("KPI/%s: its measure is over %q, which is not a data source; the metric is left out.", kpi, source))
 			return "", false
@@ -113,6 +145,35 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		agg, _ := ms["agg"].(string)
 		expr, _ := ms["expr"].(string)
 		l.Models[i].Measures = append(l.Models[i].Measures, semantic.Measure{Name: name, Agg: agg, Expr: expr})
+		return name, true
+	}
+	// A data source metric (TAXONOMY.md D64) is one measure on its
+	// source's model, and one simple metric, whichever indicators use it.
+	sourceMetric := map[string]string{}
+	fromSource := func(kpi string, ref any, own []string) (string, bool) {
+		set := map[string]bool{}
+		for _, s := range own {
+			set[s] = true
+		}
+		r, problem, err := e.resolveSourceMetric(ctx, ref, set)
+		if err != nil || problem != "" {
+			notes = append(notes, fmt.Sprintf("KPI/%s: %s; the metric is left out.", kpi, problem))
+			return "", false
+		}
+		key := r.Source + "/" + r.Metric.ID
+		if name, ok := sourceMetric[key]; ok {
+			return name, true
+		}
+		i, ok := modelOf(r.Source, r.Metric.Over)
+		if !ok {
+			return "", false
+		}
+		name := dbtName(r.Source) + "__" + dbtName(r.Metric.ID)
+		agg, expr := r.Aggregation.Measure()
+		l.Models[i].Measures = append(l.Models[i].Measures, semantic.Measure{Name: name, Agg: agg, Expr: expr})
+		desc := strings.TrimSpace(r.Metric.Description + " Aggregation: " + r.Metric.Aggregation + ".")
+		l.Metrics = append(l.Metrics, semantic.Metric{Name: name, Label: r.Metric.Name + " (" + r.SourceName + ")", Description: desc, Type: semantic.Simple, Measure: name})
+		sourceMetric[key] = name
 		return name, true
 	}
 	sort.Slice(kpis, func(i, j int) bool { return kpis[i].id < kpis[j].id })
@@ -125,9 +186,29 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		def, _ := spec["definition"].(string)
 		filter, _ := mt["filter"].(string)
 		name := dbtName(d.id)
-		m := semantic.Metric{Name: name, KPI: d.id, Label: nameOf(d.doc, d.id), Description: def, Filter: filter}
+		m := semantic.Metric{Name: name, KPI: d.id, Label: nameOf(d.doc, d.id), Description: withFormula(def, mt), Filter: filter}
 		m.Type, _ = mt["type"].(string)
 		ok := true
+		if _, named := mt["of"]; named {
+			own := stringsOf(spec["sources"])
+			var of string
+			if of, ok = fromSource(d.id, mt["of"], own); ok {
+				switch m.Type {
+				case semantic.Ratio:
+					m.Numerator = of
+					m.Denominator, ok = fromSource(d.id, mt["outOf"], own)
+				default:
+					// A simple or cumulative metric over the source metric's
+					// measure.
+					m.Measure = of
+					m.Window, _ = mt["window"].(string)
+				}
+			}
+			if ok {
+				l.Metrics = append(l.Metrics, m)
+			}
+			continue
+		}
 		switch m.Type {
 		case semantic.Simple, semantic.Cumulative:
 			m.Measure, ok = measure(d.id, name, mt["measure"])
@@ -159,4 +240,39 @@ func (e *Engine) SemanticLayer(ctx context.Context) (semantic.Layer, []string, e
 		}
 	}
 	return l, notes, nil
+}
+
+// whereWords are the conditions' comparisons, as the description reads them.
+var whereWords = map[string]string{"is": "is", "isNot": "is not", "above": "is above", "below": "is below", "atLeast": "is at least", "atMost": "is at most", "oneOf": "is one of"}
+
+// withFormula adds to a metric's description what its definer said it
+// counts and which rows count, in their words (TAXONOMY.md D63): what an
+// analyst maps to columns and a filter, carried into the export.
+func withFormula(def string, mt map[string]any) string {
+	var parts []string
+	for _, side := range []string{"measure", "numerator", "denominator"} {
+		if m, ok := mt[side].(map[string]any); ok {
+			if c, _ := m["counts"].(string); c != "" {
+				label := map[string]string{"measure": "Counts", "numerator": "Counts", "denominator": "Out of"}[side]
+				parts = append(parts, label+": "+c+".")
+			}
+		}
+	}
+	var conds []string
+	for _, w := range anyList(mt["where"]) {
+		wm, _ := w.(map[string]any)
+		in, _ := wm["input"].(string)
+		op, _ := wm["op"].(string)
+		v, _ := wm["value"].(string)
+		if in != "" && v != "" {
+			conds = append(conds, in+" "+whereWords[op]+" "+v)
+		}
+	}
+	if len(conds) > 0 {
+		parts = append(parts, "Only where "+strings.Join(conds, "; ")+".")
+	}
+	if len(parts) == 0 {
+		return def
+	}
+	return strings.TrimSpace(def + " " + strings.Join(parts, " "))
 }

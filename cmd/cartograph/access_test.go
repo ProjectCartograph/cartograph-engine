@@ -17,6 +17,7 @@ import (
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/proxy"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/printer"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/spa"
 )
 
 const accessYAML = `roles:
@@ -85,7 +86,7 @@ func TestAccessThroughTheServeStack(t *testing.T) {
 	defer comp.Close()
 	var ready atomic.Bool
 	ready.Store(true)
-	mux, _ := routes(comp.Engine, comp.Fanout, proxy.New("X-Forwarded-User"), comp.Authz, printer.None{}, comp.Reports, agentsConfig{On: true}, &ready)
+	mux, _ := routes(comp.Engine, comp.Fanout, proxy.New("X-Forwarded-User"), comp.Authz, printer.None{}, comp.Reports, agentsConfig{On: true}, &ready, spa.Handler())
 	srv := httptest.NewServer(requestLog(slog.New(slog.NewTextHandler(io.Discard, nil)), nil, mux))
 	defer srv.Close()
 

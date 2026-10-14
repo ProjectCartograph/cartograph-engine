@@ -24,6 +24,9 @@ type Settings struct {
 	// How the record may change (docs/adr/0024). Nil: as before 0024,
 	// every write path open.
 	ChangeControl *ChangeControl `json:"changeControl,omitempty"`
+	// The words the workspace uses where a field's choices are its own,
+	// the standard lists unless it sets its own (TAXONOMY.md D71).
+	Vocabularies map[string][]VocabularyTerm `json:"vocabularies"`
 }
 
 // ChangeControl is a workspace's change-control policy.
@@ -63,7 +66,8 @@ func defaultSettings() Settings {
 		// Left empty on purpose: the renderer resolves the browser from
 		// the CHROMIUM environment variable or the PATH when a vault does
 		// not name one, which travels between machines.
-		Chromium: "",
+		Chromium:     "",
+		Vocabularies: vocabulariesWith(nil),
 	}
 }
 
@@ -113,13 +117,14 @@ func (e *Engine) settingsOnly(ctx context.Context) (Settings, error) {
 	}
 	var doc struct {
 		Spec struct {
-			GoalLevels       []string            `yaml:"goalLevels"`
-			ProjectLevelName string              `yaml:"projectLevelName"`
-			Operator         string              `yaml:"operator"`
-			Chromium         string              `yaml:"chromium"`
-			Examples         map[string][]string `yaml:"examples"`
-			Purpose          *Purpose            `yaml:"purpose"`
-			ChangeControl    *ChangeControl      `yaml:"changeControl"`
+			GoalLevels       []string                    `yaml:"goalLevels"`
+			ProjectLevelName string                      `yaml:"projectLevelName"`
+			Operator         string                      `yaml:"operator"`
+			Chromium         string                      `yaml:"chromium"`
+			Examples         map[string][]string         `yaml:"examples"`
+			Purpose          *Purpose                    `yaml:"purpose"`
+			ChangeControl    *ChangeControl              `yaml:"changeControl"`
+			Vocabularies     map[string][]VocabularyTerm `yaml:"vocabularies"`
 		} `yaml:"spec"`
 	}
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
@@ -140,6 +145,7 @@ func (e *Engine) settingsOnly(ctx context.Context) (Settings, error) {
 	out.Examples = doc.Spec.Examples
 	out.Purpose = doc.Spec.Purpose
 	out.ChangeControl = doc.Spec.ChangeControl
+	out.Vocabularies = vocabulariesWith(doc.Spec.Vocabularies)
 	return out, nil
 }
 
@@ -461,6 +467,9 @@ type GoalCheck struct {
 	State   string        `json:"state"` // ok, warn
 	Message string        `json:"message"`
 	Fix     *GoalCheckFix `json:"fix,omitempty"`
+	// NotJudged marks a judgement of meaning the decision model did not
+	// make: the check passes, and its message says why.
+	NotJudged bool `json:"notJudged,omitempty"`
 }
 
 const (
