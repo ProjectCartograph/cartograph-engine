@@ -45,6 +45,30 @@ running between commands, so a server a command starts (`just serve`,
 `just eval-serve`) keeps serving. Host networking means a browser on the
 host reaches it at the address it prints.
 
+## Apple silicon and other arm64 hosts
+
+On a Mac with Apple silicon, or any arm64 machine, the container runs as
+`aarch64-linux`. Everything builds and tests natively, `just test`
+included. The recipes that also build for x86_64 Linux (`just image`,
+`just release`) need the container to run x86_64 programs:
+
+- Docker Desktop: Settings, General, turn on **Use Rosetta for
+  x86_64/amd64 emulation on Apple Silicon**.
+- Linux on arm64: register QEMU once, `docker run --privileged --rm
+  tonistiigi/binfmt --install amd64`.
+
+`scripts/dev` declares `x86_64-linux` as an extra platform to Nix on an
+arm64 host, and before such a build says which setting to turn on if no
+x86_64 handler is registered. An x86_64 build through Rosetta or QEMU is
+slower than a native one; CI builds each architecture on its own runner.
+
+Each call first copies what changed on the host into the container.
+`scripts/dev` checks the host side natively (a `find` against the last
+sync) and copies only a repository that changed, so an unchanged
+workspace costs no copy. On Docker Desktop the share into the container
+is slower per file than on Linux, so the first call after a large change
+(a branch switch) takes longer than the next.
+
 ## How it is built
 
 | Part | What it is |

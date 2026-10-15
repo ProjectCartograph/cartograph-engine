@@ -36,6 +36,47 @@ done
 # A name for the host user inside, which some tools ask for (initdb).
 "${compose[@]}" exec -T --user 0 dev sh -c "grep -q '^[^:]*:[^:]*:$CARTOGRAPH_UID:' /etc/passwd || echo 'dev:x:$CARTOGRAPH_UID:$CARTOGRAPH_GID:dev:/home/dev:/bin/sh' >> /etc/passwd"
 
+# Which repositories changed since they were last synced (#108): a native
+# find on the host, fast where the share into the container is slow (Docker
+# Desktop on a Mac). Each repository gets a token: a new one when something
+# under it is newer than its stamp, else the last. The container syncs a
+# repository only when its copy holds another token, so a sync cut short
+# is redone, and an unchanged workspace costs no copy and no extra flake.
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/cartograph-dev
+mkdir -p "$cache"
+sync=""
+for repo in "$workspace"/*/; do
+  [ -f "$repo/flake.nix" ] || continue
+  name=$(basename "$repo")
+  stamp="$cache/$name.stamp" next="$cache/$name.next"
+  # Written before the scan, so what changes during it is newer next time.
+  printf '%s' "$(date +%s)-$$-$RANDOM" > "$next"
+  if [ -f "$stamp" ] && [ -z "$(find "$repo" \( -name .jj -o -name result -o -name 'result-*' \) -prune -o -newer "$stamp" -print 2>/dev/null | head -n 1)" ]; then
+    rm -f "$next"
+  else
+    mv "$next" "$stamp"
+  fi
+  sync="$sync $name:$(cat "$stamp")"
+done
+
+# On an arm64 host (Apple silicon, an arm64 Linux machine), the container is
+# aarch64-linux; the image and release recipes also build x86_64-linux, which
+# Nix does only when told the platform is there and the kernel can run it
+# (Rosetta in Docker Desktop, or binfmt with QEMU) (#108).
+nixconf=""
+case "$(uname -m)" in
+  arm64 | aarch64)
+    nixconf="extra-platforms = x86_64-linux"
+    case " $* " in
+      *image* | *release* | *x86_64*)
+        if ! "${compose[@]}" exec -T dev sh -c 'ls /proc/sys/fs/binfmt_misc 2>/dev/null | grep -qiE "rosetta|x86_64|x86-64|amd64"'; then
+          echo "dev: this builds for x86_64, and the container cannot run x86_64 programs." >&2
+          echo "dev: Docker Desktop: Settings, General, turn on Use Rosetta for x86_64/amd64 emulation." >&2
+          echo "dev: Linux: docker run --privileged --rm tonistiigi/binfmt --install amd64" >&2
+        fi ;;
+    esac ;;
+esac
+
 # The same directory in the copy, when the caller is in the workspace.
 here=$(pwd)
 case "$here" in
@@ -46,16 +87,19 @@ tty=(-T)
 [ -t 0 ] && [ -t 1 ] && tty=(-it)
 
 [ $# -gt 0 ] || set -- bash
-exec "${compose[@]}" exec "${tty[@]}" -w /workspace dev sh -c '
+exec "${compose[@]}" exec "${tty[@]}" -e CARTOGRAPH_SYNC="$sync" -e NIX_CONFIG="$nixconf" -w /workspace dev sh -c '
   set -e
-  # The repositories, as they stand on the host, into the copy: what the
-  # host deleted goes, what a command built (outside the repositories:
-  # the evaluation runs) stays.
-  for repo in /src/*/; do
-    [ -f "$repo/flake.nix" ] || continue
-    name=$(basename "$repo")
+  # The repositories that changed, as they stand on the host, into the
+  # copy: what the host deleted goes, what a command built (outside the
+  # repositories: the evaluation runs) stays.
+  mkdir -p /workspace/.synced
+  for entry in $CARTOGRAPH_SYNC; do
+    name=${entry%%:*} token=${entry#*:}
+    [ -f "/src/$name/flake.nix" ] || continue
+    [ "$(cat "/workspace/.synced/$name" 2>/dev/null)" = "$token" ] && continue
     nix develop /src/cartograph-engine --command rsync -a --delete \
-      --exclude /.jj --exclude /result --exclude /result-image "$repo" "/workspace/$name/"
+      --exclude /.jj --exclude /result --exclude /result-image "/src/$name/" "/workspace/$name/"
+    printf %s "$token" > "/workspace/.synced/$name"
   done
   cd "'"$wd"'" 2>/dev/null || cd "/workspace/'"$(basename "$root")"'"
   d=$PWD

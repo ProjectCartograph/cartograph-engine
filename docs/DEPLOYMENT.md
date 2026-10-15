@@ -696,3 +696,12 @@ Replace the binary and restart. The contract is versioned (`/api/v1`);
 a vault written by an older binary opens in a newer one, and the schemas
 are in the binary, so a manifest that no longer validates shows as a
 problem on its next save, not as a refusal to start.
+
+To see a Postgres workspace through an upgrade before running it,
+`just upgrade-check v2.6.0` (any earlier release tag) imports that
+release's example with its own image, then serves the same database with
+this build and compares what the API answers for every kind, with nobody
+signing in and with sign-in and an access list. If a workspace looks
+empty after an upgrade while that passes, check what the proxy passes:
+a person whose directory groups do not reach Cartograph holds no role,
+and the interface says so.

@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Does a workspace an earlier release wrote to Postgres read back whole
+# after an upgrade to this build? (cartograph-engine#109)
+#
+#   scripts/upgrade-check v2.6.0
+#
+# Builds that release's image from its tag and this checkout's image,
+# imports the release's own example into a fresh Postgres with the old
+# image, then serves the same database with each in turn and compares
+# what the API answers, kind by kind: with nobody signing in, and with
+# sign-in and an access list as a distribution configures them. Needs
+# Docker, as `just stack` does; nothing is kept.
+set -euo pipefail
+
+from=${1:?the release to upgrade from, such as v2.6.0}
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+work=$(mktemp -d)
+project=cartograph-upgrade-check
+port=${CARTOGRAPH_UPGRADE_PORT:-18690}
+trap 'IMG=x docker compose -p "$project" -f "$work/compose.yaml" down -v >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
+
+image() {
+  name=$(docker load < "$(nix build "$1" --no-link --print-out-paths)" | sed -n 's/^Loaded image: //p')
+  docker tag "$name" "$2" && echo "$2" >&2
+}
+echo "building $from and this checkout" >&2
+image "github:ProjectCartograph/cartograph-engine/$from#image" cartograph:upgrade-from
+image "$root#image" cartograph:upgrade-to
+
+mkdir "$work/seed"
+git -C "$root" archive "$from" examples/minimal | tar -x -C "$work/seed" --strip-components=2
+cat > "$work/access.yaml" <<'YAML'
+roles:
+  reader: [staff]
+  contributor: [assessment-unit]
+  administrator: [cartograph-administrators]
+YAML
+cat > "$work/compose.yaml" <<YAML
+services:
+  postgres:
+    image: postgres:17
+    environment: { POSTGRES_USER: c, POSTGRES_PASSWORD: c, POSTGRES_DB: c }
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U c -d c"], interval: 2s, retries: 30 }
+  seed:
+    image: cartograph:upgrade-from
+    command: ["import", "-db", "postgres://c:c@postgres:5432/c?sslmode=disable", "-reason", "seed", "/seed"]
+    volumes: ["./seed:/seed:ro"]
+    depends_on: { postgres: { condition: service_healthy } }
+    profiles: [seed]
+  cartograph:
+    image: \${IMG}
+    command: ["serve"]
+    environment:
+      CARTOGRAPH_STORE: postgres://c:c@postgres:5432/c?sslmode=disable
+      CARTOGRAPH_AUTH: \${AUTH:-none}
+      CARTOGRAPH_AUTH_PROXY_HEADER: \${HEADER:-}
+      CARTOGRAPH_AUTHZ: \${AUTHZ:-allow}
+      CARTOGRAPH_ACCESS_FILE: \${ACCESS:-}
+    volumes: ["./access.yaml:/config/access.yaml:ro"]
+    ports: ["$port:8080"]
+    depends_on: { postgres: { condition: service_healthy } }
+YAML
+dc() { docker compose -p "$project" -f "$work/compose.yaml" "$@"; }
+IMG=x dc --profile seed run --rm seed >/dev/null
+
+kinds="Goal Programme Project Operation KPI Team BeneficiaryGroup DataSource Gap"
+counts() { # who groups
+  for k in $kinds; do
+    curl -s -H "X-Forwarded-Email: $1" -H "X-Forwarded-Groups: $2" "http://localhost:$port/api/v1/manifests/$k" |
+      python3 -c 'import json,sys
+d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else "refused")' | tr '\n' ' '
+  done
+  curl -s -H "X-Forwarded-Email: $1" -H "X-Forwarded-Groups: $2" "http://localhost:$port/api/v1/goals/tree" |
+    python3 -c 'import json,sys
+d=json.load(sys.stdin); n=lambda xs: sum(1+n(x.get("children") or []) for x in xs); print("tree", n(d.get("nodes") or []) + len(d.get("unplaced") or []))'
+}
+serve() { # image auth authz
+  local header="" access=""
+  [ "$2" = proxy ] && header=X-Forwarded-Email
+  [ "$3" = access ] && access=/config/access.yaml
+  if ! IMG=$1 AUTH=$2 AUTHZ=$3 HEADER=$header ACCESS=$access dc up -d --wait --force-recreate cartograph >/dev/null 2>&1; then
+    echo "$1 did not start:" >&2
+    dc logs --no-log-prefix --tail 5 cartograph >&2
+    exit 1
+  fi
+}
+fail=0
+check() { # label auth authz who groups
+  serve cartograph:upgrade-from "$2" "$3"; before=$(counts "$4" "$5")
+  serve cartograph:upgrade-to "$2" "$3"; after=$(counts "$4" "$5")
+  if [ "$before" = "$after" ]; then echo "ok    $1: $after"; else echo "DIFF  $1: $from [$before] now [$after]"; fail=1; fi
+}
+echo "$kinds tree" >&2
+check "nobody signs in" none allow "" ""
+check "administrator" proxy access ada@example.org cartograph-administrators
+check "reader" proxy access jo@example.org staff
+check "contributor" proxy access kai@example.org assessment-unit
+exit $fail
