@@ -1895,14 +1895,14 @@ func (s *Server) GetChangeSetCharter(ctx context.Context, req apigen.GetChangeSe
 			step := p.Step
 			o.Step = &step
 		}
-		for _, l := range p.Lines {
-			o.Lines = append(o.Lines, struct {
-				Op   apigen.CharterPartDiffLinesOp `json:"op"`
-				Text string                        `json:"text"`
-			}{Op: apigen.CharterPartDiffLinesOp(l.Op), Text: l.Text})
-		}
-		if o.Lines == nil {
-			o.Lines = o.Lines[:0]
+		// Made, not appended to, so a part with no lines answers [] as the
+		// contract's array, never null (engine issue 104).
+		o.Lines = make([]struct {
+			Op   apigen.CharterPartDiffLinesOp `json:"op"`
+			Text string                        `json:"text"`
+		}, len(p.Lines))
+		for j, l := range p.Lines {
+			o.Lines[j].Op, o.Lines[j].Text = apigen.CharterPartDiffLinesOp(l.Op), l.Text
 		}
 		out[i] = o
 	}

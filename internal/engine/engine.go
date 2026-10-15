@@ -259,8 +259,11 @@ func (e *Engine) validate(ctx context.Context, kind string, yamlBytes []byte, ov
 	for _, fr := range extractRefs(doc, e.refRules[kind]) {
 		if !l.exists(fr.kind, fr.id) {
 			problems = append(problems, Problem{
-				Path:    fr.path,
-				Message: fmt.Sprintf("references %s %q, which does not exist", fr.kind, fr.id),
+				Path: fr.path,
+				// What it names is not in the record, so its id is all
+				// there is to show; the kind is said in words (engine
+				// issue 82).
+				Message: fmt.Sprintf("names a %s that is not in Cartograph (%s): choose one that is, or add it first", kindWord(fr.kind), fr.id),
 			})
 		}
 	}

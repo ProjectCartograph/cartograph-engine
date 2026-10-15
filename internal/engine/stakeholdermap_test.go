@@ -60,7 +60,7 @@ func TestStakeholderMapRules(t *testing.T) {
 		},
 		{
 			name: "a resource that does not exist", kind: "StakeholderMap",
-			wantProblem: true, wantSubstr: "does not exist",
+			wantProblem: true, wantSubstr: "not in",
 			yaml: base + "  scope: {kind: Project, id: p1}\n  entries:\n    - {resource: no-such-resource}\n",
 		},
 		{

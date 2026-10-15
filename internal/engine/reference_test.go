@@ -34,7 +34,7 @@ func TestProjectReferenceForms(t *testing.T) {
 		},
 		{
 			name: "a local reference to a role this project does not have", kind: "Project",
-			wantProblem: true, wantSubstr: "does not exist in this project",
+			wantProblem: true, wantSubstr: "is not in this project",
 			yaml: base + "  successCriteria:\n    - id: sc-1\n      statement: Coverage is close to complete\n      metric: compliance\n      confirmedBy: {local: resources, id: nobody}\n      when: atClosing\n",
 		},
 		{
@@ -50,7 +50,7 @@ func TestProjectReferenceForms(t *testing.T) {
 		},
 		{
 			name: "a cross-manifest reference that does not resolve", kind: "Project",
-			wantProblem: true, wantSubstr: "does not exist",
+			wantProblem: true, wantSubstr: "not in",
 			yaml: base + "  successCriteria:\n    - id: sc-1\n      statement: Coverage is close to complete\n      metric: compliance\n      confirmedBy: {kind: Team, id: no-such-team}\n      when: atClosing\n",
 		},
 		{

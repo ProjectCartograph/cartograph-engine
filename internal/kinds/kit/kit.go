@@ -81,6 +81,17 @@ var LocalRefLists = map[string][]string{
 	"phases":          {"timeline", "phases"},
 }
 
+// localWords is one item of each list, as a sentence names it.
+var localWords = map[string]string{
+	"resources":       "role",
+	"objectives":      "objective",
+	"deliverables":    "deliverable",
+	"successCriteria": "success criterion",
+	"risks":           "risk",
+	"problems":        "problem",
+	"phases":          "phase",
+}
+
 // LocalList returns the items of one of a spec's own lists by the name a
 // local reference uses for it, and whether that name is one Cartograph knows.
 func LocalList(spec map[string]any, name string) ([]any, bool) {
@@ -134,7 +145,7 @@ func LocalRefProblem(spec map[string]any, v any, path string) *Problem {
 			}
 		}
 	}
-	return &Problem{Path: path + "/id", Message: fmt.Sprintf("references %s %q, which does not exist in this project", local, id)}
+	return &Problem{Path: path + "/id", Message: fmt.Sprintf("names a %s that is not in this project (%s): choose one that is, or add it first", localWords[local], id)}
 }
 
 // RiskProblems checks the risk list a Project and a Programme both carry:

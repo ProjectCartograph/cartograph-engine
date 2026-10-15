@@ -72,3 +72,16 @@ func TestACharterAgainstItselfIsTheSame(t *testing.T) {
 		}
 	}
 }
+
+// A diagram's labels do not run together in a diff, and mentions side by
+// side read as a list (engine issue 82): the drawing is left out, its
+// caption is a line, and the groups a problem affects are parted.
+func TestADiagramAndMentionsReadInADiff(t *testing.T) {
+	got := textLines(`<figure class="diagram"><svg class="triangle"><g><text>Scope</text><text class="tag">adjusted first · 0</text></g>` +
+		`<g><text>Schedule</text><text class="tag">held · 8</text></g></svg><figcaption>Each corner grows with its risk.</figcaption></figure>` +
+		`<p><span data-field="/g"><span class="mention">Delivering members</span><span class="mention">Retail partners</span></span> learn late.</p>`)
+	want := "Each corner grows with its risk.|Delivering members, Retail partners learn late."
+	if strings.Join(got, "|") != want {
+		t.Fatalf("lines %q, want %q", got, want)
+	}
+}

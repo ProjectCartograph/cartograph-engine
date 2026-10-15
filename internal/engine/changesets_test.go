@@ -223,7 +223,7 @@ func TestAReviewKnowsTheRecordsItsChangeSetCreates(t *testing.T) {
 	}
 	for _, it := range view.Items {
 		for _, c := range it.Checks {
-			if strings.HasPrefix(c.ID, "required:") && strings.Contains(c.Message, "does not exist") {
+			if strings.HasPrefix(c.ID, "required:") && strings.Contains(c.Message, "is not in Cartograph") {
 				t.Fatalf("%s/%s: %s", it.Item.Kind, it.Item.ID, c.Message)
 			}
 		}
