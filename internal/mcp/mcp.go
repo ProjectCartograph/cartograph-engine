@@ -47,6 +47,15 @@ type Options struct {
 	// Trace records every tool call by its shape (docs/adr/0028); nil
 	// records none.
 	Trace trace.Recorder
+	// HostCheck refuses a request that arrives over loopback with a Host
+	// that is not loopback and not one of Hosts, against DNS rebinding
+	// (cartograph-engine#106): on where nobody signs in, or where a
+	// deployment lists its hosts.
+	HostCheck bool
+	// Hosts are Cartograph's public host names, which a reverse proxy on
+	// the same machine may send as Host when it forwards over loopback; a
+	// leading "*." matches any name under a domain.
+	Hosts []string
 }
 
 // Handler serves MCP over HTTP, sessionless. The principal is the one the
@@ -54,10 +63,17 @@ type Options struct {
 // acts for.
 func Handler(o Options) http.Handler {
 	servers := &serverCache{byPerson: map[string]*sdk.Server{}}
-	return sdk.NewStreamableHTTPHandler(func(r *http.Request) *sdk.Server {
+	// The SDK's rebinding check refuses every request a proxy forwards
+	// over loopback; guardHosts makes the same check where it is asked
+	// for, knowing the deployment's own names.
+	h := http.Handler(sdk.NewStreamableHTTPHandler(func(r *http.Request) *sdk.Server {
 		person := auth.PrincipalFrom(r.Context())
 		return servers.get(person, func() *sdk.Server { return newServer(o, person) })
-	}, &sdk.StreamableHTTPOptions{Stateless: true, JSONResponse: true})
+	}, &sdk.StreamableHTTPOptions{Stateless: true, JSONResponse: true, DisableLocalhostProtection: true}))
+	if o.HostCheck {
+		h = guardHosts(h, o.Hosts)
+	}
+	return h
 }
 
 // serverCache keeps a built server for each person who calls. The

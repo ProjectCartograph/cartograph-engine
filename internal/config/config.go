@@ -132,6 +132,13 @@ type Config struct {
 	// advertised as RFC 9728 protected resource metadata; empty
 	// advertises none. CARTOGRAPH_MCP_ISSUER.
 	MCPIssuer string
+	// MCPHosts are Cartograph's public host names, which a reverse proxy
+	// on the same machine may send as Host when it forwards over loopback;
+	// the host of MCPIssuer is always one, and "*.example.org" matches any
+	// name under a domain. Listing any turns the rebinding check on for a
+	// deployment with sign-in; without sign-in it is always on.
+	// CARTOGRAPH_MCP_HOSTS, comma separated.
+	MCPHosts []string
 	// AgentKey signs what Cartograph's own authorization server issues:
 	// at least 32 bytes, the same on every replica. CARTOGRAPH_AGENT_KEY.
 	AgentKey string
@@ -318,6 +325,9 @@ func FromEnv(getenv Getenv) (Config, error) {
 	if v := getenv("CARTOGRAPH_MCP_ISSUER"); v != "" {
 		c.MCPIssuer = v
 	}
+	if v := getenv("CARTOGRAPH_MCP_HOSTS"); v != "" {
+		c.MCPHosts = splitHosts(v)
+	}
 	if v := getenv("CARTOGRAPH_MCP_AUTH"); v != "" {
 		c.MCPAuth = v
 	}
@@ -388,6 +398,10 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.UITrace, "ui-trace", c.UITrace, "keep what people do in an interface by its shape: off, or a file to append JSON lines to (CARTOGRAPH_UI_TRACE)")
 	fs.StringVar(&c.MCPAuth, "mcp-auth", c.MCPAuth, "who authenticates agents: proxy or cartograph (CARTOGRAPH_MCP_AUTH)")
 	fs.StringVar(&c.MCPIssuer, "mcp-issuer", c.MCPIssuer, "the authorization server MCP clients sign in with (CARTOGRAPH_MCP_ISSUER)")
+	fs.Func("mcp-hosts", "Cartograph's public host names, which a proxy forwarding over loopback may send (CARTOGRAPH_MCP_HOSTS)", func(v string) error {
+		c.MCPHosts = splitHosts(v)
+		return nil
+	})
 	fs.StringVar(&c.Reports, "reports", c.Reports, "reporting: computed, postgres (views, with a Postgres store) or off (CARTOGRAPH_REPORTS)")
 	fs.StringVar(&c.GraphLayout, "graph-layout", c.GraphLayout, "how the workspace graph is placed: layered or force (CARTOGRAPH_GRAPH_LAYOUT)")
 	fs.StringVar(&c.Semantic, "semantic", c.Semantic, "the syntax the KPIs export in as a semantic layer: dbt or off (CARTOGRAPH_SEMANTIC)")
@@ -568,4 +582,37 @@ func Redact(s string) string {
 		return s
 	}
 	return u.Redacted()
+}
+
+// splitHosts reads a comma-separated list of host names, blanks left out.
+func splitHosts(v string) []string {
+	var out []string
+	for _, h := range strings.Split(v, ",") {
+		if h = strings.TrimSpace(h); h != "" {
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
+// MCPHostCheck says whether /mcp refuses a loopback request with a Host
+// that is not one of Cartograph's names, against DNS rebinding: where
+// nobody signs in (the local server the attack is aimed at), or where the
+// deployment lists its hosts. With sign-in, a rebinding page has no
+// credential to send, so a deployment whose public name is only known
+// after it is deployed needs nothing set (cartograph-engine#106).
+func (c Config) MCPHostCheck() bool {
+	return c.Auth == "none" || len(c.MCPHosts) > 0
+}
+
+// PublicMCPHosts are the host names a proxy may send as Host when it
+// forwards to /mcp over loopback: those listed, and the host of the
+// issuer, Cartograph's own address when it is its own authorization
+// server.
+func (c Config) PublicMCPHosts() []string {
+	out := append([]string(nil), c.MCPHosts...)
+	if u, err := url.Parse(c.MCPIssuer); err == nil && u.Host != "" {
+		out = append(out, u.Host)
+	}
+	return out
 }

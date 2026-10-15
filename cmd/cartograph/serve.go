@@ -160,7 +160,7 @@ func runServe(args []string) error {
 	if cfg.MetricsAddr != "" {
 		mtr = newMetrics()
 	}
-	agents := agentsConfig{On: cfg.MCP == "on", Issuer: cfg.MCPIssuer}
+	agents := agentsConfig{On: cfg.MCP == "on", Issuer: cfg.MCPIssuer, HostCheck: cfg.MCPHostCheck(), Hosts: cfg.PublicMCPHosts()}
 	rec, closeTrace, err := mcpTrace(cfg.MCPTrace)
 	if err != nil {
 		return err
@@ -376,7 +376,7 @@ func routes(e *engine.Engine, fan fanout.Bus, authn auth.Authenticator, authz au
 	if agents.On {
 		// Agents too, behind the same sign-in and access list: /mcp is
 		// MCP, the person on the request is who the agent acts for.
-		opts := mcp.Options{Engine: e, Authz: authz, Reports: reports, Version: version, Trace: agents.Trace}
+		opts := mcp.Options{Engine: e, Authz: authz, Reports: reports, Version: version, Trace: agents.Trace, HostCheck: agents.HostCheck, Hosts: agents.Hosts}
 		if syncSrv != nil {
 			opts.Presence = syncSrv
 		}
@@ -429,6 +429,10 @@ type agentsConfig struct {
 	OAuth  *oauth.Server
 	// Trace keeps every tool call by its shape (docs/adr/0028).
 	Trace trace.Recorder
+	// HostCheck and Hosts: the rebinding check on /mcp, and the public
+	// host names it lets through (cartograph-engine#106).
+	HostCheck bool
+	Hosts     []string
 }
 
 func withMCP(next, mcpHandler http.Handler) http.Handler {

@@ -44,6 +44,7 @@ prints the same table.
 | `CARTOGRAPH_UI_TRACE` | `-ui-trace` | `off` | Keep what people do in an interface by its shape, for judging the interface (docs/adr/0034, docs/EVALUATING_PEOPLE.md): `off`; a `postgres://` URL, a table every replica appends to (the store's own database or another), which a stateless deployment with several replicas wants; or a file the acts are appended to as JSON lines, one per replica unless it is on a shared volume. Never a value a person wrote. While it is off the server takes no acts and the interface sends none. `cartograph ux` reads it |
 | `CARTOGRAPH_MCP_AUTH` | `-mcp-auth` | `proxy` | Who authorizes agents: `cartograph`, Cartograph's own authorization server, or `proxy`, whatever authenticates every other request ("Agents" below) |
 | `CARTOGRAPH_MCP_ISSUER` | `-mcp-issuer` | empty | The authorization server MCP clients sign in with, published as protected resource metadata at `/.well-known/oauth-protected-resource`. With `CARTOGRAPH_MCP_AUTH=cartograph`, Cartograph's own public address |
+| `CARTOGRAPH_MCP_HOSTS` | `-mcp-hosts` | empty | Cartograph's public host names, comma separated; `*.example.org` matches any name under a domain. Where nobody signs in (`CARTOGRAPH_AUTH=none`), a request to `/mcp` that arrives over loopback with any other `Host` is refused, against DNS rebinding. With sign-in the check is off, so a deployment whose public name is known only after it is deployed needs nothing here; listing hosts turns it on. The host of `CARTOGRAPH_MCP_ISSUER` is always allowed |
 | `CARTOGRAPH_AGENT_KEY` | none | empty | With `CARTOGRAPH_MCP_AUTH=cartograph`: the secret its tokens are signed with, at least 32 bytes, the same on every replica |
 | `CARTOGRAPH_DRAIN_DELAY` | `-drain-delay` | `0` | After SIGTERM, how long the replica keeps serving with `/readyz` at 503 so load balancers stop sending it work. Set it to at least the load balancer's health-check interval |
 | `CARTOGRAPH_WATCH` | `-watch` | `true` | Reload manifests when their files change. Turn off on a read-only or network filesystem where inotify misbehaves |
@@ -411,6 +412,57 @@ ID, an administrator registers each client.
 
 For an agent on your own machine, `cartograph mcp ./vault` speaks MCP
 over stdio as the operator, held to the same rules.
+
+### Behind a reverse proxy
+
+Most deployments put a proxy on the same machine or in the same pod as
+Cartograph (oauth2-proxy, nginx, Caddy, an App Service or Container Apps
+sidecar), which forwards to `127.0.0.1` with the public `Host` kept.
+
+**The host check.** `/api/v1/mcp` refuses a request that arrives over
+loopback with a `Host` that is not loopback and not one of Cartograph's
+own names, against DNS rebinding: a web page in a browser on the same
+machine pointing its own domain at `127.0.0.1` to drive a local server.
+The check is on only where that attack has something to reach:
+
+| Deployment | Host check | What to set |
+|---|---|---|
+| Sign-in on (`CARTOGRAPH_AUTH=proxy`) | off | nothing |
+| Sign-in on, `CARTOGRAPH_MCP_HOSTS` set | on | the public names, if you want the check anyway |
+| Nobody signs in (`CARTOGRAPH_AUTH=none`) behind a proxy | on | `CARTOGRAPH_MCP_HOSTS` |
+| Nobody signs in, used on the same machine | on | nothing: `localhost` passes |
+
+So a deployment whose public name is known only after it is deployed (a
+generated App Service or Container Apps name, a domain added later)
+needs nothing set while sign-in is on. Where the check is on,
+`CARTOGRAPH_MCP_HOSTS` takes a comma-separated list, a leading `*.`
+matching any name under a domain (`*.azurewebsites.net`), and the host
+of `CARTOGRAPH_MCP_ISSUER` is always allowed. A refused request answers
+403 naming the setting, and the log records its `Host`.
+
+With `CARTOGRAPH_MCP_AUTH=cartograph`, `CARTOGRAPH_MCP_ISSUER` must be
+the public address people and agents use: tokens name it as their
+issuer and audience. When that address changes (a custom domain added
+after deployment), change the setting and restart; grants already made
+end, and each agent signs in again.
+
+**The proxy's own sign-in.** An agent's consent page opens in the
+person's browser, often beside a tab of Cartograph. If that tab has no
+session, every call it makes starts a new sign-in, and with one CSRF
+cookie per browser the last one wins: the person returns from the
+identity provider to a 403 on the proxy's callback. With oauth2-proxy,
+give each sign-in its own CSRF cookie and answer API calls with 401
+rather than a sign-in:
+
+```sh
+OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST=true
+OAUTH2_PROXY_COOKIE_CSRF_EXPIRE=15m
+OAUTH2_PROXY_API_ROUTES=^/api/
+```
+
+Live editing and presence use the WebSocket at `/api/v1/sync`: the
+proxy must pass upgrades on it (oauth2-proxy: `proxyWebSockets: true`),
+and an App Service needs Web sockets turned on.
 
 ## Reports
 
