@@ -116,6 +116,9 @@ func (e *Engine) ImportDir(ctx context.Context, dir, actor, reason string) (Repo
 		if err != nil {
 			return Report{}, fmt.Errorf("validate %s: %w", f.path, err)
 		}
+		// A record exported with fields not filled in yet imports as it
+		// was saved (docs/adr/0035).
+		problems = wellFormed(problems)
 		if len(problems) > 0 {
 			report.Problems = append(report.Problems, FileProblems{File: f.path, Problems: problems})
 		}

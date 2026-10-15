@@ -44,6 +44,7 @@ supersedes it, and the earlier one gets a status line pointing forward.
 | [0032](0032-decisions-are-asked-in-rounds.md) | Decisions are asked in rounds the engine computes | Accepted |
 | [0033](0033-decisions-taken-for-the-person-are-kept-apart.md) | Decisions taken for the person are kept apart | Accepted |
 | [0034](0034-what-people-do-is-traced-by-its-shape.md) | What people do is traced by its shape | Accepted |
+| [0035](0035-a-version-is-well-formed-complete-is-a-check.md) | A version is well formed; complete is a check | Accepted |
 
 ## Writing one
 

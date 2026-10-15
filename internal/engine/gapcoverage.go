@@ -199,7 +199,11 @@ func (e *Engine) GapChecks(ctx context.Context, id string) ([]ProgrammeCheck, er
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
 		return nil, fmt.Errorf("parse Gap/%s: %w", id, err)
 	}
-	return e.gapChecksOf(ctx, id, doc)
+	checks, err := e.gapChecksOf(ctx, id, doc)
+	if err != nil {
+		return nil, err
+	}
+	return append(checks, e.unfilledProgrammeChecks("Gap", doc)...), nil
 }
 
 // gapChecksOf checks a gap's document, saved or not: a draft, or

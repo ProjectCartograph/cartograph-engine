@@ -56,7 +56,11 @@ func (e *Engine) ProgrammeChecks(ctx context.Context, id string) ([]ProgrammeChe
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
 		return nil, fmt.Errorf("parse Programme/%s: %w", id, err)
 	}
-	return e.programmeChecksOf(ctx, id, doc)
+	checks, err := e.programmeChecksOf(ctx, id, doc)
+	if err != nil {
+		return nil, err
+	}
+	return append(checks, e.unfilledProgrammeChecks("Programme", doc)...), nil
 }
 
 // programmeChecksOf checks a programme's document, saved or not: a draft, or

@@ -177,8 +177,10 @@ func TestAChangeSetDeletesAndMovesAsWellAsSaves(t *testing.T) {
 }
 
 // A change set's review names what a record must have before it can be
-// merged, field by field, rather than leaving the merge to refuse it.
-func TestAReviewNamesWhatARecordNeedsToMerge(t *testing.T) {
+// A record with fields not filled in yet merges (docs/adr/0035): its
+// review names each as a check of its own, never as a lock on the merge,
+// and the version saved holds what was given.
+func TestARecordNotFilledInMerges(t *testing.T) {
 	t.Parallel()
 	e := seededEngine(t)
 	seed := actingAs(ada)
@@ -190,17 +192,66 @@ func TestAReviewNamesWhatARecordNeedsToMerge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var paths []string
+	unfilled := map[string]bool{}
 	for _, c := range view.Items[0].Checks {
+		if strings.HasPrefix(c.ID, "malformed:") {
+			t.Fatalf("a field not filled in locks the merge: %+v", c)
+		}
 		if strings.HasPrefix(c.ID, "required:") {
 			if c.State != "block" {
-				t.Fatalf("%s is %s, want block", c.ID, c.State)
+				t.Fatalf("%s is %s, want block (it holds back a handoff)", c.ID, c.State)
 			}
-			paths = append(paths, c.Path)
+			unfilled[c.ID] = true
 		}
 	}
-	if len(paths) == 0 {
-		t.Fatalf("the review names nothing the team needs: %+v", view.Items[0].Checks)
+	for _, want := range []string{"required:/spec/team", "required:/spec/summary/problems/0/problem/situation"} {
+		if !unfilled[want] {
+			t.Fatalf("the review does not name %s: %+v", want, view.Items[0].Checks)
+		}
+	}
+	// Proposed as a person merges: what is still open left open, with why.
+	waive := map[string]map[string]string{"Project/p-half": {}}
+	for _, c := range view.Items[0].Checks {
+		if c.State != "ok" {
+			waive["Project/p-half"][c.ID] = "to be filled in as the work goes"
+		}
+	}
+	if _, err := e.ProposeChangeSet(seed, cs.ID, "a start", waive); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.AcceptChangeSet(seed, cs.ID, "merged as far as it goes"); err != nil {
+		t.Fatalf("a record not filled in is refused: %v", err)
+	}
+	if _, err := e.Get(seed, "Project", "p-half"); err != nil {
+		t.Fatalf("the version is not there: %v", err)
+	}
+}
+
+// A value of the wrong form still locks the merge: the review names it,
+// and accepting refuses it.
+func TestAMalformedRecordDoesNotMerge(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	seed := actingAs(ada)
+	if _, err := e.EditInChangeSet(seed, "", "Project", "p-bad", map[string]any{"/metadata/name": "Bad", "/spec/nonsense": "not a field"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, _ := e.WorkingChangeSet(seed, "")
+	view, err := e.ViewChangeSet(seed, cs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	locked := false
+	for _, c := range view.Items[0].Checks {
+		locked = locked || strings.HasPrefix(c.ID, "malformed:")
+	}
+	if !locked {
+		t.Fatalf("the review does not lock a malformed record: %+v", view.Items[0].Checks)
+	}
+	if _, err := e.ProposeChangeSet(seed, cs.ID, "bad", nil); err == nil {
+		if _, err := e.AcceptChangeSet(seed, cs.ID, "should refuse"); err == nil {
+			t.Fatal("a malformed record merged")
+		}
 	}
 }
 

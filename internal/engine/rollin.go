@@ -65,6 +65,26 @@ func (e *Engine) rollInProblems(ctx context.Context, policy RollInPolicy, cs sto
 	}
 	var out []Problem
 	if policy.ChecksMet {
+		// A field not filled in yet is no check to waive where every
+		// check must be met: such a workspace merges whole records, as
+		// before versions could be saved without them (docs/adr/0035).
+		s, err := e.changeSetStore()
+		if err != nil {
+			return nil, err
+		}
+		items, err := s.ListChangeItems(ctx, cs.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, it := range items {
+			if !it.Included || it.Op == store.ItemDelete || it.Op == store.ItemState {
+				continue
+			}
+			for _, c := range e.unfilledChecks(it.Kind, it.Text) {
+				out = append(out, Problem{Path: it.Kind + "/" + it.ID + c.Path,
+					Message: fmt.Sprintf("every check must be met before this change set is rolled in: %s is not (%s)", c.ID, c.Message)})
+			}
+		}
 		for _, oc := range unmet {
 			out = append(out, Problem{Path: oc.Kind + "/" + oc.ManifestID,
 				Message: fmt.Sprintf("every check must be met before this change set is rolled in: %s is not (%s)", oc.ID, oc.Message)})

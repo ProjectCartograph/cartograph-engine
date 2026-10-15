@@ -20,6 +20,9 @@ func (e *Engine) CommitProject(ctx context.Context, id string, yamlBytes []byte,
 	if err != nil {
 		return Version{}, err
 	}
+	// A field not filled in yet does not refuse a version: a check says
+	// it (docs/adr/0035).
+	problems = wellFormed(problems)
 	if more, err := e.introducedProblems(ctx, "Project", doc, yamlBytes); err != nil {
 		return Version{}, err
 	} else {
