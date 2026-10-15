@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
@@ -133,5 +134,39 @@ func TestAChangeSetsCharterReadsAgainstTheRecord(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("the lead team is not added in the diff: %+v", parts)
+	}
+}
+
+// A part of the charter with no lines answers an empty array, never null:
+// an interface reads lines as the contract's array (engine issue 104).
+func TestAChangeSetsCharterPartWithNoLinesIsAnEmptyArray(t *testing.T) {
+	t.Parallel()
+	_, base := newTestServer(t)
+	commitTeam(t, base, "t1", "anyone")
+	resp := doJSON(t, http.MethodPost, base+"/changesets", map[string]string{"title": "A bare project"}, nil)
+	set := decode[apigen.ChangeSet](t, resp).Id
+	yaml := "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: p1\n  name: Depot checks\nspec:\n  team: t1\n"
+	if resp := doJSON(t, http.MethodPut, base+"/changesets/"+set+"/items/Project/p1", apigen.ChangeSetEdit{Yaml: yaml}, nil); resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("draft: %d %s", resp.StatusCode, b)
+	}
+	resp = doJSON(t, http.MethodGet, base+"/changesets/"+set+"/items/Project/p1/charter", nil, nil)
+	var parts []map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&parts); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	empty := 0
+	for _, p := range parts {
+		lines, ok := p["lines"].([]any)
+		if !ok {
+			t.Fatalf("part %v: lines %#v, want an array", p["title"], p["lines"])
+		}
+		if len(lines) == 0 {
+			empty++
+		}
+	}
+	if empty == 0 {
+		t.Fatalf("no part of a bare project is empty, so nothing was tested: %v", parts)
 	}
 }
