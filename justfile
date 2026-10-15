@@ -386,7 +386,7 @@ decide-measure url="":
     # A sidecar already running (an image a release is about to publish)
     # is measured where it is.
     if [ -n "{{url}}" ]; then
-      CARTOGRAPH_DECIDE_URL="{{url}}" go test -count=1 -tags decide -run TestMeasureJudgements -v ./internal/engine/ | grep -E "^\s+measure_test|^(--- |ok|FAIL)"
+      CARTOGRAPH_DECIDE_URL="{{url}}" go test -count=1 -tags decide -run "TestMeasureJudgements|TestMeasureMatches" -v ./internal/engine/ | grep -E "^\s+measure_test|^(--- |ok|FAIL)"
       exit
     fi
     # Built first: the model is fetched into the store once, however long
@@ -402,7 +402,7 @@ decide-measure url="":
       sleep 1
     done
     [ -n "$ready" ] || { echo "the model did not start:"; tail -5 /tmp/cartograph-laya-$port.log; exit 1; }
-    CARTOGRAPH_DECIDE_URL="http://127.0.0.1:$port" go test -count=1 -tags decide -run TestMeasureJudgements -v ./internal/engine/ | grep -E "^\s+measure_test|^(--- |ok|FAIL)"
+    CARTOGRAPH_DECIDE_URL="http://127.0.0.1:$port" go test -count=1 -tags decide -run "TestMeasureJudgements|TestMeasureMatches" -v ./internal/engine/ | grep -E "^\s+measure_test|^(--- |ok|FAIL)"
 
 # Run the Laya sidecar on its own (deploy/laya, docs/adr/0023)
 laya port="8411":

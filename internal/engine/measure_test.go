@@ -13,7 +13,9 @@ import (
 	"testing"
 	"time"
 
+	codecyaml "github.com/ProjectCartograph/cartograph-engine/v2/internal/codec/yaml"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide/laya"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store/memory"
 )
 
 // TestMeasureJudgements asks the decision model every judgement's examples
@@ -183,4 +185,60 @@ func measureExamples(t *testing.T, name string, ask func(string) (Judged, bool))
 		}
 	}
 	return right, of
+}
+
+// matchMeasured is what the matcher scores on its examples at sameAtLeast
+// and sameClearBy, with no wrong record offered.
+var matchMeasured = Measure{Right: 23, Of: 24}
+
+// TestMeasureMatches holds the matcher (MatchExisting) to its examples:
+// texts whose existing record is known, or that say something new
+// (testdata/decide/same-as.jsonl), against the example workspace. A wrong
+// record offered ("Did you mean ...?" for something else) counts against
+// it as much as one missed (cartograph-ui#91). Locally only, as above.
+func TestMeasureMatches(t *testing.T) {
+	url := os.Getenv("CARTOGRAPH_DECIDE_URL")
+	if url == "" {
+		t.Skip("no model: run just decide-measure")
+	}
+	ctx := context.Background()
+	e, err := New(memory.NewManifestStore(), memory.NewOperationalStore(), WithCodec(codecyaml.New()), WithDecider(laya.New(url, 60*time.Second)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ImportDir(ctx, "../../examples/minimal", "test", "example"); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile("testdata/decide/same-as.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, of, wrong := 0, 0, 0
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		var ex struct{ Kind, Level, Text, Match string }
+		if err := json.Unmarshal([]byte(line), &ex); err != nil {
+			t.Fatal(err)
+		}
+		of++
+		got := ""
+		if ms := e.MatchExisting(ctx, ex.Kind, ex.Level, ex.Text); len(ms) > 0 {
+			got = ms[0].ID
+		}
+		switch {
+		case got == ex.Match:
+			right++
+		case got != "":
+			wrong++
+			t.Logf("offered %s for %q (want %q)", got, ex.Text, ex.Match)
+		default:
+			t.Logf("missed %s for %q", ex.Match, ex.Text)
+		}
+	}
+	t.Logf("matches: %d of %d, %d wrong offered (kept at %d of %d, none wrong)", right, of, wrong, matchMeasured.Right, matchMeasured.Of)
+	if wrong > 0 {
+		t.Errorf("%d wrong records offered", wrong)
+	}
+	if right < matchMeasured.Right {
+		t.Errorf("matches score %d of %d, below the %d kept", right, of, matchMeasured.Right)
+	}
 }

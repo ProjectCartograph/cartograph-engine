@@ -312,10 +312,14 @@ const (
 )
 
 // The model's answer is a match only when it is sure and clear of the
-// next record: measured (docs/adr/0023), this named no wrong record, where
-// a lower bar named one in four.
+// next record. Measured on testdata/decide/same-as.jsonl (TestMeasureMatches,
+// cartograph-ui#91): every right match came at 0.92 or above, and outcomes
+// new to the workspace up to 0.91, offered as "Season results reach
+// members on time" at the 0.85 first measured (docs/adr/0023). At 0.92 no
+// wrong record is offered; one rewording, too close to the next record,
+// is missed, as a wrong offer costs more than a missed one.
 const (
-	sameAtLeast = 0.85
+	sameAtLeast = 0.92
 	sameClearBy = 0.05
 )
 
