@@ -75,5 +75,10 @@ them: the binary must answer `ready`, and the decision model must give
 every answer recorded on x86_64 within 0.005 (`just decide-measure
 <url>`). Only then are the multi-platform tags made.
 
-macOS, Windows and FreeBSD binaries are built and named in a release,
-but no runner of theirs runs them yet.
+The macOS binary for Apple silicon is run on a macOS runner
+(`verify-macos`): the published file must match `SHA256SUMS`, give the
+release's version, validate the example and serve it until `/readyz`
+answers (`just verify-binary <file>`, which runs any platform's binary on
+its own machine). The tags wait for it too. The Intel macOS, Windows and
+FreeBSD binaries are built and named in a release, but no runner of
+theirs runs them yet.
