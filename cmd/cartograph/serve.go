@@ -23,6 +23,7 @@ import (
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/proxy"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/auth/roles"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/config"
+	"github.com/ProjectCartograph/cartograph-engine/v2/internal/decide/laya"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/engine"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/fanout"
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/mcp"
@@ -231,6 +232,12 @@ func runServe(args []string) error {
 			attrs = append(attrs, "decide", cfg.Decide, "decide_url", cfg.DecideURL)
 		}
 		logger.Info("cartograph listening", attrs...)
+		if cfg.Decide == "laya" {
+			go reportDecider(ctx, logger, cfg.DecideURL)
+		}
+		if !cfg.DecideGiven && cfg.Decide == "laya" {
+			logger.Warn("CARTOGRAPH_DECIDE is not set, so a Laya sidecar is asked at the default address; name it with CARTOGRAPH_DECIDE=laya and CARTOGRAPH_DECIDE_URL, or set off (docs/DEPLOYMENT.md)", "decide_url", cfg.DecideURL)
+		}
 		ready.Store(true)
 		errc <- srv.Serve(ln)
 	}()
@@ -470,4 +477,27 @@ func protectedResource(issuer string) http.Handler {
 			"resource_name":            "Cartograph",
 		})
 	})
+}
+
+// reportDecider says once whether the Laya sidecar the engine was given
+// answers ready within a minute of start (its model takes seconds to
+// load), so a sidecar that was never started is in the log rather than
+// only in GET /decision-model. Its checks are off until it answers.
+func reportDecider(ctx context.Context, logger *slog.Logger, url string) {
+	d := laya.New(url, 2*time.Second)
+	for deadline := time.Now().Add(time.Minute); ; {
+		if d.Ready(ctx) == nil {
+			logger.Info("the decision model answers", "decide_url", url)
+			return
+		}
+		if time.Now().After(deadline) {
+			logger.Warn("the decision model does not answer, so its checks are off until it does: start the Laya sidecar, or set CARTOGRAPH_DECIDE=off", "decide_url", url)
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(2 * time.Second):
+		}
+	}
 }
