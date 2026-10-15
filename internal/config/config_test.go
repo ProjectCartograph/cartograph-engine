@@ -264,3 +264,29 @@ func TestMCPHostCheck(t *testing.T) {
 		}
 	}
 }
+
+func TestDecideGiven(t *testing.T) {
+	cfg, err := FromEnv(func(string) string { return "" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Decide != "laya" || cfg.DecideGiven {
+		t.Errorf("unset: decide %q given %v, want laya, false", cfg.Decide, cfg.DecideGiven)
+	}
+	cfg, err = FromEnv(func(k string) string { return map[string]string{"CARTOGRAPH_DECIDE": "laya"}[k] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.DecideGiven {
+		t.Error("CARTOGRAPH_DECIDE=laya: not given")
+	}
+	cfg, _ = FromEnv(func(string) string { return "" })
+	fs := flag.NewFlagSet("t", flag.ContinueOnError)
+	cfg.Flags(fs)
+	if err := fs.Parse([]string{"-decide", "off"}); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Decide != "off" || !cfg.DecideGiven {
+		t.Errorf("-decide off: decide %q given %v", cfg.Decide, cfg.DecideGiven)
+	}
+}

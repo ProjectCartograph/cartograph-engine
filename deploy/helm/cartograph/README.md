@@ -66,6 +66,12 @@ The volume claim is kept when the release is removed.
   `nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"` and
   `nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"`. With
   another controller, raise its idle timeout above `config.syncPing`.
+- **The decision model.** Laya runs as its own process from the
+  `cartograph-laya` image (docs/DEPLOYMENT.md, "The decision model"):
+  `decide.sidecar.enabled` puts it in each pod beside the engine, on the
+  pod's loopback, about 1.5 GiB of memory per replica; `decide.url`
+  points every replica at one you run. Not both. With neither, the
+  engine is told `off` and the checks that judge meaning are not run.
 - **Autoscaling.** `autoscaling.enabled` for a CPU
   HorizontalPodAutoscaler, or `keda.enabled` for a KEDA ScaledObject on
   a Prometheus query. Not both.
@@ -121,6 +127,11 @@ The volume claim is kept when the release is removed.
 | `livenessProbe` | `/healthz` | The process. Never depends on the database |
 | `readinessProbe` | `/readyz` | 503 only while draining. Does not check the database |
 | `startupProbe` | `/healthz`, up to 60 s | |
+| `decide.url` | empty | A Laya service every replica asks |
+| `decide.sidecar.enabled` | `false` | A `laya` container in each pod, on its loopback |
+| `decide.sidecar.image.repository` | `ghcr.io/projectcartograph/cartograph-laya` | |
+| `decide.sidecar.image.tag` | the chart's `appVersion` | |
+| `decide.sidecar.resources` | 250m CPU and 1792Mi requested, 2560Mi limit | The model takes about 1.5 GiB |
 | `podDisruptionBudget.enabled` | `true` | Rendered with more than one replica or an autoscaler |
 | `podDisruptionBudget.minAvailable` | `1` | |
 | `podDisruptionBudget.maxUnavailable` | empty | Wins over `minAvailable` when set |

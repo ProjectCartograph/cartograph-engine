@@ -302,6 +302,50 @@
       ],
       "minimum": 1
     },
+    "decide": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The decision model, a Laya process reached over HTTP (docs/adr/0023); off unless url or sidecar.enabled is set.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "A Laya service run elsewhere (CARTOGRAPH_DECIDE_URL)."
+        },
+        "sidecar": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Laya in each pod, on its loopback.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "image": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "repository": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string"
+                },
+                "pullPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "Always",
+                    "IfNotPresent",
+                    "Never"
+                  ]
+                }
+              }
+            },
+            "resources": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
     "extraEnv": {
       "type": "array",
       "items": {

@@ -78,6 +78,9 @@ anything is applied.
 {{- if and .Values.autoscaling.enabled .Values.keda.enabled }}
 {{- fail "autoscaling.enabled and keda.enabled are both set: choose one autoscaler (a KEDA ScaledObject makes its own HorizontalPodAutoscaler)" }}
 {{- end }}
+{{- if and .Values.decide.url .Values.decide.sidecar.enabled }}
+{{- fail "decide.url and decide.sidecar.enabled are both set: the engine asks one Laya; choose one" }}
+{{- end }}
 {{- if and .Values.vault.enabled $store }}
 {{- fail "vault.enabled and a store are both set: a Postgres store replaces the vault; choose one" }}
 {{- end }}

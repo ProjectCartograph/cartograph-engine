@@ -101,12 +101,17 @@ type Config struct {
 	Semantic string
 
 	// Decide is the decision model the engine asks about what people
-	// write (docs/adr/0023): "off" (the default) or "laya", a Laya
-	// sidecar at DecideURL, each call given at most DecideTimeout.
+	// write (docs/adr/0023): "off" or "laya", a Laya sidecar at
+	// DecideURL, each call given at most DecideTimeout.
 	// CARTOGRAPH_DECIDE, CARTOGRAPH_DECIDE_URL, CARTOGRAPH_DECIDE_TIMEOUT.
+	// The default is "laya" at 127.0.0.1:8411, as Laya is standard; a
+	// deployment should still name the sidecar it runs. DecideGiven says
+	// whether CARTOGRAPH_DECIDE or -decide was set, so serve can warn
+	// when it was not.
 	Decide        string
 	DecideURL     string
 	DecideTimeout time.Duration
+	DecideGiven   bool
 
 	// MCP serves agents at /api/v1/mcp (docs/adr/0016): "off" (the
 	// default) or "on". With an access list, only the roles its
@@ -343,6 +348,7 @@ func FromEnv(getenv Getenv) (Config, error) {
 	}
 	if v := getenv("CARTOGRAPH_DECIDE"); v != "" {
 		c.Decide = v
+		c.DecideGiven = true
 	}
 	if v := getenv("CARTOGRAPH_DECIDE_URL"); v != "" {
 		c.DecideURL = v
@@ -405,7 +411,10 @@ func (c *Config) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.Reports, "reports", c.Reports, "reporting: computed, postgres (views, with a Postgres store) or off (CARTOGRAPH_REPORTS)")
 	fs.StringVar(&c.GraphLayout, "graph-layout", c.GraphLayout, "how the workspace graph is placed: layered or force (CARTOGRAPH_GRAPH_LAYOUT)")
 	fs.StringVar(&c.Semantic, "semantic", c.Semantic, "the syntax the KPIs export in as a semantic layer: dbt or off (CARTOGRAPH_SEMANTIC)")
-	fs.StringVar(&c.Decide, "decide", c.Decide, "the decision model asked about what people write: off or laya (CARTOGRAPH_DECIDE)")
+	fs.Func("decide", "the decision model asked about what people write: off or laya, default laya (CARTOGRAPH_DECIDE)", func(v string) error {
+		c.Decide, c.DecideGiven = v, true
+		return nil
+	})
 	fs.StringVar(&c.DecideURL, "decide-url", c.DecideURL, "the Laya sidecar's address (CARTOGRAPH_DECIDE_URL)")
 	fs.DurationVar(&c.DecideTimeout, "decide-timeout", c.DecideTimeout, "the longest one decision may take (CARTOGRAPH_DECIDE_TIMEOUT)")
 	fs.DurationVar(&c.CompactAfter, "compact-after", c.CompactAfter, "age at which a Postgres store keeps an old version as a patch; 0 is off (CARTOGRAPH_COMPACT_AFTER)")

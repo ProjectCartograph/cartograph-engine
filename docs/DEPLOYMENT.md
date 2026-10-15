@@ -223,6 +223,31 @@ LDAP, SAML and other providers. `cartograph-oidc` is a complete,
 tested example: Dex, oauth2-proxy, a directory, compose files and Helm
 values.
 
+## The decision model
+
+Laya, the decision model (docs/adr/0023, 0030), is a process of its
+own, from its own image (`cartograph-laya`: Node, the server and the
+model, nothing else). The engine reaches it over HTTP at
+`CARTOGRAPH_DECIDE_URL` and never starts it; the `cartograph` image
+holds no part of it. Run it beside the engine, as a container in the
+same pod or a service of its own, and keep it off any network people
+reach: it has no sign-in.
+
+| Where | How Laya runs | What the engine is told |
+|---|---|---|
+| `docker compose` | the `laya` service, with `--profile decide` | `CARTOGRAPH_DECIDE=laya`, `http://laya:8411` |
+| Helm, `decide.sidecar.enabled=true` | a `laya` container in each pod, on the pod's loopback; about 1.5 GiB of memory per replica | `laya`, `http://127.0.0.1:8411` |
+| Helm, `decide.url` | a Laya service you run, shared by every replica | `laya`, that address |
+| Helm, neither | none | `off` |
+| `just serve laya` | a second process beside the server, for a local run | `laya`, its port |
+
+Laya is standard, so `CARTOGRAPH_DECIDE` defaults to `laya` at
+`http://127.0.0.1:8411`. A deployment should still name the one it
+runs: when the setting is left out, the engine logs a warning at start.
+Either way it logs, within a minute of start, whether the model
+answers; when it does not, only the checks that judge meaning are off
+(`GET /decision-model` lists them), and they come back when it answers.
+
 ## PDF printing
 
 The engine never shells out. The `printer.Printer` port has one adapter,
