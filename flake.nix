@@ -406,6 +406,7 @@
               kubeconform
               kind
               kubectl
+              websocat # an idle sync socket through the Gateway (scripts/helm-kind)
           ];
           # What `just ci` runs.
           ciPackages = basePackages ++ (with pkgs; [

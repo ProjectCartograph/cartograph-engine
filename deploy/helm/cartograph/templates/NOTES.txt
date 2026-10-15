@@ -19,7 +19,14 @@ Do not scale it: for more than one replica, use a Postgres store
 {{- end }}
 
 Open it:
-{{- if .Values.ingress.enabled }}
+{{- if .Values.httpRoute.enabled }}
+{{- range .Values.httpRoute.hostnames }}
+  https://{{ . }}/ (or http, as the Gateway's listener is)
+{{- end }}
+The HTTPRoute attaches to {{ range .Values.httpRoute.parentRefs }}{{ .name }}{{ with .namespace }} in {{ . }}{{ end }} {{ end }}and
+carries the sync socket's upgrade. Leave the route's request timeout
+unset or longer than a session, so it does not end a sync socket.
+{{- else if .Values.ingress.enabled }}
 {{- range .Values.ingress.hosts }}
   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}/
 {{- end }}

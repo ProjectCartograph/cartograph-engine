@@ -182,6 +182,27 @@ service:
   port: 8080
   annotations: {}
 
+# The way in: an HTTPRoute of the Gateway API (gateway.networking.k8s.io/v1),
+# Kubernetes' standard for routing, attached to a Gateway the cluster runs
+# (Traefik, HAProxy, Envoy Gateway, Istio, a cloud's). Name that Gateway in
+# parentRefs. The sync socket at /api/v1/sync is a WebSocket held open
+# while a page is; the route passes its upgrade.
+httpRoute:
+  enabled: false
+  annotations: {}
+  # - name: public
+  #   namespace: gateway-system
+  #   sectionName: https
+  parentRefs: []
+  hostnames:
+    - cartograph.local
+  # The rule's timeouts (request, backendRequest). Empty leaves the
+  # Gateway's own; a request timeout there may also end a sync socket, so
+  # keep it unset or longer than a session.
+  timeouts: {}
+
+# An Ingress instead, for a cluster without the Gateway API. ingress-nginx
+# was retired in March 2026; prefer httpRoute.
 ingress:
   enabled: false
   className: ""

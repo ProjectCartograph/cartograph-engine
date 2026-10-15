@@ -1,0 +1,13 @@
+# The Gateway API route on a stateless install: what `just helm-lint`
+# renders and validates against the HTTPRoute schema.
+replicaCount: 2
+store:
+  url: postgres://cartograph:cartograph@postgres:5432/cartograph?sslmode=disable
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: public
+      namespace: gateway-system
+      sectionName: https
+  hostnames:
+    - cartograph.example.org

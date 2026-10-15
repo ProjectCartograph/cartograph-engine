@@ -616,8 +616,12 @@ headers (`Upgrade`, `Connection`) and allow long idle periods.
   timeout (60 s by default) does not end an idle sync socket; the ping
   keeps it open (checked on Traefik 3.7 with a socket idle 75 s). Its
   ingress needs no annotation either.
-- ingress-nginx was retired in March 2026 and gets no more security
-  fixes; use another controller, or the Gateway API.
+- On Kubernetes, the Gateway API is the standard way in: the chart's
+  `httpRoute` attaches an HTTPRoute to the cluster's Gateway. The route
+  carries the upgrade; leave its request timeout unset or longer than a
+  session. `just helm-kind` holds an idle sync socket 75 s through
+  Traefik's Gateway. ingress-nginx was retired in March 2026 and gets
+  no more security fixes.
 - On Kubernetes, readiness takes a draining pod out of the Service
   before it stops.
 - An AWS Application Load Balancer has a 60 second idle timeout by

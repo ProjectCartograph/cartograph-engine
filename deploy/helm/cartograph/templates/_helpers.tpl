@@ -78,6 +78,9 @@ anything is applied.
 {{- if and .Values.autoscaling.enabled .Values.keda.enabled }}
 {{- fail "autoscaling.enabled and keda.enabled are both set: choose one autoscaler (a KEDA ScaledObject makes its own HorizontalPodAutoscaler)" }}
 {{- end }}
+{{- if and .Values.httpRoute.enabled (not .Values.httpRoute.parentRefs) }}
+{{- fail "httpRoute.enabled needs httpRoute.parentRefs: the Gateway the route attaches to, such as name: public, namespace: gateway-system" }}
+{{- end }}
 {{- if and .Values.decide.url .Values.decide.sidecar.enabled }}
 {{- fail "decide.url and decide.sidecar.enabled are both set: the engine asks one Laya; choose one" }}
 {{- end }}
