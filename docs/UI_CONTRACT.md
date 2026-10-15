@@ -105,8 +105,10 @@ documents, and so binds every interface at once.
 Rules from `DESIGN_RULES.md` restated as what the interface does. Each
 is a scenario in the suite, or will be.
 
-- A working save is never refused for incompleteness. Save keeps the
-  draft; only Save as version validates.
+- No save is refused for incompleteness. Save keeps the draft; a
+  version is refused only when malformed (docs/adr/0035). In a change
+  set's review, a `malformed:` check locks Merge; a `required:` check is
+  a field not filled in yet, shown as what is left, never as a lock.
 - A refused version shows every problem at its field, with the message
   the engine gave, and nowhere else.
 - A check never blocks a save; checks are marks beside the field and a

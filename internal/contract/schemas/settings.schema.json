@@ -125,7 +125,7 @@
                 "checksMet": {
                   "type": "boolean",
                   "default": false,
-                  "description": "Every check on every record in it is met."
+                  "description": "Every check on every record in it is met, and every field its schema requires is filled in: records are merged whole (docs/adr/0035)."
                 },
                 "nothingLeftOpen": {
                   "type": "boolean",

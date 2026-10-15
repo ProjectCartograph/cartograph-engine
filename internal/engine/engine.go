@@ -247,9 +247,18 @@ func (e *Engine) validate(ctx context.Context, kind string, yamlBytes []byte, ov
 		return nil, []Problem{{Path: "", Message: "empty manifest"}}, nil
 	}
 
+	// Fields not filled in yet do not stop the rest being checked: a
+	// version may be saved without them (docs/adr/0035), and what it
+	// names and its kind's rules hold all the same. Anything malformed
+	// stops here, as the rest could not be read.
+	var unfilled []Problem
 	if schema, ok := e.schemas.compiled[kind]; ok {
 		if err := schema.Validate(any(doc)); err != nil {
-			return doc, schemaProblems(err), nil
+			ps := schemaProblems(err)
+			if len(wellFormed(ps)) > 0 {
+				return doc, ps, nil
+			}
+			unfilled = ps
 		}
 	}
 
@@ -268,7 +277,7 @@ func (e *Engine) validate(ctx context.Context, kind string, yamlBytes []byte, ov
 		}
 	}
 	if len(problems) > 0 {
-		return doc, problems, nil
+		return doc, append(problems, unfilled...), nil
 	}
 
 	id, _ := docID(doc)
@@ -294,7 +303,28 @@ func (e *Engine) validate(ctx context.Context, kind string, yamlBytes []byte, ov
 	}
 	problems = append(problems, e.pendingProblems(kind, doc)...)
 
-	return doc, problems, nil
+	return doc, append(problems, unfilled...), nil
+}
+
+// onlyAbsent says whether every failure under u is a property missing
+// from the object at at, outside any reference: a form of the choice with
+// nothing given yet, rather than one given wrong.
+func onlyAbsent(u jsonschema.OutputUnit, at string) bool {
+	if strings.Contains(u.KeywordLocation, "/Ref/") || strings.HasSuffix(u.KeywordLocation, "/Ref") {
+		return false
+	}
+	if len(u.Errors) == 0 {
+		if u.Error == nil {
+			return true
+		}
+		return strings.HasSuffix(u.KeywordLocation, "/required") && u.InstanceLocation == at
+	}
+	for _, c := range u.Errors {
+		if !onlyAbsent(c, at) {
+			return false
+		}
+	}
+	return true
 }
 
 // schemaProblems flattens a jsonschema.ValidationError into Problems. It
@@ -309,12 +339,12 @@ func schemaProblems(err error) []Problem {
 		return []Problem{{Path: "", Message: err.Error()}}
 	}
 	var problems []Problem
-	var walk func(u jsonschema.OutputUnit)
-	walk = func(u jsonschema.OutputUnit) {
+	var walk func(u jsonschema.OutputUnit, inForm bool)
+	walk = func(u jsonschema.OutputUnit, inForm bool) {
 		if len(u.Errors) == 0 {
 			if u.Error != nil {
 				kw := u.KeywordLocation[strings.LastIndex(u.KeywordLocation, "/")+1:]
-				problems = append(problems, Problem{Path: u.InstanceLocation, Message: plainPattern(u.Error.String()), Keyword: kw})
+				problems = append(problems, Problem{Path: u.InstanceLocation, Message: plainPattern(u.Error.String()), Keyword: kw, inForm: inForm})
 			}
 			return
 		}
@@ -330,15 +360,19 @@ func schemaProblems(err error) []Problem {
 				}
 			}
 			if best >= 0 {
-				walk(u.Errors[best])
+				// A choice between properties to give (one of sources or
+				// source) that has none is a field not filled in yet; any
+				// other failure in a form, and any in a reference, is the
+				// wrong form (docs/adr/0035).
+				walk(u.Errors[best], inForm || !onlyAbsent(u.Errors[best], u.InstanceLocation))
 				return
 			}
 		}
 		for _, c := range u.Errors {
-			walk(c)
+			walk(c, inForm)
 		}
 	}
-	walk(*ve.DetailedOutput())
+	walk(*ve.DetailedOutput(), false)
 	if len(problems) == 0 {
 		problems = append(problems, Problem{Path: "", Message: err.Error()})
 	}
@@ -410,6 +444,9 @@ func (e *Engine) Commit(ctx context.Context, kind, id string, yamlBytes []byte, 
 	if err != nil {
 		return Version{}, err
 	}
+	// A field not filled in yet does not refuse a version: a check says
+	// it (docs/adr/0035).
+	problems = wellFormed(problems)
 	if more, err := e.introducedProblems(ctx, kind, doc, yamlBytes); err != nil {
 		return Version{}, err
 	} else {

@@ -224,6 +224,9 @@ func (e *Engine) checkMembers(ctx context.Context, members []SetMember) ([]SetMe
 		if err != nil {
 			return nil, nil, err
 		}
+		// A field not filled in yet does not refuse a version: a check
+		// says it (docs/adr/0035).
+		ps = wellFormed(ps)
 		more, err := e.introducedProblems(ctx, m.Kind, doc, m.Text)
 		if err != nil {
 			return nil, nil, err
@@ -294,6 +297,7 @@ func (e *Engine) ProposeAppend(ctx context.Context, kind, id, series string, ite
 	if err != nil {
 		return store.Proposal{}, err
 	}
+	problems = wellFormed(problems)
 	if more, err := e.introducedProblems(ctx, kind, doc, text); err != nil {
 		return store.Proposal{}, err
 	} else {

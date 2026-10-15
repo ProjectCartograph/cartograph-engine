@@ -21,7 +21,11 @@ func (e *Engine) PortfolioChecks(ctx context.Context, id string) ([]ProgrammeChe
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
 		return nil, fmt.Errorf("parse Portfolio/%s: %w", id, err)
 	}
-	return e.portfolioChecksOf(ctx, id, doc)
+	checks, err := e.portfolioChecksOf(ctx, id, doc)
+	if err != nil {
+		return nil, err
+	}
+	return append(checks, e.unfilledProgrammeChecks("Portfolio", doc)...), nil
 }
 
 // held is one thing a portfolio holds.

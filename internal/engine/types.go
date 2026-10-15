@@ -6,6 +6,7 @@
 package engine
 
 import (
+	"strings"
 	"time"
 
 	"github.com/ProjectCartograph/cartograph-engine/v2/internal/store"
@@ -29,6 +30,41 @@ type Problem struct {
 	// Keyword is the JSON Schema keyword that failed, for a schema
 	// problem: what tells a draft not finished from one built wrong.
 	Keyword string `json:"-"`
+	// inForm is set for a schema problem found inside one of a choice of
+	// forms (oneOf, anyOf): a property missing there means the value has
+	// the wrong form, not a field left to fill.
+	inForm bool
+}
+
+// Incomplete says whether the problem is only a field not filled in yet,
+// in a record otherwise well formed (docs/adr/0035): a property the schema
+// requires and the record lacks, or one given empty (no text, no items)
+// where the schema wants some. A version may be saved with it; a check
+// says it, and blocks a handoff. The envelope (apiVersion, kind,
+// metadata, spec) and a record's id and name are never left to fill.
+func (p Problem) Incomplete() bool {
+	if p.inForm || p.Path == "" || p.Path == "/metadata" || strings.HasPrefix(p.Path, "/metadata/") {
+		return false
+	}
+	switch p.Keyword {
+	case "required":
+		return true
+	case "minLength", "minItems":
+		return strings.HasPrefix(p.Message, p.Keyword+": got 0,")
+	}
+	return false
+}
+
+// wellFormed is what of problems refuses a version: everything but the
+// fields not filled in yet.
+func wellFormed(problems []Problem) []Problem {
+	var out []Problem
+	for _, p := range problems {
+		if !p.Incomplete() {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // Change is one difference between two versions of a manifest, at Path (a

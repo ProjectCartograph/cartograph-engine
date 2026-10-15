@@ -17,8 +17,8 @@ type Check struct {
 	Message string `json:"message"`
 	Section string `json:"section,omitempty"`
 	// Path is the field the check is about, as a JSON pointer, where it is
-	// one field: what a record must have before it can be saved as a
-	// version.
+	// one field: one not filled in yet, or one a change set holds in a
+	// form that cannot be saved.
 	Path string `json:"path,omitempty"`
 	// NotJudged marks a judgement of meaning the decision model did not
 	// make: the check passes, and its message says why.
@@ -44,6 +44,53 @@ func (e *Engine) ChecksOf(ctx context.Context, kind, id string, text []byte) ([]
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+// unfilledMessage is what a field not filled in yet says. Fields not
+// filled in are said on a record's checks for people (ProjectChecks,
+// GoalChecks and the rest) and in a change set's review, not in ChecksOf,
+// which the decision rounds and agents read: what an agent meets is
+// changed only as docs/EVALUATING.md has it measured.
+const unfilledMessage = "Not filled in yet. It can be merged without it; fill it in before the work is handed off."
+
+// unfilledProgrammeChecks are a record's fields not filled in yet as the
+// advisory checks of a kind that has no blocking state.
+func (e *Engine) unfilledProgrammeChecks(kind string, doc map[string]any) []ProgrammeCheck {
+	var out []ProgrammeCheck
+	for _, p := range e.unfilledFields(kind, doc) {
+		out = append(out, ProgrammeCheck{ID: "required:" + p.Path, Section: e.stepOfField(kind, p.Path), State: programmeCheckWarn, Message: unfilledMessage})
+	}
+	return out
+}
+
+// unfilledFields are a record's fields not filled in yet, one problem a
+// field (docs/adr/0035): what its schema requires and it lacks, where it
+// is otherwise well formed.
+func (e *Engine) unfilledFields(kind string, doc map[string]any) []Problem {
+	schema, ok := e.schemas.compiled[kind]
+	if !ok {
+		return nil
+	}
+	err := schema.Validate(any(doc))
+	if err == nil {
+		return nil
+	}
+	ps := schemaProblems(err)
+	if len(wellFormed(ps)) > 0 {
+		return nil
+	}
+	var out []Problem
+	for _, p := range ps {
+		names := missingProperties(p.Message)
+		if len(names) == 0 {
+			out = append(out, Problem{Path: p.Path, Message: unfilledMessage, Keyword: p.Keyword})
+			continue
+		}
+		for _, name := range names {
+			out = append(out, Problem{Path: strings.TrimSuffix(p.Path, "/") + "/" + name, Message: unfilledMessage, Keyword: "required"})
+		}
+	}
+	return out
 }
 
 // kindChecksOf is a kind's own checks.

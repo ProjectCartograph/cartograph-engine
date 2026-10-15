@@ -105,7 +105,25 @@ func (e *Engine) ProjectChecks(ctx context.Context, id string, draft bool) (Proj
 	if err != nil {
 		return ProjectChecks{}, err
 	}
-	return e.projectChecksOf(ctx, id, doc)
+	pc, err := e.projectChecksOf(ctx, id, doc)
+	if err != nil {
+		return pc, err
+	}
+	c := checkAdder{&pc}
+	// Every field not filled in yet, on its step: merged without it, the
+	// project is not handed off until it is (docs/adr/0035).
+	for _, p := range e.unfilledFields("Project", doc) {
+		section := e.stepOfField("Project", p.Path)
+		if section == "" {
+			section = "context"
+		}
+		phase := phaseInitiation
+		if section == phaseClosing || section == phaseLanding {
+			phase = section
+		}
+		c.add("required:"+p.Path, section, phase, checkBlock, unfilledMessage)
+	}
+	return pc, nil
 }
 
 // projectChecksOf computes the checks for a project's document, saved or

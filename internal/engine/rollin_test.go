@@ -113,3 +113,31 @@ func TestNothingLeftOpenRefusesWhatWasWaived(t *testing.T) {
 		t.Fatalf("rolled in with checks waived: %v", err)
 	}
 }
+
+// Where every check must be met, a record not filled in is not merged,
+// waived or not: such a workspace merges whole records (docs/adr/0035).
+func TestChecksMetRefusesARecordNotFilledIn(t *testing.T) {
+	t.Parallel()
+	e := seededEngine(t)
+	policy(t, e, "      checksMet: true\n")
+	ctx := actingAs(ada)
+	if _, err := e.EditInChangeSet(ctx, "", "Project", "p-half", map[string]any{"/metadata/name": "Half"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, _ := e.WorkingChangeSet(ctx, "")
+	open, err := e.OpenInChangeSet(ctx, cs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waive := map[string]map[string]string{"Project/p-half": {}}
+	for _, oc := range open {
+		waive["Project/p-half"][oc.ID] = "later"
+	}
+	if _, err := e.ProposeChangeSet(ctx, cs.ID, "a start", waive); err != nil {
+		t.Fatal(err)
+	}
+	var invalid *engine.ValidationError
+	if _, err := e.AcceptChangeSet(ctx, cs.ID, ""); !errors.As(err, &invalid) || !strings.Contains(fmt.Sprint(invalid.Problems), "required:/spec/team") {
+		t.Fatalf("merged without its team where every check must be met: %v", err)
+	}
+}

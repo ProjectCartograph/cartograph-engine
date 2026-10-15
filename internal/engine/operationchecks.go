@@ -21,7 +21,11 @@ func (e *Engine) OperationChecks(ctx context.Context, id string) ([]ProgrammeChe
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
 		return nil, fmt.Errorf("parse Operation/%s: %w", id, err)
 	}
-	return e.operationChecksOf(ctx, id, doc)
+	checks, err := e.operationChecksOf(ctx, id, doc)
+	if err != nil {
+		return nil, err
+	}
+	return append(checks, e.unfilledProgrammeChecks("Operation", doc)...), nil
 }
 
 // operationChecksOf checks a operation's document, saved or not: a draft, or

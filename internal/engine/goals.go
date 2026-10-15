@@ -497,7 +497,14 @@ func (e *Engine) GoalChecks(ctx context.Context, id string) ([]GoalCheck, error)
 	if err := e.codec.DecodeInto(v.YAML, &doc); err != nil {
 		return nil, fmt.Errorf("parse Goal/%s: %w", id, err)
 	}
-	return e.goalChecksOf(ctx, id, doc)
+	checks, err := e.goalChecksOf(ctx, id, doc)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range e.unfilledFields("Goal", doc) {
+		checks = append(checks, GoalCheck{ID: "required:" + p.Path, State: goalCheckWarn, Message: unfilledMessage})
+	}
+	return checks, nil
 }
 
 // goalChecksOf computes the checks for a goal's document, saved or not: a

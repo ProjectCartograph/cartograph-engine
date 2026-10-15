@@ -379,10 +379,12 @@ func (e *Engine) ViewChangeSet(ctx context.Context, id string) (ChangeSetView, e
 			if checks, err := e.ChecksOf(checkCtx, it.Kind, it.ID, it.Text); err == nil {
 				item.Checks = checks
 			}
-			// What the schema requires is not advice: the record cannot
-			// be merged without it, so the review says so before anyone
-			// tries.
-			item.Checks = append(item.Checks, e.requiredChecks(ctx, it.Kind, it.Text, overlay)...)
+			// What cannot be saved in the form it has is not advice: the
+			// record cannot be merged so, and the review says so before
+			// anyone tries. A field not filled in yet is a check of the
+			// record's own, and merges (docs/adr/0035).
+			item.Checks = append(item.Checks, e.malformedChecks(ctx, it.Kind, it.Text, overlay)...)
+			item.Checks = append(item.Checks, e.unfilledChecks(it.Kind, it.Text)...)
 		}
 		if latest, err := latestNumber(ctx, e.manifests, it.Kind, it.ID); err == nil && latest != it.Base {
 			item.Stale = latest
@@ -1574,16 +1576,33 @@ func missingProperties(message string) []string {
 	return names
 }
 
-// requiredChecks turns what stops a record being saved as a version into
-// blocking checks, one per field, so a change set's review names them
-// before it is merged rather than refusing the merge.
-func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte, overlay map[string]map[string]map[string]any) []Check {
+// unfilledChecks are a change set item's fields not filled in yet, each a
+// check of its own, as the review has always named them; they no longer
+// stop it being merged (docs/adr/0035).
+func (e *Engine) unfilledChecks(kind string, text []byte) []Check {
+	var doc map[string]any
+	if err := e.codec.DecodeInto(text, &doc); err != nil || doc == nil {
+		return nil
+	}
+	var out []Check
+	for _, p := range e.unfilledFields(kind, doc) {
+		out = append(out, Check{ID: "required:" + p.Path, State: checkBlock, Message: unfilledMessage, Path: p.Path, Section: e.stepOfField(kind, p.Path)})
+	}
+	return out
+}
+
+// malformedChecks turns what stops a record being saved as a version (a
+// value of the wrong form, a name of nothing) into blocking checks, one a
+// field, so a change set's review names them before it is merged rather
+// than refusing the merge.
+func (e *Engine) malformedChecks(ctx context.Context, kind string, text []byte, overlay map[string]map[string]map[string]any) []Check {
 	// The change set's own records count as there: a link to a record it
 	// creates is not a link to nothing.
 	_, problems, err := e.validate(ctx, kind, text, overlay)
 	if err != nil {
 		return nil
 	}
+	problems = wellFormed(problems)
 	out := make([]Check, 0, len(problems))
 	for _, p := range problems {
 		path := p.Path
@@ -1593,11 +1612,11 @@ func (e *Engine) requiredChecks(ctx context.Context, kind string, text []byte, o
 		if names := missingProperties(p.Message); len(names) > 0 {
 			for _, name := range names {
 				at := strings.TrimSuffix(path, "/") + "/" + name
-				out = append(out, Check{ID: "required:" + at, State: checkBlock, Message: "Needed before this can be merged.", Path: at})
+				out = append(out, Check{ID: "malformed:" + at, State: checkBlock, Message: "Needed before this can be merged.", Path: at})
 			}
 			continue
 		}
-		out = append(out, Check{ID: "required:" + path, State: checkBlock, Message: message, Path: path})
+		out = append(out, Check{ID: "malformed:" + path, State: checkBlock, Message: message, Path: path})
 	}
 	return out
 }
