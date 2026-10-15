@@ -2,7 +2,9 @@
 # Install the Helm chart on a throwaway kind cluster and check it works
 # as a highly available deployment: the image the flake builds, two
 # replicas on one in-cluster Postgres, the probes, the API, a WebSocket
-# upgrade on the sync socket, and service through the loss of a pod.
+# upgrade on the sync socket, the way in through the Gateway API (Traefik's
+# Gateway, the chart's HTTPRoute, a sync socket held idle past Traefik's
+# 60 s read timeout), and service through the loss of a pod.
 # The cluster, its kubeconfig and the port-forward go away however the
 # run ends. Needs Docker; `just helm-kind` runs it inside the flake.
 set -euo pipefail
@@ -15,6 +17,9 @@ port=${CARTOGRAPH_KIND_PORT:-18080}
 work=$(mktemp -d /tmp/cartograph-kind.XXXXXX)
 export KUBECONFIG=$work/kubeconfig
 pf=""
+gw=""
+gateway_api=v1.6.1 # the Gateway API release Traefik 3.7 implements
+traefik_chart=42.0.0
 
 cleanup() {
     status=$?
@@ -24,6 +29,7 @@ cleanup() {
         kubectl logs -l app.kubernetes.io/name=cartograph --tail=30 --prefix || true
     fi
     [ -n "$pf" ] && kill "$pf" 2>/dev/null || true
+    [ -n "$gw" ] && kill "$gw" 2>/dev/null || true
     kind delete cluster --name "$cluster" >/dev/null 2>&1 || true
     rm -rf "$work"
     exit "$status"
@@ -73,6 +79,39 @@ check "GET /api/v1/sync (upgrade)" 101 \
     -H "Connection: Upgrade" -H "Upgrade: websocket" \
     -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
     "http://127.0.0.1:$port/api/v1/sync"
+
+step "the Gateway API: Traefik's Gateway, the chart's HTTPRoute"
+kubectl apply --server-side -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/$gateway_api/standard-install.yaml" >/dev/null
+export HELM_CACHE_HOME=$work/helm-cache HELM_CONFIG_HOME=$work/helm-config HELM_DATA_HOME=$work/helm-data
+helm repo add traefik https://traefik.github.io/charts >/dev/null
+helm install traefik traefik/traefik --version "$traefik_chart" \
+    --set providers.kubernetesGateway.enabled=true --set service.type=ClusterIP --wait --timeout 5m
+helm upgrade cartograph "$chart" --reuse-values --set image.tag="$tag" \
+    --set httpRoute.enabled=true --set 'httpRoute.parentRefs[0].name=traefik-gateway' \
+    --set httpRoute.hostnames=null --wait --timeout 5m
+kubectl wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True \
+    httproute/cartograph --timeout=120s
+gport=$((port + 1))
+kubectl port-forward svc/traefik "$gport:80" >"$work/gateway-forward.log" 2>&1 &
+gw=$!
+for _ in $(seq 1 50); do
+    curl -sf "http://127.0.0.1:$gport/healthz" >/dev/null 2>&1 && break
+    sleep 0.2
+done
+check "GET /readyz through the Gateway" 200 "http://127.0.0.1:$gport/readyz"
+check "GET /api/v1/sync through the Gateway (upgrade)" 101 \
+    -H "Connection: Upgrade" -H "Upgrade: websocket" \
+    -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+    "http://127.0.0.1:$gport/api/v1/sync"
+# A socket nobody writes on, past Traefik's 60 s read timeout: websocat
+# answers the server's pings (-n keeps it open with no input), and the
+# socket must still be open when timeout ends it (status 124).
+set +e
+timeout 75 websocat -n -U "ws://127.0.0.1:$gport/api/v1/sync" </dev/null >/dev/null 2>"$work/websocat.log"
+held=$?
+set -e
+echo "an idle sync socket through the Gateway: $([ "$held" = 124 ] && echo "open after 75 s" || echo "closed early ($held)")"
+[ "$held" = 124 ] || { cat "$work/websocat.log"; exit 1; }
 
 step "lose a pod; the service keeps answering"
 # From inside the cluster, through the Service, so the request goes to

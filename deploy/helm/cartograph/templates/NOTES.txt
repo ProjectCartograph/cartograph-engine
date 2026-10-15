@@ -19,15 +19,21 @@ Do not scale it: for more than one replica, use a Postgres store
 {{- end }}
 
 Open it:
-{{- if .Values.ingress.enabled }}
+{{- if .Values.httpRoute.enabled }}
+{{- range .Values.httpRoute.hostnames }}
+  https://{{ . }}/ (or http, as the Gateway's listener is)
+{{- end }}
+The HTTPRoute attaches to {{ range .Values.httpRoute.parentRefs }}{{ .name }}{{ with .namespace }} in {{ . }}{{ end }} {{ end }}and
+carries the sync socket's upgrade. Leave the route's request timeout
+unset or longer than a session, so it does not end a sync socket.
+{{- else if .Values.ingress.enabled }}
 {{- range .Values.ingress.hosts }}
   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}/
 {{- end }}
 The sync socket at /api/v1/sync is a long-lived WebSocket. Make sure the
 ingress passes upgrades and allows idle connections longer than
-config.syncPing ({{ .Values.config.syncPing }}); for ingress-nginx:
-  nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-  nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+config.syncPing ({{ .Values.config.syncPing }}). Traefik and HAProxy's
+ingress do both with their defaults.
 {{- else }}
   kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "cartograph.fullname" . }} 8080:{{ .Values.service.port }}
   then http://localhost:8080/

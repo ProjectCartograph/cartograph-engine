@@ -412,6 +412,70 @@
       },
       "additionalProperties": false
     },
+    "httpRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "An HTTPRoute of the Gateway API, attached to the cluster's Gateway.",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "parentRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "namespace": {
+                "type": "string"
+              },
+              "sectionName": {
+                "type": "string"
+              },
+              "port": {
+                "type": "integer"
+              },
+              "group": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "hostnames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timeouts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "request": {
+              "type": "string"
+            },
+            "backendRequest": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
     "ingress": {
       "type": "object",
       "properties": {

@@ -61,11 +61,15 @@ The volume claim is kept when the release is removed.
   `authz.mode=access` with `authz.access.mapping` for access by role
   and team from directory groups. `cartograph-oidc` puts Dex and
   oauth2-proxy in front of this chart.
-- **The ingress.** The sync socket at `/api/v1/sync` is a long-lived
-  WebSocket. With ingress-nginx, set
-  `nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"` and
-  `nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"`. With
-  another controller, raise its idle timeout above `config.syncPing`.
+- **The way in.** The Gateway API is the standard: set
+  `httpRoute.enabled` and name the cluster's Gateway in
+  `httpRoute.parentRefs`. The sync socket at `/api/v1/sync` is a
+  long-lived WebSocket; the route carries its upgrade, and Traefik's
+  Gateway keeps an idle one open with its defaults (`just helm-kind`
+  checks it, idle 75 s). Leave the route's request timeout unset, or
+  longer than a session. Without the Gateway API, `ingress` makes an
+  Ingress: Traefik and HAProxy's controllers need no annotation;
+  ingress-nginx was retired in March 2026.
 - **The decision model.** Laya runs as its own process from the
   `cartograph-laya` image (docs/DEPLOYMENT.md, "The decision model"):
   `decide.sidecar.enabled` puts it in each pod beside the engine, on the
@@ -118,9 +122,14 @@ The volume claim is kept when the release is removed.
 | `metrics.serviceMonitor.enabled` | `false` | A `monitoring.coreos.com/v1` ServiceMonitor |
 | `metrics.serviceMonitor.interval`, `.scrapeTimeout`, `.labels` | `30s`, `10s`, `{}` | |
 | `service.type`, `service.port` | `ClusterIP`, `8080` | No session affinity |
-| `ingress.enabled` | `false` | |
-| `ingress.className` | empty | |
-| `ingress.annotations` | `{}` | Set the WebSocket timeouts here (above) |
+| `httpRoute.enabled` | `false` | An HTTPRoute (`gateway.networking.k8s.io/v1`) |
+| `httpRoute.parentRefs` | `[]` | The Gateway to attach to; required with `httpRoute.enabled` |
+| `httpRoute.hostnames` | `[cartograph.local]` | Empty matches every host the listener takes |
+| `httpRoute.timeouts` | `{}` | `request`, `backendRequest`; empty leaves the Gateway's |
+| `httpRoute.annotations` | `{}` | |
+| `ingress.enabled` | `false` | An Ingress, for a cluster without the Gateway API |
+| `ingress.className` | empty | `traefik` or `haproxy` need no annotation |
+| `ingress.annotations` | `{}` | |
 | `ingress.hosts`, `ingress.tls` | one host, `[]` | |
 | `resources` | 100m CPU, 128Mi requested; 512Mi limit | |
 | `podSecurityContext`, `securityContext` | uid and gid 65532, non-root, read-only root, no capabilities | `/tmp` is an emptyDir |

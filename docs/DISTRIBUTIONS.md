@@ -51,7 +51,7 @@ The four headers:
 
 ```mermaid
 flowchart LR
-    B[Browser] --> N[nginx]
+    B[Browser] --> N[Traefik]
     N -->|pages, sign-in| L[Laravel]
     N -->|/api/v1 and /api/v1/sync| C[Cartograph]
     N -.->|who is this?| L
@@ -59,15 +59,17 @@ flowchart LR
     C --> P[(Postgres)]
 ```
 
-nginx sits in front of both. Laravel serves the pages and signs people
-in. For every `/api/v1` request, nginx asks Laravel who the person is and
-passes the answer to Cartograph as headers. The browser calls the API on
+Traefik sits in front of both. Laravel serves the pages and signs people
+in. For every `/api/v1` request, Traefik asks Laravel who the person is
+(its `forwardAuth` middleware) and passes the answer to Cartograph as
+headers. The browser calls the API on
 the same origin, so the Laravel session cookie is all it needs.
 
-Why nginx and not a proxy route in Laravel? Live editing holds a
+Why a proxy and not a proxy route in Laravel? Live editing holds a
 WebSocket open for as long as someone has a page open. PHP is bad at
-that and nginx is good at it. So PHP answers one question, who is this,
-and nginx carries everything else, the socket included.
+that and Traefik is good at it. So PHP answers one question, who is
+this, and Traefik carries everything else, the socket included.
+HAProxy does the same job; the steps below use Traefik.
 
 ### 1. Run Cartograph
 
@@ -79,7 +81,7 @@ CARTOGRAPH_AUTHZ=access
 CARTOGRAPH_ACCESS_FILE=/config/access.yaml
 ```
 
-Publish no port for it. Only nginx reaches it, on a private network.
+Publish no port for it. Only Traefik reaches it, on a private network.
 
 ### 2. Register the app in Entra ID
 
@@ -144,7 +146,7 @@ Route::get('/auth/callback', function () {
 
 ### 4. Answer "who is this?"
 
-nginx calls this route on every API request. It returns 200 with the
+Traefik calls this route on every API request. It returns 200 with the
 headers, or 401.
 
 ```php
@@ -155,6 +157,7 @@ Route::get('/auth/check', function () {
     }
     return response('', 200, [
         'X-Forwarded-Email' => $email,
+        'X-Forwarded-User' => $email,
         'X-Forwarded-Groups' => implode(',', session('cartograph.groups', [])),
         'X-Forwarded-Preferred-Username' => session('cartograph.name', ''),
     ]);
@@ -164,50 +167,52 @@ Route::get('/auth/check', function () {
 A group name that contains a comma would split in two. Rename the group,
 or send group IDs and map the IDs in step 6.
 
-### 5. Put nginx in front
+### 5. Put Traefik in front
 
-```nginx
-map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+Traefik's dynamic configuration (the file provider here; the same
+middleware works as Kubernetes custom resources or Docker labels):
 
-server {
-    listen 443 ssl;
-    server_name cartograph.example.org;
-
-    # Ask Laravel who the person is.
-    location = /_who {
-        internal;
-        proxy_pass http://laravel/auth/check;
-        proxy_pass_request_body off;
-        proxy_set_header Content-Length "";
-        proxy_set_header Cookie $http_cookie;
-    }
-
+```yaml
+http:
+  middlewares:
+    # Ask Laravel who the person is. Traefik first removes each of these
+    # headers from the browser's request, then sets the ones Laravel
+    # answered with, so nobody can forge them.
+    who:
+      forwardAuth:
+        address: http://laravel/auth/check
+        authRequestHeaders: [Cookie, Authorization]
+        authResponseHeaders:
+          - X-Forwarded-Email
+          - X-Forwarded-User
+          - X-Forwarded-Groups
+          - X-Forwarded-Preferred-Username
+  routers:
     # Cartograph's API and live editing, with the answer as headers.
-    # proxy_set_header replaces whatever the browser sent, so nobody can
-    # forge them.
-    location /api/v1/ {
-        auth_request /_who;
-        auth_request_set $email  $upstream_http_x_forwarded_email;
-        auth_request_set $groups $upstream_http_x_forwarded_groups;
-        auth_request_set $name   $upstream_http_x_forwarded_preferred_username;
-        proxy_set_header X-Forwarded-Email $email;
-        proxy_set_header X-Forwarded-User $email;
-        proxy_set_header X-Forwarded-Groups $groups;
-        proxy_set_header X-Forwarded-Preferred-Username $name;
-
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-        proxy_read_timeout 3600s;
-        proxy_pass http://cartograph:8080;
-    }
-
+    cartograph:
+      rule: PathPrefix(`/api/v1/`)
+      entryPoints: [websecure]
+      middlewares: [who]
+      service: cartograph
+      tls: {}
     # Everything else is Laravel.
-    location / {
-        proxy_pass http://laravel;
-    }
-}
+    laravel:
+      rule: PathPrefix(`/`)
+      entryPoints: [websecure]
+      service: laravel
+      tls: {}
+  services:
+    cartograph:
+      loadBalancer:
+        servers: [{url: "http://cartograph:8080"}]
+    laravel:
+      loadBalancer:
+        servers: [{url: "http://laravel"}]
 ```
+
+Traefik passes the WebSocket upgrade on its own, and the server's ping
+(`CARTOGRAPH_SYNC_PING`, 20 s) keeps an idle socket well inside its
+entry point's 60 s read timeout; nothing needs raising.
 
 ### 6. Map groups to roles and teams
 
@@ -296,11 +301,11 @@ cheapest way to find out a release changed something you relied on.
 
 ### 10. Ship it
 
-- Pin every version: Cartograph, Postgres, nginx, your app.
-- Deploy with Cartograph's chart, adding your Laravel and nginx
-  Deployments, or with Compose.
+- Pin every version: Cartograph, Postgres, Traefik, your app.
+- Deploy with Cartograph's chart, adding your Laravel Deployment and
+  Traefik's routes, or with Compose.
 - Keep Cartograph's Service private, with a NetworkPolicy that admits
-  only nginx.
+  only Traefik.
 - Before people arrive, sign in as an administrator, as a contributor
   and as someone in no mapped group, and check what each one can do.
   `cartograph-oidc/scripts/e2e.py` does this for its distribution and
@@ -362,6 +367,7 @@ Route::get('/auth/check', function () {
     if ($email = session('cartograph.email')) {
         return response('', 200, [
             'X-Forwarded-Email' => $email,
+            'X-Forwarded-User' => $email,
             'X-Forwarded-Groups' => implode(',', session('cartograph.groups', [])),
             'X-Forwarded-Preferred-Username' => session('cartograph.name', ''),
         ]);
@@ -369,40 +375,33 @@ Route::get('/auth/check', function () {
     // An agent, with a token Laravel issued its person.
     $user = Auth::guard('api')->user();
     if (! $user) {
-        return response('', 401);
+        // Traefik hands this answer to the client as it is: an agent with
+        // no token learns where to sign in, as MCP clients expect.
+        $mcp = str_starts_with(request()->header('X-Forwarded-Uri', ''), '/api/v1/mcp');
+        return response('', 401, $mcp ? [
+            'WWW-Authenticate' => 'Bearer resource_metadata="https://cartograph.example.org/.well-known/oauth-protected-resource/api/v1/mcp"',
+        ] : []);
     }
     return response('', 200, [
         'X-Forwarded-Email' => $user->email,
+        'X-Forwarded-User' => $user->email,
         'X-Forwarded-Groups' => implode(',', $user->groups ?? []),
         'X-Forwarded-Preferred-Username' => $user->name,
     ]);
 });
 ```
 
-In nginx, pass the token to the check, and answer an agent with no
-token the way MCP clients expect, so they know where to sign in:
+Step 5's middleware already passes the token to the check
+(`authRequestHeaders` names `Authorization`), and `/api/v1/mcp` is under
+its `/api/v1/` route. Add one route, so Cartograph says where agents
+sign in, at Laravel:
 
-```nginx
-    location = /_who {
-        # as before, and:
-        proxy_set_header Authorization $http_authorization;
-    }
-
-    location = /api/v1/mcp {
-        # the same auth_request and headers as /api/v1/, and:
-        error_page 401 = @mcp_sign_in;
-        proxy_pass http://cartograph:8080;
-    }
-
-    location @mcp_sign_in {
-        add_header WWW-Authenticate 'Bearer resource_metadata="https://cartograph.example.org/.well-known/oauth-protected-resource/api/v1/mcp"' always;
-        return 401;
-    }
-
-    # Cartograph says where agents sign in: at Laravel.
-    location ^~ /.well-known/oauth-protected-resource {
-        proxy_pass http://cartograph:8080;
-    }
+```yaml
+    discovery:
+      rule: PathPrefix(`/.well-known/oauth-protected-resource`)
+      entryPoints: [websecure]
+      service: cartograph
+      tls: {}
 ```
 
 And tell Cartograph where that is:
@@ -421,17 +420,21 @@ is Cartograph's, the same either way.
 
 If you would rather not run an authorization server, let Cartograph be
 one (`CARTOGRAPH_MCP_AUTH=cartograph`). Its consent page sits behind
-your nginx check like any page, so people still sign in through Laravel
+your Traefik check like any page, so people still sign in through Laravel
 and Entra ID. Send these paths to Cartograph without the check, since
 Cartograph checks their tokens itself:
 
-```nginx
-    location ~ ^/(api/v1/mcp|oauth/register|oauth/token|\.well-known/oauth-) {
-        proxy_pass http://cartograph:8080;
-    }
+```yaml
+    # Longer rules win in Traefik, so this one comes before /api/v1/.
+    cartograph-agents:
+      rule: Path(`/api/v1/mcp`) || PathPrefix(`/oauth/register`) || PathPrefix(`/oauth/token`) || PathPrefix(`/.well-known/oauth-`)
+      entryPoints: [websecure]
+      service: cartograph
+      tls: {}
 ```
 
-and `/oauth/authorize` to Cartograph with the check, as `/api/v1/` is.
+and `/oauth/authorize` to Cartograph with the `who` middleware, as
+`/api/v1/` is.
 `docs/DEPLOYMENT.md`, "How an agent signs in", has the settings. Connected
 agents are then listed on Cartograph's Access page, in your interface if
 it uses the `/agents` API.
