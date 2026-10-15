@@ -284,6 +284,30 @@ stack ui="":
 upgrade-check from:
     scripts/upgrade-check {{from}}
 
+# Run a released binary on this machine, as the release's proof does on
+# each platform it ships for (docs/CROSS.md): its version is this
+# checkout's, the example validates, and it serves a copy of the example
+# until /readyz answers.
+verify-binary bin:
+    #!{{ toolchain }} bash
+    set -euo pipefail
+    bin=$(cd "$(dirname "{{ bin }}")" && pwd)/$(basename "{{ bin }}")
+    [ -x "$bin" ] || chmod +x "$bin"
+    want="cartograph $(cat VERSION)"
+    got=$("$bin" version)
+    [ "$got" = "$want" ] || { echo "version: $got, want $want"; exit 1; }
+    "$bin" validate examples/minimal
+    work=$(mktemp -d) pid=""
+    trap '[ -n "$pid" ] && kill "$pid" 2>/dev/null; rm -rf "$work"' EXIT
+    cp -R examples/minimal "$work/vault"
+    "$bin" serve -addr 127.0.0.1:18765 "$work/vault" >"$work/log" 2>&1 &
+    pid=$!
+    for _ in $(seq 1 120); do
+      if curl -sf http://127.0.0.1:18765/readyz >/dev/null; then echo "$got serves the example"; exit 0; fi
+      sleep 0.5
+    done
+    echo "$got did not answer ready:"; cat "$work/log"; exit 1
+
 # Stop the stack and drop everything it held
 stack-down:
     docker compose -f compose.stack.yaml down -v --remove-orphans

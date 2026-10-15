@@ -180,8 +180,33 @@ jobs:
           for _ in $(seq 1 120); do curl -sf http://localhost:8411/ready && break; sleep 1; done
           nix develop .#ci --command just decide-measure http://localhost:8411
 
+  # The macOS binary, run on macOS (arm64). It is cross-compiled on Linux
+  # like every other (docs/CROSS.md) and was never run anywhere before
+  # this: the published file, checked against SHA256SUMS, must give this
+  # version, validate the example and serve it until ready.
+  verify-macos:
+    needs: binaries
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - if: env.CARTOGRAPH_CACHE_GHA == 'on'
+        uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-flakehub: false
+          use-gha-cache: true
+      - name: the published binary, as SHA256SUMS names it
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "$GITHUB_REF_NAME" -p cartograph-darwin-arm64 -p SHA256SUMS -D dist
+          grep ' cartograph-darwin-arm64$' dist/SHA256SUMS > dist/sum
+          nix develop .#proof --command bash -c 'cd dist && sha256sum -c sum'
+      - name: it runs on macOS
+        run: nix develop .#proof --command just verify-binary dist/cartograph-darwin-arm64
+
   manifest:
-    needs: verify
+    needs: [verify, verify-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

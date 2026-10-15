@@ -455,6 +455,14 @@
             packages = basePackages;
             shellHook = plainHook;
           };
+          # `just verify-binary`: running a released binary on the platform
+          # it is for, the release's proof (docs/CROSS.md); no Go, nothing
+          # built, so a macOS runner enters it at once.
+          proof = pkgs.mkShell {
+            name = "cartograph-engine-proof";
+            packages = basePackages;
+            shellHook = plainHook;
+          };
           # `just helm-lint helm-kind`, and the release's chart.
           deploy = pkgs.mkShell {
             name = "cartograph-engine-deploy";
