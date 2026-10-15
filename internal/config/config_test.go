@@ -224,3 +224,43 @@ func TestAgentSettings(t *testing.T) {
 		}
 	}
 }
+
+// The names a proxy may send over loopback: those listed, and the
+// issuer's host, Cartograph's own address (cartograph-engine#106).
+func TestPublicMCPHosts(t *testing.T) {
+	c, err := FromEnv(func(k string) string {
+		return map[string]string{
+			"CARTOGRAPH_MCP_HOSTS":  " atlas.example.org , ,cartograph.internal ",
+			"CARTOGRAPH_MCP_ISSUER": "https://cartograph.example.org",
+		}[k]
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(c.PublicMCPHosts(), ",")
+	if got != "atlas.example.org,cartograph.internal,cartograph.example.org" {
+		t.Fatalf("hosts: %s", got)
+	}
+}
+
+// The rebinding check is on where nobody signs in, or where hosts are
+// listed; with sign-in and none listed it is off, so a deployment whose
+// name is known only after it is deployed needs nothing set.
+func TestMCPHostCheck(t *testing.T) {
+	for _, c := range []struct {
+		env  map[string]string
+		want bool
+	}{
+		{map[string]string{}, true},
+		{map[string]string{"CARTOGRAPH_AUTH": "proxy", "CARTOGRAPH_AUTH_PROXY_HEADER": "X-Forwarded-Email"}, false},
+		{map[string]string{"CARTOGRAPH_AUTH": "proxy", "CARTOGRAPH_AUTH_PROXY_HEADER": "X-Forwarded-Email", "CARTOGRAPH_MCP_HOSTS": "*.example.org"}, true},
+	} {
+		cfg, err := FromEnv(func(k string) string { return c.env[k] })
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := cfg.MCPHostCheck(); got != c.want {
+			t.Errorf("%v: host check %v, want %v", c.env, got, c.want)
+		}
+	}
+}
