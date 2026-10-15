@@ -13,6 +13,64 @@ This page says what counts as waste in a person's work, how each kind is
 measured, how the figures become defects per million and control
 charts, and which commands do it.
 
+## Recording a test session
+
+A session with real people, in person or remote, is measured only if
+the trace was on while it ran. It is off unless asked, and it never
+keeps what anybody wrote.
+
+1. **Switch it on.** On this machine, for a session on the example:
+
+   ```
+   CARTOGRAPH_TRACE_DIR=~/sessions/2026-10-20 just stack
+   ```
+
+   (`just stack` in cartograph-ui serves that repository's build and
+   passes the setting on.) The trace is appended to `ui.jsonl` in that
+   directory, kept after `just stack-down`, and readable by you. On any
+   other deployment, set `CARTOGRAPH_UI_TRACE` to a file the server can
+   write (one per replica, unless on a shared volume) or a `postgres://`
+   URL, and restart it (`docs/DEPLOYMENT.md`). Either way, check before
+   anyone starts: `GET /api/v1/session` answers `"traceOn": true`.
+2. **Run the session.** Each browser tab is one session in the trace
+   (`session.id`), so give each tester a fresh tab, and note which tab
+   and which task were whose, with the time each task began. With
+   sign-in on, `-person` picks one person's acts instead.
+3. **Read it.** `cartograph ux ~/sessions/2026-10-20/ui.jsonl` prints
+   the figures below; `-from` and `-to` take one task's window, `-json`
+   gives them to a script. For a first test, read:
+   - the task table: started, finished, given up, and the median and
+     p95 time of each task, by kind;
+   - dead ends, dead clicks and repeated presses (a person lost or
+     pressing what does nothing);
+   - back in a walk and screens per task (a person hunting);
+   - an answer slow on the page or from the server.
+
+### What it records
+
+One line per act, as JSON. These are from a session on the stack:
+
+```
+{"time": "2026-10-15T21:26:48.492Z", "event.name": "screen.show", "cartograph.source": "interface", "session.id": "b677b270dee6792ac0a54e8c3531c6c5", "service.version": "2.11.0", "cartograph.interface": "web", "cartograph.surface": "index", "cartograph.duration.ms": 47}
+{"time": "2026-10-15T21:27:12.405Z", "event.name": "press", "cartograph.source": "interface", "session.id": "b677b270dee6792ac0a54e8c3531c6c5", "service.version": "2.11.0", "cartograph.interface": "web", "cartograph.surface": "sheets/$kind", "cartograph.target": "action", "cartograph.duration.ms": 24}
+{"time": "2026-10-15T21:26:48.497Z", "event.name": "request", "cartograph.source": "interface", "session.id": "b677b270dee6792ac0a54e8c3531c6c5", "service.version": "2.11.0", "cartograph.interface": "web", "cartograph.surface": "index", "cartograph.outcome": "ok", "cartograph.duration.ms": 19}
+{"time": "2026-10-15T21:27:12.717Z", "event.name": "picker.close", "cartograph.source": "interface", "session.id": "b677b270dee6792ac0a54e8c3531c6c5", "service.version": "2.11.0", "cartograph.interface": "web", "cartograph.surface": "sheets/$kind", "cartograph.target": "chosen"}
+```
+
+Each line has when (`time`), what (`event.name`: a screen shown, a
+press, a request, a picker opened or closed, a step entered, a field
+answered, a version saved or refused, and the rest listed under "Where
+the figures come from"), where (`cartograph.surface`, the screen's
+route pattern, never its address), how long it took
+(`cartograph.duration.ms`), its outcome or target from a short list,
+the tab's random `session.id`, and the server's build
+(`service.version`). An act about a record adds its kind, its id and
+the field's JSON pointer.
+
+It never records what anybody typed or chose: no text, no name, no
+figure, no search term. The server refuses a batch whole if any act
+could carry one.
+
 ## Terms
 
 - **Task:** one piece of a person's work, from where it starts to where

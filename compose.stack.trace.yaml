@@ -1,0 +1,15 @@
+# The people's trace for a stack session (docs/EVALUATING_PEOPLE.md,
+# "Recording a test session"), added by `just stack` when
+# CARTOGRAPH_TRACE_DIR names a directory on this machine: what people do
+# in the interface, by its shape, appended to ui.jsonl there, kept after
+# the stack goes.
+
+services:
+  cartograph:
+    # As the person running the stack, so the trace is theirs to read: the
+    # server keeps it readable only by whoever writes it.
+    user: ${CARTOGRAPH_TRACE_USER:?set by just stack}
+    environment:
+      CARTOGRAPH_UI_TRACE: /trace/ui.jsonl
+    volumes:
+      - ${CARTOGRAPH_TRACE_DIR:?set CARTOGRAPH_TRACE_DIR to a directory on this machine}:/trace
