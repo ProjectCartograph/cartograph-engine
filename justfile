@@ -278,6 +278,12 @@ stack ui="":
     docker compose -f compose.stack.yaml logs --tail 5 laya
     exit 1
 
+# Does a Postgres workspace an earlier release wrote read back whole on this
+# build? Builds both images, imports the release's example with the old one
+# and compares the API, kind by kind (cartograph-engine#109). Needs Docker.
+upgrade-check from:
+    scripts/upgrade-check {{from}}
+
 # Stop the stack and drop everything it held
 stack-down:
     docker compose -f compose.stack.yaml down -v --remove-orphans
