@@ -1,0 +1,24 @@
+{"kind": "Goal", "level": "outcome", "text": "Breakdowns at the depots are planned for rather than found out", "match": "depot-downtime-is-planned"}
+{"kind": "Goal", "level": "outcome", "text": "Every depot's staff grade by the same standard", "match": "depot-staff-apply-the-standard-alike"}
+{"kind": "Goal", "level": "outcome", "text": "Faults are caught before produce is dispatched from the depot", "match": "faults-found-before-dispatch"}
+{"kind": "Goal", "level": "outcome", "text": "Members know the price before they agree to deliver", "match": "members-know-prices-before-they-commit"}
+{"kind": "Goal", "level": "outcome", "text": "A larger share of produce is sold straight to buyers", "match": "more-produce-sold-direct"}
+{"kind": "Goal", "level": "outcome", "text": "There is one register of members everyone trusts", "match": "one-member-register-is-the-authority"}
+{"kind": "Goal", "level": "outcome", "text": "Produce is kept at the correct temperature", "match": "produce-is-held-at-the-right-temperature"}
+{"kind": "Goal", "level": "outcome", "text": "Produce meets the standards retail buyers set", "match": "produce-meets-retail-entry-standards"}
+{"kind": "Goal", "level": "outcome", "text": "Produce gets to a depot on the day it is picked", "match": "produce-reaches-a-depot-the-same-day"}
+{"kind": "Goal", "level": "outcome", "text": "Members receive their season results on time", "match": "season-results-reach-members-on-time"}
+{"kind": "Goal", "level": "outcome", "text": "Members plan what to plant from a forecast of buyer demand", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Supply meets the demand buyers forecast", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Members use predictive analytics to plan for customer demand", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Demand for each crop is forecast a season ahead", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Members are paid within a week of delivery", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Young farmers join the cooperative", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Members learn new growing methods", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Packaging is reused across seasons", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Trucks run full on every route", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Members can borrow to buy seed", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Water use on member farms falls", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Buyers sign contracts before planting", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Members see their season accounts online", "match": ""}
+{"kind": "Goal", "level": "outcome", "text": "Depot staff are trained each season", "match": ""}

@@ -312,10 +312,14 @@ const (
 )
 
 // The model's answer is a match only when it is sure and clear of the
-// next record: measured (docs/adr/0023), this named no wrong record, where
-// a lower bar named one in four.
+// next record. Measured on testdata/decide/same-as.jsonl (TestMeasureMatches,
+// cartograph-ui#91): every right match came at 0.92 or above, and outcomes
+// new to the workspace up to 0.91, offered as "Season results reach
+// members on time" at the 0.85 first measured (docs/adr/0023). At 0.92 no
+// wrong record is offered; one rewording, too close to the next record,
+// is missed, as a wrong offer costs more than a missed one.
 const (
-	sameAtLeast = 0.85
+	sameAtLeast = 0.92
 	sameClearBy = 0.05
 )
 
@@ -732,9 +736,25 @@ func (e *Engine) FromIdea(ctx context.Context, kind, idea string) ([]IdeaAnswer,
 			continue
 		}
 		q := words.FromIdea[k]
+		// A sentence longer than the field takes is not offered for it:
+		// the whole idea as one deliverable's name (cartograph-ui#91).
+		if limit := e.ideaLimit(kind, q.Field); limit > 0 && len([]rune(sentences[best])) > limit {
+			continue
+		}
 		out = append(out, IdeaAnswer{Key: k, Question: q.Question, Field: q.Field, Sentence: sentences[best], Likelihood: first})
 	}
 	return out, true
+}
+
+// ideaLimit is the longest text field takes, as the schema has it: its
+// own limit, or for a list of records each one's name (a deliverable's).
+// 0 is no limit known.
+func (e *Engine) ideaLimit(kind, field string) int {
+	if n, _, _, _ := e.fieldFacts(kind, field); n > 0 {
+		return n
+	}
+	n, _, _, _ := e.fieldFacts(kind, strings.TrimSuffix(field, "/-")+"/-/name")
+	return n
 }
 
 // minorWords are left out of a name's initials, as people leave them out

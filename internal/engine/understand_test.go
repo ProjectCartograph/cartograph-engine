@@ -247,6 +247,28 @@ func TestAnIdeaAnswersTheQuestionsItCan(t *testing.T) {
 	}
 }
 
+// A sentence longer than its field takes is not offered for it: an idea
+// of one long sentence is not a deliverable's name (cartograph-ui#91).
+func TestAnIdeaIsNotOfferedWhereItDoesNotFit(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	m := &model{answer: func(state string, q decide.Question) decide.Answer {
+		p := 0.2
+		if q.Options[0].Description == "says what the work will build or produce" {
+			p = 0.9
+		}
+		return decide.Answer{Probabilities: map[string]float64{"yes": p, "other": 1 - p}}
+	}}
+	long := "We want to build a customer analytics service for our members, so they can use predictive analytics to plan for customer demand"
+	if got, _ := engineWith(t, m).FromIdea(ctx, "Project", long); len(got) != 0 {
+		t.Fatalf("a sentence of %d characters offered as a deliverable: %+v", len(long), got)
+	}
+	got, _ := engineWith(t, m).FromIdea(ctx, "Project", "A grading guide for depot staff")
+	if len(got) != 1 || got[0].Key != "deliver" {
+		t.Fatalf("a short deliverable not offered: %+v", got)
+	}
+}
+
 // A name typed otherwise (another case, spacing or punctuation) or by its
 // initials is the record for certain, with a model or without one, and
 // the model is not asked: it is unsure of both.
