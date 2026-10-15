@@ -7,6 +7,7 @@
 #   just stack                  # build the images, start, wait for the model
 #   just stack <dist>        # the same, serving a local cartograph-ui build
 #   just stack-down             # stop it and drop everything
+#   CARTOGRAPH_TRACE_DIR=<dir> just stack   # keep the people's trace there
 #
 # Open http://localhost:8080 (CARTOGRAPH_PORT moves it).
 
