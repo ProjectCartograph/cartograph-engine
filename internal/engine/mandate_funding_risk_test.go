@@ -187,7 +187,7 @@ func TestProjectBeneficiaries(t *testing.T) {
 			yaml: base + "    beneficiaries:\n      - {}\n",
 		},
 		{
-			name: "dangling group ref", kind: "Project", wantProblem: true, wantSubstr: "does not exist",
+			name: "dangling group ref", kind: "Project", wantProblem: true, wantSubstr: "not in",
 			yaml: base + "    beneficiaries:\n      - group: does-not-exist\n",
 		},
 		{

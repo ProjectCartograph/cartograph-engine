@@ -122,7 +122,7 @@ func TestTeamSchema(t *testing.T) {
 		// The name is metadata.name alone (2.6.0); a team without one is refused.
 		{name: "named in metadata alone", kind: "Team", yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\n  name: Team Two\nspec:\n  description: named once\n"},
 		{name: "missing name", kind: "Team", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\nspec:\n  description: no name here\n"},
-		{name: "dangling parent ref", kind: "Team", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\n  name: Team Two\nspec:\n  name: Team Two\n  parent: does-not-exist\n"},
+		{name: "dangling parent ref", kind: "Team", wantProblem: true, wantSubstr: "not in", yaml: "apiVersion: cartograph/v1\nkind: Team\nmetadata:\n  id: t2\n  name: Team Two\nspec:\n  name: Team Two\n  parent: does-not-exist\n"},
 	})
 }
 
@@ -139,7 +139,7 @@ func TestBeneficiaryGroupSchema(t *testing.T) {
 		// No size on a group either: the register identifies who a group is,
 		// it does not count them (DESIGN_RULES.md).
 		{name: "typicalSize is refused", kind: "BeneficiaryGroup", wantProblem: true, wantSubstr: "typicalSize", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: Group Two\n  typicalSize: 400\n"},
-		{name: "dangling source ref", kind: "BeneficiaryGroup", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: Group Two\n  source: does-not-exist\n"},
+		{name: "dangling source ref", kind: "BeneficiaryGroup", wantProblem: true, wantSubstr: "not in", yaml: "apiVersion: cartograph/v1\nkind: BeneficiaryGroup\nmetadata:\n  id: bg2\n  name: Group Two\nspec:\n  name: Group Two\n  source: does-not-exist\n"},
 	})
 }
 
@@ -163,7 +163,7 @@ func TestDataSourceSchema(t *testing.T) {
 		// The form is the workspace's own vocabulary (TAXONOMY.md D71): a
 		// form outside it is said by a check, not refused.
 		{name: "a form of the workspace's own", kind: "DataSource", wantProblem: false, yaml: "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d2\n  name: Data Source Two\nspec:\n  name: Data Source Two\n  category: filing shelf\n  team: t1\n"},
-		{name: "dangling team ref", kind: "DataSource", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d2\n  name: Data Source Two\nspec:\n  name: Data Source Two\n  category: spreadsheet\n  team: does-not-exist\n"},
+		{name: "dangling team ref", kind: "DataSource", wantProblem: true, wantSubstr: "not in", yaml: "apiVersion: cartograph/v1\nkind: DataSource\nmetadata:\n  id: d2\n  name: Data Source Two\nspec:\n  name: Data Source Two\n  category: spreadsheet\n  team: does-not-exist\n"},
 	})
 }
 
@@ -174,7 +174,7 @@ func TestGoalSchema(t *testing.T) {
 		{name: "valid strategic goal", kind: "Goal", yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g2\n  name: Goal Two\nspec:\n  level: objective\n  parent: g1\n  objective: Raise attainment\n"},
 		{name: "objective may be omitted", kind: "Goal", yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g2\n  name: Goal Two\nspec:\n  level: goal\n"},
 		{name: "bad enum level", kind: "Goal", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g2\n  name: Goal Two\nspec:\n  level: worldwide\n  objective: Raise attainment\n"},
-		{name: "dangling parent ref", kind: "Goal", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g2\n  name: Goal Two\nspec:\n  level: objective\n  parent: does-not-exist\n  objective: Raise attainment\n"},
+		{name: "dangling parent ref", kind: "Goal", wantProblem: true, wantSubstr: "not in", yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g2\n  name: Goal Two\nspec:\n  level: objective\n  parent: does-not-exist\n  objective: Raise attainment\n"},
 		{name: "team is no longer a valid field", kind: "Goal", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g2\n  name: Goal Two\nspec:\n  level: objective\n  parent: g1\n  team: t1\n  objective: Raise attainment\n"},
 		{name: "key result unique ids ok", kind: "Goal", yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g2\n  name: Goal Two\nspec:\n  level: objective\n  parent: g1\n  objective: Raise attainment\n  keyResults:\n    - id: kr-1\n      metric: Screenings\n      direction: increase\n      kind: count\n      unit: deliveries\n    - id: kr-2\n      metric: Coverage\n      direction: increase\n      kind: percent\n"},
 		{name: "key result duplicate ids", kind: "Goal", wantProblem: true, wantSubstr: "duplicates", yaml: "apiVersion: cartograph/v1\nkind: Goal\nmetadata:\n  id: g2\n  name: Goal Two\nspec:\n  level: objective\n  parent: g1\n  objective: Raise attainment\n  keyResults:\n    - id: kr-1\n      metric: Screenings\n      direction: increase\n      kind: count\n      unit: deliveries\n    - id: kr-1\n      metric: Coverage\n      direction: increase\n      kind: percent\n"},
@@ -189,8 +189,8 @@ func TestKPISchema(t *testing.T) {
 		{name: "valid", kind: "KPI", yaml: "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k2\n  name: KPI Two\nspec:\n  name: KPI Two\n  definition: Another measure\n  unit: count\n  direction: decrease\n  source: d1\n  goals: [g1-f]\n"},
 		{name: "missing source", kind: "KPI", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k2\n  name: KPI Two\nspec:\n  name: KPI Two\n  definition: Another measure\n  unit: count\n  direction: decrease\n"},
 		{name: "bad enum direction", kind: "KPI", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k2\n  name: KPI Two\nspec:\n  name: KPI Two\n  definition: Another measure\n  unit: count\n  direction: sideways\n  source: d1\n"},
-		{name: "dangling source ref", kind: "KPI", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k2\n  name: KPI Two\nspec:\n  name: KPI Two\n  definition: Another measure\n  unit: count\n  direction: decrease\n  source: does-not-exist\n"},
-		{name: "dangling goal ref", kind: "KPI", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k2\n  name: KPI Two\nspec:\n  name: KPI Two\n  definition: Another measure\n  unit: count\n  direction: decrease\n  source: d1\n  goals: [does-not-exist]\n"},
+		{name: "dangling source ref", kind: "KPI", wantProblem: true, wantSubstr: "not in", yaml: "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k2\n  name: KPI Two\nspec:\n  name: KPI Two\n  definition: Another measure\n  unit: count\n  direction: decrease\n  source: does-not-exist\n"},
+		{name: "dangling goal ref", kind: "KPI", wantProblem: true, wantSubstr: "not in", yaml: "apiVersion: cartograph/v1\nkind: KPI\nmetadata:\n  id: k2\n  name: KPI Two\nspec:\n  name: KPI Two\n  definition: Another measure\n  unit: count\n  direction: decrease\n  source: d1\n  goals: [does-not-exist]\n"},
 	})
 }
 
@@ -200,7 +200,7 @@ func TestProgrammeSchema(t *testing.T) {
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "Programme", yaml: "apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: prog1\n  name: Programme One\nspec:\n  name: Programme One\n  aim: {change: Raise attainment across teams}\n  leadTeam: t1\n  goals: [g1-f]\n  kpis: [k1]\n"},
 		{name: "missing aim", kind: "Programme", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: prog1\n  name: Programme One\nspec:\n  name: Programme One\n  leadTeam: t1\n"},
-		{name: "dangling leadTeam ref", kind: "Programme", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: prog1\n  name: Programme One\nspec:\n  name: Programme One\n  aim: {change: Raise attainment}\n  leadTeam: does-not-exist\n"},
+		{name: "dangling leadTeam ref", kind: "Programme", wantProblem: true, wantSubstr: "not in", yaml: "apiVersion: cartograph/v1\nkind: Programme\nmetadata:\n  id: prog1\n  name: Programme One\nspec:\n  name: Programme One\n  aim: {change: Raise attainment}\n  leadTeam: does-not-exist\n"},
 	})
 }
 
@@ -210,7 +210,7 @@ func TestOperationSchema(t *testing.T) {
 	runSchemaCases(t, e, []schemaCase{
 		{name: "valid", kind: "Operation", yaml: "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: op1\n  name: Operation One\nspec:\n  name: Operation One\n  purpose: Keep the lights on\n  team: t1\n  kpis: [k1]\n"},
 		{name: "missing purpose", kind: "Operation", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: op1\n  name: Operation One\nspec:\n  name: Operation One\n  team: t1\n"},
-		{name: "dangling team ref", kind: "Operation", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: op1\n  name: Operation One\nspec:\n  name: Operation One\n  purpose: Keep the lights on\n  team: does-not-exist\n"},
+		{name: "dangling team ref", kind: "Operation", wantProblem: true, wantSubstr: "not in", yaml: "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: op1\n  name: Operation One\nspec:\n  name: Operation One\n  purpose: Keep the lights on\n  team: does-not-exist\n"},
 		{name: "bad enum data handoff", kind: "Operation", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Operation\nmetadata:\n  id: op1\n  name: Operation One\nspec:\n  name: Operation One\n  purpose: Keep the lights on\n  team: t1\n  data:\n    consumes:\n      - source: d1\n        purpose: reconciliation\n        handoff: telepathy\n"},
 	})
 }
@@ -223,9 +223,9 @@ func TestProjectSchema(t *testing.T) {
 		{name: "missing summary.problems[].change", kind: "Project", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n"},
 		{name: "empty summary.problems", kind: "Project", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems: []\n"},
 		{name: "bad enum risk impact", kind: "Project", wantProblem: true, yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n  risks:\n    - description: Vendor delay\n      impact: catastrophic\n"},
-		{name: "dangling team ref", kind: "Project", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: does-not-exist\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n"},
+		{name: "dangling team ref", kind: "Project", wantProblem: true, wantSubstr: "not in", yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: does-not-exist\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n"},
 		{name: "operation literal new is not a dangling ref", kind: "Project", yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n  operation: new\n"},
-		{name: "dangling operation ref", kind: "Project", wantProblem: true, wantSubstr: "does not exist", yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n  operation: does-not-exist\n"},
+		{name: "dangling operation ref", kind: "Project", wantProblem: true, wantSubstr: "not in", yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n  operation: does-not-exist\n"},
 		{name: "duplicate key result ids within one objective", kind: "Project", wantProblem: true, wantSubstr: "duplicates", yaml: "apiVersion: cartograph/v1\nkind: Project\nmetadata:\n  id: proj1\n  name: Project One\nspec:\n  team: t1\n  summary:\n    problems:\n      - problem: {situation: Too many gaps}\n        change: {what: Fewer gaps}\n  objectives:\n    - objective: Deliver every order\n      keyResults:\n        - id: kr-1\n          metric: Orders delivered\n          direction: increase\n          kind: count\n          unit: deliveries\n        - id: kr-1\n          metric: Coverage\n          direction: increase\n          kind: percent\n"},
 	})
 }

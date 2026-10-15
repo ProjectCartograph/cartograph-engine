@@ -113,15 +113,22 @@ func diffParts(before, after []Part) []PartDiff {
 }
 
 var (
-	blockEnd = regexp.MustCompile(`(?i)</(p|li|dd|dt|tr|h[1-6]|div|caption)>|<br\s*/?>`)
+	// A drawing's labels are placed, not written in order, and the part
+	// says the same in its table or caption: a diff reads that instead.
+	drawing  = regexp.MustCompile(`(?is)<svg\b.*?</svg>`)
+	mentions = regexp.MustCompile(`(?i)</span>\s*(<span class="mention">)`)
+	blockEnd = regexp.MustCompile(`(?i)</(p|li|dd|dt|tr|h[1-6]|div|caption|figcaption)>|<br\s*/?>`)
 	cellEnd  = regexp.MustCompile(`(?i)</t[dh]>`)
 	anyTag   = regexp.MustCompile(`<[^>]*>`)
 	spaces   = regexp.MustCompile(`[ \t]+`)
 )
 
 // textLines is a part's HTML as the lines a person reads: one a
-// paragraph, list item, term, value or table row, its cells apart.
+// paragraph, list item, term, value, caption or table row, its cells
+// apart, mentions side by side parted by commas, drawings left out.
 func textLines(h string) []string {
+	h = drawing.ReplaceAllString(h, "\n")
+	h = mentions.ReplaceAllString(h, "</span>, $1")
 	h = cellEnd.ReplaceAllString(h, " · ")
 	h = blockEnd.ReplaceAllString(h, "\n")
 	h = html.UnescapeString(anyTag.ReplaceAllString(h, ""))

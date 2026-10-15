@@ -44,7 +44,7 @@ func TestEngineReadsAndWritesJSONManifests(t *testing.T) {
 	}
 	found := false
 	for _, p := range problems {
-		if strings.Contains(p.Message, `references Team "nope"`) {
+		if strings.Contains(p.Message, "names a team that is not in Cartograph (nope)") {
 			found = true
 		}
 	}

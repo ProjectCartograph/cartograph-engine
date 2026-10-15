@@ -58,11 +58,11 @@ func TestProjectSuccessCriteriaRules(t *testing.T) {
 			yaml: base + "  successCriteria:\n    - id: sc-1\n      statement: Coverage is close to complete\n      metric: business\n      confirmedBy: {external: Sponsor}\n",
 		},
 		{
-			name: "dangling source ref", kind: "Project", wantProblem: true, wantSubstr: "does not exist",
+			name: "dangling source ref", kind: "Project", wantProblem: true, wantSubstr: "not in",
 			yaml: base + "  successCriteria:\n    - id: sc-1\n      statement: Coverage is close to complete\n      metric: business\n      source: does-not-exist\n      confirmedBy: {external: Sponsor}\n      when: atLanding\n",
 		},
 		{
-			name: "dangling cycle ref", kind: "Project", wantProblem: true, wantSubstr: "does not exist",
+			name: "dangling cycle ref", kind: "Project", wantProblem: true, wantSubstr: "not in",
 			yaml: base + "  successCriteria:\n    - id: sc-1\n      statement: Coverage is close to complete\n      metric: business\n      cycle: does-not-exist\n      confirmedBy: {external: Sponsor}\n      when: atLanding\n",
 		},
 		{

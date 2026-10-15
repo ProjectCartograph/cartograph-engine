@@ -36,7 +36,7 @@ func TestGapAndTheProblemsThatCiteIt(t *testing.T) {
 		},
 		{
 			name: "a gap measured by a source that does not exist", kind: "Gap",
-			wantProblem: true, wantSubstr: "does not exist",
+			wantProblem: true, wantSubstr: "is not in Cartograph",
 			yaml: "apiVersion: cartograph/v1\nkind: Gap\nmetadata:\n  id: g-bad\n  name: Bad\nspec:\n  statement: Something is wrong.\n  measuredBy: no-such-source\n",
 		},
 		{
@@ -57,7 +57,7 @@ func TestGapAndTheProblemsThatCiteIt(t *testing.T) {
 		},
 		{
 			name: "a problem citing a gap that does not exist", kind: "Project",
-			wantProblem: true, wantSubstr: "references Gap \"no-such-gap\", which does not exist",
+			wantProblem: true, wantSubstr: "names a gap that is not in Cartograph (no-such-gap)",
 			yaml: project + "      - problem: {situation: Students reach an examination before anyone knows}\n        change: {what: Somebody knows sooner}\n        gaps: [{gap: no-such-gap}]\n",
 		},
 		{

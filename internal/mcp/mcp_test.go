@@ -491,7 +491,7 @@ func TestReadingToolsSeeTheChangeSetsDrafts(t *testing.T) {
 	callTool(t, cs, "save_draft", map[string]any{"kind": "ReportingCycle", "id": "quarterly", "manifest": cycle})
 	source := map[string]any{"apiVersion": "cartograph/v1", "kind": "DataSource", "metadata": map[string]any{"id": "d-new", "name": "New source"}, "spec": map[string]any{"category": "database", "team": "t-new"}}
 	res, text := callTool(t, cs, "validate", map[string]any{"kind": "DataSource", "id": "d-new", "manifest": source})
-	if res.IsError || strings.Contains(text, "does not exist") {
+	if res.IsError || strings.Contains(text, "is not in Cartograph") {
 		t.Fatalf("validate does not see the drafted team: %s", text)
 	}
 	res, text = callTool(t, cs, "guide", map[string]any{"kind": "KPI"})
