@@ -118,6 +118,16 @@ spec:
                   name: {{ .Values.agents.keySecret.name | quote }}
                   key: {{ .Values.agents.keySecret.key | quote }}
             {{- end }}
+            # The decision model: named, never assumed (values.yaml, decide).
+            - name: CARTOGRAPH_DECIDE
+              value: {{ ternary "laya" "off" (or .Values.decide.sidecar.enabled (not (empty .Values.decide.url))) | quote }}
+            {{- if .Values.decide.sidecar.enabled }}
+            - name: CARTOGRAPH_DECIDE_URL
+              value: "http://127.0.0.1:8411"
+            {{- else if .Values.decide.url }}
+            - name: CARTOGRAPH_DECIDE_URL
+              value: {{ .Values.decide.url | quote }}
+            {{- end }}
             {{- with .Values.authz.readRoles }}
             - name: CARTOGRAPH_READ_ROLES
               value: {{ . | quote }}
@@ -186,9 +196,33 @@ spec:
               mountPath: /etc/cartograph
               readOnly: true
             {{- end }}
+        {{- with .Values.decide.sidecar }}
+        {{- if .enabled }}
+        # Laya, its own process: the engine reaches it on the pod's
+        # loopback, so nothing outside the pod can. No probes: when it is
+        # down only its checks are off, and the engine stays ready.
+        - name: laya
+          image: {{ printf "%s:%s" .image.repository (default $.Chart.AppVersion .image.tag) | quote }}
+          imagePullPolicy: {{ .image.pullPolicy }}
+          env:
+            - name: LAYA_HOST
+              value: 127.0.0.1
+          resources:
+            {{- toYaml .resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: laya-tmp
+              mountPath: /tmp
+        {{- end }}
+        {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- if .Values.decide.sidecar.enabled }}
+        - name: laya-tmp
+          emptyDir: {}
+        {{- end }}
         {{- with include "cartograph.accessConfigMap" . }}
         - name: access
           configMap:

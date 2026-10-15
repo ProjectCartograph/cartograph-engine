@@ -136,6 +136,31 @@ config:
 # must be greater than drainDelaySeconds + shutdownTimeoutSeconds.
 terminationGracePeriodSeconds: null
 
+# The decision model the engine asks about what people write
+# (docs/adr/0023): a Laya process of its own, reached over HTTP. Off
+# unless one of these is set; with neither, the chart sets
+# CARTOGRAPH_DECIDE=off.
+decide:
+  # A Laya service run elsewhere, shared by every replica, such as
+  # http://laya.cartograph.svc:8411. Keep it off any network people reach.
+  url: ""
+  # Or Laya in each pod, beside the engine: its own container from the
+  # cartograph-laya image, listening on the pod's loopback only. Each
+  # replica then holds the model, about 1.5 GiB of memory.
+  sidecar:
+    enabled: false
+    image:
+      repository: ghcr.io/projectcartograph/cartograph-laya
+      # Empty means the chart's appVersion.
+      tag: ""
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1792Mi
+      limits:
+        memory: 2560Mi
+
 # More environment variables, as a container's env list.
 extraEnv: []
 # More environment, as a container's envFrom list.
