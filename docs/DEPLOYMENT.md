@@ -28,7 +28,7 @@ prints the same table.
 | `CARTOGRAPH_FANOUT` | `-fanout` | see meaning | How replicas tell each other a document changed: `memory` (one replica) or `postgres`. Empty means `postgres` with a Postgres store and `memory` with a vault |
 | `CARTOGRAPH_FANOUT_URL` | `-fanout-url` | the store URL | A direct Postgres URL for the fan-out's listening connection. Set it when the store URL goes through a transaction-mode pooler such as PgBouncer, where `LISTEN` does not work |
 | `CARTOGRAPH_METRICS_ADDR` | `-metrics-addr` | empty (off) | Serve Prometheus `/metrics` on this address, a listener of its own kept off the address users reach, for example `:9090` |
-| `CARTOGRAPH_SYNC_PING` | `-sync-ping` | `20s` | How often the sync socket pings an idle peer; `0` turns pings off. Keep it below the shortest idle timeout between users and the replica (60 s for nginx and an AWS load balancer by default) |
+| `CARTOGRAPH_SYNC_PING` | `-sync-ping` | `20s` | How often the sync socket pings an idle peer; `0` turns pings off. Keep it below the shortest idle timeout between users and the replica (60 s for an AWS load balancer by default) |
 | `CARTOGRAPH_SYNC_IDLE` | `-sync-idle` | `10m` | Close a sync socket that has changed no document for this long, with code 4000, so an unattended window does not hold a replica up (ADR 0015). Pings and presence do not count. `0` never closes |
 | `CARTOGRAPH_UI_DIR` | | empty | Serve the web interface from this directory (a cartograph-ui `dist`) instead of the build the binary embeds. Refused at start without an `index.html` in it. For trying an interface build in an image (`just stack <dist>`) |
 | `CARTOGRAPH_DOC_CACHE` | `-doc-cache` | `1000` | Shared documents a replica keeps in memory, least recently used dropped first. A cache only: the store holds every change |
@@ -441,7 +441,7 @@ over stdio as the operator, held to the same rules.
 ### Behind a reverse proxy
 
 Most deployments put a proxy on the same machine or in the same pod as
-Cartograph (oauth2-proxy, nginx, Caddy, an App Service or Container Apps
+Cartograph (oauth2-proxy, Traefik, HAProxy, Caddy, an App Service or Container Apps
 sidecar), which forwards to `127.0.0.1` with the public `Host` kept.
 
 **The host check.** `/api/v1/mcp` refuses a request that arrives over
@@ -572,7 +572,7 @@ clients ── load balancer ── replica 1 ─┐
   (`max_prepared_statements`, PgBouncer 1.21 or later).
 
 `compose.ha.yaml` rehearses this on one machine: Postgres, a one-shot
-import of the example, two replicas, and nginx in front (`just image`,
+import of the example, two replicas, and HAProxy in front (`just image`,
 then `just ha-up`, and `just ha-down` to stop). The Helm chart in
 `deploy/helm/cartograph` deploys it on Kubernetes.
 
@@ -603,15 +603,23 @@ The sync socket at `/api/v1/sync` is a WebSocket that stays open as
 long as the page does. Every proxy in the path must pass the upgrade
 headers (`Upgrade`, `Connection`) and allow long idle periods.
 
-- nginx closes an idle proxied connection after 60 seconds
-  (`proxy_read_timeout`). Raise it to an hour; with ingress-nginx, set
-  `nginx.ingress.kubernetes.io/proxy-read-timeout` and
-  `proxy-send-timeout` to `"3600"`.
-- nginx without active health checks (the open-source build) finds a
-  stopped replica only by connecting to it, and waits up to 60 seconds
-  (`proxy_connect_timeout`) before trying the next. Lower it to a second
-  or two on a local network; `compose.ha.yaml` uses `1s`. On Kubernetes,
-  readiness takes a draining pod out of the Service before it stops.
+- HAProxy treats an upgraded socket as a tunnel, held by `timeout
+  tunnel` rather than the client and server timeouts; `compose.ha.yaml`
+  sets an hour. It checks each replica on `/readyz`, so a draining one
+  leaves the rotation before it stops, and `observe layer4` takes out a
+  replica the moment a connection to it fails. A stopped replica's
+  address stops answering at all, so keep `timeout connect` short (`1s`
+  on a local network): one request waits that long, then goes to the
+  other. HAProxy's Kubernetes ingress defaults `timeout-tunnel` to an
+  hour; nothing needs setting.
+- Traefik passes the upgrade with no setting. Its entry points' read
+  timeout (60 s by default) does not end an idle sync socket; the ping
+  keeps it open (checked on Traefik 3.7 with a socket idle 75 s). Its
+  ingress needs no annotation either.
+- ingress-nginx was retired in March 2026 and gets no more security
+  fixes; use another controller, or the Gateway API.
+- On Kubernetes, readiness takes a draining pod out of the Service
+  before it stops.
 - An AWS Application Load Balancer has a 60 second idle timeout by
   default. The ping keeps an idle socket under it; raising it does no
   harm.

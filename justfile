@@ -231,7 +231,7 @@ image-laya:
     echo "tagged $name as cartograph-laya:local"
 
 # The highly available topology on this machine: Postgres, a one-shot
-# import of the example, two replicas, nginx on :8080 (compose.ha.yaml).
+# import of the example, two replicas, HAProxy on :8080 (compose.ha.yaml).
 # Needs `just image` first.
 ha-up:
     docker compose -f compose.ha.yaml up -d --wait

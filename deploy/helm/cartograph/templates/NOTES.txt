@@ -25,9 +25,8 @@ Open it:
 {{- end }}
 The sync socket at /api/v1/sync is a long-lived WebSocket. Make sure the
 ingress passes upgrades and allows idle connections longer than
-config.syncPing ({{ .Values.config.syncPing }}); for ingress-nginx:
-  nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-  nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+config.syncPing ({{ .Values.config.syncPing }}). Traefik and HAProxy's
+ingress do both with their defaults.
 {{- else }}
   kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "cartograph.fullname" . }} 8080:{{ .Values.service.port }}
   then http://localhost:8080/

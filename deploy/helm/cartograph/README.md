@@ -62,10 +62,10 @@ The volume claim is kept when the release is removed.
   and team from directory groups. `cartograph-oidc` puts Dex and
   oauth2-proxy in front of this chart.
 - **The ingress.** The sync socket at `/api/v1/sync` is a long-lived
-  WebSocket. With ingress-nginx, set
-  `nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"` and
-  `nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"`. With
-  another controller, raise its idle timeout above `config.syncPing`.
+  WebSocket. Traefik and HAProxy's ingress pass it, and keep it open
+  while idle, with their defaults (`ingress.className: traefik` or
+  `haproxy`). With another controller, raise its idle timeout above
+  `config.syncPing`. ingress-nginx was retired in March 2026.
 - **The decision model.** Laya runs as its own process from the
   `cartograph-laya` image (docs/DEPLOYMENT.md, "The decision model"):
   `decide.sidecar.enabled` puts it in each pod beside the engine, on the

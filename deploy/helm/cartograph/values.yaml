@@ -185,10 +185,9 @@ service:
 ingress:
   enabled: false
   className: ""
-  # The sync socket at /api/v1/sync is a long-lived WebSocket. With
-  # ingress-nginx, raise the timeouts:
-  #   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-  #   nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  # The sync socket at /api/v1/sync is a long-lived WebSocket. Traefik
+  # and HAProxy's ingress keep it open with their defaults; with another
+  # controller, raise its idle timeout above config.syncPing.
   annotations: {}
   hosts:
     - host: cartograph.local
