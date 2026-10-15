@@ -164,7 +164,9 @@
           # on: nothing of that platform runs while it is put together, so
           # Linux on x86_64 assembles arm64's from arm64's own packages
           # (docs/CROSS.md).
-          layaFor = target: pkgs.buildNpmPackage {
+          # The server and its modules alone: what the image runs, under
+          # the target's Node, with no shell (docs/CROSS.md, the images).
+          layaLibFor = target: pkgs.buildNpmPackage {
             pname = "cartograph-laya";
             version = "0.1.2";
             src = ./deploy/laya;
@@ -175,8 +177,15 @@
             buildInputs = lib.optionals target.stdenv.hostPlatform.isLinux [ target.stdenv.cc.cc.lib ];
             installPhase = ''
               runHook preInstall
-              mkdir -p $out/lib/laya $out/bin
+              mkdir -p $out/lib/laya
+              # The modules' own command-line scripts are not run here; their
+              # links would only point their shebangs at the build's Node.
+              rm -rf node_modules/.bin
               cp -r node_modules server.mjs package.json $out/lib/laya/
+              # npm's configure step pointed the modules' scripts at the
+              # build's Node; back to a plain one, so it is not a dependency.
+              grep -rlZ '^#!/nix/store/' $out/lib/laya/node_modules 2>/dev/null | xargs -0 -r sed -i '1s|^#!/nix/store/[^ ]*/bin/node|#!/usr/bin/env node|'
+
               # Only the target's ONNX runtime is kept.
               ort=$out/lib/laya/node_modules/onnxruntime-node/bin
               for d in $ort/napi-v*/*; do
@@ -191,17 +200,11 @@
                   *) rm -rf "$d" ;;
                 esac
               done
-              # The target's own shell and Node: a wrapper made by this
-              # machine's tools would start this machine's shell.
-              {
-                echo '#!${target.runtimeShell}'
-                echo ': "''${LAYA_MODEL_DIR:=${laya-model}}"'
-                echo 'export LAYA_MODEL_DIR'
-                echo "exec ${target.nodejs-slim_22}/bin/node $out/lib/laya/server.mjs \"\$@\""
-              } > $out/bin/cartograph-laya
-              chmod +x $out/bin/cartograph-laya
               runHook postInstall
             '';
+            # A shebang rewritten to the build's Node would carry a second
+            # Node and npm into the image (a module's script, never run).
+            dontPatchShebangs = true;
             dontStrip = pkgs.stdenv.hostPlatform != target.stdenv.hostPlatform;
             # autoPatchelf leaves another architecture's libraries alone: the
             # target's C++ runtime goes on their path by hand.
@@ -216,6 +219,19 @@
               license = lib.licenses.asl20;
             };
           };
+          # The sidecar to run here (`nix run .#laya`, `just serve laya`):
+          # the server under the target's own shell and Node, a wrapper made
+          # by this machine's tools would start this machine's shell.
+          layaFor = target: let lib' = layaLibFor target; in pkgs.runCommand "cartograph-laya-${lib'.version}" { meta = lib'.meta; } ''
+            mkdir -p $out/bin
+            {
+              echo '#!${target.runtimeShell}'
+              echo ': "''${LAYA_MODEL_DIR:=${laya-model}}"'
+              echo 'export LAYA_MODEL_DIR'
+              echo "exec ${target.nodejs-slim_22}/bin/node ${lib'}/lib/laya/server.mjs \"\$@\""
+            } > $out/bin/cartograph-laya
+            chmod +x $out/bin/cartograph-laya
+          '';
           laya = layaFor pkgs;
 
           # The binary for another platform, built here: Go cross-compiles
@@ -296,22 +312,46 @@
             extra = [ linuxOf.${arch}.chromium ];
             env = [ "CARTOGRAPH_CHROMIUM=${linuxOf.${arch}.chromium}/bin/chromium" ];
           };
-          layaOn = arch: if arch == pkgs.go.GOARCH then laya else layaFor linuxOf.${arch};
+          # Node as the image runs it: the binary alone, without the header
+          # paths its build configuration names (process.config). Those
+          # "-dev" outputs are never read at run time, and ICU's carries a
+          # shell and coreutils into the image. The binary is copied, not
+          # run, so this works for any architecture.
+          nodeRuntimeFor = target:
+            let node = target.nodejs-slim_22; in
+            pkgs.runCommand "node-runtime-${node.version}" {
+              exportReferencesGraph = [ "graph" node ];
+              nativeBuildInputs = [ pkgs.removeReferencesTo ];
+            } ''
+              mkdir -p $out/bin
+              cp ${node}/bin/node $out/bin/node
+              chmod u+w $out/bin/node
+              # The package it came from, named in the same configuration.
+              for p in ${node} $(grep -E '^/nix/store/[a-z0-9]{32}-[^/]*-dev$' graph | sort -u); do
+                remove-references-to -t "$p" $out/bin/node
+              done
+            '';
+          # The image runs Node on the server directly: no shell, no
+          # wrapper, the model's place set in its environment.
           imageLaya = arch: stream:
-            let l = layaOn arch; in
+            let
+              target = if arch == pkgs.go.GOARCH then pkgs else linuxOf.${arch};
+              l = layaLibFor target;
+              node = nodeRuntimeFor target;
+            in
             layered stream {
               name = "cartograph-laya";
               tag = version;
               architecture = arch;
-              contents = [ l linuxOf.${arch}.cacert ];
+              contents = [ l node laya-model linuxOf.${arch}.cacert ];
               fakeRootCommands = ''
                 mkdir -p ./tmp
                 chmod 1777 ./tmp
               '';
               config = {
-                Entrypoint = [ "${l}/bin/cartograph-laya" ];
+                Entrypoint = [ "${node}/bin/node" "${l}/lib/laya/server.mjs" ];
                 User = "65532:65532";
-                Env = [ "LAYA_HOST=0.0.0.0" "LAYA_PORT=8411" "HOME=/tmp" ];
+                Env = [ "LAYA_HOST=0.0.0.0" "LAYA_PORT=8411" "HOME=/tmp" "LAYA_MODEL_DIR=${laya-model}" ];
                 ExposedPorts = { "8411/tcp" = { }; };
               };
             };
@@ -334,7 +374,7 @@
           "stream-image-linux-${arch}" = imageFor { name = "cartograph"; inherit arch; stream = true; };
           "stream-image-chromium-linux-${arch}" = imageChromium arch true;
           "stream-image-laya-linux-${arch}" = imageLaya arch true;
-          "laya-linux-${arch}" = layaOn arch;
+          "laya-linux-${arch}" = if arch == pkgs.go.GOARCH then laya else layaFor linuxOf.${arch};
         }) linuxOf));
 
       devShells = forEachSystem (pkgs:

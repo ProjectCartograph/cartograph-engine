@@ -47,6 +47,26 @@ architecture's shell, Node (`nodejs-slim`, which the cache holds) and
 C++ runtime. It is written so that nothing of the target runs while it
 is built.
 
+## What an image holds
+
+Each image holds what its program runs on and nothing else: no shell, no
+package manager, no build tools, and it runs as user 65532.
+
+| Image | Holds | Size |
+|---|---|---|
+| `cartograph` | the static binary (stripped, no C library), CA certificates, and the time zone, service and MIME tables Go reads | about 44 MB |
+| `cartograph-laya` | Node (the binary alone), the libraries it and the ONNX runtime load, the server and its modules, the model | about 1.9 GB, the model 1.6 GB of it |
+| `cartograph-chromium` | the binary and Chromium with what Chromium loads | Chromium's size |
+
+Node's package names the build headers of its libraries (the `-dev`
+outputs, and ICU's carries a shell and coreutils) in its build
+configuration, though nothing reads them at run time; the Laya image
+copies the `node` binary with those references blanked
+(`nodeRuntimeFor`). The modules' scripts keep `#!/usr/bin/env node`
+rather than the build's Node. The image starts Node on the server
+directly, the model's directory set in its environment; the wrapper with
+a shell is for running it on a machine (`nix run .#laya`).
+
 ## Proof
 
 A release builds every binary and image on one x86_64 runner. Then a
