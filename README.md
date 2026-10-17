@@ -101,6 +101,8 @@ decisions behind it; `docs/DEPLOYMENT.md` and
 `docs/SERVERLESS.md` to run it; `docs/EXTENDING.md` to add a kind, a
 store, a codec, an authenticator or a transport;
 `docs/DISTRIBUTIONS.md` to ship your own distribution without a fork;
+`docs/EVALUATING_PEOPLE.md` to record a test session with people and
+read it ("Recording a test session");
 `CONTRIBUTING.md` for
 the loop; `STYLE.md` for code and commits; `VERSIONING.md` for what a
 release promises; `AGENTS.md` for the short

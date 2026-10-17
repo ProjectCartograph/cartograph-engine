@@ -268,6 +268,16 @@ stack ui="":
       export CARTOGRAPH_UI_SOURCE="$src"
       files+=(-f compose.stack.ui.yaml)
     fi
+    # A session to measure keeps its trace (docs/EVALUATING_PEOPLE.md,
+    # "Recording a test session"): CARTOGRAPH_TRACE_DIR=<dir> just stack.
+    if [ -n "${CARTOGRAPH_TRACE_DIR:-}" ]; then
+      mkdir -p "$CARTOGRAPH_TRACE_DIR"
+      export CARTOGRAPH_TRACE_DIR=$(cd "$CARTOGRAPH_TRACE_DIR" && pwd)
+      # The server runs as you, so the trace it writes is yours to read.
+      export CARTOGRAPH_TRACE_USER="$(id -u):$(id -g)"
+      files+=(-f compose.stack.trace.yaml)
+      echo "tracing to $CARTOGRAPH_TRACE_DIR/ui.jsonl; read it with: cartograph ux $CARTOGRAPH_TRACE_DIR/ui.jsonl"
+    fi
     docker compose "${files[@]}" up -d --force-recreate --remove-orphans --wait
     url="http://localhost:${CARTOGRAPH_PORT:-8080}"
     for _ in $(seq 1 300); do
