@@ -95,7 +95,9 @@ justfile         every command; flake.nix pins what they run with
 
 ## Read next
 
-`docs/ARCHITECTURE.md` for the system in diagrams, the extension
+`docs/guide/` for everyone who uses Cartograph: a tutorial, how-to
+guides, reference and explanation, organised by Diátaxis. For those who
+run and build on it: `docs/ARCHITECTURE.md` for the system in diagrams, the extension
 points and the clean-architecture mapping; `docs/adr/` for the
 decisions behind it; `docs/DEPLOYMENT.md` and
 `docs/SERVERLESS.md` to run it; `docs/EXTENDING.md` to add a kind, a
