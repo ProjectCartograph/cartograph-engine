@@ -63,6 +63,18 @@ A scheduling tool answers "who does what, on which day". A charter answers "shou
 
 If a question does not help someone decide, or help the team start, it can wait. This is also why the walk shows one question at a time and keeps the larger workspace one step away.
 
+## Dates over many years
+
+Where a date lives depends on the level. An aim carries a horizon, a
+start and an end each given as a year or a year and month. An indicator's
+target is a value with a date, or a value due at a window or after an
+event, or a value to be set when something happens, with the month it is
+expected by. A project carries milestones. A programme carries no dates of
+its own, so a change that arrives in stages is written as outcomes, each
+with its own horizon, and as the projects that deliver them. The four
+ways to say when are listed in [Timing forms](../reference/timing-forms.md),
+and the reasoning is in [About long horizons](about-long-horizons.md).
+
 ## Where to go next
 
 - To set an indicator's baseline and target honestly, see [About indicator specifications](about-indicator-specifications.md).

@@ -15,6 +15,9 @@ Start with [Charter your first project](tutorials/charter-your-first-project.md)
 In one sitting you open a workspace, start a project and read the charter
 it produces. You do not need to know any project management words first.
 
+To define a programme in the same way, start with [Define your first
+programme](tutorials/define-your-first-programme.md).
+
 When you have done that, [About walk-first](explanation/about-walk-first.md)
 says why Cartograph asks one question at a time, and [About purpose,
 goals, objectives and outcomes](explanation/about-purpose-goals-objectives-and-outcomes.md)
@@ -33,6 +36,24 @@ Each guide names one goal. They are grouped by who usually does the job.
 - [Add a reporting cycle](how-to/add-a-reporting-cycle.md)
 - [Ask a colleague a question](how-to/ask-a-colleague-a-question.md)
 - [Answer a comment](how-to/answer-a-comment.md)
+
+### If you define programmes
+
+- [Start a programme](how-to/start-a-programme.md)
+- [Write a programme's theory of change](how-to/write-a-programmes-theory-of-change.md)
+- [Add a project or programme as a component](how-to/add-a-project-or-programme-as-a-component.md)
+
+### If you set up portfolios
+
+- [Set up a portfolio](how-to/set-up-a-portfolio.md)
+- [Put a project or programme in a portfolio](how-to/put-a-project-or-programme-in-a-portfolio.md)
+- [Review a portfolio and record the decisions](how-to/review-a-portfolio-and-record-the-decisions.md)
+
+### If you run a large project
+
+- [Split a large project into components](how-to/split-a-large-project-into-components.md)
+- [Find the critical path and fix a loop](how-to/find-the-critical-path-and-fix-a-loop.md)
+- [Add a project or programme as a component](how-to/add-a-project-or-programme-as-a-component.md)
 
 ### If you specify indicators and their data
 
@@ -69,6 +90,11 @@ Each guide names one goal. They are grouped by who usually does the job.
 - [Indicator and data fields](reference/indicator-and-data-fields.md):
   every field of an indicator, a data source, a metric and a reading.
 
+- [Programme and portfolio fields](reference/programme-and-portfolio-fields.md):
+  every field of a programme, a portfolio and its decisions.
+- [Timing forms](reference/timing-forms.md): the four ways to say when
+  something is due or happens.
+
 Words used on screen are defined in the Glossary, in the rail of the
 interface.
 
@@ -82,6 +108,10 @@ interface.
 - [About the decision model](explanation/about-the-decision-model.md)
 - [About change sets](explanation/about-change-sets.md)
 - [About walk-first](explanation/about-walk-first.md)
+- [About programmes, portfolios and projects](explanation/about-programmes-portfolios-and-projects.md)
+- [About components and large projects](explanation/about-components-and-large-projects.md)
+- [About long horizons](explanation/about-long-horizons.md)
+- [About portfolio decisions](explanation/about-portfolio-decisions.md)
 
 ## I run Cartograph or build on it
 

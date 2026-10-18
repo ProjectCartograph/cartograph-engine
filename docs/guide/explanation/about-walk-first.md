@@ -42,6 +42,24 @@ It offers a short list of things to do, each named by what it does, and what is 
 
 It does not rest on one open question. A box that asks what you are working on suits someone who already knows the answer, and gives someone who does not nothing to start from. A short list of tasks gives each choice a visible label, which NN/g calls "information scent". The box can stay as one of the ways in.
 
+## Loops, and jobs done over several sittings
+
+Two kinds of task strain a walk. One is a loop, such as a programme's
+theory of change, where each step rests on the one before and the number
+of steps is not known at the start. A page that asks one question at a
+time has to show what has been said so far, and has to say when to stop.
+The other is a job done over several sittings, such as setting up a
+portfolio and reviewing it each season. The [GOV.UK task
+list](https://design-system.service.gov.uk/patterns/complete-multiple-tasks/)
+is made for that, and Home's **Pick up where you left off** is the same
+idea.
+
+Today the programme and portfolio steps are a row of steps, each a page
+of several fields, and not one question per page. They are the part of
+Cartograph where walk-first has furthest to go. [Define your first
+programme](../tutorials/define-your-first-programme.md) takes the
+programme as it is now.
+
 ## Checking before you save
 
 A walk ends in a review of what you said, before it is saved. The GOV.UK [check answers pattern](https://design-system.service.gov.uk/patterns/check-answers/) sets out the shape: answers grouped by section, a change link beside each, a return straight to the review after a change, and "Not provided" for an optional question left blank. The button names the action it performs. In Cartograph the same idea applies to reviewing a change set before it is merged: see [About change sets](about-change-sets.md).

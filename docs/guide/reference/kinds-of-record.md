@@ -129,9 +129,9 @@ An organisation can rename the three levels of aim and the word for a project in
 ### Portfolio
 
 - **Kind:** `Portfolio`
-- **What it is:** A group of projects, programmes and other portfolios that your organisation chooses between and funds against its strategy.
-- **What it holds:** Its pages are Aim, Strategy, Holds and Governance. It also shows Budgets, Review cycle and Part of.
-- **Links to:** The goals and objectives it ranks against, the team that governs it, its budgets, and the portfolios it sits inside. Projects, programmes and smaller portfolios name the portfolios they belong to.
+- **What it is:** A group of projects, programmes and other portfolios that your organisation chooses between and funds against its strategy. What it holds need not depend on one another.
+- **What it holds:** Its pages are Aim, Strategy, Contents and Governance. The scrubber names the third page Holds. It also shows Budgets, Review cycle and Part of.
+- **Links to:** The goals and objectives it ranks against, the team that governs it, its budgets (see Budget), and the portfolios it sits inside. Projects, programmes and smaller portfolios name the portfolios they belong to. What a budget gives one project is an Allocation, recorded on the project's side.
 - **Edit it in:** Portfolios.
 - **Example:** Cooperative Investment Portfolio.
 
@@ -141,17 +141,19 @@ An organisation can rename the three levels of aim and the word for a project in
 - **What it is:** What a portfolio decided about each project, programme or portfolio in it at its latest review.
 - **What it holds:** For each: Priority, Decision (Invest, Hold or Stop), Reason, Decided.
 - **Links to:** The portfolio.
-- **Edit it in:** Portfolios, then the Holds page, then **Save decisions**.
-- **Example:** Invest in the Quality Improvement Programme first; hold the member app until its pilot reports.
+- **Edit it in:** Portfolios, then the Contents page, then **Save decisions**.
+- **Example:** Invest in the Quality Improvement Programme first; hold the Market Access Programme until its theory of change is written.
 
 ### Programme
 
 - **Kind:** `Programme`
 - **What it is:** Projects run together to bring about one change.
-- **What it holds:** Its pages are Aim, Problems, Alignment, Theory of change, Risks, Components, Stakeholders and Governance.
+- **What it holds:** Its pages, in the order the interface shows them, are Aim, Problems, Alignment, Theory of change, Risks, Components, Stakeholders and Governance.
 - **Links to:** Goals, portfolios, indicators, its lead and supporting teams, and smaller programmes. Projects and operations name the programme they belong to.
 - **Edit it in:** Programmes.
 - **Example:** Quality Improvement Programme, which runs the Quality Check Rollout towards one quality standard.
+
+A programme's **components** are the work it depends on: projects, operations and other programmes. A component is not a kind of record. It is a project, operation or programme that the programme names, and the Components page reads the link back.
 
 ### Project
 

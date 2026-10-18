@@ -36,6 +36,16 @@ Merging saves the included records in one step, in the order their references ne
 
 You can merge when nothing is malformed: a value of the wrong form, or a reference to nothing. A record with fields still to fill can be merged, and what is missing stays as a check. This is deliberate. A project is defined over days. If nothing could be merged until everything was complete, nothing would be shared, and a small correction to an old record would be blocked by its old gaps ([ADR 0035](../../adr/0035-a-version-is-well-formed-complete-is-a-check.md)). An organisation that wants the stricter rule can turn it on.
 
+## Starting something new
+
+A new record starts a change set as well. When you start a programme, a
+change set called *Changes to* the programme's name opens at once, and
+the record stays in it until you merge. If the record has unfinished
+items, **Merge** lists them and asks you to say in a few words why you
+are merging before they are finished. A step that touches several
+records, such as putting a project in a portfolio, lands the same way,
+as one set of changes that is reviewed together.
+
 ## The rules an organisation can set
 
 An administrator can set what a change set needs before it is merged: whether every change must go through one, whether every check is met, whether anything may be left open, and whether someone other than the author must merge. The rules apply to people and agents alike, because the reason is the same for both: the record should change by a route someone can review. The decision is in [ADR 0024](../../adr/0024-every-change-goes-through-a-change-set.md).
