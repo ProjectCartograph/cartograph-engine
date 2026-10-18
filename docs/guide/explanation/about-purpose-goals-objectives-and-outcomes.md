@@ -33,6 +33,18 @@ Cartograph also shows five marks on every goal, objective and outcome, based on 
 
 Projects, programmes and services are the means. Each says which outcomes it serves. In the cooperative, the Quality Check Rollout project works towards the outcomes above. This is why you meet your strategy first: when someone later asks "why are we doing this project?", the answer is already a link.
 
+## Portfolios, programmes and projects
+
+The means come in three sizes. A project delivers. A programme brings
+several projects, and sometimes services, together to make one change. A
+portfolio does something else: it ranks work and decides what to fund.
+The levels also differ in what they point at. A programme and a project
+serve outcomes. A portfolio is ranked against goals and objectives, and
+Cartograph does not let you pick an outcome there, because an outcome is
+what is true afterwards, not what the organisation sets out to do. For
+the full account, see [About programmes, portfolios and
+projects](about-programmes-portfolios-and-projects.md).
+
 ## What this costs
 
 It asks for more structure than a to-do list does. A small group with one project may find four levels heavy. Cartograph lets you skip a step with **Skip for now** and come back, and the setup walk asks for just enough to start. The trade is that an organisation which writes these down once can show, years later, how a piece of work connects to its purpose.
@@ -41,4 +53,5 @@ There is also a limit worth stating: a project does not produce benefits by itse
 
 ## Related
 
+- Explanation: [About programmes, portfolios and projects](about-programmes-portfolios-and-projects.md), [About long horizons](about-long-horizons.md)
 - Explanation: [About change sets](about-change-sets.md), [About checks](about-checks.md)

@@ -24,6 +24,17 @@ There are three reasons.
 
 So the line is this. A save is never refused for being incomplete. A version is refused only when it is malformed: a value of the wrong form, or a reference to nothing. A project's hand-off is refused while a blocking check stands, because that is the moment someone else relies on the record being whole ([ADR 0035](../../adr/0035-a-version-is-well-formed-complete-is-a-check.md)). An organisation can tighten the rules for merging through change control: see [About change sets](about-change-sets.md).
 
+## Checks above the project
+
+A programme's checks read the work that names it. They say when it has no
+components, when a component serves none of its outcomes, and when it has
+no theory of change. The last one adds that, without a theory of change,
+it may be a portfolio. A portfolio has three: whether it names a strategic
+objective, whether anything names it, and whether everything it holds has
+a decision. None of them can stop a save. For the reasoning about what a
+programme is and is not, see [About programmes, portfolios and
+projects](about-programmes-portfolios-and-projects.md).
+
 ## What it means for you
 
 A check that bothers you does not stop you saving. A suggestion you disagree with can stay open, and it will not stop a merge unless your administrator has said every check must be met.

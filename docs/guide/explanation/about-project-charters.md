@@ -104,6 +104,26 @@ Assumptions are a third case. The sources list them with the charter. Cartograph
 
 The sources usually split the document that asks for approval from the document that plans the work: PRINCE2's brief and then its initiation documentation, the Green Book's strategic outline case and then the full case, GOV.UK's discovery and then beta. Cartograph's walk asks for both in one pass, so that a person answers one question at a time instead of facing a long form. The standards would call Plan and its data questions a second stage. You can treat them that way: finish the earlier stages, get a decision, and come back.
 
+## A charter above the project
+
+A programme has a charter too, and it is shaped differently. It opens
+with the change the programme exists for and the benefit, then lists the
+problems it answers. It lists the indicators the programme is judged by,
+with where each starts, its target, its data source and how often it is
+read. It prints the theory of change, with the reason for each step, then
+the components with a diagram and a line naming the longest chain. Risks,
+governance and sign-off close it.
+
+It prints no schedule and no budget. A programme has no dates and no
+funding of its own in Cartograph. Its dates are those of the projects
+inside it, and its money is theirs.
+
+A project that has components, or is a component of something, prints one
+more section, *Components and critical path*, with the same diagram. Its
+budget line then reads as the project's own cost together with what its
+components cost. See [About components and large
+projects](about-components-and-large-projects.md).
+
 ## Where this leaves you
 
 A charter does not have to be long. The seven things above fit on a page. Cartograph asks for more because it also helps you plan and measure, and you decide how much of that to do before you ask for a yes.
